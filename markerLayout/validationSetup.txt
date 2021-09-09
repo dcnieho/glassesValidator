@@ -1,0 +1,10 @@
+distance = 100
+
+gridCols = 34
+gridRows = 29
+markerSide = 4
+
+markerPosFile = markerPositions.csv
+targetPosFile = targetPositions.csv
+
+centerTarget = 5

@@ -1,0 +1,11 @@
+*.asv
+.DS*
+~*.m
+*.swp
+*.bak
+crashdump*
+/iView_log.txt
+results/
+*.synctex.gz
+*.log
+*.aux
