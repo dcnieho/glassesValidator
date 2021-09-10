@@ -12,7 +12,7 @@
 % much of the poster setup is read from the file validationSetup.txt. NB: distance in there is in cm, gridCols, gridRows and markerSide are in degrees visual angle
 % setup look
 \def\useExactTobiiSize{0}
-\def\showGrid{1}
+\def\showGrid{0}
 \def\showAnnotations{1}
 
 % read setup
@@ -45,19 +45,19 @@
 % setup gaze targets
 \if\useExactTobiiSize1
 	% exact size specifications of Tobii calibration target
-	\newcommand{\tobii}[2]{
+	\newcommand{\tobii}[3]{
 		\fill[white] (#1-27.25mm,#2-27.25mm) rectangle (#1+27.25mm,#2+27.25mm);
-		\draw[fill=black] (#1,#2) circle (21.5mm);
+		\draw[fill=#3]    (#1,#2) circle (21.5mm);
 		\draw[fill=white] (#1,#2) circle (11.5mm);
-		\draw[fill=black] (#1,#2) circle (1.5mm);
+		\draw[fill=#3]    (#1,#2) circle (1.5mm);
 	}
 \else
 	% instead, something defined in visual angle that looks good
-	\newcommand{\tobii}[2]{
+	\newcommand{\tobii}[3]{
 		\fill[white] (#1-1\step,#2-1\step) rectangle (#1+1\step,#2+1\step);
-		\draw[fill=black] (#1,#2) circle (.8\step);
+		\draw[fill=#3]    (#1,#2) circle (.8\step);
 		\draw[fill=white] (#1,#2) circle (.43\step);
-		\draw[fill=black] (#1,#2) circle (.055\step);
+		\draw[fill=#3]    (#1,#2) circle (.055\step);
 	}
 \fi
 
@@ -83,9 +83,9 @@
 };
 
 
-\csvreader[no head]{\targetPosFile}{1=\ID, 2=\x, 3=\y}%
+\csvreader[no head]{\targetPosFile}{1=\ID, 2=\x, 3=\y, 4=\tColor}%
 {
-	\tobii{\x*\step}{\y*\step};
+	\tobii{\x*\step}{\y*\step}{\tColor};
 };
 
 
