@@ -9,3 +9,4 @@ results/
 *.synctex.gz
 *.log
 *.aux
+__pycache__

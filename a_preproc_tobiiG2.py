@@ -17,76 +17,122 @@ The output directory will contain:
 from __future__ import division
 from __future__ import print_function
 
-import sys, os, shutil
-import argparse
-from os.path import join
+import os, shutil
+from pathlib import Path
 import json
 import gzip
 import cv2
 import pandas as pd
 import numpy as np
+import struct
+import math
+import mp4analyser.iso
 
 
-def preprocessData(inputDir, outputDir, pid):
+def preprocessData(inputDir, outputDir):
     """
     Run all preprocessing steps on tobii data
     """
     ### copy the raw data to the output directory
     print('Copying raw data...')
-    newDataDir = copyTobiiRecording(inputDir, outputDir, pid)
+    newDataDir = copyTobiiRecording(inputDir, outputDir)
     print('Input data copied to: {}'.format(newDataDir))
 
     #### prep the copied data...
+    print('Getting camera calibration...')
+    getCameraFromTSLV(newDataDir)
     print('Prepping gaze data...')
-    gazeWorld_df, frame_timestamps = formatGazeData(newDataDir)
+    gazeDf, frame_timestamps = formatGazeData(newDataDir)
 
     # write the gaze data (world camera coords) to a csv file
-    gazeWorld_df.to_csv(join(newDataDir, 'gazeData_world.tsv'), sep='\t', index=False)
+    gazeDf.to_csv(str(newDataDir / 'gazeData_raw.tsv'), sep='\t', float_format="%.8f")
+
+    # write standard subset of gaze data (world camera coords) to a csv file
+    gazeDf[['frame_idx','video_timestamp','gaze_pos_x','gaze_pos_y','3d_gaze_pos_x','3d_gaze_pos_y','3d_gaze_pos_z']].to_csv(str(newDataDir / 'gazeData.tsv'), sep='\t', float_format="%.8f")
 
     ### convert the frame_timestamps to dataframe
     frameNum = np.arange(1, frame_timestamps.shape[0]+1)
     frame_ts_df = pd.DataFrame({'frameNum':frameNum, 'timestamp':frame_timestamps})
-    frame_ts_df.to_csv(join(newDataDir, 'frame_timestamps.tsv'), sep='\t', index=False)
-
-    ### compress movie
-    print('Compressing movie file...')
-    cmd_str = ' '.join(['ffmpeg', '-r 25', '-i', join(newDataDir, 'fullstream.mp4'), '-pix_fmt', 'yuv420p', '-acodec mp2', join(newDataDir, 'worldCamera.mp4')])
-    os.system(cmd_str)
+    frame_ts_df.to_csv(str(newDataDir / 'frame_timestamps.tsv'), sep='\t', index=False)
 
     ### cleanup
-    for f in ['fullstream.mp4', 'livedata.json']:
+    for f in ['livedata.json', 'et.tslv']:
         try:
-            os.remove(join(newDataDir, f))
+            os.remove(str(newDataDir / f))
         except:
             pass
 
 
-def copyTobiiRecording(input_dir, outputDir, pid):
+def copyTobiiRecording(inputDir, outputDir):
     """
     Copy the relevant files from the specified input dir to the specified output dir
     """
+    with open(str(inputDir / 'participant.json'), 'rb') as j:
+        pInfo = json.load(j)
+    participant = pInfo['pa_info']['Name']
+    with open(str(inputDir / 'recording.json'), 'rb') as j:
+        rInfo = json.load(j)
+    recording = rInfo['rec_info']['Name']
 
-    outputDir = join(outputDir, pid)
-    if not os.path.isdir(outputDir):
-        os.makedirs(outputDir)
+    outputDir = outputDir / ('tobii_%s_%s' % (participant,recording))
+    if not outputDir.is_dir():
+        outputDir.mkdir()
 
     # Copy relevent files to new directory
-    for f in ['livedata.json.gz', 'fullstream.mp4']:
-        shutil.copyfile(join(input_dir, f), join(outputDir, f))
+    inputDir = inputDir / 'segments' / '1'
+    for f in [('livedata.json.gz',None), ('et.tslv.gz',None), ('fullstream.mp4','worldCamera.mp4')]:
+        outFileName = f[0]
+        if f[1] is not None:
+            outFileName = f[1]
+        shutil.copyfile(str(inputDir / f[0]), str(outputDir / outFileName))
 
-    # Unzip the gaze data file
-    with gzip.open(join(outputDir, 'livedata.json.gz')) as zipFile:
-        with open(join(outputDir, 'livedata.json'), 'wb') as unzippedFile:
-            for line in zipFile:
-
-                unzippedFile.write(line)
-    os.remove(join(outputDir, 'livedata.json.gz'))
+    # Unzip the gaze data and tslv files
+    for f in ['livedata.json.gz', 'et.tslv.gz']:
+        with gzip.open(str(outputDir / f)) as zipFile:
+            with open(str(outputDir / os.path.splitext(f)[0]), 'wb') as unzippedFile:
+                for line in zipFile:
+                    unzippedFile.write(line)
+        os.remove(str(outputDir / f))
 
     # return the full path to the output dir
     return outputDir
 
+def getCameraFromTSLV(inputDir):
+    with open(str(inputDir / 'et.tslv'), "rb") as f:
+        # first look for camera item (TSLV type==300)
+        while True:
+            tslvType= struct.unpack('h',f.read(2))[0]
+            status  = struct.unpack('h',f.read(2))[0]
+            payloadLength = struct.unpack('i',f.read(4))[0]
+            payloadLengthPadded = math.ceil(payloadLength/4)*4
+            if tslvType != 300:
+                # skip payload
+                f.read(payloadLengthPadded)
+            else:
+                break
+        
+        # read info about camera
+        camera = {}
+        camera['id']       = struct.unpack('b',f.read(1))[0]
+        camera['location'] = struct.unpack('b',f.read(1))[0]
+        f.read(2) # skip padding
+        camera['position'] = np.array(struct.unpack('3f',f.read(4*3)))
+        camera['rotation'] = np.reshape(struct.unpack('9f',f.read(4*9)),(3,3))
+        camera['focalLength'] = np.array(struct.unpack('2f',f.read(4*2)))
+        camera['skew'] = struct.unpack('f',f.read(4))[0]
+        camera['principalPoint'] = np.array(struct.unpack('2f',f.read(4*2)))
+        camera['radialDistortion'] = np.array(struct.unpack('3f',f.read(4*3)))
+        camera['tangentialDistortion'] = np.array(struct.unpack('3f',f.read(4*3))[:-1]) # last element always zero, there are only two tangential distortion parameters
+        camera['sensorDimensions'] = np.array(struct.unpack('2h',f.read(2*2)))
+    
+    # store to file
+    fs = cv2.FileStorage(str(inputDir / 'calibration.xml'), cv2.FILE_STORAGE_WRITE)
+    for key,value in camera.items():
+        fs.write(name=key,val=value)
+    fs.release()
 
-def formatGazeData(input_dir):
+
+def formatGazeData(inputDir):
     """
     load livedata.json, write to csv
     format to get the gaze coordinates w/r/t world camera, and timestamps for every frame of video
@@ -97,79 +143,75 @@ def formatGazeData(input_dir):
     """
 
     # convert the json file to pandas dataframe
-    raw_df = json_to_df(join(input_dir, 'livedata.json'))
-    raw_df.to_csv(join(input_dir, 'gazeData_raw.tsv'), sep='\t')
+    df = json_to_df(str(inputDir / 'livedata.json'))
 
     # drop any row that precedes the start of the video timestamps
-    raw_df = raw_df[raw_df.vts_time >= raw_df.vts_time.min()]
-
-    data_ts = raw_df.index.values / 1000		# convert data timestamps from microseconds to ms
-    confidence = raw_df['confidence'].values
-    norm_gazeX = raw_df['gaze_pos_x'].values
-    norm_gazeY = raw_df['gaze_pos_y'].values
-    vts = raw_df['vts_time'].values / 1000		# convert video timestamps from microseconds to ms
+    df = df[df['video_timestamp'] >= df['video_timestamp'].min()]
 
     # read video file, create array of frame timestamps
-    frame_timestamps = getVidFrameTimestamps(join(input_dir, 'fullstream.mp4'))
+    frame_timestamps = getVidFrameTimestamps(str(inputDir / 'worldCamera.mp4'))
 
     # use the frame timestamps to assign a frame number to each data point
-    frame_idx = np.zeros(data_ts.shape[0])
-    for i,thisVTS in enumerate(vts):
+    df['frame_idx'] = np.zeros(df.index.shape,dtype='int64')
+    for i,vts in enumerate(df['video_timestamp']):
 
-        # get the frame_timestamp index of where thisVTS would be inserted
-        idx = np.searchsorted(frame_timestamps, thisVTS)
-        if idx == 0: idx = 1
+        # get index where this vts would be inserted into the frame_timestamp array
+        idx = np.searchsorted(frame_timestamps, vts)
+        if idx == 0:
+            idx = 1
 
         # set the frame number based on this index value
-        frame_idx[i] = idx-1
+        df['frame_idx'].iloc[i] = idx-1
 
     # build the formatted dataframe
-    gaze_df = pd.DataFrame({'timestamp':data_ts, 'confidence':confidence, 'frame_idx': frame_idx, 'norm_pos_x':norm_gazeX, 'norm_pos_y':norm_gazeY})
+    df.index.name = 'timestamp'
 
     # return the gaze data df and frame time stamps array
-    colOrder = ['timestamp', 'frame_idx', 'confidence', 'norm_pos_x', 'norm_pos_y']
-    return gaze_df[colOrder], frame_timestamps
+    colOrder = [x for x in df.columns.tolist() if x!='frame_idx']
+    colOrder.insert(0,'frame_idx')
+    return df[colOrder], frame_timestamps
 
 
 def getVidFrameTimestamps(vid_file):
     """
-    Load the supplied video, return an array of frame timestamps
+    Pasre the supplied video, return an array of frame timestamps
     """
-    OPENCV3 = (cv2.__version__.split('.')[0] == '3')		# get opencv version
-
-    vid = cv2.VideoCapture(vid_file)
-
-    # figure out the total number of frames in this video file
-    if OPENCV3:
-        totalFrames = vid.get(cv2.CAP_PROP_FRAME_COUNT)
-    else:
-        totalFrames = vid.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
-
-    frame_ts = np.zeros(int(totalFrames))
-
-    # loop through all video frames
-    frameCounter = 0
-    while vid.isOpened():
-        # read the next frame
-        ret, frame = vid.read()
-
-        # check if its valid:
-        if ret == True:
-            if OPENCV3:
-                thisFrameTS = vid.get(cv2.CAP_PROP_POS_MSEC)
-            else:
-                thisFrameTS = vid.get(cv2.cv.CV_CAP_PROP_POS_MSEC)
-
-            # write this frame's ts to the array
-            frame_ts[frameCounter] = thisFrameTS
-
-            # increment frame counter
-            frameCounter += 1
-
-        else:
-            break
-    vid.release()		# close the video
-
+    
+    # method 2, parse mp4 file
+    boxes   = mp4analyser.iso.Mp4File(vid_file)
+    # 1. find mdat box
+    moov    = boxes.child_boxes[[i for i,x in enumerate(boxes.child_boxes) if x.type=='moov'][0]]
+    # 2. find track boxes
+    trakIdxs= [i for i,x in enumerate(moov.child_boxes) if x.type=='trak']
+    # 3. check which track contains video
+    trakIdx = [i for i,x in enumerate(boxes.get_summary()['track_list']) if x['media_type']=='video'][0]
+    trak    = moov.child_boxes[trakIdxs[trakIdx]]
+    # 4. get mdia
+    mdia    = trak.child_boxes[[i for i,x in enumerate(trak.child_boxes) if x.type=='mdia'][0]]
+    # 5. get time_scale field from mdhd
+    time_base = mdia.child_boxes[[i for i,x in enumerate(mdia.child_boxes) if x.type=='mdhd'][0]].box_info['timescale']
+    # 6. get minf
+    minf    = mdia.child_boxes[[i for i,x in enumerate(mdia.child_boxes) if x.type=='minf'][0]]
+    # 7. get stbl
+    stbl    = minf.child_boxes[[i for i,x in enumerate(minf.child_boxes) if x.type=='stbl'][0]]
+    # 8. get sample table from stts
+    samp_table = stbl.child_boxes[[i for i,x in enumerate(stbl.child_boxes) if x.type=='stts'][0]].box_info['entry_list']
+    # 9. now we have all the info to determine the timestamps of each frame
+    df = pd.DataFrame(samp_table) # easier to use that way
+    totalFrames = df['sample_count'].sum()
+    frame_ts = np.zeros(totalFrames)
+    # first uncompress delta table
+    idx = 0
+    for count,dur in zip(df['sample_count'], df['sample_delta']):
+        frame_ts[idx:idx+count] = dur
+        idx = idx+count
+    # turn into timestamps, first in time_base units
+    frame_ts = np.roll(frame_ts,1)
+    frame_ts[0] = 0.
+    frame_ts = np.cumsum(frame_ts)
+    # now into timestamps in ms
+    frame_ts = frame_ts/time_base*1000
+    
     return frame_ts
 
 
@@ -186,6 +228,10 @@ def json_to_df(json_file):
         # loop over all lines in json file, each line represents unique json object
         for line in j:
             entry = json.loads(line)
+            
+            # if non-zero status, skip packet
+            if entry['s'] != 0:
+                continue
 
             ### a number of different dictKeys are possible, respond accordingly
             if 'vts' in entry.keys(): # "vts" key signfies a video timestamp (first frame, first keyframe, and ~1/min afterwards)
@@ -199,68 +245,52 @@ def json_to_df(json_file):
                     df.loc[entry['ts'], which_eye + '_pup_cent_x'] = entry['pc'][0]
                     df.loc[entry['ts'], which_eye + '_pup_cent_y'] = entry['pc'][1]
                     df.loc[entry['ts'], which_eye + '_pup_cent_z'] = entry['pc'][2]
-                    df.loc[entry['ts'], which_eye + '_pup_cent_val'] = entry['s']
-                    df.loc[entry['ts'], 'confidence'] = int(entry['s'] == 0)
                 elif 'pd' in entry.keys():
                     df.loc[entry['ts'], which_eye + '_pup_diam'] = entry['pd']
-                    df.loc[entry['ts'], which_eye + '_pup_diam_val'] = entry['s']
-                    df.loc[entry['ts'], 'confidence'] = int(entry['s'] == 0)
                 elif 'gd' in entry.keys():
                     df.loc[entry['ts'], which_eye + '_gaze_dir_x'] = entry['gd'][0]
                     df.loc[entry['ts'], which_eye + '_gaze_dir_y'] = entry['gd'][1]
                     df.loc[entry['ts'], which_eye + '_gaze_dir_z'] = entry['gd'][2]
-                    df.loc[entry['ts'], which_eye + '_gaze_dir_val'] = entry['s']
-                    df.loc[entry['ts'], 'confidence'] = int(entry['s'] == 0)
 
             # otherwise it contains gaze position data
             else:
                 if 'gp' in entry.keys():
                     df.loc[entry['ts'], 'gaze_pos_x'] = entry['gp'][0]
                     df.loc[entry['ts'], 'gaze_pos_y'] = entry['gp'][1]
-                    df.loc[entry['ts'], 'gaze_pos_val'] = entry['s']
-                    df.loc[entry['ts'], 'confidence'] = int(entry['s'] == 0)
                 elif 'gp3' in entry.keys():
                     df.loc[entry['ts'], '3d_gaze_pos_x'] = entry['gp3'][0]
                     df.loc[entry['ts'], '3d_gaze_pos_y'] = entry['gp3'][1]
                     df.loc[entry['ts'], '3d_gaze_pos_z'] = entry['gp3'][2]
-                    df.loc[entry['ts'], '3d_gaze_pos_val'] = entry['s']
-                    df.loc[entry['ts'], 'confidence'] = int(entry['s'] == 0)
+                    
+            # ignore anything else
 
+        
+        # now we need to make a video timestamp column
+        df['video_timestamp'] = np.array(df.index)	   # df.index is the gaze data timestamps
+        df.loc[df.index < min(sorted(vts_sync.keys())), 'video_timestamp'] = np.nan		# set rows that occur before the first frame to nan
 
-        # set video timestamps column
-        df['vts_time'] = np.array(df.index)	   # df.index is data timstamps
-        df.ix[df.index < min(sorted(vts_sync.keys())), 'vts_time'] = np.nan		# set rows that occur before the first frame to nan
-
-        # for each new vts sync package, reindex all of the rows above that timestamp
+        # for each new vts sync package, reindex all of the rows after that timestamp
         for key in sorted(vts_sync.keys()):
-            df.ix[df.index >= key, 'vts_time'] = np.array(df.index)[df.index >= key]   # necessary if there are more than 2 keys in the list (prior key changes need to be reset for higher vts syncs)
-            df.ix[df.index >= key, 'vts_time'] = df.vts_time - key + vts_sync[key]
+            df.loc[df.index >= key, 'video_timestamp'] = np.array(df.index)[df.index >= key]   # necessary if there are more than 2 keys in the list (prior key changes need to be reset for higher vts syncs)
+            df.loc[df.index >= key, 'video_timestamp'] = df['video_timestamp'] - key + vts_sync[key]
 
-        # note: the vts column indicates, in microseconds, where this datapoint would occur in the video timeline
-        # these do NOT correspond to the timestamps of when the videoframes were acquired. Need cv2 methods for that.
+        # note: the vts column indicates, in microseconds, where a given datapoint would occur in the video timeline
+        # the timestamps of the videoframes themselves need to be gotten from the video file instead
 
-        # add seconds column
-        df = df.reset_index()
-        df['seconds'] = (df['index'] - df['index'][0]) / 1000000.0		# convert tobii ts (us) to seconds
-        df = df.set_index('index', drop=True)
+        # convert timestamps from us to ms
+        df.index              = (df.index - df.index[0]) / 1000.0
+        df['video_timestamp'] = df['video_timestamp'] / 1000.0
 
         # return the dataframe
         return df
 
 
 if __name__ == '__main__':
-    # parse arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument('inputDir', help='path to the raw recording dir (e.g. SD card)')
-    parser.add_argument('outputDir', help='path to where output data copied and saved to')
-    parser.add_argument('pid', help='participant ID')
-    args = parser.parse_args()
-
-    # Check if input directory is valid
-    if not os.path.isdir(args.inputDir):
-        print('Invalid input dir: {}'.format(args.inputDir))
-        sys.exit()
-    else:
-
-        # run preprocessing on this data
-        preprocessData(args.inputDir, args.outputDir, args.pid)
+    basePath = Path(os.path.dirname(os.path.realpath(__file__))) / 'data'
+    inBasePath = basePath / 'tobiiG2'
+    outBasePath = basePath / 'preproc'
+    if not outBasePath.is_dir():
+        outBasePath.mkdir()
+    for d in inBasePath.iterdir():
+        if d.is_dir():
+            preprocessData(d,outBasePath)
