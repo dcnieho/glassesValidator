@@ -179,7 +179,7 @@ def process(inputDir,basePath):
             cv2.aruco.detectMarkers(frame, aruco_dict, parameters=parameters)
         
         if np.all(ids != None):
-            if len(ids) >= 4:
+            if len(ids) >= validationSetup['minNumMarkers']:
                 # undistort markers, get homography (image to world transform)
                 cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
                 H, status = estimateTransform(knownMarkers, cornersU, ids)

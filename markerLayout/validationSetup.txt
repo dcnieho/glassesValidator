@@ -7,4 +7,5 @@ markerSide = 4
 markerPosFile = markerPositions.csv
 targetPosFile = targetPositions.csv
 
+minNumMarkers = 3
 centerTarget = 5
