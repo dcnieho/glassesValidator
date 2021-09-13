@@ -220,7 +220,7 @@ def process(inputDir,basePath):
         # cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(148,0,211))
                 
 
-        cv2.imshow('frame',frame)
+        cv2.imshow(inputDir.name,frame)
         
         # quit fully
         key = cv2.waitKey(1) & 0xFF
