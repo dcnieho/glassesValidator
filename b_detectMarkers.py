@@ -197,12 +197,13 @@ def process(inputDir,basePath):
                     target = distortPoint( target, cameraMatrix, distCoeff)
                     
                     # draw target location on image
+                    drawShift = 8   # for sub-pixel positioning
                     if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
-                        x = int(round(target[0]))
-                        y = int(round(target[1]))
-                        cv2.line(frame, (x,0), (x,int(height)),(0,255,0),1)
-                        cv2.line(frame, (0,y), (int(width),y) ,(0,255,0),1)
-                        cv2.circle(frame, (x,y), 5, (0,255,0), -1)
+                        x = int(round(target[0]*drawShift))
+                        y = int(round(target[1])*drawShift)
+                        cv2.line(frame, (x,0), (x,int(height*drawShift)),(0,255,0),1, shift=3)
+                        cv2.line(frame, (0,y), (int(width*drawShift),y) ,(0,255,0),1, shift=3)
+                        cv2.circle(frame, (x,y), 3*drawShift, (0,255,0), -1, shift=3)
                         
                     # store homography, pose and target location to file
                     writeDat = [frame_idx]
