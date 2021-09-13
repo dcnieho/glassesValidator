@@ -125,6 +125,19 @@ def getCameraFromTSLV(inputDir):
         camera['tangentialDistortion'] = np.array(struct.unpack('3f',f.read(4*3))[:-1]) # last element always zero, there are only two tangential distortion parameters
         camera['sensorDimensions'] = np.array(struct.unpack('2h',f.read(2*2)))
     
+    # turn into camera matrix and distCoeffs as used by OpenCV
+    camera['cameraMatrix'] = np.identity(3)
+    camera['cameraMatrix'][0,0] = camera['focalLength'][0]
+    camera['cameraMatrix'][1,1] = camera['focalLength'][1]
+    camera['cameraMatrix'][0,2] = camera['principalPoint'][0]
+    camera['cameraMatrix'][1,2] = camera['principalPoint'][1]
+
+    camera['distCoeff'] = np.zeros(5)
+    camera['distCoeff'][:2]  = camera['radialDistortion'][:2]
+    camera['distCoeff'][2:4] = camera['tangentialDistortion'][:2]
+    camera['distCoeff'][4]   = camera['radialDistortion'][2]
+
+
     # store to file
     fs = cv2.FileStorage(str(inputDir / 'calibration.xml'), cv2.FILE_STORAGE_WRITE)
     for key,value in camera.items():
