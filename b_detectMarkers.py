@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 import csv
 import math
+import pandas as pd
 
 
 class Marker:
@@ -22,31 +23,34 @@ class Marker:
         return ret
 
 def getKnownMarkers(markerDir, validationSetup):
-    """ 0,0 is at bottom left"""
+    """ (0,0) is at center target, (-,-) bottom left """
     cellSizeCm = 2.*math.tan(math.radians(.5))*validationSetup['distance']
     markerHalfSizeCm = cellSizeCm*validationSetup['markerSide']/2.
+            
+    # read in target positions
+    markers = {}
+    targets = pd.read_csv(str(markerDir / validationSetup['targetPosFile']),names=['id','x','y','clr'])
+    targets = targets[['id','x','y']].values.astype('float32')
+    center  = targets[np.where(targets[:,0]==validationSetup['centerTarget']),1:3].flatten()
+    targets[:,1:3] = targets[:,1:3]-center
+    for i in range(targets.shape[0]):
+        key = 't%d' % targets[i,0]
+        c   = cellSizeCm * targets[i,1:3]
+        markers[key] = Marker(key, c)
     
     # read in aruco marker positions
-    markers = {}
-    with open(str(markerDir / validationSetup['markerPosFile']), newline='') as markerFile:
-        reader = csv.reader(markerFile, quoting=csv.QUOTE_NONNUMERIC)
-        for row in reader:
-            key = '%d' % row[0]
-            c   = cellSizeCm * np.array( row[1:] ).astype('float')
-            # top left first, and clockwise: same order as detected aruco marker corners
-            tl = c + np.array( [ -markerHalfSizeCm ,  markerHalfSizeCm ] )
-            tr = c + np.array( [  markerHalfSizeCm ,  markerHalfSizeCm ] )
-            br = c + np.array( [  markerHalfSizeCm , -markerHalfSizeCm ] )
-            bl = c + np.array( [ -markerHalfSizeCm , -markerHalfSizeCm ] )
-            markers[key] = Marker(key, c, [ tl, tr, br, bl ])
-            
-    # add target positions
-    with open(str(markerDir / validationSetup['targetPosFile']), newline='') as targetFile:
-        reader = csv.reader(targetFile)
-        for row in reader:
-            key = 't' + row[0]
-            c   = cellSizeCm * np.array( [float(i) for i in row[1:3]] ).astype('float')
-            markers[key] = Marker(key, c)
+    markerPos = pd.read_csv(str(markerDir / validationSetup['markerPosFile']),names=['id','x','y'])
+    markerPos = markerPos.values.astype('float32')
+    markerPos[:,1:3] = markerPos[:,1:3]-center
+    for i in range(markerPos.shape[0]):
+        key = '%d' % markerPos[i,0]
+        c   = cellSizeCm * markerPos[i,1:3]
+        # top left first, and clockwise: same order as detected aruco marker corners
+        tl = c + np.array( [ -markerHalfSizeCm ,  markerHalfSizeCm ] )
+        tr = c + np.array( [  markerHalfSizeCm ,  markerHalfSizeCm ] )
+        br = c + np.array( [  markerHalfSizeCm , -markerHalfSizeCm ] )
+        bl = c + np.array( [ -markerHalfSizeCm , -markerHalfSizeCm ] )
+        markers[key] = Marker(key, c, [ tl, tr, br, bl ])
         
     return markers
 
