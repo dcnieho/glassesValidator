@@ -153,6 +153,7 @@ def process(inputDir,basePath):
     fs = cv2.FileStorage("calibration.xml", cv2.FILE_STORAGE_READ)
     cameraMatrix = fs.getNode("cameraMatrix").mat()
     distCoeffs   = fs.getNode("distCoeffs").mat()
+    fs.release()
 
     # prep output file
     csv_file = open(os.path.join(inputDir, 'transformations.tsv'), 'w', newline='')
