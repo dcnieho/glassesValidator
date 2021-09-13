@@ -168,7 +168,7 @@ def process(inputDir,basePath):
     csv_writer.writerow( header )
 
     frame_idx = 0
-    userExited = False
+    stopAllProcessing = False
     while True:
         # process frame-by-frame
         ret, frame = cap.read()
@@ -216,9 +216,18 @@ def process(inputDir,basePath):
                 
 
         cv2.imshow('frame',frame)
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        
+        # quit fully
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q'):
+            stopAllProcessing = True
             break
+        # goto next
+        if key == ord('n'):
+            break
+        # screenshot
+        if key == ord('s'):
+            cv2.imwrite(str(inputDir / ('frame_%d.png' % frame_idx)), frame)
         
         frame_idx += 1
 
@@ -226,7 +235,7 @@ def process(inputDir,basePath):
     cap.release()
     cv2.destroyAllWindows()
 
-    return userExited
+    return stopAllProcessing
 
 
 if __name__ == '__main__':
