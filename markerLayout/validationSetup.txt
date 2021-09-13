@@ -15,4 +15,4 @@ minNumMarkers = 3
 centerTarget = 5
 
 showGrid = 0
-showAnnotations = 1
+showAnnotations = 0
