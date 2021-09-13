@@ -288,7 +288,7 @@ def json_to_df(json_file):
 if __name__ == '__main__':
     basePath = Path(os.path.dirname(os.path.realpath(__file__))) / 'data'
     inBasePath = basePath / 'tobiiG2'
-    outBasePath = basePath / 'preproc'
+    outBasePath = basePath / 'preprocced'
     if not outBasePath.is_dir():
         outBasePath.mkdir()
     for d in inBasePath.iterdir():

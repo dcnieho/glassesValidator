@@ -107,7 +107,7 @@ def distortPoint(p, cameraMatrix, distCoeffs):
     return p
 
 
-def process(inputDir):
+def process(inputDir,basePath):
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = {}
     with open("validationSetup.txt") as setupFile:
@@ -224,16 +224,7 @@ def process(inputDir):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('inputDir', help='path to the input dir')
-    args = parser.parse_args()
-
-    if not os.path.isdir(args.inputDir):
-        print('Invalid input dir: {}'.format(args.inputDir))
-        sys.exit()
-    else:
-        # run preprocessing on all subfolders in this folder
-        p = Path(args.inputDir)
-        for x in p.iterdir():
-            if x.is_dir():
-                process(str(x / 'segments' / '1'))
+    basePath = Path(os.path.dirname(os.path.realpath(__file__)))
+    for d in (basePath / 'data' / 'preprocced').iterdir():
+        if d.is_dir():
+            process(d,basePath)
