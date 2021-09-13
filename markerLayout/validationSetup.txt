@@ -1,4 +1,4 @@
-distance = 100
+distance = 60
 
 gridCols = 34
 gridRows = 29
@@ -7,5 +7,12 @@ markerSide = 4
 markerPosFile = markerPositions.csv
 targetPosFile = targetPositions.csv
 
+targetType = Thaler
+useExactTobiiSize = 0
+thalerDiameter = 1
+
 minNumMarkers = 3
 centerTarget = 5
+
+showGrid = 0
+showAnnotations = 1
