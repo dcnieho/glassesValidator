@@ -19,6 +19,8 @@
 \readdef{validationSetup.txt}{\fileData}
 \readarray\fileData\setupInfo[-,3]
 % turn each key into its own command
+%NB: this provides \distance, \markerPosFile and \targetPosFile,
+% amongst others
 \newcounter{keyCount}
 \setcounter{keyCount}{0}%
 \whiledo{\value{keyCount} < \setupInfoROWS}{%
