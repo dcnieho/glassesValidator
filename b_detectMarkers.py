@@ -21,14 +21,14 @@ class Marker:
         ret = '[%s]: center @ (%.2f, %.2f)' % (self.key, self.center[0], self.center[1])
         return ret
 
-def getKnownMarkers(validationSetup):
+def getKnownMarkers(markerDir, validationSetup):
     """ 0,0 is at bottom left"""
     cellSizeCm = 2.*math.tan(math.radians(.5))*validationSetup['distance']
     markerHalfSizeCm = cellSizeCm*validationSetup['markerSide']/2.
     
     # read in aruco marker positions
     markers = {}
-    with open(validationSetup['markerPosFile'], newline='') as markerFile:
+    with open(str(markerDir / validationSetup['markerPosFile']), newline='') as markerFile:
         reader = csv.reader(markerFile, quoting=csv.QUOTE_NONNUMERIC)
         for row in reader:
             key = '%d' % row[0]
@@ -41,11 +41,11 @@ def getKnownMarkers(validationSetup):
             markers[key] = Marker(key, c, [ tl, tr, br, bl ])
             
     # add target positions
-    with open(validationSetup['targetPosFile'], newline='') as targetFile:
-        reader = csv.reader(targetFile, quoting=csv.QUOTE_NONNUMERIC)
+    with open(str(markerDir / validationSetup['targetPosFile']), newline='') as targetFile:
+        reader = csv.reader(targetFile)
         for row in reader:
-            key = 't%d' % row[0]
-            c   = cellSizeCm * np.array( row[1:] ).astype('float')
+            key = 't' + row[0]
+            c   = cellSizeCm * np.array( [float(i) for i in row[1:3]] ).astype('float')
             markers[key] = Marker(key, c)
         
     return markers
@@ -78,17 +78,17 @@ def transform(h, x, y):
     return dst[0][0]
 
 
-def distortPoint(p, cameraMatrix, distCoeffs):
+def distortPoint(p, cameraMatrix, distCoeff):
     fx = cameraMatrix[0][0]
     fy = cameraMatrix[1][1]
     cx = cameraMatrix[0][2]
     cy = cameraMatrix[1][2]
 
-    k1 = distCoeffs[0]
-    k2 = distCoeffs[1]
-    k3 = distCoeffs[4]
-    p1 = distCoeffs[2]
-    p2 = distCoeffs[3]
+    k1 = distCoeff[0]
+    k2 = distCoeff[1]
+    k3 = distCoeff[4]
+    p1 = distCoeff[2]
+    p2 = distCoeff[3]
 
     x = (p[0] - cx) / fx
     y = (p[1] - cy) / fy
@@ -108,9 +108,10 @@ def distortPoint(p, cameraMatrix, distCoeffs):
 
 
 def process(inputDir,basePath):
+    markerDir = basePath / "markerLayout"
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = {}
-    with open("validationSetup.txt") as setupFile:
+    with open(str(markerDir / "validationSetup.txt")) as setupFile:
         for line in setupFile:
             name, var = line.partition("=")[::2]
             try:
@@ -129,7 +130,7 @@ def process(inputDir,basePath):
     # get info about markers on our board
     # Aruco markers have numeric keys, gaze targets have keys starting with 't'
     aruco_dict   = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
-    knownMarkers = getKnownMarkers(validationSetup)
+    knownMarkers = getKnownMarkers(markerDir, validationSetup)
     centerTarget = knownMarkers['t%d'%validationSetup['centerTarget']].center
     
     # turn into aruco board object to be used for pose estimation
@@ -150,13 +151,13 @@ def process(inputDir,basePath):
     parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX;
 
     # get camera calibration info
-    fs = cv2.FileStorage("calibration.xml", cv2.FILE_STORAGE_READ)
+    fs = cv2.FileStorage(str(inputDir / "calibration.xml"), cv2.FILE_STORAGE_READ)
     cameraMatrix = fs.getNode("cameraMatrix").mat()
-    distCoeffs   = fs.getNode("distCoeffs").mat()
+    distCoeff   = fs.getNode("distCoeff").mat()
     fs.release()
 
     # prep output file
-    csv_file = open(os.path.join(inputDir, 'transformations.tsv'), 'w', newline='')
+    csv_file = open(str(inputDir / 'transformations.tsv'), 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
     header = ['frame_idx']
     header.extend(['transformation[%d,%d]' % (r,c) for r in range(3) for c in range(3)])
@@ -180,16 +181,16 @@ def process(inputDir,basePath):
         if np.all(ids != None):
             if len(ids) >= 4:
                 # undistort markers, get homography (image to world transform)
-                cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeffs, P=cameraMatrix) for x in corners]
+                cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
                 H, status = estimateTransform(knownMarkers, cornersU, ids)
                 if status:
                     # get camera pose
-                    nMarkersUsed, Rvec, Tvec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeffs)
+                    nMarkersUsed, Rvec, Tvec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
                     
                     # find where target is expected to be in the image
                     iH = np.linalg.inv(H)
                     target = transform(iH, centerTarget[0], centerTarget[1])
-                    target = distortPoint( target, cameraMatrix, distCoeffs)
+                    target = distortPoint( target, cameraMatrix, distCoeff)
                     
                     # draw target location on image
                     if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
