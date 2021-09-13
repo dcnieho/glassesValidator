@@ -9,13 +9,15 @@ import numpy as np
 import csv
 import math
 import pandas as pd
+from matplotlib import colors
 
 
 class Marker:
-    def __init__(self, key, center, corners=None):
+    def __init__(self, key, center, corners=None, color=None):
         self.key = key
         self.center = center
         self.corners = corners
+        self.color = color
 
     def __str__(self):
         ret = '[%s]: center @ (%.2f, %.2f)' % (self.key, self.center[0], self.center[1])
@@ -34,7 +36,7 @@ def getKnownMarkers(markerDir, validationSetup):
     targets.y = cellSizeCm * (targets.y.astype('float32') - center.y)
     for idx, row in targets.iterrows():
         key = 't%d' % idx
-        markers[key] = Marker(key, row[['x','y']].values)
+        markers[key] = Marker(key, row[['x','y']].values, color=row.clr)
     
     # read in aruco marker positions
     markerPos = pd.read_csv(str(markerDir / validationSetup['markerPosFile']),index_col=0,names=['x','y'])
@@ -48,9 +50,41 @@ def getKnownMarkers(markerDir, validationSetup):
         tr = c + np.array( [  markerHalfSizeCm ,  markerHalfSizeCm ] )
         br = c + np.array( [  markerHalfSizeCm , -markerHalfSizeCm ] )
         bl = c + np.array( [ -markerHalfSizeCm , -markerHalfSizeCm ] )
-        markers[key] = Marker(key, c, [ tl, tr, br, bl ])
-        
-    return markers
+        markers[key] = Marker(key, c, corners=[ tl, tr, br, bl ])
+    
+    # determine bounding box of markers ([left, top, right, bottom])
+    bbox = []
+    bbox.append(markerPos.x.min()-markerHalfSizeCm)
+    bbox.append(markerPos.y.max()+markerHalfSizeCm) # top is at positive
+    bbox.append(markerPos.x.max()+markerHalfSizeCm)
+    bbox.append(markerPos.y.min()-markerHalfSizeCm) # bottom is at negative
+
+    return markers, bbox
+
+
+def storeReferenceBoard(referenceBoard,inputDir,knownMarkers,markerBBox):
+    # get image with markers
+    bboxExtents    = [markerBBox[2]-markerBBox[0], math.fabs(markerBBox[3]-markerBBox[1])]  # math.fabs to deal with bboxes where (-,-) is bottom left
+    aspectRatio    = bboxExtents[0]/bboxExtents[1]
+    refBoardWidth  = 1920
+    refBoardHeight = math.ceil(refBoardWidth/aspectRatio)
+    refBoardImage  = cv2.cvtColor(cv2.aruco.drawPlanarBoard(referenceBoard,(1920+2,refBoardHeight+2),1,1),cv2.COLOR_GRAY2RGB) # 1 pixel border is minimum
+    # add targets
+    drawShift = 8   # for sub-pixel positioning
+    for key in knownMarkers:
+        if key.startswith('t'):
+            # 1. determine position on image
+            # 1a. fractional between bounding boxes, (0,0) in bottom left
+            circlePos = [(knownMarkers[key].center[0]-markerBBox[0])/bboxExtents[0]]
+            circlePos.append(math.fabs(knownMarkers[key].center[1]-markerBBox[1])/bboxExtents[1])   # math.fabs to deal with bboxes where (-,-) is bottom left
+            # 1b. turn into int, add 1 pixel margin
+            circlePos = (int(round(circlePos[0]*refBoardWidth+1)*drawShift), int(round(circlePos[1]*refBoardHeight+1)*drawShift))
+
+            # 2. draw
+            clr = tuple([int(i*255) for i in colors.to_rgb(knownMarkers[key].color)[::-1]])  # need BGR color ordering
+            refBoardImage = cv2.circle(refBoardImage, tuple(circlePos), 15*drawShift, clr, -1, lineType=cv2.LINE_AA, shift=int(math.log2(drawShift)))
+
+    cv2.imwrite(str(inputDir / 'referenceBoard.png'), refBoardImage)
 
 
 def estimateTransform(known, detectedCorners, detectedIDs):
@@ -132,7 +166,7 @@ def process(inputDir,basePath):
     # get info about markers on our board
     # Aruco markers have numeric keys, gaze targets have keys starting with 't'
     aruco_dict   = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
-    knownMarkers = getKnownMarkers(markerDir, validationSetup)
+    knownMarkers, markerBBox = getKnownMarkers(markerDir, validationSetup)
     centerTarget = knownMarkers['t%d'%validationSetup['centerTarget']].center
     
     # turn into aruco board object to be used for pose estimation
@@ -146,6 +180,8 @@ def process(inputDir,basePath):
     boardCornerPoints = np.rollaxis(boardCornerPoints,-1)   # 4x2xN -> Nx4x2
     boardCornerPoints = np.pad(boardCornerPoints,((0,0),(0,0),(0,1)),'constant', constant_values=(0.,0.)) # Nx4x2 -> Nx4x3
     referenceBoard    = cv2.aruco.Board_create(boardCornerPoints, aruco_dict, np.array(ids))
+    # store image of reference board to file
+    storeReferenceBoard(referenceBoard,inputDir,knownMarkers,markerBBox)
     
     # setup aruco marker detection
     parameters = cv2.aruco.DetectorParameters_create()
