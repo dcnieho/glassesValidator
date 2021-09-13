@@ -28,22 +28,21 @@ def getKnownMarkers(markerDir, validationSetup):
             
     # read in target positions
     markers = {}
-    targets = pd.read_csv(str(markerDir / validationSetup['targetPosFile']),names=['id','x','y','clr'])
-    targets = targets[['id','x','y']].values.astype('float32')
-    center  = targets[np.where(targets[:,0]==validationSetup['centerTarget']),1:3].flatten()
-    targets[:,1:3] = targets[:,1:3]-center
-    for i in range(targets.shape[0]):
-        key = 't%d' % targets[i,0]
-        c   = cellSizeCm * targets[i,1:3]
-        markers[key] = Marker(key, c)
+    targets = pd.read_csv(str(markerDir / validationSetup['targetPosFile']),index_col=0,names=['x','y','clr'])
+    center  = targets.loc[validationSetup['centerTarget'],['x','y']]
+    targets.x = cellSizeCm * (targets.x.astype('float32') - center.x)
+    targets.y = cellSizeCm * (targets.y.astype('float32') - center.y)
+    for idx, row in targets.iterrows():
+        key = 't%d' % idx
+        markers[key] = Marker(key, row[['x','y']].values)
     
     # read in aruco marker positions
-    markerPos = pd.read_csv(str(markerDir / validationSetup['markerPosFile']),names=['id','x','y'])
-    markerPos = markerPos.values.astype('float32')
-    markerPos[:,1:3] = markerPos[:,1:3]-center
-    for i in range(markerPos.shape[0]):
-        key = '%d' % markerPos[i,0]
-        c   = cellSizeCm * markerPos[i,1:3]
+    markerPos = pd.read_csv(str(markerDir / validationSetup['markerPosFile']),index_col=0,names=['x','y'])
+    markerPos.x = cellSizeCm * (markerPos.x.astype('float32') - center.x)
+    markerPos.y = cellSizeCm * (markerPos.y.astype('float32') - center.y)
+    for idx, row in markerPos.iterrows():
+        key = '%d' % idx
+        c   = row[['x','y']].values
         # top left first, and clockwise: same order as detected aruco marker corners
         tl = c + np.array( [ -markerHalfSizeCm ,  markerHalfSizeCm ] )
         tr = c + np.array( [  markerHalfSizeCm ,  markerHalfSizeCm ] )
