@@ -2,7 +2,6 @@
 
 import sys
 import argparse
-import os
 from pathlib import Path
 
 import cv2
@@ -124,7 +123,7 @@ def process(inputDir,basePath):
                 validationSetup[name.strip()] = var.strip()
     
     # open video file, query it for size
-    inVideo = os.path.join(inputDir, 'worldCamera.mp4');
+    inVideo = str(inputDir / 'worldCamera.mp4')
     cap    = cv2.VideoCapture( inVideo )
     if not cap.isOpened():
         raise RuntimeError('the file "{}" could not be opened'.format(inVideo))
@@ -245,7 +244,7 @@ def process(inputDir,basePath):
 
 
 if __name__ == '__main__':
-    basePath = Path(os.path.dirname(os.path.realpath(__file__)))
+    basePath = Path(__file__).resolve().parent
     for d in (basePath / 'data' / 'preprocced').iterdir():
         if d.is_dir():
             if process(d,basePath):

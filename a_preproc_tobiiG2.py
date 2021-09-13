@@ -17,7 +17,7 @@ The output directory will contain:
 from __future__ import division
 from __future__ import print_function
 
-import os, shutil
+import shutil
 from pathlib import Path
 import json
 import gzip
@@ -33,6 +33,7 @@ def preprocessData(inputDir, outputDir):
     """
     Run all preprocessing steps on tobii data
     """
+    print('processing: {}'.format(inputDir.name))
     ### copy the raw data to the output directory
     print('Copying raw data...')
     newDataDir = copyTobiiRecording(inputDir, outputDir)
@@ -57,10 +58,7 @@ def preprocessData(inputDir, outputDir):
 
     ### cleanup
     for f in ['livedata.json', 'et.tslv']:
-        try:
-            os.remove(str(newDataDir / f))
-        except:
-            pass
+        (newDataDir / f).unlink(missing_ok=True)
 
 
 def copyTobiiRecording(inputDir, outputDir):
@@ -92,7 +90,7 @@ def copyTobiiRecording(inputDir, outputDir):
             with open(str(outputDir / os.path.splitext(f)[0]), 'wb') as unzippedFile:
                 for line in zipFile:
                     unzippedFile.write(line)
-        os.remove(str(outputDir / f))
+        (outputDir / f).unlink(missing_ok=True)
 
     # return the full path to the output dir
     return outputDir
@@ -299,7 +297,7 @@ def json_to_df(json_file):
 
 
 if __name__ == '__main__':
-    basePath = Path(os.path.dirname(os.path.realpath(__file__))) / 'data'
+    basePath = Path(__file__).resolve().parent / 'data'
     inBasePath = basePath / 'tobiiG2'
     outBasePath = basePath / 'preprocced'
     if not outBasePath.is_dir():
