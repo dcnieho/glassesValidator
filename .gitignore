@@ -6,6 +6,7 @@
 crashdump*
 /iView_log.txt
 results/
+.vs/
 *.synctex.gz
 *.log
 *.aux
