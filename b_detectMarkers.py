@@ -153,7 +153,7 @@ def process(inputDir,basePath):
     # get camera calibration info
     fs = cv2.FileStorage(str(inputDir / "calibration.xml"), cv2.FILE_STORAGE_READ)
     cameraMatrix = fs.getNode("cameraMatrix").mat()
-    distCoeff   = fs.getNode("distCoeff").mat()
+    distCoeff    = fs.getNode("distCoeff").mat()
     fs.release()
 
     # prep output file
@@ -168,6 +168,7 @@ def process(inputDir,basePath):
     csv_writer.writerow( header )
 
     frame_idx = 0
+    userExited = False
     while True:
         # process frame-by-frame
         ret, frame = cap.read()
@@ -211,6 +212,7 @@ def process(inputDir,basePath):
 
             # if any markers were detected, draw where on the frame
             cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+            cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None)
                 
 
         cv2.imshow('frame',frame)
@@ -224,9 +226,12 @@ def process(inputDir,basePath):
     cap.release()
     cv2.destroyAllWindows()
 
+    return userExited
+
 
 if __name__ == '__main__':
     basePath = Path(os.path.dirname(os.path.realpath(__file__)))
     for d in (basePath / 'data' / 'preprocced').iterdir():
         if d.is_dir():
-            process(d,basePath)
+            if process(d,basePath):
+                break
