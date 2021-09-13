@@ -11,8 +11,10 @@ targetType = Thaler
 useExactTobiiSize = 0
 thalerDiameter = 1
 
-minNumMarkers = 3
-centerTarget = 5
-
 showGrid = 0
 showAnnotations = 0
+
+
+
+minNumMarkers = 3
+centerTarget = 5
