@@ -87,7 +87,7 @@ def copyTobiiRecording(inputDir, outputDir):
     # Unzip the gaze data and tslv files
     for f in ['livedata.json.gz', 'et.tslv.gz']:
         with gzip.open(str(outputDir / f)) as zipFile:
-            with open(str(outputDir / os.path.splitext(f)[0]), 'wb') as unzippedFile:
+            with open(str(outputDir / Path(f).stem), 'wb') as unzippedFile:
                 for line in zipFile:
                     unzippedFile.write(line)
         (outputDir / f).unlink(missing_ok=True)
