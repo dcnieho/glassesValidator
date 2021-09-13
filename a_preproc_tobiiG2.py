@@ -161,7 +161,7 @@ def formatGazeData(inputDir):
             idx = 1
 
         # set the frame number based on this index value
-        df['frame_idx'].iloc[i] = idx-1
+        df.loc[df.index[i], 'frame_idx'] = idx-1
 
     # build the formatted dataframe
     df.index.name = 'timestamp'
