@@ -46,10 +46,11 @@ def preprocessData(inputDir, outputDir):
     gazeDf, frame_timestamps = formatGazeData(newDataDir)
 
     # write the gaze data (world camera coords) to a csv file
-    gazeDf.to_csv(str(newDataDir / 'gazeData_raw.tsv'), sep='\t', float_format="%.8f")
+    gazeDf.to_csv(str(newDataDir / 'gazeData_raw.tsv'), sep='\t', na_rep='nan', float_format="%.8f")
 
     # write standard subset of gaze data (world camera coords) to a csv file
-    gazeDf[['frame_idx','video_timestamp','gaze_pos_x','gaze_pos_y','3d_gaze_pos_x','3d_gaze_pos_y','3d_gaze_pos_z']].to_csv(str(newDataDir / 'gazeData.tsv'), sep='\t', float_format="%.8f")
+    gazeDf[['frame_idx','video_timestamp','gaze_pos_x','gaze_pos_y','3d_gaze_pos_x','3d_gaze_pos_y','3d_gaze_pos_z']].to_csv(\
+        str(newDataDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")
 
     ### convert the frame_timestamps to dataframe
     frameNum = np.arange(1, frame_timestamps.shape[0]+1)
