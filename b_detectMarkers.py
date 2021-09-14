@@ -253,7 +253,7 @@ def process(inputDir,basePath):
             cv2.aruco.drawDetectedMarkers(frame, corners, ids)
 
         # for debug, can draw rejected markers on frame
-        # cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(148,0,211))
+        # cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
                 
 
         cv2.imshow(inputDir.name,frame)
