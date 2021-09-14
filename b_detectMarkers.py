@@ -217,7 +217,7 @@ def process(inputDir,basePath):
             break
 
         # detect markers, undistort
-        corners , ids, rejectedImgPoints = \
+        corners, ids, rejectedImgPoints = \
             cv2.aruco.detectMarkers(frame, aruco_dict, parameters=parameters)
         
         if np.all(ids != None):

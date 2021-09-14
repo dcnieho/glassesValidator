@@ -52,10 +52,8 @@ def preprocessData(inputDir, outputDir):
     gazeDf[['frame_idx','video_timestamp','gaze_pos_x','gaze_pos_y','3d_gaze_pos_x','3d_gaze_pos_y','3d_gaze_pos_z']].to_csv(\
         str(newDataDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")
 
-    ### convert the frame_timestamps to dataframe
-    frameNum = np.arange(1, frame_timestamps.shape[0]+1)
-    frame_ts_df = pd.DataFrame({'frameNum':frameNum, 'timestamp':frame_timestamps})
-    frame_ts_df.to_csv(str(newDataDir / 'frame_timestamps.tsv'), sep='\t', index=False)
+    # also store frame_timestamps
+    frame_timestamps.to_csv(str(newDataDir / 'frame_timestamps.tsv'), sep='\t', index=False)
 
     ### cleanup
     for f in ['livedata.json', 'et.tslv']:
@@ -168,19 +166,22 @@ def formatGazeData(inputDir):
     for i,vts in enumerate(df['video_timestamp']):
 
         # get index where this vts would be inserted into the frame_timestamp array
-        idx = np.searchsorted(frame_timestamps, vts)
+        idx = np.searchsorted(frame_timestamps['timestamp'], vts)
         if idx == 0:
             idx = 1
+        # since idx points to frame timestamp for frame after the one during
+        # which the vts ocurred, correct
+        idx -= 1
 
-        # set the frame number based on this index value
-        df.loc[df.index[i], 'frame_idx'] = idx-1
+        # set the frame index based on this index value
+        df.loc[df.index[i], 'frame_idx'] = frame_timestamps['frame_idx'].iat[idx]
 
     # build the formatted dataframe
     df.index.name = 'timestamp'
 
     # return the gaze data df and frame time stamps array
     colOrder = [x for x in df.columns.tolist() if x!='frame_idx']
-    colOrder.insert(0,'frame_idx')
+    colOrder.insert(0,'frame_idx')  # make frame_idx the first column
     return df[colOrder], frame_timestamps
 
 
@@ -223,8 +224,12 @@ def getVidFrameTimestamps(vid_file):
     frame_ts = np.cumsum(frame_ts)
     # now into timestamps in ms
     frame_ts = frame_ts/time_base*1000
+
+    ### convert the frame_timestamps to dataframe
+    frameIdx = np.arange(0, len(frame_ts))
+    frame_ts_df = pd.DataFrame({'frame_idx': frameIdx, 'timestamp': frame_ts})
     
-    return frame_ts
+    return frame_ts_df
 
 
 def json_to_df(json_file):
