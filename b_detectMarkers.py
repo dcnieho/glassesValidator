@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 import sys
-import argparse
 from pathlib import Path
 
 import cv2
@@ -22,6 +21,17 @@ class Marker:
     def __str__(self):
         ret = '[%s]: center @ (%.2f, %.2f)' % (self.key, self.center[0], self.center[1])
         return ret
+
+def getValidationSetup(markerDir):
+    validationSetup = {}
+    with open(str(markerDir / "validationSetup.txt")) as setupFile:
+        for line in setupFile:
+            name, var = line.partition("=")[::2]
+            try:
+                validationSetup[name.strip()] = float(var)
+            except ValueError:
+                validationSetup[name.strip()] = var.strip()
+    return validationSetup
 
 def getKnownMarkers(markerDir, validationSetup):
     """ (0,0) is at center target, (-,-) bottom left """
@@ -146,14 +156,7 @@ def distortPoint(p, cameraMatrix, distCoeff):
 def process(inputDir,basePath):
     markerDir = basePath / "markerLayout"
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = {}
-    with open(str(markerDir / "validationSetup.txt")) as setupFile:
-        for line in setupFile:
-            name, var = line.partition("=")[::2]
-            try:
-                validationSetup[name.strip()] = float(var)
-            except ValueError:
-                validationSetup[name.strip()] = var.strip()
+    validationSetup = getValidationSetup(markerDir)
     
     # open video file, query it for size
     inVideo = str(inputDir / 'worldCamera.mp4')
