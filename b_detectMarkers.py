@@ -28,15 +28,15 @@ def storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,mar
     assert refBoardImage.shape[1]==refBoardWidth +2*margin,"Output image width is not as expected"
     refBoardImage  = refBoardImage[1:-1,1:-1,:]
     # add targets
-    drawShift = 8   # for sub-pixel positioning
+    subPixelFac = 8   # for sub-pixel positioning
     for key in knownMarkers:
         if key.startswith('t'):
             # 1. determine position on image
-            circlePos = utils.toImagePos(*knownMarkers[key].center, markerBBox,[refBoardWidth,refBoardHeight], drawShift=drawShift)
+            circlePos = utils.toImagePos(*knownMarkers[key].center, markerBBox,[refBoardWidth,refBoardHeight], subPixelFac=subPixelFac)
 
             # 2. draw
             clr = tuple([int(i*255) for i in colors.to_rgb(knownMarkers[key].color)[::-1]])  # need BGR color ordering
-            refBoardImage = cv2.circle(refBoardImage, tuple(circlePos), 15*drawShift, clr, -1, lineType=cv2.LINE_AA, shift=int(math.log2(drawShift)))
+            refBoardImage = cv2.circle(refBoardImage, tuple(circlePos), 15*subPixelFac, clr, -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
 
     cv2.imwrite(str(inputDir / 'referenceBoard.png'), refBoardImage)
 
@@ -148,13 +148,13 @@ def process(inputDir,basePath):
                     target = utils.distortPoint( target, cameraMatrix, distCoeff)
                     
                     # draw target location on image
-                    drawShift = 8   # for sub-pixel positioning
+                    subPixelFac = 8   # for sub-pixel positioning
                     if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
-                        x = int(round(target[0]*drawShift))
-                        y = int(round(target[1]*drawShift))
-                        cv2.line(frame, (x,0), (x,int(height*drawShift)),(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
-                        cv2.line(frame, (0,y), (int(width*drawShift),y) ,(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
-                        cv2.circle(frame, (x,y), 3*drawShift, (0,255,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(drawShift)))
+                        x = int(round(target[0]*subPixelFac))
+                        y = int(round(target[1]*subPixelFac))
+                        cv2.line(frame, (x,0), (x,int(height*subPixelFac)),(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
+                        cv2.line(frame, (0,y), (int(width*subPixelFac),y) ,(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
+                        cv2.circle(frame, (x,y), 3*subPixelFac, (0,255,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
                         
                     # store homography, pose and target location to file
                     writeDat = [frame_idx]
