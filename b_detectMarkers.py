@@ -155,7 +155,11 @@ def process(inputDir,basePath):
                         cv2.line(frame, (x,0), (x,int(height*subPixelFac)),(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
                         cv2.line(frame, (0,y), (int(width*subPixelFac),y) ,(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
                         cv2.circle(frame, (x,y), 3*subPixelFac, (0,255,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
-                        
+                       
+                    # draw axis indicating board pose
+                    if nMarkersUsed>0:
+                        cv2.aruco.drawAxis(frame,cameraMatrix, distCoeff,Rvec, Tvec, 2*2.*math.tan(math.radians(.5))*validationSetup['distance']*10)    # arms of grid are 2 poster grid cells
+
                     # store homography, pose and target location to file
                     writeDat = [frame_idx]
                     writeDat.extend( H.flatten() )
