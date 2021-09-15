@@ -1,5 +1,6 @@
 distance = 60
 
+markerBorderBits = 1
 gridCols = 34
 gridRows = 29
 markerSide = 4
@@ -18,3 +19,5 @@ showAnnotations = 0
 
 minNumMarkers = 3
 centerTarget = 5
+referenceBoardWidth = 1920
+referenceBoardMargin = 1

@@ -29,11 +29,19 @@ def getValidationSetup(markerDir):
     validationSetup = {}
     with open(str(markerDir / "validationSetup.txt")) as setupFile:
         for line in setupFile:
+            line = line.strip()
+            if len(line)==0:
+                continue
             name, var = line.partition("=")[::2]
-            try:
-                validationSetup[name.strip()] = float(var)
-            except ValueError:
-                validationSetup[name.strip()] = var.strip()
+            name = name.strip()
+            var  = var.strip()
+            if np.all([c.isdigit() for c in var]):
+                validationSetup[name.strip()] = int(var)
+            else:
+                try:
+                    validationSetup[name.strip()] = float(var)
+                except ValueError:
+                    validationSetup[name.strip()] = var.strip()
     return validationSetup
 
 def getKnownMarkers(markerDir, validationSetup):
@@ -75,13 +83,19 @@ def getKnownMarkers(markerDir, validationSetup):
     return markers, bbox
 
 
-def storeReferenceBoard(referenceBoard,inputDir,knownMarkers,markerBBox):
+def storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,markerBBox):
     # get image with markers
     bboxExtents    = [markerBBox[2]-markerBBox[0], math.fabs(markerBBox[3]-markerBBox[1])]  # math.fabs to deal with bboxes where (-,-) is bottom left
     aspectRatio    = bboxExtents[0]/bboxExtents[1]
-    refBoardWidth  = 1920
+    refBoardWidth  = validationSetup['referenceBoardWidth']
     refBoardHeight = math.ceil(refBoardWidth/aspectRatio)
-    refBoardImage  = cv2.cvtColor(cv2.aruco.drawPlanarBoard(referenceBoard,(1920+2,refBoardHeight+2),1,1),cv2.COLOR_GRAY2RGB) # 1 pixel border is minimum
+    margin         = validationSetup['referenceBoardMargin']
+    assert margin>=1, "1 pixel border is minimum when drawing reference board"
+    refBoardImage  = cv2.cvtColor(
+        cv2.aruco.drawPlanarBoard(
+            referenceBoard,(refBoardWidth+2*margin,refBoardHeight+2*margin),margin,validationSetup['markerBorderBits']),
+        cv2.COLOR_GRAY2RGB
+    )
     # add targets
     drawShift = 8   # for sub-pixel positioning
     for key in knownMarkers:
@@ -190,11 +204,11 @@ def process(inputDir,basePath):
     boardCornerPoints = np.pad(boardCornerPoints,((0,0),(0,0),(0,1)),'constant', constant_values=(0.,0.)) # Nx4x2 -> Nx4x3
     referenceBoard    = cv2.aruco.Board_create(boardCornerPoints, aruco_dict, np.array(ids))
     # store image of reference board to file
-    storeReferenceBoard(referenceBoard,inputDir,knownMarkers,markerBBox)
+    storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,markerBBox)
     
     # setup aruco marker detection
     parameters = cv2.aruco.DetectorParameters_create()
-    parameters.markerBorderBits       = 1
+    parameters.markerBorderBits       = validationSetup['markerBorderBits']
     parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX;
 
     # get camera calibration info
