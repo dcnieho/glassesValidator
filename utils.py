@@ -83,17 +83,18 @@ def toNormPos(x,y,bbox):
     pos     = [(x-bbox[0])/extents[0], math.fabs(y-bbox[1])/extents[1]] # math.fabs to deal with bboxes where (-,-) is bottom left
     return pos
 
-def toImagePos(x,y,bbox,imSize,drawShift=1):
+def toImagePos(x,y,bbox,imSize,margin=[0,0],drawShift=1):
     # transforms input (x,y) which is in image units (e.g. cm on an aruco board)
     # to a pixel position in the image, given the image's bounding box in
     # image units
+    # imSize should be active image area in pixels, excluding margin
     # takes into account OpenCV's drawshift for subpixel positioning (see docs of
     # e.g. cv2.circle)
 
     # fractional position between bounding box edges, (0,0) in bottom left
     pos = toNormPos(x,y, bbox)
     # turn into int, add margin
-    pos = tuple([int(round(a*b)*drawShift) for a,b in zip(pos,imSize)])
+    pos = tuple([int(round(p*s+m)*drawShift) for p,s,m in zip(pos,imSize,margin)])
     return pos
 
 def transform(h, x, y):
