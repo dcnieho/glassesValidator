@@ -82,6 +82,17 @@ def getKnownMarkers(markerDir, validationSetup):
 
     return markers, bbox
 
+def toNormPos(x,y,bbox):
+    extents = [bbox[2]-bbox[0], math.fabs(bbox[3]-bbox[1])]             # math.fabs to deal with bboxes where (-,-) is bottom left
+    pos     = [(x-bbox[0])/extents[0], math.fabs(y-bbox[1])/extents[1]] # math.fabs to deal with bboxes where (-,-) is bottom left
+    return pos
+
+def toImagePos(x,y,bbox,imSize,drawShift):
+    # fractional position between bounding boxe edges, (0,0) in bottom left
+    pos = toNormPos(x,y, bbox)
+    # turn into int, add margin
+    pos = tuple([int(round(a*b)*drawShift) for a,b in zip(pos,imSize)])
+    return pos
 
 def storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,markerBBox):
     # get image with markers
@@ -101,11 +112,7 @@ def storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,mar
     for key in knownMarkers:
         if key.startswith('t'):
             # 1. determine position on image
-            # 1a. fractional between bounding boxes, (0,0) in bottom left
-            circlePos = [(knownMarkers[key].center[0]-markerBBox[0])/bboxExtents[0]]
-            circlePos.append(math.fabs(knownMarkers[key].center[1]-markerBBox[1])/bboxExtents[1])   # math.fabs to deal with bboxes where (-,-) is bottom left
-            # 1b. turn into int, add 1 pixel margin
-            circlePos = (int(round(circlePos[0]*refBoardWidth+1)*drawShift), int(round(circlePos[1]*refBoardHeight+1)*drawShift))
+            circlePos = toImagePos(*knownMarkers[key].center, markerBBox,[refBoardWidth,refBoardHeight],drawShift)
 
             # 2. draw
             clr = tuple([int(i*255) for i in colors.to_rgb(knownMarkers[key].color)[::-1]])  # need BGR color ordering
