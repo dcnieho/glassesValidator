@@ -145,7 +145,7 @@ def process(inputDir,basePath):
                     # find where target is expected to be in the image
                     iH = np.linalg.inv(H)
                     target = utils.transform(iH, centerTarget[0], centerTarget[1])
-                    target = utils.distortPoint( target, cameraMatrix, distCoeff)
+                    target = utils.distortPoint( *target, cameraMatrix, distCoeff)
                     
                     # draw target location on image
                     subPixelFac = 8   # for sub-pixel positioning

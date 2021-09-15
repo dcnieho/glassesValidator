@@ -103,7 +103,7 @@ def transform(h, x, y):
     return dst[0][0]
 
 
-def distortPoint(p, cameraMatrix, distCoeff):
+def distortPoint(x, y, cameraMatrix, distCoeff):
     fx = cameraMatrix[0][0]
     fy = cameraMatrix[1][1]
     cx = cameraMatrix[0][2]
@@ -115,8 +115,8 @@ def distortPoint(p, cameraMatrix, distCoeff):
     p1 = distCoeff[2]
     p2 = distCoeff[3]
 
-    x = (p[0] - cx) / fx
-    y = (p[1] - cy) / fy
+    x = (x - cx) / fx
+    y = (y - cy) / fy
 
     r2 = x*x + y*y
 
@@ -126,10 +126,10 @@ def distortPoint(p, cameraMatrix, distCoeff):
     dx = dx + (2 * p1 * x * y + p2 * (r2 + 2 * x * x))
     dy = dy + (p1 * (r2 + 2 * y * y) + 2 * p2 * x * y)
 
-    p[0] = dx * fx + cx;
-    p[1] = dy * fy + cy;
+    x = dx * fx + cx;
+    y = dy * fy + cy;
 
-    return p
+    return np.float32([x, y]).flatten()
 
 def undistortPoint(x, y, cameraMatrix, distCoeff):
     p = np.float32([[[x, y]]])
