@@ -10,6 +10,7 @@ import math
 import pandas as pd
 from matplotlib import colors
 import time
+from shlex import shlex
 
 gFPSFac         = 1
 
@@ -26,22 +27,22 @@ class Marker:
         return ret
 
 def getValidationSetup(markerDir):
-    validationSetup = {}
-    with open(str(markerDir / "validationSetup.txt")) as setupFile:
-        for line in setupFile:
-            line = line.strip()
-            if len(line)==0:
-                continue
-            name, var = line.partition("=")[::2]
-            name = name.strip()
-            var  = var.strip()
-            if np.all([c.isdigit() for c in var]):
-                validationSetup[name.strip()] = int(var)
-            else:
-                try:
-                    validationSetup[name.strip()] = float(var)
-                except ValueError:
-                    validationSetup[name.strip()] = var.strip()
+    # read key=value pairs into dict
+    with open(str(markerDir / "validationSetup.txt")) as f:
+        lexer = shlex(f)
+        lexer.whitespace += '='
+        lexer.wordchars += '.'  # don't split extensions of filenames in the input file
+        validationSetup = dict(zip(lexer, lexer))
+
+    # parse numerics into int or float
+    for key,val in validationSetup.items():
+        if np.all([c.isdigit() for c in val]):
+            validationSetup[key] = int(val)
+        else:
+            try:
+                validationSetup[key] = float(val)
+            except:
+                pass # just keep value as a string
     return validationSetup
 
 def getKnownMarkers(markerDir, validationSetup):
