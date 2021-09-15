@@ -30,6 +30,9 @@
     <Compile Include="mp4analyser\summary.py" />
     <Compile Include="mp4analyser\util.py" />
     <Compile Include="mp4analyser\__init__.py" />
+    <Compile Include="utils.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="viewer.py" />
   </ItemGroup>
   <ItemGroup>
