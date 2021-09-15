@@ -22,6 +22,7 @@ def getValidationSetup(configDir):
         lexer = shlex(f)
         lexer.whitespace += '='
         lexer.wordchars += '.'  # don't split extensions of filenames in the input file
+        lexer.commenters = '%'
         validationSetup = dict(zip(lexer, lexer))
 
     # parse numerics into int or float

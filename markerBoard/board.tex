@@ -14,8 +14,9 @@
 % much of the poster setup is read from the file validationSetup.txt.
 % read setup
 % NB: distance in there is in cm, gridCols, gridRows and markerSide are in degrees visual angle
+\readarraysepchar{=}
 \readdef{../config/validationSetup.txt}{\fileData}
-\readarray\fileData\setupInfo[-,3]
+\readarray*\fileData\setupInfo[-,2]
 % turn each key into its own command
 %NB: this provides \distance, \markerPosFile and \targetPosFile,
 % amongst others
@@ -23,8 +24,9 @@
 \setcounter{keyCount}{0}%
 \whiledo{\value{keyCount} < \setupInfoROWS}{%
 	\stepcounter{keyCount}%
+	\typeout{\arabic{keyCount}: \setupInfo[\arabic{keyCount},1] -> \setupInfo[\arabic{keyCount},2]}
 	\expandafter\xdef\csname \setupInfo[\arabic{keyCount},1]\endcsname{%
-		\setupInfo[\arabic{keyCount},3]}%
+		\setupInfo[\arabic{keyCount},2]}%
 }
 \def\markerSideCm{\markerSide\step}
 \def\markerFilename#1{all-markers/#1.png}

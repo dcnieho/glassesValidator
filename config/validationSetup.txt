@@ -1,22 +1,24 @@
-distance = 60
+distance = 60                   % in cm
 
 markerBorderBits = 1
-gridCols = 34
-gridRows = 29
-markerSide = 4
+gridCols = 34                   % in deg
+gridRows = 29                   % in deg
+markerSide = 4                  % in deg
 
+% files containing marker and gaze target positions
 markerPosFile = markerPositions.csv
 targetPosFile = targetPositions.csv
 
+% targetType can be Tobii or Thaler
 targetType = Thaler
-useExactTobiiSize = 0
-thalerDiameter = 1
+useExactTobiiSize = 0           % only used if targetType is Tobii
+thalerDiameter = 1   	        % only used if targetType is Thaler
 
 showGrid = 0
 showAnnotations = 0
 
 
-
+% options only used for Python code
 minNumMarkers = 3
-centerTarget = 5
-referenceBoardWidth = 1920
+centerTarget = 5                % ID of marker in targetPosFile that is origin of board
+referenceBoardWidth = 1920      % pixels
