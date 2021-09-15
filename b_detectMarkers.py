@@ -9,6 +9,9 @@ import csv
 import math
 import pandas as pd
 from matplotlib import colors
+import time
+
+gFPSFac         = 1
 
 
 class Marker:
@@ -154,6 +157,8 @@ def distortPoint(p, cameraMatrix, distCoeff):
 
 
 def process(inputDir,basePath):
+    global gFPSFac
+
     markerDir = basePath / "markerLayout"
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = getValidationSetup(markerDir)
@@ -163,8 +168,9 @@ def process(inputDir,basePath):
     cap    = cv2.VideoCapture( inVideo )
     if not cap.isOpened():
         raise RuntimeError('the file "{}" could not be opened'.format(inVideo))
-    width  = float( cap.get(cv2.CAP_PROP_FRAME_WIDTH ) )
-    height = float( cap.get(cv2.CAP_PROP_FRAME_HEIGHT ) )
+    width  = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    ifi    = 1000./cap.get(cv2.CAP_PROP_FPS)/gFPSFac
     
     # get info about markers on our board
     # Aruco markers have numeric keys, gaze targets have keys starting with 't'
@@ -211,6 +217,7 @@ def process(inputDir,basePath):
     frame_idx = 0
     stopAllProcessing = False
     while True:
+        startTime = time.perf_counter()
         # process frame-by-frame
         ret, frame = cap.read()
         if not ret:
@@ -261,17 +268,17 @@ def process(inputDir,basePath):
 
         cv2.imshow(inputDir.name,frame)
         
-        # quit fully
-        key = cv2.waitKey(1) & 0xFF
+        key = cv2.waitKey(max(1,int(round(ifi-(time.perf_counter()-startTime)*1000)))) & 0xFF
         if key == ord('q'):
+            # quit fully
             stopAllProcessing = True
             break
-        # goto next
         if key == ord('n'):
+            # goto next
             break
-        # screenshot
         if key == ord('s'):
-            cv2.imwrite(str(inputDir / ('frame_%d.png' % frame_idx)), frame)
+            # screenshot
+            cv2.imwrite(str(inputDir / ('detect_frame_%d.png' % frame_idx)), frame)
         
         frame_idx += 1
 
