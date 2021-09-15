@@ -130,3 +130,19 @@ def distortPoint(p, cameraMatrix, distCoeff):
     p[1] = dy * fy + cy;
 
     return p
+
+def undistortPoint(x, y, cameraMatrix, distCoeff):
+    p = np.float32([[[x, y]]])
+    dst = cv2.undistortPoints(p, cameraMatrix, distCoeff, P=cameraMatrix)
+    return dst[0][0]
+
+
+def angle_between(v1, v2):
+    #(180.0 / math.pi) * math.atan2(np.linalg.norm(np.cross(v1,v2)), np.dot(v1,v2))
+
+    cx = v1[1] * v2[2] - v1[2] * v2[1]
+    cy = v1[2] * v2[0] - v1[0] * v1[2]
+    cz = v1[0] * v2[1] - v1[1] * v2[0]
+    cross = math.sqrt( cx * cx + cy * cy + cz * cz )
+    dot = v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2] 
+    return (180.0 / math.pi) * math.atan2( cross, dot )

@@ -1,66 +1,48 @@
 #!/usr/bin/python3
 
 import sys
-import argparse
-import os
+from pathlib import Path
 import math
 import bisect
 
 import cv2
 import numpy as np
+import pandas as pd
 import csv
-from csv import DictReader
+import time
 
-sys.path.insert(0, './markers')
-from detect import transform
-from detect import getKnownMarkers
+import utils
 
-gShowReference = True
-gWaitTime = 1
-gFrameSkipCount=120
+gShowReference  = True
+gFPSFac         = 1
 
 class Gaze:
-    def __init__(self, ts, x, y, confidence):
+    def __init__(self, ts, x, y):
         self.ts = ts
         self.x = x
         self.y = y
-        self.confidence = confidence
-        self.ux = x
-        self.uy = y
         self.xCm = -1
         self.yCm = -1
 
 
     def draw(self, img):
-        x = int(self.x)
-        y = int(self.y)
-        g = 255 * self.confidence
-        r = 255 * (1 - g)
-        b = 0
-        cv2.circle(img, (x, y), 15, (b, g, r), 5)
-
-
-
-def angle_between(v1, v2):
-    #(180.0 / math.pi) * math.atan2(np.linalg.norm(np.cross(v1,v2)), np.dot(v1,v2))
-
-    cx = v1[1] * v2[2] - v1[2] * v2[1]
-    cy = v1[2] * v2[0] - v1[0] * v1[2]
-    cz = v1[0] * v2[1] - v1[1] * v2[0]
-    cross = math.sqrt( cx * cx + cy * cy + cz * cz )
-    dot = v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2] 
-    return (180.0 / math.pi) * math.atan2( cross, dot )
+        if not math.isnan(self.x):
+            x = int(self.x)
+            y = int(self.y)
+            g = 255
+            r = 255 * (1 - g)
+            b = 0
+            cv2.circle(img, (x, y), 15, (b, g, r), 5)
 
 
 class Reference:
-    def __init__(self, fileName):
+    def __init__(self, fileName, markerDir, validationSetup):
         self.img = cv2.imread(fileName, cv2.IMREAD_COLOR)
-        self.img = cv2.resize(self.img, (400,280))
-        referencePoints = getKnownMarkers()
+        self.scale = 400./self.img.shape[0]
+        self.img = cv2.resize(self.img, None, fx=self.scale, fy=self.scale, interpolation = cv2.INTER_AREA)
         self.height, self.width, self.channels = self.img.shape
-        self.xScale = self.width / float(referencePoints['tr'].center[0])
-        self.yScale = self.height / float(referencePoints['tr'].center[1])
-        self.gtCm = [ float(referencePoints['gt'].center[0]), float(referencePoints['gt'].center[1]) ]
+        # get marker info
+        _, self.bbox = utils.getKnownMarkers(markerDir, validationSetup)
 
     def getImgCopy(self):
         return self.img.copy()
@@ -71,19 +53,18 @@ class Reference:
         vgt = np.array( [ 0, 0, distCm ] )
         return angle_between(vgaze, vgt), vgaze[0], vgaze[1]
 
-    def draw(self, img, x, y):
-        x = int(round(x * self.xScale))
-        y = self.height - int(round(y * self.yScale))
-        cv2.circle( img, (x,y), 8, (0,0,0), -1)
-        cv2.circle( img, (x,y), 4, (0,255,0), -1)
+    def draw(self, img, x, y, subPixelFac):
+        xy = tuple(utils.toImagePos(x,y,self.bbox,[self.width, self.height],subPixelFac=subPixelFac))
+        cv2.circle(img, xy, 8*subPixelFac, (0, 0 ,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+        cv2.circle(img, xy, 4*subPixelFac, (0,255,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
 
 class Idx2Timestamp:
     def __init__(self, fileName):
         self.timestamps = []
         with open(fileName, 'r' ) as f:
-            reader = DictReader(f, delimiter='\t')
+            reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
-                self.timestamps.append(1e-3*float(entry['timestamp']))
+                self.timestamps.append(float(entry['timestamp']))
 
     def get(self, idx):
         if idx < len(self.timestamps):
@@ -93,94 +74,85 @@ class Idx2Timestamp:
             return self.timestamps[-1]
 
 
-def undistortPoints(x, y, cameraMatrix, distCoeffs):
-    p = np.float32([[[x, y]]])
-    dst = cv2.undistortPoints(p, cameraMatrix, distCoeffs, None, cameraMatrix)
-    return dst[0][0][0], dst[0][0][1]
-
 def find_nearest(array, value):
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return idx
 
 
-def process(inputDir):
+def process(inputDir,basePath):
     global gShowReference
-    global gWaitTime
-    global gFrameSkipCount
-
-    save = True
+    global gFPSFac
+    
+    configDir = basePath / "config"
+    # open file with information about Aruco marker and Gaze target locations
+    validationSetup = utils.getValidationSetup(configDir)
 
     cv2.namedWindow("frame")
     if gShowReference:
         cv2.namedWindow("reference")
 
-    reference = Reference('reference.png')
+    reference = Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
 
-    i2t = Idx2Timestamp( os.path.join(inputDir, 'frame_timestamps.tsv') )
+    i2t = Idx2Timestamp(str(inputDir / 'frame_timestamps.tsv'))
 
-    doUndistort = '/eyerec/' in inputDir or '/pupil-labs/' in inputDir or '/grip/' in inputDir
-
-    fs = cv2.FileStorage("markers/calibration.xml", cv2.FILE_STORAGE_READ)
+    fs = cv2.FileStorage(str(inputDir / "calibration.xml"), cv2.FILE_STORAGE_READ)
     cameraMatrix = fs.getNode("cameraMatrix").mat()
-    distCoeffs = fs.getNode("distCoeffs").mat()
+    distCoeff    = fs.getNode("distCoeff").mat()
+    fs.release()
 
-    cap = cv2.VideoCapture( os.path.join(inputDir, 'worldCamera.mp4') )
-    width = float( cap.get(cv2.CAP_PROP_FRAME_WIDTH ) )
-    height = float( cap.get(cv2.CAP_PROP_FRAME_HEIGHT ) )
+    cap         = cv2.VideoCapture(str(inputDir / 'worldCamera.mp4'))
+    width       = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height      = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    ifi         = 1000./cap.get(cv2.CAP_PROP_FPS)/gFPSFac
 
     # Read gaze data
     gazes = {}
-    with open( os.path.join(inputDir, 'gazeData_world.tsv'), 'r' ) as f:
-        reader = DictReader(f, delimiter='\t')
+    with open( str(inputDir / 'gazeData.tsv'), 'r' ) as f:
+        reader = csv.DictReader(f, delimiter='\t')
         for entry in reader:
             frame_idx = int(float(entry['frame_idx']))
-            confidence = float(entry['confidence'])
             try:
                 ts = float(entry['timestamp'])
-                gx = float(entry['norm_pos_x']) * width
-                gy = float(entry['norm_pos_y']) * height
-                gaze = Gaze(ts, gx, gy, confidence)
-                if doUndistort:
-                    gaze.ux, gaze.uy = undistortPoints(gaze.x, gaze.y, cameraMatrix, distCoeffs)
+                gx = float(entry['gaze_pos_x']) * width
+                gy = float(entry['gaze_pos_y']) * height
+                gaze = Gaze(ts, gx, gy)
 
                 if frame_idx in gazes:
                     gazes[frame_idx].append(gaze)
                 else:
-                    gazes[frame_idx] = [ gaze ]
+                    gazes[frame_idx] = [gaze]
             except Exception as e:
                 sys.stderr.write(str(e) + '\n')
                 sys.stderr.write('[WARNING] Problematic entry: %s\n' % (entry) )
 
 
-    # Read ground truth and transformation
-    gt = {}
+    # Read transformation and location of center target
+    centerTarget = {}
     transformation = {}
-    with open( os.path.join(inputDir, 'transformations.tsv'), 'r' ) as f:
-        reader = csv.DictReader(f, delimiter='\t')
-        for entry in reader:
-            frame_idx = int(entry['frame_idx'])
+    temp = pd.read_csv(str(inputDir / 'transformations.tsv'), delimiter='\t')
+    ctCols    = [col for col in temp.columns if 'centerTarget' in col]
+    transCols = [col for col in temp.columns if 'transformation' in col]
+    for idx, row in temp.iterrows():
+        frame_idx = int(row['frame_idx'])
 
-            # ground truth pixel position in undistorted image
-            tmp = entry['gt'].split(',')
-            gt[frame_idx] = ( float(tmp[0]), float(tmp[1]) )
+        # get center target pixel position in undistorted image
+        centerTarget[frame_idx] = row[ctCols].values
 
-            # transformation from undistorted image to reference (in cm!)
-            tmp = entry['transformation'].split(',')
-            values = []
-            for i in range(0,9):
-                values.append( float(tmp[i]) )
-            transformation[frame_idx] = np.asarray(values).reshape(3,3)
+        # transformation from undistorted image to reference (in mm!)
+        transformation[frame_idx] = row[transCols].values.reshape(3,3)
 
-    if save:
-        csv_file = open(os.path.join(inputDir, 'report.tsv'), 'w')
-        csv_writer = csv.writer(csv_file, delimiter='\t', lineterminator='\n')
-        csv_writer.writerow( ['frame_idx', 'timestamp', 'confidence', 'errorDeg', 'dxCm', 'dyCm', 'gaze_ts', 'gaze_x', 'gaze_y'] ) 
+    csv_file = open(str(inputDir / 'report.tsv'), 'w')
+    csv_writer = csv.writer(csv_file, delimiter='\t', lineterminator='\n')
+    csv_writer.writerow( ['frame_idx', 'timestamp', 'errorDeg', 'dxCm', 'dyCm', 'gaze_ts', 'gaze_x', 'gaze_y'] ) 
 
-    frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    subPixelFac = 8   # for sub-pixel positioning
+    stopAllProcessing = False
     while(True):
+        startTime = time.perf_counter()
         ret, frame = cap.read()
-        if not ret: # we reached the end; fix it
+        if not ret: # we reached the end; done
             break
 
         # CV_CAP_PROP_POS_FRAMES 0-based index of the frame to be decoded/captured next.
@@ -193,47 +165,52 @@ def process(inputDir):
             for gaze in gazes[frame_idx]:
                 gaze.draw(frame)
                 # if we can, already transform the gaze
-                hasTransformation = frame_idx in transformation
-                if hasTransformation:
+                if frame_idx in transformation:
                     ux = gaze.x
                     uy = gaze.y
-                    if doUndistort:
-                        ux, uy = undistortPoints( gaze.x, gaze.y, cameraMatrix, distCoeffs)
-                    (gaze.xCm, gaze.yCm) = transform(transformation[frame_idx],
-                            ux, uy)
-                    reference.draw(refImg, gaze.xCm, gaze.yCm)
-                    angleDeviation, dxCm, dyCm = reference.error(gaze.xCm, gaze.yCm)
+                    ux, uy = utils.undistortPoint( gaze.x, gaze.y, cameraMatrix, distCoeff)
+                    (gaze.xCm, gaze.yCm) = utils.transform(transformation[frame_idx], ux, uy)
+                    reference.draw(refImg, gaze.xCm, gaze.yCm, subPixelFac)
+                    #angleDeviation, dxCm, dyCm = reference.error(gaze.xCm, gaze.yCm)
                     #print('%10d\t%10.3f\t%10.3f\t%10.3f' % ( frame_idx, frame_ts, gaze.confidence, angleDeviation ) )
-                    if save:
-                        csv_writer.writerow([ frame_idx, frame_ts, gaze.confidence, angleDeviation, dxCm, dyCm, gaze.ts, gaze.x, gaze.y] )
+                    #csv_writer.writerow([ frame_idx, frame_ts, angleDeviation, dxCm, dyCm, gaze.ts, gaze.x, gaze.y] )
 
         if gShowReference:
             cv2.imshow("reference", refImg)
 
-        if frame_idx in gt:
-            x = int(round(gt[frame_idx][0]))
-            y = int(round(gt[frame_idx][1]))
-            cv2.line(frame, (x,0), (x,int(height)),(0,255,0),1)
-            cv2.line(frame, (0,y), (int(width),y),(0,255,0),1)
+        if frame_idx in centerTarget:
+            x = int(round(centerTarget[frame_idx][0]*subPixelFac))
+            y = int(round(centerTarget[frame_idx][1]*subPixelFac))
+            cv2.line(frame, (x,0), (x,int(height*subPixelFac)),(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
+            cv2.line(frame, (0,y), (int(width*subPixelFac),y) ,(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
+            cv2.circle(frame, (x,y), 3*subPixelFac, (0,255,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
 
         cv2.rectangle(frame,(0,int(height)),(int(0.25*width),int(height)-30),(0,0,0),-1)
         cv2.putText(frame, '%8.2f [%6d]' % (frame_ts,frame_idx), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255))
-        #cv2.imshow('frame',frame)
-        cv2.waitKey(gWaitTime)
-
+        cv2.imshow('frame',frame)
+        key = cv2.waitKey(max(1,int(round(ifi-(time.perf_counter()-startTime)*1000)))) & 0xFF
+        if key == ord('q'):
+            # quit fully
+            stopAllProcessing = True
+            break
+        if key == ord('n'):
+            # goto next
+            break
+        if key == ord('s'):
+            # screenshot
+            cv2.imwrite(str(inputDir / ('calc_frame_%d.png' % frame_idx)), frame)
+            
+    csv_file.close()
     cap.release()
     cv2.destroyAllWindows()
+
+    return stopAllProcessing
 
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('inputDir', help='path to the input dir')
-    args = parser.parse_args()
-
-    if not os.path.isdir(args.inputDir):
-        print('Invalid input dir: {}'.format(args.inputDir))
-        sys.exit()
-    else:
-        # run preprocessing on this data
-        process(args.inputDir)
+    basePath = Path(__file__).resolve().parent
+    for d in (basePath / 'data' / 'preprocced').iterdir():
+        if d.is_dir():
+            if process(d,basePath):
+                break
