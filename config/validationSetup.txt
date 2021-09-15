@@ -20,4 +20,3 @@ showAnnotations = 0
 minNumMarkers = 3
 centerTarget = 5
 referenceBoardWidth = 1920
-referenceBoardMargin = 1

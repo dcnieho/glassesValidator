@@ -17,19 +17,22 @@ def storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,mar
     aspectRatio    = bboxExtents[0]/bboxExtents[1]
     refBoardWidth  = validationSetup['referenceBoardWidth']
     refBoardHeight = math.ceil(refBoardWidth/aspectRatio)
-    margin         = validationSetup['referenceBoardMargin']
-    assert margin>=1, "1 pixel border is minimum when drawing reference board"
+    margin         = 1  # always 1 pixel, anything else behaves strangely (markers are drawn over margin as well)
     refBoardImage  = cv2.cvtColor(
         cv2.aruco.drawPlanarBoard(
             referenceBoard,(refBoardWidth+2*margin,refBoardHeight+2*margin),margin,validationSetup['markerBorderBits']),
         cv2.COLOR_GRAY2RGB
     )
+    # cut off this margin
+    assert refBoardImage.shape[0]==refBoardHeight+2*margin,"Output image height is not as expected"
+    assert refBoardImage.shape[1]==refBoardWidth +2*margin,"Output image width is not as expected"
+    refBoardImage  = refBoardImage[1:-1,1:-1,:]
     # add targets
     drawShift = 8   # for sub-pixel positioning
     for key in knownMarkers:
         if key.startswith('t'):
             # 1. determine position on image
-            circlePos = utils.toImagePos(*knownMarkers[key].center, markerBBox,[refBoardWidth,refBoardHeight],drawShift)
+            circlePos = utils.toImagePos(*knownMarkers[key].center, markerBBox,[refBoardWidth,refBoardHeight], drawShift=drawShift)
 
             # 2. draw
             clr = tuple([int(i*255) for i in colors.to_rgb(knownMarkers[key].color)[::-1]])  # need BGR color ordering
