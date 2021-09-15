@@ -98,12 +98,18 @@ def toImagePos(x,y,bbox,imSize,margin=[0,0],subPixelFac=1):
     return pos
 
 def transform(h, x, y):
+    if math.isnan(x):
+        return [math.nan, math.nan]
+
     src = np.float32([[ [x,y] ]])
     dst = cv2.perspectiveTransform(src,h)
     return dst[0][0]
 
 
 def distortPoint(x, y, cameraMatrix, distCoeff):
+    if math.isnan(x):
+        return [math.nan, math.nan]
+
     fx = cameraMatrix[0][0]
     fy = cameraMatrix[1][1]
     cx = cameraMatrix[0][2]
@@ -132,6 +138,9 @@ def distortPoint(x, y, cameraMatrix, distCoeff):
     return np.float32([x, y]).flatten()
 
 def undistortPoint(x, y, cameraMatrix, distCoeff):
+    if math.isnan(x):
+        return [math.nan, math.nan]
+
     p = np.float32([[[x, y]]])
     dst = cv2.undistortPoints(p, cameraMatrix, distCoeff, P=cameraMatrix)
     return dst[0][0]

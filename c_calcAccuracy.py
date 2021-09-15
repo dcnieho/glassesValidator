@@ -54,9 +54,10 @@ class Reference:
         return angle_between(vgaze, vgt), vgaze[0], vgaze[1]
 
     def draw(self, img, x, y, subPixelFac):
-        xy = tuple(utils.toImagePos(x,y,self.bbox,[self.width, self.height],subPixelFac=subPixelFac))
-        cv2.circle(img, xy, 8*subPixelFac, (0, 0 ,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
-        cv2.circle(img, xy, 4*subPixelFac, (0,255,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+        if not math.isnan(x):
+            xy = tuple(utils.toImagePos(x,y,self.bbox,[self.width, self.height],subPixelFac=subPixelFac))
+            cv2.circle(img, xy, 8*subPixelFac, (0, 0 ,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+            cv2.circle(img, xy, 4*subPixelFac, (0,255,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
 
 class Idx2Timestamp:
     def __init__(self, fileName):
