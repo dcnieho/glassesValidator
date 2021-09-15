@@ -37,44 +37,44 @@ def getValidationSetup(configDir):
 
 def getKnownMarkers(configDir, validationSetup):
     """ (0,0) is at center target, (-,-) bottom left """
-    cellSizeCm = 2.*math.tan(math.radians(.5))*validationSetup['distance']
-    markerHalfSizeCm = cellSizeCm*validationSetup['markerSide']/2.
+    cellSizeMm = 2.*math.tan(math.radians(.5))*validationSetup['distance']*10
+    markerHalfSizeMm = cellSizeMm*validationSetup['markerSide']/2.
             
     # read in target positions
     markers = {}
     targets = pd.read_csv(str(configDir / validationSetup['targetPosFile']),index_col=0,names=['x','y','clr'])
     center  = targets.loc[validationSetup['centerTarget'],['x','y']]
-    targets.x = cellSizeCm * (targets.x.astype('float32') - center.x)
-    targets.y = cellSizeCm * (targets.y.astype('float32') - center.y)
+    targets.x = cellSizeMm * (targets.x.astype('float32') - center.x)
+    targets.y = cellSizeMm * (targets.y.astype('float32') - center.y)
     for idx, row in targets.iterrows():
         key = 't%d' % idx
         markers[key] = Marker(key, row[['x','y']].values, color=row.clr)
     
     # read in aruco marker positions
     markerPos = pd.read_csv(str(configDir / validationSetup['markerPosFile']),index_col=0,names=['x','y'])
-    markerPos.x = cellSizeCm * (markerPos.x.astype('float32') - center.x)
-    markerPos.y = cellSizeCm * (markerPos.y.astype('float32') - center.y)
+    markerPos.x = cellSizeMm * (markerPos.x.astype('float32') - center.x)
+    markerPos.y = cellSizeMm * (markerPos.y.astype('float32') - center.y)
     for idx, row in markerPos.iterrows():
         key = '%d' % idx
         c   = row[['x','y']].values
         # top left first, and clockwise: same order as detected aruco marker corners
-        tl = c + np.array( [ -markerHalfSizeCm ,  markerHalfSizeCm ] )
-        tr = c + np.array( [  markerHalfSizeCm ,  markerHalfSizeCm ] )
-        br = c + np.array( [  markerHalfSizeCm , -markerHalfSizeCm ] )
-        bl = c + np.array( [ -markerHalfSizeCm , -markerHalfSizeCm ] )
+        tl = c + np.array( [ -markerHalfSizeMm ,  markerHalfSizeMm ] )
+        tr = c + np.array( [  markerHalfSizeMm ,  markerHalfSizeMm ] )
+        br = c + np.array( [  markerHalfSizeMm , -markerHalfSizeMm ] )
+        bl = c + np.array( [ -markerHalfSizeMm , -markerHalfSizeMm ] )
         markers[key] = Marker(key, c, corners=[ tl, tr, br, bl ])
     
     # determine bounding box of markers ([left, top, right, bottom])
     bbox = []
-    bbox.append(markerPos.x.min()-markerHalfSizeCm)
-    bbox.append(markerPos.y.max()+markerHalfSizeCm) # top is at positive
-    bbox.append(markerPos.x.max()+markerHalfSizeCm)
-    bbox.append(markerPos.y.min()-markerHalfSizeCm) # bottom is at negative
+    bbox.append(markerPos.x.min()-markerHalfSizeMm)
+    bbox.append(markerPos.y.max()+markerHalfSizeMm) # top is at positive
+    bbox.append(markerPos.x.max()+markerHalfSizeMm)
+    bbox.append(markerPos.y.min()-markerHalfSizeMm) # bottom is at negative
 
     return markers, bbox
 
 def toNormPos(x,y,bbox):
-    # transforms input (x,y) which is in image units (e.g. cm on an aruco board)
+    # transforms input (x,y) which is in image units (e.g. mm on an aruco board)
     # to a normalized position in the image, given the image's bounding box in
     # image units
     # (0,0) in bottom left
@@ -84,7 +84,7 @@ def toNormPos(x,y,bbox):
     return pos
 
 def toImagePos(x,y,bbox,imSize,margin=[0,0],subPixelFac=1):
-    # transforms input (x,y) which is in image units (e.g. cm on an aruco board)
+    # transforms input (x,y) which is in image units (e.g. mm on an aruco board)
     # to a pixel position in the image, given the image's bounding box in
     # image units
     # imSize should be active image area in pixels, excluding margin

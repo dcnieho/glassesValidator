@@ -23,7 +23,7 @@ def storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,mar
             referenceBoard,(refBoardWidth+2*margin,refBoardHeight+2*margin),margin,validationSetup['markerBorderBits']),
         cv2.COLOR_GRAY2RGB
     )
-    # cut off this margin
+    # cut off this 1-pix margin
     assert refBoardImage.shape[0]==refBoardHeight+2*margin,"Output image height is not as expected"
     assert refBoardImage.shape[1]==refBoardWidth +2*margin,"Output image width is not as expected"
     refBoardImage  = refBoardImage[1:-1,1:-1,:]
