@@ -32,7 +32,7 @@ class Gaze:
             g = 255
             r = 255 * (1 - g)
             b = 0
-            cv2.circle(img, (x, y), 15, (b, g, r), 5)
+            cv2.circle(img, (x, y), 10, (b, g, r), 3)
 
 
 class Reference:
