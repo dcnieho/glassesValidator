@@ -7,7 +7,7 @@ sys.path.insert(0, './..')
 from b_detectMarkers import getValidationSetup
 
 # get validation setup
-validationSetup = getValidationSetup(Path(__file__).resolve().parent)
+validationSetup = getValidationSetup(Path(__file__).resolve().parent.parent / 'config')
 
 # Load the predefined dictionary
 dictionary = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)

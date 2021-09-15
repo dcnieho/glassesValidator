@@ -26,9 +26,9 @@ class Marker:
         ret = '[%s]: center @ (%.2f, %.2f)' % (self.key, self.center[0], self.center[1])
         return ret
 
-def getValidationSetup(markerDir):
+def getValidationSetup(configDir):
     # read key=value pairs into dict
-    with open(str(markerDir / "validationSetup.txt")) as f:
+    with open(str(configDir / "validationSetup.txt")) as f:
         lexer = shlex(f)
         lexer.whitespace += '='
         lexer.wordchars += '.'  # don't split extensions of filenames in the input file
@@ -45,14 +45,14 @@ def getValidationSetup(markerDir):
                 pass # just keep value as a string
     return validationSetup
 
-def getKnownMarkers(markerDir, validationSetup):
+def getKnownMarkers(configDir, validationSetup):
     """ (0,0) is at center target, (-,-) bottom left """
     cellSizeCm = 2.*math.tan(math.radians(.5))*validationSetup['distance']
     markerHalfSizeCm = cellSizeCm*validationSetup['markerSide']/2.
             
     # read in target positions
     markers = {}
-    targets = pd.read_csv(str(markerDir / validationSetup['targetPosFile']),index_col=0,names=['x','y','clr'])
+    targets = pd.read_csv(str(configDir / validationSetup['targetPosFile']),index_col=0,names=['x','y','clr'])
     center  = targets.loc[validationSetup['centerTarget'],['x','y']]
     targets.x = cellSizeCm * (targets.x.astype('float32') - center.x)
     targets.y = cellSizeCm * (targets.y.astype('float32') - center.y)
@@ -61,7 +61,7 @@ def getKnownMarkers(markerDir, validationSetup):
         markers[key] = Marker(key, row[['x','y']].values, color=row.clr)
     
     # read in aruco marker positions
-    markerPos = pd.read_csv(str(markerDir / validationSetup['markerPosFile']),index_col=0,names=['x','y'])
+    markerPos = pd.read_csv(str(configDir / validationSetup['markerPosFile']),index_col=0,names=['x','y'])
     markerPos.x = cellSizeCm * (markerPos.x.astype('float32') - center.x)
     markerPos.y = cellSizeCm * (markerPos.y.astype('float32') - center.y)
     for idx, row in markerPos.iterrows():
@@ -181,9 +181,9 @@ def distortPoint(p, cameraMatrix, distCoeff):
 def process(inputDir,basePath):
     global gFPSFac
 
-    markerDir = basePath / "markerLayout"
+    configDir = basePath / "config"
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = getValidationSetup(markerDir)
+    validationSetup = getValidationSetup(configDir)
     
     # open video file, query it for size
     inVideo = str(inputDir / 'worldCamera.mp4')
@@ -197,7 +197,7 @@ def process(inputDir,basePath):
     # get info about markers on our board
     # Aruco markers have numeric keys, gaze targets have keys starting with 't'
     aruco_dict   = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
-    knownMarkers, markerBBox = getKnownMarkers(markerDir, validationSetup)
+    knownMarkers, markerBBox = getKnownMarkers(configDir, validationSetup)
     centerTarget = knownMarkers['t%d'%validationSetup['centerTarget']].center
     
     # turn into aruco board object to be used for pose estimation

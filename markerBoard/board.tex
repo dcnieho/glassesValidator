@@ -14,7 +14,7 @@
 % much of the poster setup is read from the file validationSetup.txt.
 % read setup
 % NB: distance in there is in cm, gridCols, gridRows and markerSide are in degrees visual angle
-\readdef{validationSetup.txt}{\fileData}
+\readdef{../config/validationSetup.txt}{\fileData}
 \readarray\fileData\setupInfo[-,3]
 % turn each key into its own command
 %NB: this provides \distance, \markerPosFile and \targetPosFile,
@@ -95,7 +95,7 @@
 		\draw[step=\step, line width=3pt] (0cm,0cm) grid (\step*\gridCols,\step*\gridRows);
 	\fi
 	
-\csvreader[no head]{\markerPosFile}{1=\ID, 2=\x, 3=\y}%
+\csvreader[no head]{../config/\markerPosFile}{1=\ID, 2=\x, 3=\y}%
 {
 	\coordinate (m) at (
 	\x*\step,
@@ -106,7 +106,7 @@
 };
 
 
-\csvreader[no head]{\targetPosFile}{1=\ID, 2=\x, 3=\y, 4=\tColor}%
+\csvreader[no head]{../config/\targetPosFile}{1=\ID, 2=\x, 3=\y, 4=\tColor}%
 {
 	\gazeTarget{\x*\step}{\y*\step}{\tColor};
 };
