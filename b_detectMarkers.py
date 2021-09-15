@@ -259,7 +259,7 @@ def process(inputDir,basePath):
                     drawShift = 8   # for sub-pixel positioning
                     if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
                         x = int(round(target[0]*drawShift))
-                        y = int(round(target[1])*drawShift)
+                        y = int(round(target[1]*drawShift))
                         cv2.line(frame, (x,0), (x,int(height*drawShift)),(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
                         cv2.line(frame, (0,y), (int(width*drawShift),y) ,(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
                         cv2.circle(frame, (x,y), 3*drawShift, (0,255,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(drawShift)))
