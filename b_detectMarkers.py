@@ -152,8 +152,8 @@ def process(inputDir,basePath):
                     if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
                         x = int(round(target[0]*subPixelFac))
                         y = int(round(target[1]*subPixelFac))
-                        cv2.line(frame, (x,0), (x,int(height*subPixelFac)),(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
-                        cv2.line(frame, (0,y), (int(width*subPixelFac),y) ,(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
+                        cv2.line(frame, (x,0), (x,int(height*subPixelFac)),(0,255,0),1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+                        cv2.line(frame, (0,y), (int(width*subPixelFac),y) ,(0,255,0),1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
                         cv2.circle(frame, (x,y), 3*subPixelFac, (0,255,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
                        
                     # draw axis indicating board pose
