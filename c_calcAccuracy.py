@@ -17,11 +17,15 @@ gShowReference  = True
 gFPSFac         = 1
 
 class Gaze:
-    def __init__(self, ts, x, y, world3D=None):
+    def __init__(self, ts, x, y, world3D=None, lGazeVec=None, lGazeOrigin=None, rGazeVec=None, rGazeOrigin=None):
         self.ts = ts
         self.x = x
         self.y = y
         self.world3D = world3D
+        self.lGazeVec= lGazeVec
+        self.lGazeOrigin = lGazeOrigin
+        self.rGazeVec= rGazeVec
+        self.rGazeOrigin = rGazeOrigin
         self.xCm = -1
         self.yCm = -1
 
@@ -50,11 +54,13 @@ class Reference:
         vgt = np.array( [ 0, 0, distCm ] )
         return angle_between(vgaze, vgt), vgaze[0], vgaze[1]
 
-    def draw(self, img, x, y, subPixelFac=1):
+    def draw(self, img, x, y, subPixelFac=1, color=None):
         if not math.isnan(x):
             xy = tuple(utils.toImagePos(x,y,self.bbox,[self.width, self.height],subPixelFac=subPixelFac))
-            cv2.circle(img, xy, 8*subPixelFac, (0, 0 ,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
-            cv2.circle(img, xy, 4*subPixelFac, (0,255,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+            if color is None:
+                cv2.circle(img, xy, 8*subPixelFac, (0, 0 ,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+                color = (0,255,0)
+            cv2.circle(img, xy, 4*subPixelFac, color, -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
 
 class Idx2Timestamp:
     def __init__(self, fileName):
@@ -110,7 +116,7 @@ def process(inputDir,basePath):
 
     # Read gaze data
     gazes = {}
-    with open( str(inputDir / 'gazeData.tsv'), 'r' ) as f:
+    with open( str(inputDir / 'gazeData_raw.tsv'), 'r' ) as f:
         reader = csv.DictReader(f, delimiter='\t')
         for entry in reader:
             frame_idx = int(float(entry['frame_idx']))
@@ -119,7 +125,11 @@ def process(inputDir,basePath):
                 gx = float(entry['gaze_pos_x']) * width
                 gy = float(entry['gaze_pos_y']) * height
                 world3D = np.array([entry['3d_gaze_pos_x'],entry['3d_gaze_pos_y'],entry['3d_gaze_pos_z']]).astype('float32')
-                gaze = Gaze(ts, gx, gy)
+                lGazeVec= np.array([entry['l_gaze_dir_x'], entry['l_gaze_dir_y'], entry['l_gaze_dir_z']]).astype('float32')
+                lGazeOrigin = np.array([entry['l_pup_cent_x'], entry['l_pup_cent_y'], entry['l_pup_cent_z']]).astype('float32')
+                rGazeVec= np.array([entry['r_gaze_dir_x'], entry['r_gaze_dir_y'], entry['r_gaze_dir_z']]).astype('float32')
+                rGazeOrigin = np.array([entry['r_pup_cent_x'], entry['r_pup_cent_y'], entry['r_pup_cent_z']]).astype('float32')
+                gaze = Gaze(ts, gx, gy, world3D, lGazeVec, lGazeOrigin, rGazeVec, rGazeOrigin)
 
                 if frame_idx in gazes:
                     gazes[frame_idx].append(gaze)
@@ -130,20 +140,28 @@ def process(inputDir,basePath):
                 sys.stderr.write('[WARNING] Problematic entry: %s\n' % (entry) )
 
 
-    # Read transformation and location of center target
+    # Read transformation (homography), location of center target and pose of marker board
     centerTarget = {}
     transformation = {}
+    rVec = {}
+    tVec = {}
     temp = pd.read_csv(str(inputDir / 'transformations.tsv'), delimiter='\t')
-    ctCols    = [col for col in temp.columns if 'centerTarget' in col]
-    transCols = [col for col in temp.columns if 'transformation' in col]
+    ctCols   = [col for col in temp.columns if 'centerTarget' in col]
+    transCols= [col for col in temp.columns if 'transformation' in col]
+    rvecCols = [col for col in temp.columns if 'poseRvec' in col]
+    tvecCols = [col for col in temp.columns if 'poseTvec' in col]
     for idx, row in temp.iterrows():
         frame_idx = int(row['frame_idx'])
 
         # get center target pixel position in undistorted image
         centerTarget[frame_idx] = row[ctCols].values
-
+        
         # transformation from undistorted image to reference (in mm!)
         transformation[frame_idx] = row[transCols].values.reshape(3,3)
+
+        # board pose information
+        rVec[frame_idx] = row[rvecCols].values
+        tVec[frame_idx] = row[tvecCols].values
 
     csv_file = open(str(inputDir / 'report.tsv'), 'w')
     csv_writer = csv.writer(csv_file, delimiter='\t', lineterminator='\n')
@@ -170,16 +188,48 @@ def process(inputDir,basePath):
 
                 # if we can, already transform the gaze onto reference board
                 if frame_idx in transformation:
-                    # project and draw 3D gaze as well
-                    a = cv2.projectPoints(np.array(gaze.world3D).reshape(1,3),cameraRotation,cameraPosition,cameraMatrix,distCoeff)[0][0][0]
-                    if not math.isnan(a[0]):
-                        cv2.circle(frame, tuple([int(round(p*subPixelFac)) for p in a]), 5*subPixelFac, (0,0,255), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
-                    
-                    ux = gaze.x
-                    uy = gaze.y
+                    # transform 2D gaze gaze to reference board and draw
                     ux, uy = utils.undistortPoint( gaze.x, gaze.y, cameraMatrix, distCoeff)
                     (gaze.xCm, gaze.yCm) = utils.transform(transformation[frame_idx], ux, uy)
                     reference.draw(refImg, gaze.xCm, gaze.yCm, subPixelFac)
+
+                    # project and draw 3D gaze as well
+                    a = cv2.projectPoints(np.array(gaze.world3D).reshape(1,3),cameraRotation,cameraPosition,cameraMatrix,distCoeff)[0][0][0]
+                    if not math.isnan(a[0]):
+                        cv2.circle(frame, tuple([int(round(p*subPixelFac)) for p in a]), 5*subPixelFac, (0,0,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+
+
+                    # get plane normal
+                    RPlane = cv2.Rodrigues(rVec[frame_idx])[0]
+                    planeNormal = np.matmul(RPlane, np.array([0,0,1.]))
+                    # get point on plane
+                    RtPlane = np.hstack((RPlane, tVec[frame_idx].reshape(3,1)))
+                    planePoint = np.matmul(RtPlane,np.array([0, 0, 0., 1.]))
+                    RtPlaneInv = np.hstack((RPlane.T,np.matmul(-RPlane.T,tVec[frame_idx].reshape(3,1))))
+
+                    # get gaze vector and point on vector (pupil center)
+                    RCam        = cv2.Rodrigues(cameraRotation)[0]
+                    RtCam       = np.hstack((RCam, cameraPosition))
+                    gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]
+                    gazeOrigins = [gaze.lGazeOrigin, gaze.rGazeOrigin]
+                    clrs        = [(0,0,255), (255,0,0)]
+                    for gVec,gOri,clr in zip(gazeVecs,gazeOrigins,clrs):
+                        # transform from glasses coordinate frame into camera coordinate frame
+                        gVec    = np.matmul(RtCam,np.append(gVec,1.))
+                        gOri    = np.matmul(RtCam,np.append(gOri,1.))
+                        # intersect with board -> yield point on board in camera reference frame
+                        gBoard  = utils.intersect_plane_ray(planeNormal, planePoint, gVec, gOri)
+                        # project and draw on video
+                        pgBoard = cv2.projectPoints(gBoard.reshape(1,3),np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
+                        if not math.isnan(pgBoard[0]):
+                            cv2.circle(frame, tuple([int(round(p*subPixelFac)) for p in pgBoard]), 5*subPixelFac, clr, -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+                        
+                        # transform intersection with board from camera -> board space, draw on reference board
+                        if not math.isnan(pgBoard[0]):
+                            (x,y,z)=np.matmul(RtPlaneInv,np.append(gBoard,1.).reshape((4,1))).flatten()
+                            reference.draw(refImg, x, y, subPixelFac, clr)
+
+
                     #angleDeviation, dxCm, dyCm = reference.error(gaze.xCm, gaze.yCm)
                     #print('%10d\t%10.3f\t%10.3f\t%10.3f' % ( frame_idx, frame_ts, gaze.confidence, angleDeviation ) )
                     #csv_writer.writerow([ frame_idx, frame_ts, angleDeviation, dxCm, dyCm, gaze.ts, gaze.x, gaze.y] )
