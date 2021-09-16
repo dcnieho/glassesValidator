@@ -125,6 +125,7 @@ def getCameraFromTSLV(inputDir):
     # turn into camera matrix and distCoeffs as used by OpenCV
     camera['cameraMatrix'] = np.identity(3)
     camera['cameraMatrix'][0,0] = camera['focalLength'][0]
+    camera['cameraMatrix'][0,1] = camera['skew']
     camera['cameraMatrix'][1,1] = camera['focalLength'][1]
     camera['cameraMatrix'][0,2] = camera['principalPoint'][0]
     camera['cameraMatrix'][1,2] = camera['principalPoint'][1]
