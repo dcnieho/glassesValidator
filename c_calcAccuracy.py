@@ -17,22 +17,19 @@ gShowReference  = True
 gFPSFac         = 1
 
 class Gaze:
-    def __init__(self, ts, x, y):
+    def __init__(self, ts, x, y, world3D=None):
         self.ts = ts
         self.x = x
         self.y = y
+        self.world3D = world3D
         self.xCm = -1
         self.yCm = -1
 
 
-    def draw(self, img):
+    def draw(self, img, subPixelFac=1):
         if not math.isnan(self.x):
-            x = int(self.x)
-            y = int(self.y)
-            g = 255
-            r = 255 * (1 - g)
-            b = 0
-            cv2.circle(img, (x, y), 10, (b, g, r), 3)
+            p = tuple([int(round(x*subPixelFac)) for x in [self.x,self.y]])
+            cv2.circle(img, p, 8*subPixelFac, (0,255,0), 2, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
 
 
 class Reference:
@@ -53,7 +50,7 @@ class Reference:
         vgt = np.array( [ 0, 0, distCm ] )
         return angle_between(vgaze, vgt), vgaze[0], vgaze[1]
 
-    def draw(self, img, x, y, subPixelFac):
+    def draw(self, img, x, y, subPixelFac=1):
         if not math.isnan(x):
             xy = tuple(utils.toImagePos(x,y,self.bbox,[self.width, self.height],subPixelFac=subPixelFac))
             cv2.circle(img, xy, 8*subPixelFac, (0, 0 ,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
@@ -98,8 +95,11 @@ def process(inputDir,basePath):
     i2t = Idx2Timestamp(str(inputDir / 'frame_timestamps.tsv'))
 
     fs = cv2.FileStorage(str(inputDir / "calibration.xml"), cv2.FILE_STORAGE_READ)
-    cameraMatrix = fs.getNode("cameraMatrix").mat()
-    distCoeff    = fs.getNode("distCoeff").mat()
+    cameraMatrix    = fs.getNode("cameraMatrix").mat()
+    distCoeff       = fs.getNode("distCoeff").mat()
+    # camera extrinsics for 3D gaze
+    cameraRotation  = cv2.Rodrigues(fs.getNode("rotation").mat())[0]    # need rotation vector, not rotation matrix
+    cameraPosition  = fs.getNode("position").mat()
     fs.release()
 
     cap         = cv2.VideoCapture(str(inputDir / 'worldCamera.mp4'))
@@ -118,6 +118,7 @@ def process(inputDir,basePath):
                 ts = float(entry['timestamp'])
                 gx = float(entry['gaze_pos_x']) * width
                 gy = float(entry['gaze_pos_y']) * height
+                world3D = np.array([entry['3d_gaze_pos_x'],entry['3d_gaze_pos_y'],entry['3d_gaze_pos_z']]).astype('float32')
                 gaze = Gaze(ts, gx, gy)
 
                 if frame_idx in gazes:
@@ -162,11 +163,18 @@ def process(inputDir,basePath):
         frame_ts  = i2t.get(frame_idx)
 
         refImg = reference.getImgCopy()
+        subPixelFac = 8   # for sub-pixel positioning
         if frame_idx in gazes:
             for gaze in gazes[frame_idx]:
-                gaze.draw(frame)
-                # if we can, already transform the gaze
+                gaze.draw(frame, subPixelFac)
+
+                # if we can, already transform the gaze onto reference board
                 if frame_idx in transformation:
+                    # project and draw 3D gaze as well
+                    a = cv2.projectPoints(np.array(gaze.world3D).reshape(1,3),cameraRotation,cameraPosition,cameraMatrix,distCoeff)[0][0][0]
+                    if not math.isnan(a[0]):
+                        cv2.circle(frame, tuple([int(round(p*subPixelFac)) for p in a]), 5*subPixelFac, (0,0,255), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+                    
                     ux = gaze.x
                     uy = gaze.y
                     ux, uy = utils.undistortPoint( gaze.x, gaze.y, cameraMatrix, distCoeff)
