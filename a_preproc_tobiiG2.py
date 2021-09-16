@@ -41,16 +41,12 @@ def preprocessData(inputDir, outputDir):
 
     #### prep the copied data...
     print('Getting camera calibration...')
-    getCameraFromTSLV(newDataDir)
+    sceneVideoDimensions = getCameraFromTSLV(newDataDir)
     print('Prepping gaze data...')
-    gazeDf, frame_timestamps = formatGazeData(newDataDir)
+    gazeDf, frame_timestamps = formatGazeData(newDataDir, sceneVideoDimensions)
 
-    # write the gaze data (world camera coords) to a csv file
-    gazeDf.to_csv(str(newDataDir / 'gazeData_raw.tsv'), sep='\t', na_rep='nan', float_format="%.8f")
-
-    # write standard subset of gaze data (world camera coords) to a csv file
-    gazeDf[['frame_idx','video_timestamp','gaze_pos_x','gaze_pos_y','3d_gaze_pos_x','3d_gaze_pos_y','3d_gaze_pos_z']].to_csv(\
-        str(newDataDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")
+    # write the gaze data to a csv file
+    gazeDf.to_csv(str(newDataDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")
 
     # also store frame_timestamps
     frame_timestamps.to_csv(str(newDataDir / 'frame_timestamps.tsv'), sep='\t', index=False)
@@ -142,8 +138,10 @@ def getCameraFromTSLV(inputDir):
         fs.write(name=key,val=value)
     fs.release()
 
+    return camera['sensorDimensions']
 
-def formatGazeData(inputDir):
+
+def formatGazeData(inputDir, sceneVideoDimensions):
     """
     load livedata.json, write to csv
     format to get the gaze coordinates w/r/t world camera, and timestamps for every frame of video
@@ -154,7 +152,7 @@ def formatGazeData(inputDir):
     """
 
     # convert the json file to pandas dataframe
-    df = json_to_df(str(inputDir / 'livedata.json'))
+    df = json_to_df(str(inputDir / 'livedata.json'), sceneVideoDimensions)
 
     # drop any row that precedes the start of the video timestamps
     df = df[df['video_timestamp'] >= df['video_timestamp'].min()]
@@ -233,7 +231,7 @@ def getVidFrameTimestamps(vid_file):
     return frame_ts_df
 
 
-def json_to_df(json_file):
+def json_to_df(json_file,sceneVideoDimensions):
     """
     convert the livedata.json file to a pandas dataframe
     """
@@ -260,9 +258,10 @@ def json_to_df(json_file):
             if 'eye' in entry.keys():
                 which_eye = entry['eye'][:1]
                 if 'pc' in entry.keys():
-                    df.loc[entry['ts'], which_eye + '_pup_cent_x'] = entry['pc'][0]
-                    df.loc[entry['ts'], which_eye + '_pup_cent_y'] = entry['pc'][1]
-                    df.loc[entry['ts'], which_eye + '_pup_cent_z'] = entry['pc'][2]
+                    # origin of gaze vector is the pupil center
+                    df.loc[entry['ts'], which_eye + '_gaze_ori_x'] = entry['pc'][0]
+                    df.loc[entry['ts'], which_eye + '_gaze_ori_y'] = entry['pc'][1]
+                    df.loc[entry['ts'], which_eye + '_gaze_ori_z'] = entry['pc'][2]
                 elif 'pd' in entry.keys():
                     df.loc[entry['ts'], which_eye + '_pup_diam'] = entry['pd']
                 elif 'gd' in entry.keys():
@@ -273,8 +272,8 @@ def json_to_df(json_file):
             # otherwise it contains gaze position data
             else:
                 if 'gp' in entry.keys():
-                    df.loc[entry['ts'], 'gaze_pos_x'] = entry['gp'][0]
-                    df.loc[entry['ts'], 'gaze_pos_y'] = entry['gp'][1]
+                    df.loc[entry['ts'], 'vid_gaze_pos_x'] = entry['gp'][0]*sceneVideoDimensions[0]
+                    df.loc[entry['ts'], 'vid_gaze_pos_y'] = entry['gp'][1]*sceneVideoDimensions[1]
                 elif 'gp3' in entry.keys():
                     df.loc[entry['ts'], '3d_gaze_pos_x'] = entry['gp3'][0]
                     df.loc[entry['ts'], '3d_gaze_pos_y'] = entry['gp3'][1]

@@ -116,19 +116,19 @@ def process(inputDir,basePath):
 
     # Read gaze data
     gazes = {}
-    with open( str(inputDir / 'gazeData_raw.tsv'), 'r' ) as f:
+    with open( str(inputDir / 'gazeData.tsv'), 'r' ) as f:
         reader = csv.DictReader(f, delimiter='\t')
         for entry in reader:
             frame_idx = int(float(entry['frame_idx']))
             try:
                 ts = float(entry['timestamp'])
-                gx = float(entry['gaze_pos_x']) * width
-                gy = float(entry['gaze_pos_y']) * height
+                gx = float(entry['vid_gaze_pos_x'])
+                gy = float(entry['vid_gaze_pos_y'])
                 world3D = np.array([entry['3d_gaze_pos_x'],entry['3d_gaze_pos_y'],entry['3d_gaze_pos_z']]).astype('float32')
                 lGazeVec= np.array([entry['l_gaze_dir_x'], entry['l_gaze_dir_y'], entry['l_gaze_dir_z']]).astype('float32')
-                lGazeOrigin = np.array([entry['l_pup_cent_x'], entry['l_pup_cent_y'], entry['l_pup_cent_z']]).astype('float32')
+                lGazeOrigin = np.array([entry['l_gaze_ori_x'], entry['l_gaze_ori_y'], entry['l_gaze_ori_z']]).astype('float32')
                 rGazeVec= np.array([entry['r_gaze_dir_x'], entry['r_gaze_dir_y'], entry['r_gaze_dir_z']]).astype('float32')
-                rGazeOrigin = np.array([entry['r_pup_cent_x'], entry['r_pup_cent_y'], entry['r_pup_cent_z']]).astype('float32')
+                rGazeOrigin = np.array([entry['r_gaze_ori_x'], entry['r_gaze_ori_y'], entry['r_gaze_ori_z']]).astype('float32')
                 gaze = Gaze(ts, gx, gy, world3D, lGazeVec, lGazeOrigin, rGazeVec, rGazeOrigin)
 
                 if frame_idx in gazes:
