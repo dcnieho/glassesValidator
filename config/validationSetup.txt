@@ -12,7 +12,7 @@ targetPosFile = targetPositions.csv
 % targetType can be Tobii or Thaler
 targetType = Thaler
 useExactTobiiSize = 0           % only used if targetType is Tobii
-thalerDiameter = 1   	        % only used if targetType is Thaler
+thalerDiameter = 1   	        % in deg, only used if targetType is Thaler
 
 showGrid = 0
 showAnnotations = 0
