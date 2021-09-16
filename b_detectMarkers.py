@@ -82,7 +82,6 @@ def process(inputDir,basePath):
     # Aruco markers have numeric keys, gaze targets have keys starting with 't'
     aruco_dict   = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
     knownMarkers, markerBBox = utils.getKnownMarkers(configDir, validationSetup)
-    centerTarget = knownMarkers['t%d'%validationSetup['centerTarget']].center
     
     # turn into aruco board object to be used for pose estimation
     boardCornerPoints = []
@@ -113,11 +112,9 @@ def process(inputDir,basePath):
     csv_file = open(str(inputDir / 'transformations.tsv'), 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
     header = ['frame_idx']
-    header.extend(['transformation[%d,%d]' % (r,c) for r in range(3) for c in range(3)])
     header.append('poseNMarker')
     header.extend(['poseRvec[%d]' % (v) for v in range(3)])
     header.extend(['poseTvec[%d]' % (v) for v in range(3)])
-    header.extend(['centerTarget[%d]' % (v) for v in range(2)])
     csv_writer.writerow( header )
 
     frame_idx = 0
@@ -135,39 +132,19 @@ def process(inputDir,basePath):
         
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
-                # undistort markers, get homography (image to world transform)
-                cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
-                H, status = estimateTransform(knownMarkers, cornersU, ids)
-                if status:
-                    # get camera pose
-                    nMarkersUsed, Rvec, Tvec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
-                    
-                    # find where target is expected to be in the image
-                    iH = np.linalg.inv(H)
-                    target = utils.transform(iH, centerTarget[0], centerTarget[1])
-                    target = utils.distortPoint( *target, cameraMatrix, distCoeff)
-                    
-                    # draw target location on image
-                    subPixelFac = 8   # for sub-pixel positioning
-                    if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
-                        x = int(round(target[0]*subPixelFac))
-                        y = int(round(target[1]*subPixelFac))
-                        cv2.line(frame, (x,0), (x,int(height*subPixelFac)),(0,255,0),1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
-                        cv2.line(frame, (0,y), (int(width*subPixelFac),y) ,(0,255,0),1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
-                        cv2.circle(frame, (x,y), 3*subPixelFac, (0,255,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+                # get camera pose
+                nMarkersUsed, Rvec, Tvec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
                        
-                    # draw axis indicating board pose
-                    if nMarkersUsed>0:
-                        cv2.aruco.drawAxis(frame,cameraMatrix, distCoeff,Rvec, Tvec, 2*2.*math.tan(math.radians(.5))*validationSetup['distance']*10)    # arms of grid are 2 poster grid cells
+                # draw axis indicating board pose (origin and orientation)
+                if nMarkersUsed>0:
+                    cv2.aruco.drawAxis(frame,cameraMatrix, distCoeff,Rvec, Tvec, 2*2.*math.tan(math.radians(.5))*validationSetup['distance']*10)    # arms of grid are 2 poster grid cells
 
-                    # store homography, pose and target location to file
-                    writeDat = [frame_idx]
-                    writeDat.extend( H.flatten() )
-                    writeDat.append( nMarkersUsed )
-                    writeDat.extend( Rvec.flatten() )
-                    writeDat.extend( Tvec.flatten() )
-                    writeDat.extend( target )
-                    csv_writer.writerow( writeDat )
+                # store homography, pose and target location to file
+                writeDat = [frame_idx]
+                writeDat.append( nMarkersUsed )
+                writeDat.extend( Rvec.flatten() )
+                writeDat.extend( Tvec.flatten() )
+                csv_writer.writerow( writeDat )
 
             # if any markers were detected, draw where on the frame
             cv2.aruco.drawDetectedMarkers(frame, corners, ids)

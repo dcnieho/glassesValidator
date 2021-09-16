@@ -140,26 +140,14 @@ def process(inputDir,basePath):
                 sys.stderr.write('[WARNING] Problematic entry: %s\n' % (entry) )
 
 
-    # Read transformation (homography), location of center target and pose of marker board
-    centerTarget = {}
-    transformation = {}
+    # Read pose of marker board
     rVec = {}
     tVec = {}
     temp = pd.read_csv(str(inputDir / 'transformations.tsv'), delimiter='\t')
-    ctCols   = [col for col in temp.columns if 'centerTarget' in col]
-    transCols= [col for col in temp.columns if 'transformation' in col]
     rvecCols = [col for col in temp.columns if 'poseRvec' in col]
     tvecCols = [col for col in temp.columns if 'poseTvec' in col]
     for idx, row in temp.iterrows():
         frame_idx = int(row['frame_idx'])
-
-        # get center target pixel position in undistorted image
-        centerTarget[frame_idx] = row[ctCols].values
-        
-        # transformation from undistorted image to reference (in mm!)
-        transformation[frame_idx] = row[transCols].values.reshape(3,3)
-
-        # board pose information
         rVec[frame_idx] = row[rvecCols].values
         tVec[frame_idx] = row[tvecCols].values
 
@@ -184,49 +172,61 @@ def process(inputDir,basePath):
         subPixelFac = 8   # for sub-pixel positioning
         if frame_idx in gazes:
             for gaze in gazes[frame_idx]:
+
+                # draw 2D gaze point
                 gaze.draw(frame, subPixelFac)
 
-                # if we can, already transform the gaze onto reference board
-                if frame_idx in transformation:
-                    # transform 2D gaze gaze to reference board and draw
-                    ux, uy = utils.undistortPoint( gaze.x, gaze.y, cameraMatrix, distCoeff)
-                    (gaze.xCm, gaze.yCm) = utils.transform(transformation[frame_idx], ux, uy)
-                    reference.draw(refImg, gaze.xCm, gaze.yCm, subPixelFac)
-
-                    # project and draw 3D gaze as well
-                    a = cv2.projectPoints(np.array(gaze.world3D).reshape(1,3),cameraRotation,cameraPosition,cameraMatrix,distCoeff)[0][0][0]
-                    if not math.isnan(a[0]):
-                        cv2.circle(frame, tuple([int(round(p*subPixelFac)) for p in a]), 5*subPixelFac, (0,0,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+                # draw 3D gaze point as well, should coincide with 2D gaze point
+                a = cv2.projectPoints(np.array(gaze.world3D).reshape(1,3),cameraRotation,cameraPosition,cameraMatrix,distCoeff)[0][0][0]
+                if not math.isnan(a[0]):
+                    cv2.circle(frame, tuple([int(round(p*subPixelFac)) for p in a]), 5*subPixelFac, (0,0,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
 
 
-                    # get plane normal
-                    RPlane = cv2.Rodrigues(rVec[frame_idx])[0]
-                    planeNormal = np.matmul(RPlane, np.array([0,0,1.]))
-                    # get point on plane
-                    RtPlane = np.hstack((RPlane, tVec[frame_idx].reshape(3,1)))
-                    planePoint = np.matmul(RtPlane,np.array([0, 0, 0., 1.]))
-                    RtPlaneInv = np.hstack((RPlane.T,np.matmul(-RPlane.T,tVec[frame_idx].reshape(3,1))))
+                # if we have pose information, figure out where gaze vectors
+                # intersect with reference board. Do same for 3D gaze point
+                # (the projection of which coincides with 2D gaze provided by
+                # the eye tracker)
+                if frame_idx in rVec:
+                    # get board normal
+                    RBoard      = cv2.Rodrigues(rVec[frame_idx])[0]
+                    boardNormal = np.matmul(RBoard, np.array([0,0,1.]))
+                    # get point on board (just use origin)
+                    RtBoard     = np.hstack((RBoard  ,                    tVec[frame_idx].reshape(3,1)))
+                    RtBoardInv  = np.hstack((RBoard.T,np.matmul(-RBoard.T,tVec[frame_idx].reshape(3,1))))
+                    boardPoint  = np.matmul(RtBoard,np.array([0, 0, 0., 1.]))
 
-                    # get gaze vector and point on vector (pupil center)
+                    # get transform from ET data's coordinate frame to camera's coordinate frame
                     RCam        = cv2.Rodrigues(cameraRotation)[0]
                     RtCam       = np.hstack((RCam, cameraPosition))
+
+                    # project 3D gaze to reference board
+                    # turn 3D gaze point into ray from camera
+                    g3D = np.matmul(RCam,np.array(gaze.world3D).reshape(3,1))
+                    g3D /= np.sqrt((g3D**2).sum()) # normalize
+                    # find intersection of 3D gaze with board, draw
+                    g3Board  = utils.intersect_plane_ray(boardNormal, boardPoint, g3D.flatten(), np.array([0.,0.,0.]))
+                    (x,y,z)=np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
+                    reference.draw(refImg, x, y, subPixelFac)
+
+                    # project gaze vectors to reference board (and draw on video)
                     gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]
                     gazeOrigins = [gaze.lGazeOrigin, gaze.rGazeOrigin]
                     clrs        = [(0,0,255), (255,0,0)]
                     for gVec,gOri,clr in zip(gazeVecs,gazeOrigins,clrs):
-                        # transform from glasses coordinate frame into camera coordinate frame
+                        # get gaze vector and point on vector (pupil center) ->
+                        # transform from ET data coordinate frame into camera coordinate frame
                         gVec    = np.matmul(RtCam,np.append(gVec,1.))
                         gOri    = np.matmul(RtCam,np.append(gOri,1.))
                         # intersect with board -> yield point on board in camera reference frame
-                        gBoard  = utils.intersect_plane_ray(planeNormal, planePoint, gVec, gOri)
+                        gBoard  = utils.intersect_plane_ray(boardNormal, boardPoint, gVec, gOri)
                         # project and draw on video
                         pgBoard = cv2.projectPoints(gBoard.reshape(1,3),np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
                         if not math.isnan(pgBoard[0]):
                             cv2.circle(frame, tuple([int(round(p*subPixelFac)) for p in pgBoard]), 5*subPixelFac, clr, -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
                         
-                        # transform intersection with board from camera -> board space, draw on reference board
+                        # transform intersection with board from camera space to board space, draw on reference board
                         if not math.isnan(pgBoard[0]):
-                            (x,y,z)=np.matmul(RtPlaneInv,np.append(gBoard,1.).reshape((4,1))).flatten()
+                            (x,y,z)=np.matmul(RtBoardInv,np.append(gBoard,1.).reshape((4,1))).flatten() # z should be very close to zero
                             reference.draw(refImg, x, y, subPixelFac, clr)
 
 
@@ -237,9 +237,11 @@ def process(inputDir,basePath):
         if gShowReference:
             cv2.imshow("reference", refImg)
 
-        if frame_idx in centerTarget:
-            x = int(round(centerTarget[frame_idx][0]*subPixelFac))
-            y = int(round(centerTarget[frame_idx][1]*subPixelFac))
+        # if we have board pose, draw board origin on video
+        if frame_idx in rVec:
+            a = cv2.projectPoints(np.zeros((1,3)),rVec[frame_idx],tVec[frame_idx],cameraMatrix,distCoeff)[0][0][0]
+            x = int(round(a[0]*subPixelFac))
+            y = int(round(a[1]*subPixelFac))
             cv2.line(frame, (x,0), (x,int(height*subPixelFac)),(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
             cv2.line(frame, (0,y), (int(width*subPixelFac),y) ,(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
             cv2.circle(frame, (x,y), 3*subPixelFac, (0,255,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
