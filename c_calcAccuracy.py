@@ -210,7 +210,7 @@ def process(inputDir,basePath):
                     # project gaze vectors to reference board (and draw on video)
                     gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]
                     gazeOrigins = [gaze.lGazeOrigin, gaze.rGazeOrigin]
-                    clrs        = [(0,0,255), (255,0,0)]
+                    clrs        = [(0,0,255)       , (255,0,0)]
                     boardPosCam = []
                     for gVec,gOri,clr,eye in zip(gazeVecs,gazeOrigins,clrs,['left','right']):
                         # get gaze vector and point on vector (pupil center) ->
