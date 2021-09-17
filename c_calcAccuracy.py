@@ -219,10 +219,10 @@ def process(inputDir,basePath):
                         gOri    = np.matmul(RtCam,np.append(gOri,1.))
                         # intersect with board -> yield point on board in camera reference frame
                         gBoard  = utils.intersect_plane_ray(boardNormal, boardPoint, gVec, gOri)
+                        boardPosCam.append(gBoard)
                         # project and draw on video
                         pgBoard = cv2.projectPoints(gBoard.reshape(1,3),np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
                         utils.drawOpenCVCircle(frame, pgBoard, 6, clr, -1, subPixelFac)
-                        boardPosCam.append(pgBoard)
                         
                         # transform intersection with board from camera space to board space, draw on reference board
                         if not math.isnan(gBoard[0]):
@@ -230,12 +230,16 @@ def process(inputDir,basePath):
                             reference.draw(refImg, x, y, subPixelFac, clr)
                             offsets[eye] = [x,y]
 
+                    # make average gaze point
+                    # on reference
                     if 'left' in offsets and 'right' in offsets:
                         # on reference
                         offsets['average'] = [(x+y)/2 for x,y in zip(offsets['left'],offsets['right'])]
                         reference.draw(refImg, offsets['average'][0], offsets['average'][1], subPixelFac, (255,0,255), 3)
-                        # on video
-                        pgBoard = [(x+y)/2 for x,y in zip(*boardPosCam)]
+                    # on video
+                    if len(boardPosCam)==2:
+                        gBoard = np.array([(x+y)/2 for x,y in zip(*boardPosCam)]).reshape(1,3)
+                        pgBoard = cv2.projectPoints(gBoard,np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
                         utils.drawOpenCVCircle(frame, pgBoard, 3, (255,0,255), -1, subPixelFac)
 
                     #angleDeviation, dxCm, dyCm = reference.error(gaze.xCm, gaze.yCm)
