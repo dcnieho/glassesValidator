@@ -122,10 +122,10 @@ def process(inputDir,basePath):
                 ts = float(entry['timestamp'])
                 gx = float(entry['vid_gaze_pos_x'])
                 gy = float(entry['vid_gaze_pos_y'])
-                world3D = np.array([entry['3d_gaze_pos_x'],entry['3d_gaze_pos_y'],entry['3d_gaze_pos_z']]).astype('float32')
-                lGazeVec= np.array([entry['l_gaze_dir_x'], entry['l_gaze_dir_y'], entry['l_gaze_dir_z']]).astype('float32')
+                world3D     = np.array([entry['3d_gaze_pos_x'],entry['3d_gaze_pos_y'],entry['3d_gaze_pos_z']]).astype('float32')
+                lGazeVec    = np.array([entry['l_gaze_dir_x'], entry['l_gaze_dir_y'], entry['l_gaze_dir_z']]).astype('float32')
                 lGazeOrigin = np.array([entry['l_gaze_ori_x'], entry['l_gaze_ori_y'], entry['l_gaze_ori_z']]).astype('float32')
-                rGazeVec= np.array([entry['r_gaze_dir_x'], entry['r_gaze_dir_y'], entry['r_gaze_dir_z']]).astype('float32')
+                rGazeVec    = np.array([entry['r_gaze_dir_x'], entry['r_gaze_dir_y'], entry['r_gaze_dir_z']]).astype('float32')
                 rGazeOrigin = np.array([entry['r_gaze_ori_x'], entry['r_gaze_ori_y'], entry['r_gaze_ori_z']]).astype('float32')
                 gaze = Gaze(ts, gx, gy, world3D, lGazeVec, lGazeOrigin, rGazeVec, rGazeOrigin)
 
@@ -151,7 +151,7 @@ def process(inputDir,basePath):
 
     csv_file = open(str(inputDir / 'report.tsv'), 'w')
     csv_writer = csv.writer(csv_file, delimiter='\t', lineterminator='\n')
-    csv_writer.writerow( ['frame_idx', 'timestamp', 'errorDeg', 'dxCm', 'dyCm', 'gaze_ts', 'gaze_x', 'gaze_y'] ) 
+    csv_writer.writerow(['frame_idx', 'timestamp', 'errorDeg', 'dxCm', 'dyCm', 'gaze_ts', 'gaze_x', 'gaze_y']) 
 
     subPixelFac = 8   # for sub-pixel positioning
     stopAllProcessing = False
@@ -184,6 +184,7 @@ def process(inputDir,basePath):
                 # intersect with reference board. Do same for 3D gaze point
                 # (the projection of which coincides with 2D gaze provided by
                 # the eye tracker)
+                offsets = {}
                 if frame_idx in rVec:
                     # get board normal
                     RBoard      = cv2.Rodrigues(rVec[frame_idx])[0]
@@ -203,14 +204,15 @@ def process(inputDir,basePath):
                     g3D /= np.sqrt((g3D**2).sum()) # normalize
                     # find intersection of 3D gaze with board, draw
                     g3Board  = utils.intersect_plane_ray(boardNormal, boardPoint, g3D.flatten(), np.array([0.,0.,0.]))
-                    (x,y,z)=np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
+                    (x,y,z)  = np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
                     reference.draw(refImg, x, y, subPixelFac)
+                    offsets['3D_gaze_point'] = [x,y]
 
                     # project gaze vectors to reference board (and draw on video)
                     gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]
                     gazeOrigins = [gaze.lGazeOrigin, gaze.rGazeOrigin]
                     clrs        = [(0,0,255), (255,0,0)]
-                    for gVec,gOri,clr in zip(gazeVecs,gazeOrigins,clrs):
+                    for gVec,gOri,clr,eye in zip(gazeVecs,gazeOrigins,clrs,['left','right']):
                         # get gaze vector and point on vector (pupil center) ->
                         # transform from ET data coordinate frame into camera coordinate frame
                         gVec    = np.matmul(RtCam,np.append(gVec,1.))
@@ -222,10 +224,14 @@ def process(inputDir,basePath):
                         utils.drawOpenCVCircle(frame, pgBoard, 5, clr, -1, subPixelFac)
                         
                         # transform intersection with board from camera space to board space, draw on reference board
-                        if not math.isnan(pgBoard[0]):
-                            (x,y,z)=np.matmul(RtBoardInv,np.append(gBoard,1.).reshape((4,1))).flatten() # z should be very close to zero
+                        if not math.isnan(gBoard[0]):
+                            (x,y,z) = np.matmul(RtBoardInv,np.append(gBoard,1.).reshape((4,1))).flatten() # z should be very close to zero
                             reference.draw(refImg, x, y, subPixelFac, clr)
+                            offsets[eye] = [x,y]
 
+                    if 'left' in offsets and 'right' in offsets:
+                        offsets['average'] = [(x+y)/2 for x,y in zip(offsets['left'],offsets['right'])]
+                        reference.draw(refImg, offsets['average'][0], offsets['average'][1], subPixelFac, (0,0,0))
 
                     #angleDeviation, dxCm, dyCm = reference.error(gaze.xCm, gaze.yCm)
                     #print('%10d\t%10.3f\t%10.3f\t%10.3f' % ( frame_idx, frame_ts, gaze.confidence, angleDeviation ) )
