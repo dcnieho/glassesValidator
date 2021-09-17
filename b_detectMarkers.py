@@ -32,11 +32,11 @@ def storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,mar
     for key in knownMarkers:
         if key.startswith('t'):
             # 1. determine position on image
-            circlePos = utils.toImagePos(*knownMarkers[key].center, markerBBox,[refBoardWidth,refBoardHeight], subPixelFac=subPixelFac)
+            circlePos = utils.toImagePos(*knownMarkers[key].center, markerBBox,[refBoardWidth,refBoardHeight])
 
             # 2. draw
             clr = tuple([int(i*255) for i in colors.to_rgb(knownMarkers[key].color)[::-1]])  # need BGR color ordering
-            refBoardImage = cv2.circle(refBoardImage, tuple(circlePos), 15*subPixelFac, clr, -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+            utils.drawOpenCVCircle(refBoardImage, circlePos, 15, clr, -1, subPixelFac)
 
     cv2.imwrite(str(inputDir / 'referenceBoard.png'), refBoardImage)
 

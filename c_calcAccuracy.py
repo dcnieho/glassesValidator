@@ -31,9 +31,7 @@ class Gaze:
 
 
     def draw(self, img, subPixelFac=1):
-        if not math.isnan(self.x):
-            p = tuple([int(round(x*subPixelFac)) for x in [self.x,self.y]])
-            cv2.circle(img, p, 8*subPixelFac, (0,255,0), 2, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+        utils.drawOpenCVCircle(img, (self.x, self.y), 8, (0,255,0), 2, subPixelFac)
 
 
 class Reference:
@@ -56,11 +54,11 @@ class Reference:
 
     def draw(self, img, x, y, subPixelFac=1, color=None):
         if not math.isnan(x):
-            xy = tuple(utils.toImagePos(x,y,self.bbox,[self.width, self.height],subPixelFac=subPixelFac))
+            xy = utils.toImagePos(x,y,self.bbox,[self.width, self.height])
             if color is None:
-                cv2.circle(img, xy, 8*subPixelFac, (0, 0 ,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+                utils.drawOpenCVCircle(img, xy, 8, (0,0,0), -1, subPixelFac)
                 color = (0,255,0)
-            cv2.circle(img, xy, 4*subPixelFac, color, -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+            utils.drawOpenCVCircle(img, xy, 4, color, -1, subPixelFac)
 
 class Idx2Timestamp:
     def __init__(self, fileName):
@@ -221,8 +219,7 @@ def process(inputDir,basePath):
                         gBoard  = utils.intersect_plane_ray(boardNormal, boardPoint, gVec, gOri)
                         # project and draw on video
                         pgBoard = cv2.projectPoints(gBoard.reshape(1,3),np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
-                        if not math.isnan(pgBoard[0]):
-                            cv2.circle(frame, tuple([int(round(p*subPixelFac)) for p in pgBoard]), 5*subPixelFac, clr, -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+                        utils.drawOpenCVCircle(frame, pgBoard, 5, clr, -1, subPixelFac)
                         
                         # transform intersection with board from camera space to board space, draw on reference board
                         if not math.isnan(pgBoard[0]):

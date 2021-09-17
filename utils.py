@@ -84,18 +84,16 @@ def toNormPos(x,y,bbox):
     pos     = [(x-bbox[0])/extents[0], math.fabs(y-bbox[1])/extents[1]] # math.fabs to deal with bboxes where (-,-) is bottom left
     return pos
 
-def toImagePos(x,y,bbox,imSize,margin=[0,0],subPixelFac=1):
+def toImagePos(x,y,bbox,imSize,margin=[0,0]):
     # transforms input (x,y) which is in image units (e.g. mm on an aruco board)
     # to a pixel position in the image, given the image's bounding box in
     # image units
     # imSize should be active image area in pixels, excluding margin
-    # takes into account OpenCV's subPixelFac for subpixel positioning (see docs of
-    # e.g. cv2.circle)
 
     # fractional position between bounding box edges, (0,0) in bottom left
     pos = toNormPos(x,y, bbox)
     # turn into int, add margin
-    pos = tuple([int(round(p*s+m)*subPixelFac) for p,s,m in zip(pos,imSize,margin)])
+    pos = [p*s+m for p,s,m in zip(pos,imSize,margin)]
     return pos
 
 def transform(h, x, y):
@@ -167,3 +165,10 @@ def intersect_plane_ray(planeNormal, planePoint, rayDirection, rayPoint, epsilon
     w = rayPoint - planePoint
     si = -planeNormal.dot(w) / ndotu
     return w + si * rayDirection + planePoint
+
+
+def drawOpenCVCircle(img, center_coordinates, radius, color, thickness, subPixelFac):
+    p = [np.round(x*subPixelFac) for x in center_coordinates]
+    if np.all([not math.isnan(x) and abs(x)<np.iinfo(int).max for x in p]):
+        p = tuple([int(x) for x in p])
+        cv2.circle(img, p, radius*subPixelFac, color, thickness, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
