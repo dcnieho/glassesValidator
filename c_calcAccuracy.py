@@ -52,13 +52,13 @@ class Reference:
         vgt = np.array( [ 0, 0, distCm ] )
         return angle_between(vgaze, vgt), vgaze[0], vgaze[1]
 
-    def draw(self, img, x, y, subPixelFac=1, color=None):
+    def draw(self, img, x, y, subPixelFac=1, color=None, size=6):
         if not math.isnan(x):
             xy = utils.toImagePos(x,y,self.bbox,[self.width, self.height])
             if color is None:
-                utils.drawOpenCVCircle(img, xy, 8, (0,0,0), -1, subPixelFac)
-                color = (0,255,0)
-            utils.drawOpenCVCircle(img, xy, 4, color, -1, subPixelFac)
+                utils.drawOpenCVCircle(img, xy, 8, (0,255,0), -1, subPixelFac)
+                color = (0,0,0)
+            utils.drawOpenCVCircle(img, xy, size, color, -1, subPixelFac)
 
 class Idx2Timestamp:
     def __init__(self, fileName):
@@ -176,10 +176,9 @@ def process(inputDir,basePath):
 
                 # draw 3D gaze point as well, should coincide with 2D gaze point
                 a = cv2.projectPoints(np.array(gaze.world3D).reshape(1,3),cameraRotation,cameraPosition,cameraMatrix,distCoeff)[0][0][0]
-                if not math.isnan(a[0]):
-                    cv2.circle(frame, tuple([int(round(p*subPixelFac)) for p in a]), 5*subPixelFac, (0,0,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+                utils.drawOpenCVCircle(frame, a, 6, (0,0,0), -1, subPixelFac)
 
-
+                
                 # if we have pose information, figure out where gaze vectors
                 # intersect with reference board. Do same for 3D gaze point
                 # (the projection of which coincides with 2D gaze provided by
@@ -212,6 +211,7 @@ def process(inputDir,basePath):
                     gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]
                     gazeOrigins = [gaze.lGazeOrigin, gaze.rGazeOrigin]
                     clrs        = [(0,0,255), (255,0,0)]
+                    boardPosCam = []
                     for gVec,gOri,clr,eye in zip(gazeVecs,gazeOrigins,clrs,['left','right']):
                         # get gaze vector and point on vector (pupil center) ->
                         # transform from ET data coordinate frame into camera coordinate frame
@@ -221,7 +221,8 @@ def process(inputDir,basePath):
                         gBoard  = utils.intersect_plane_ray(boardNormal, boardPoint, gVec, gOri)
                         # project and draw on video
                         pgBoard = cv2.projectPoints(gBoard.reshape(1,3),np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
-                        utils.drawOpenCVCircle(frame, pgBoard, 5, clr, -1, subPixelFac)
+                        utils.drawOpenCVCircle(frame, pgBoard, 6, clr, -1, subPixelFac)
+                        boardPosCam.append(pgBoard)
                         
                         # transform intersection with board from camera space to board space, draw on reference board
                         if not math.isnan(gBoard[0]):
@@ -230,8 +231,12 @@ def process(inputDir,basePath):
                             offsets[eye] = [x,y]
 
                     if 'left' in offsets and 'right' in offsets:
+                        # on reference
                         offsets['average'] = [(x+y)/2 for x,y in zip(offsets['left'],offsets['right'])]
-                        reference.draw(refImg, offsets['average'][0], offsets['average'][1], subPixelFac, (0,0,0))
+                        reference.draw(refImg, offsets['average'][0], offsets['average'][1], subPixelFac, (255,0,255), 3)
+                        # on video
+                        pgBoard = [(x+y)/2 for x,y in zip(*boardPosCam)]
+                        utils.drawOpenCVCircle(frame, pgBoard, 3, (255,0,255), -1, subPixelFac)
 
                     #angleDeviation, dxCm, dyCm = reference.error(gaze.xCm, gaze.yCm)
                     #print('%10d\t%10.3f\t%10.3f\t%10.3f' % ( frame_idx, frame_ts, gaze.confidence, angleDeviation ) )
@@ -243,11 +248,11 @@ def process(inputDir,basePath):
         # if we have board pose, draw board origin on video
         if frame_idx in rVec:
             a = cv2.projectPoints(np.zeros((1,3)),rVec[frame_idx],tVec[frame_idx],cameraMatrix,distCoeff)[0][0][0]
+            utils.drawOpenCVCircle(frame, a, 3, (0,255,0), -1, subPixelFac)
             x = int(round(a[0]*subPixelFac))
             y = int(round(a[1]*subPixelFac))
             cv2.line(frame, (x,0), (x,int(height*subPixelFac)),(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
             cv2.line(frame, (0,y), (int(width*subPixelFac),y) ,(0,255,0),1, lineType=cv2.LINE_AA, shift=3)
-            cv2.circle(frame, (x,y), 3*subPixelFac, (0,255,0), -1, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
 
         cv2.rectangle(frame,(0,int(height)),(int(0.25*width),int(height)-30),(0,0,0),-1)
         cv2.putText(frame, '%8.2f [%6d]' % (frame_ts,frame_idx), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255))
