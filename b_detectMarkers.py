@@ -137,7 +137,7 @@ def process(inputDir,basePath):
                        
                 # draw axis indicating board pose (origin and orientation)
                 if nMarkersUsed>0:
-                    cv2.aruco.drawAxis(frame,cameraMatrix, distCoeff,Rvec, Tvec, 2*2.*math.tan(math.radians(.5))*validationSetup['distance']*10)    # arms of grid are 2 poster grid cells
+                    cv2.aruco.drawAxis(frame,cameraMatrix, distCoeff,Rvec, Tvec, 2*2.*math.tan(math.radians(.5))*validationSetup['distance']*10)    # arms of axis are 2 poster grid cells
 
                 # store homography, pose and target location to file
                 writeDat = [frame_idx]
