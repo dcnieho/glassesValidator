@@ -26,8 +26,6 @@ class Gaze:
         self.lGazeOrigin = lGazeOrigin
         self.rGazeVec= rGazeVec
         self.rGazeOrigin = rGazeOrigin
-        self.xCm = -1
-        self.yCm = -1
 
 
     def draw(self, img, subPixelFac=1):
@@ -149,9 +147,17 @@ def process(inputDir,basePath):
         rVec[frame_idx] = row[rvecCols].values
         tVec[frame_idx] = row[tvecCols].values
 
-    csv_file = open(str(inputDir / 'report.tsv'), 'w')
-    csv_writer = csv.writer(csv_file, delimiter='\t', lineterminator='\n')
-    csv_writer.writerow(['frame_idx', 'timestamp', 'errorDeg', 'dxCm', 'dyCm', 'gaze_ts', 'gaze_x', 'gaze_y']) 
+    csv_file = open(str(inputDir / 'gazeWorldPos.tsv'), 'w', newline='')
+    csv_writer = csv.writer(csv_file, delimiter='\t')
+    header = ['frame_idx', 'frame_timestamp', 'gaze_timestamp']
+    header.extend(['planePoint[%d]' % (v) for v in range(3)])
+    header.extend(['planeNormal[%d]' % (v) for v in range(3)])
+    header.extend(['gazePos2DTobii[%d]' % (v) for v in range(3)])
+    header.extend(['gazeOriLeft[%d]' % (v) for v in range(3)])
+    header.extend(['gazePosLeft[%d]' % (v) for v in range(3)])
+    header.extend(['gazeOriRight[%d]' % (v) for v in range(3)])
+    header.extend(['gazePosRight[%d]' % (v) for v in range(3)])
+    csv_writer.writerow(header) 
 
     subPixelFac = 8   # for sub-pixel positioning
     stopAllProcessing = False
@@ -183,8 +189,12 @@ def process(inputDir,basePath):
                 # intersect with reference board. Do same for 3D gaze point
                 # (the projection of which coincides with 2D gaze provided by
                 # the eye tracker)
+                # store positions on marker board plane in camera coordinate frame to
+                # file, along with gaze vector origins in same coordinate frame
                 offsets = {}
                 if frame_idx in rVec:
+                    writeDat = [frame_idx, frame_ts, gaze.ts]
+
                     # get board normal
                     RBoard      = cv2.Rodrigues(rVec[frame_idx])[0]
                     boardNormal = np.matmul(RBoard, np.array([0,0,1.]))
@@ -192,6 +202,8 @@ def process(inputDir,basePath):
                     RtBoard     = np.hstack((RBoard  ,                    tVec[frame_idx].reshape(3,1)))
                     RtBoardInv  = np.hstack((RBoard.T,np.matmul(-RBoard.T,tVec[frame_idx].reshape(3,1))))
                     boardPoint  = np.matmul(RtBoard,np.array([0, 0, 0., 1.]))
+                    writeDat.extend(boardPoint)
+                    writeDat.extend(boardNormal)
 
                     # get transform from ET data's coordinate frame to camera's coordinate frame
                     RCam        = cv2.Rodrigues(cameraRotation)[0]
@@ -202,10 +214,11 @@ def process(inputDir,basePath):
                     g3D = np.matmul(RCam,np.array(gaze.world3D).reshape(3,1))
                     g3D /= np.sqrt((g3D**2).sum()) # normalize
                     # find intersection of 3D gaze with board, draw
-                    g3Board  = utils.intersect_plane_ray(boardNormal, boardPoint, g3D.flatten(), np.array([0.,0.,0.]))
+                    g3Board  = utils.intersect_plane_ray(boardNormal, boardPoint, g3D.flatten(), np.array([0.,0.,0.]))  # vec origin (0,0,0) because we use g3D from camera's view point to be able to recreate Tobii 2D gaze pos data
                     (x,y,z)  = np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
                     reference.draw(refImg, x, y, subPixelFac)
                     offsets['3D_gaze_point'] = [x,y]
+                    writeDat.extend(g3Board)
 
                     # project gaze vectors to reference board (and draw on video)
                     gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]
@@ -217,9 +230,11 @@ def process(inputDir,basePath):
                         # transform from ET data coordinate frame into camera coordinate frame
                         gVec    = np.matmul(RtCam,np.append(gVec,1.))
                         gOri    = np.matmul(RtCam,np.append(gOri,1.))
+                        writeDat.extend(gOri)
                         # intersect with board -> yield point on board in camera reference frame
                         gBoard  = utils.intersect_plane_ray(boardNormal, boardPoint, gVec, gOri)
                         boardPosCam.append(gBoard)
+                        writeDat.extend(gBoard)
                         # project and draw on video
                         pgBoard = cv2.projectPoints(gBoard.reshape(1,3),np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
                         utils.drawOpenCVCircle(frame, pgBoard, 6, clr, -1, subPixelFac)
@@ -242,9 +257,8 @@ def process(inputDir,basePath):
                         pgBoard = cv2.projectPoints(gBoard,np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
                         utils.drawOpenCVCircle(frame, pgBoard, 3, (255,0,255), -1, subPixelFac)
 
-                    #angleDeviation, dxCm, dyCm = reference.error(gaze.xCm, gaze.yCm)
-                    #print('%10d\t%10.3f\t%10.3f\t%10.3f' % ( frame_idx, frame_ts, gaze.confidence, angleDeviation ) )
-                    #csv_writer.writerow([ frame_idx, frame_ts, angleDeviation, dxCm, dyCm, gaze.ts, gaze.x, gaze.y] )
+                    # store gaze-on-plane to csv
+                    csv_writer.writerow( writeDat )
 
         if gShowReference:
             cv2.imshow("reference", refImg)
