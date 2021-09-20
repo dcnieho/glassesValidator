@@ -180,3 +180,9 @@ def drawOpenCVLine(img, start_point, end_point, color, thickness, subPixelFac):
         sp = tuple([int(x) for x in sp])
         ep = tuple([int(x) for x in ep])
         cv2.line(img, sp, ep, color, thickness, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+def drawOpenCVFrameAxis(img, cameraMatrix, distCoeffs, rvec,  tvec,  armLength, thickness, subPixelFac):
+    points = np.vstack((np.zeros((1,3)), armLength*np.eye(3)))
+    points = cv2.projectPoints(points, rvec, tvec, cameraMatrix, distCoeffs)[0]
+    drawOpenCVLine(img, points[0].flatten(), points[1].flatten(), (0, 0, 255), thickness, subPixelFac)
+    drawOpenCVLine(img, points[0].flatten(), points[2].flatten(), (0, 255, 0), thickness, subPixelFac)
+    drawOpenCVLine(img, points[0].flatten(), points[3].flatten(), (255, 0, 0), thickness, subPixelFac)
