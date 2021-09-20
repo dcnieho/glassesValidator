@@ -172,3 +172,11 @@ def drawOpenCVCircle(img, center_coordinates, radius, color, thickness, subPixel
     if np.all([not math.isnan(x) and abs(x)<np.iinfo(int).max for x in p]):
         p = tuple([int(x) for x in p])
         cv2.circle(img, p, radius*subPixelFac, color, thickness, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+
+def drawOpenCVLine(img, start_point, end_point, color, thickness, subPixelFac):
+    sp = [np.round(x*subPixelFac) for x in start_point]
+    ep = [np.round(x*subPixelFac) for x in   end_point]
+    if np.all([not math.isnan(x) and abs(x)<np.iinfo(int).max for x in sp]) and np.all([not math.isnan(x) and abs(x)<np.iinfo(int).max for x in ep]):
+        sp = tuple([int(x) for x in sp])
+        ep = tuple([int(x) for x in ep])
+        cv2.line(img, sp, ep, color, thickness, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
