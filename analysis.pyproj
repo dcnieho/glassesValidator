@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{9d789e13-f9b3-4906-8a0d-025bd6d1f010}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>b_detectMarkers.py</StartupFile>
+    <StartupFile>c_gazeToBoard.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -21,7 +21,7 @@
   <ItemGroup>
     <Compile Include="a_preproc_tobiiG2.py" />
     <Compile Include="b_detectMarkers.py" />
-    <Compile Include="c_calcAccuracy.py" />
+    <Compile Include="c_gazeToBoard.py" />
     <Compile Include="markerBoard\getMarkerImages.py" />
     <Compile Include="mp4analyser\core.py" />
     <Compile Include="mp4analyser\iso.py" />
