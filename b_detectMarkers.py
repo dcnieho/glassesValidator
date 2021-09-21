@@ -9,7 +9,7 @@ import time
 import utils
 
 gFPSFac         = 1
-gDrawAAMarkers  = False     # if true, marker borders are drawn with AA (slower but much more stable, good if checking detection quality)
+gDrawAAMarkers  = True      # if true, marker borders are drawn with AA (slower but much more stable, good if checking detection quality)
 
 
 def storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,markerBBox):
