@@ -8,8 +8,9 @@ from matplotlib import colors
 import time
 import utils
 
-gFPSFac         = 1
-gDrawAAMarkers  = True      # if true, marker borders are drawn with AA (slower but much more stable, good if checking detection quality)
+gVisualizeDetection = True      # if true, draw each frame and overlay info about detected markers and board
+gShowRejectedMarkers= False     # if true, rejected marker candidates are also drawn on frame. Possibly useful for debug
+gFPSFac             = 1
 
 
 def storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,markerBBox):
@@ -43,8 +44,11 @@ def storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,mar
 
 
 def process(inputDir,basePath):
+    global gVisualizeDetection
+    global gShowRejectedMarkers
     global gFPSFac
-    global gDrawAAMarkers
+
+    print('processing: {}'.format(inputDir.name))
 
     configDir = basePath / "config"
     # open file with information about Aruco marker and Gaze target locations
@@ -118,10 +122,10 @@ def process(inputDir,basePath):
                 nMarkersUsed, Rvec, Tvec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
                        
                 # draw axis indicating board pose (origin and orientation)
-                if nMarkersUsed>0:
+                if gVisualizeDetection and nMarkersUsed>0:
                     utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, Rvec, Tvec, armLength, 3, subPixelFac)
 
-                # store homography, pose and target location to file
+                # store pose to file
                 writeDat = [frame_idx]
                 writeDat.append( nMarkersUsed )
                 writeDat.extend( Rvec.flatten() )
@@ -129,28 +133,28 @@ def process(inputDir,basePath):
                 csv_writer.writerow( writeDat )
 
             # if any markers were detected, draw where on the frame
-            if gDrawAAMarkers:
+            if gVisualizeDetection:
                 utils.drawArucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac)
-            else:
-                cv2.aruco.drawDetectedMarkers(frame, corners, ids)
 
         # for debug, can draw rejected markers on frame
-        # cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
+        if gVisualizeDetection and gShowRejectedMarkers:
+            cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
                 
-
-        cv2.imshow(inputDir.name,frame)
-        
-        key = cv2.waitKey(max(1,int(round(ifi-(time.perf_counter()-startTime)*1000)))) & 0xFF
-        if key == ord('q'):
-            # quit fully
-            stopAllProcessing = True
-            break
-        if key == ord('n'):
-            # goto next
-            break
-        if key == ord('s'):
-            # screenshot
-            cv2.imwrite(str(inputDir / ('detect_frame_%d.png' % frame_idx)), frame)
+        if gVisualizeDetection:
+            cv2.imshow(inputDir.name,frame)
+            key = cv2.waitKey(max(1,int(round(ifi-(time.perf_counter()-startTime)*1000)))) & 0xFF
+            if key == ord('q'):
+                # quit fully
+                stopAllProcessing = True
+                break
+            if key == ord('n'):
+                # goto next
+                break
+            if key == ord('s'):
+                # screenshot
+                cv2.imwrite(str(inputDir / ('detect_frame_%d.png' % frame_idx)), frame)
+        elif (frame_idx+1)%100==0:
+            print('  frame {}'.format(frame_idx+1))
         
         frame_idx += 1
 
