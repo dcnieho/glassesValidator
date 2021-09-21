@@ -9,6 +9,7 @@ import time
 import utils
 
 gFPSFac         = 1
+gDrawAAMarkers  = False     # if true, marker borders are drawn with AA (slower but much more stable, good if checking detection quality)
 
 
 def storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,markerBBox):
@@ -43,6 +44,7 @@ def storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,mar
 
 def process(inputDir,basePath):
     global gFPSFac
+    global gDrawAAMarkers
 
     configDir = basePath / "config"
     # open file with information about Aruco marker and Gaze target locations
@@ -128,7 +130,10 @@ def process(inputDir,basePath):
                 csv_writer.writerow( writeDat )
 
             # if any markers were detected, draw where on the frame
-            cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+            if gDrawAAMarkers:
+                utils.drawArucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac)
+            else:
+                cv2.aruco.drawDetectedMarkers(frame, corners, ids)
 
         # for debug, can draw rejected markers on frame
         # cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))

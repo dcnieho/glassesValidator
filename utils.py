@@ -74,6 +74,24 @@ def getKnownMarkers(configDir, validationSetup):
 
     return markers, bbox
 
+def corners_intersection(corners):
+    line1 = ( corners[0], corners[2] )
+    line2 = ( corners[1], corners[3] )
+    xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
+    ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
+
+    def det(a, b):
+        return a[0] * b[1] - a[1] * b[0]
+
+    div = det(xdiff, ydiff)
+    if div == 0:
+       raise Exception('lines do not intersect')
+
+    d = (det(*line1), det(*line2))
+    x = det(d, xdiff) / div
+    y = det(d, ydiff) / div
+    return np.array( [x,y] ).astype('float32')
+
 def toNormPos(x,y,bbox):
     # transforms input (x,y) which is in image units (e.g. mm on an aruco board)
     # to a normalized position in the image, given the image's bounding box in
@@ -180,9 +198,43 @@ def drawOpenCVLine(img, start_point, end_point, color, thickness, subPixelFac):
         sp = tuple([int(x) for x in sp])
         ep = tuple([int(x) for x in ep])
         cv2.line(img, sp, ep, color, thickness, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+        
+def drawOpenCVRectangle(img, p1, p2, color, thickness, subPixelFac):
+    p1 = [np.round(x*subPixelFac) for x in p1]
+    p2 = [np.round(x*subPixelFac) for x in p2]
+    if np.all([not math.isnan(x) and abs(x)<np.iinfo(int).max for x in p1]) and np.all([not math.isnan(x) and abs(x)<np.iinfo(int).max for x in p2]):
+        p1 = tuple([int(x) for x in p1])
+        p2 = tuple([int(x) for x in p2])
+        cv2.rectangle(img, p1, p2, color, thickness, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
+
 def drawOpenCVFrameAxis(img, cameraMatrix, distCoeffs, rvec,  tvec,  armLength, thickness, subPixelFac):
     points = np.vstack((np.zeros((1,3)), armLength*np.eye(3)))
     points = cv2.projectPoints(points, rvec, tvec, cameraMatrix, distCoeffs)[0]
     drawOpenCVLine(img, points[0].flatten(), points[1].flatten(), (0, 0, 255), thickness, subPixelFac)
     drawOpenCVLine(img, points[0].flatten(), points[2].flatten(), (0, 255, 0), thickness, subPixelFac)
     drawOpenCVLine(img, points[0].flatten(), points[3].flatten(), (255, 0, 0), thickness, subPixelFac)
+
+def drawArucoDetectedMarkers(img,corners,ids,borderColor=(0,255,0), drawIDs = True, subPixelFac=1):
+    textColor   = [x for x in borderColor]
+    cornerColor = [x for x in borderColor]
+    textColor[0]  , textColor[1]   = textColor[1]  , textColor[0]       #   text color just sawp G and R
+    cornerColor[1], cornerColor[2] = cornerColor[2], cornerColor[1]     # corner color just sawp G and B
+
+    drawIDs = drawIDs and (ids is not None) and len(ids)>0
+
+    for i in range(0, len(corners)):
+        corner = corners[i][0]
+        # draw marker sides
+        for j in range(4):
+            p0 = corner[j,:]
+            p1 = corner[(j + 1) % 4,:]
+            drawOpenCVLine(img, p0, p1, borderColor, 1, subPixelFac)
+        
+        # draw first corner mark
+        p1 = corner[0]
+        drawOpenCVRectangle(img, corner[0]-3, corner[0]+3, cornerColor, 1, subPixelFac)
+
+        # draw IDs if wanted
+        if drawIDs:
+            c = corners_intersection(corner)
+            cv2.putText(img, str(ids[i][0]), tuple(c), cv2.FONT_HERSHEY_SIMPLEX, 0.6, textColor, 2, lineType=cv2.LINE_AA)
