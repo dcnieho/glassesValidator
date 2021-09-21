@@ -90,12 +90,11 @@ def process(inputDir,basePath):
     fs.release()
 
     # prep output file
-    csv_file = open(str(inputDir / 'transformations.tsv'), 'w', newline='')
+    csv_file = open(str(inputDir / 'boardPose.tsv'), 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
     header = ['frame_idx']
     header.append('poseNMarker')
-    header.extend(['poseRvec[%d]' % (v) for v in range(3)])
-    header.extend(['poseTvec[%d]' % (v) for v in range(3)])
+    header.extend(utils.getXYZLabels(['poseRvec','poseTvec']))
     csv_writer.writerow( header )
 
     frame_idx = 0

@@ -2,8 +2,14 @@ import math
 import cv2
 import numpy as np
 import pandas as pd
+import itertools
 from shlex import shlex
 
+
+def getXYZLabels(stringList,N=3):
+    if type(stringList) is not list:
+        stringList = [stringList]
+    return list(itertools.chain(*[[s+'_%s' % (chr(c)) for c in range(ord('x'), ord('x')+N)] for s in stringList]))
 
 class Marker:
     def __init__(self, key, center, corners=None, color=None):

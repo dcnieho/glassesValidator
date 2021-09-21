@@ -139,7 +139,7 @@ def process(inputDir,basePath):
     # Read pose of marker board
     rVec = {}
     tVec = {}
-    temp = pd.read_csv(str(inputDir / 'transformations.tsv'), delimiter='\t')
+    temp = pd.read_csv(str(inputDir / 'boardPose.tsv'), delimiter='\t')
     rvecCols = [col for col in temp.columns if 'poseRvec' in col]
     tvecCols = [col for col in temp.columns if 'poseTvec' in col]
     for idx, row in temp.iterrows():
@@ -150,14 +150,14 @@ def process(inputDir,basePath):
     csv_file = open(str(inputDir / 'gazeWorldPos.tsv'), 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
     header = ['frame_idx', 'frame_timestamp', 'gaze_timestamp']
-    header.extend(['planePoint[%d]' % (v) for v in range(3)])
-    header.extend(['planeNormal[%d]' % (v) for v in range(3)])
-    header.extend(['gazePos2DTobii[%d]' % (v) for v in range(3)])
-    header.extend(['gazeOriLeft[%d]' % (v) for v in range(3)])
-    header.extend(['gazePosLeft[%d]' % (v) for v in range(3)])
-    header.extend(['gazeOriRight[%d]' % (v) for v in range(3)])
-    header.extend(['gazePosRight[%d]' % (v) for v in range(3)])
-    csv_writer.writerow(header) 
+    header.extend(utils.getXYZLabels(['planePoint','planeNormal']))
+    header.extend(utils.getXYZLabels('gazeCam3D_vidPos'))
+    header.extend(utils.getXYZLabels('gazeBoard2D_vidPos',2))
+    header.extend(utils.getXYZLabels(['gazeOriLeft','gazeCam3DLeft']))
+    header.extend(utils.getXYZLabels('gazeBoard2DLeft',2))
+    header.extend(utils.getXYZLabels(['gazeOriRight','gazeCam3DRight']))
+    header.extend(utils.getXYZLabels('gazeBoard2DRight',2))
+    csv_writer.writerow(header)
 
     subPixelFac = 8   # for sub-pixel positioning
     stopAllProcessing = False
@@ -219,6 +219,7 @@ def process(inputDir,basePath):
                     reference.draw(refImg, x, y, subPixelFac)
                     offsets['3D_gaze_point'] = [x,y]
                     writeDat.extend(g3Board)
+                    writeDat.extend([x,y])
 
                     # project gaze vectors to reference board (and draw on video)
                     gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]
@@ -244,6 +245,9 @@ def process(inputDir,basePath):
                             (x,y,z) = np.matmul(RtBoardInv,np.append(gBoard,1.).reshape((4,1))).flatten() # z should be very close to zero
                             reference.draw(refImg, x, y, subPixelFac, clr)
                             offsets[eye] = [x,y]
+                            writeDat.extend([x,y])
+                        else:
+                            writeDat.extend([np.nan,np.nan])
 
                     # make average gaze point
                     # on reference
