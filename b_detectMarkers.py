@@ -41,27 +41,6 @@ def storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,mar
     cv2.imwrite(str(inputDir / 'referenceBoard.png'), refBoardImage)
 
 
-def estimateTransform(known, detectedCorners, detectedIDs):
-    # collect matching corners in image and in world
-    pts_src = []
-    pts_dst = []
-    for i in range(0, len(detectedIDs)):
-        key = '%d' % detectedIDs[i]
-        if key in known:
-            pts_src.extend( detectedCorners[i][0] )
-            pts_dst.extend(    known[key].corners )
-
-    if len(pts_src) < 4:
-        return None, False
-
-    # compute Homography
-    pts_src = np.float32(pts_src)
-    pts_dst = np.float32(pts_dst)
-    h, _ = cv2.findHomography(pts_src, pts_dst)
-
-    return h, True
-
-
 def process(inputDir,basePath):
     global gFPSFac
 
