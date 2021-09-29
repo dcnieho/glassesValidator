@@ -22,6 +22,7 @@
     <Compile Include="a_preproc_tobiiG2.py" />
     <Compile Include="b_detectMarkers.py" />
     <Compile Include="c_gazeToBoard.py" />
+    <Compile Include="makeMarkerGazeVideo.py" />
     <Compile Include="markerBoard\getMarkerImages.py" />
     <Compile Include="mp4analyser\core.py" />
     <Compile Include="mp4analyser\iso.py" />
