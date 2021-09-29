@@ -45,12 +45,6 @@ class Reference:
     def getImgCopy(self):
         return self.img.copy()
 
-    def error(self, x, y):
-        distCm = 150
-        vgaze = np.array( [ x - self.gtCm[0], y - self.gtCm[1], distCm ] )
-        vgt = np.array( [ 0, 0, distCm ] )
-        return angle_between(vgaze, vgt), vgaze[0], vgaze[1]
-
     def draw(self, img, x, y, subPixelFac=1, color=None, size=6):
         if not math.isnan(x):
             xy = utils.toImagePos(x,y,self.bbox,[self.width, self.height])
@@ -73,12 +67,6 @@ class Idx2Timestamp:
         else:
             sys.stderr.write("[WARNING] %d requested (from %d)\n" % ( idx, len(self.timestamps) ) )
             return self.timestamps[-1]
-
-
-def find_nearest(array, value):
-    array = np.asarray(array)
-    idx = (np.abs(array - value)).argmin()
-    return idx
 
 
 def process(inputDir,basePath):
