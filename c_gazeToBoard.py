@@ -99,7 +99,7 @@ def process(inputDir,basePath):
 
         reference = Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
 
-    i2t = Idx2Timestamp(str(inputDir / 'frame_timestamps.tsv'))
+    i2t = Idx2Timestamp(str(inputDir / 'frameTimestamps.tsv'))
 
     fs = cv2.FileStorage(str(inputDir / "calibration.xml"), cv2.FILE_STORAGE_READ)
     cameraMatrix    = fs.getNode("cameraMatrix").mat()
