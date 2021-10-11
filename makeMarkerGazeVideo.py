@@ -15,7 +15,7 @@ from matplotlib import colors
 
 import utils
 
-gShowVisualization  = True      # if true, draw each frame and overlay info about detected markers and board
+gShowVisualization  = False      # if true, draw each frame and overlay info about detected markers and board
 
 class Gaze:
     def __init__(self, ts, x, y, world3D=None, lGazeVec=None, lGazeOrigin=None, rGazeVec=None, rGazeOrigin=None):
@@ -87,9 +87,14 @@ def process(inputDir,basePath):
     height = vidIn.get(cv2.CAP_PROP_FRAME_HEIGHT)
     fps    = vidIn.get(cv2.CAP_PROP_FPS)
 
-    # open output video file
+    # open output scene video file
     fourcc = cv2.VideoWriter_fourcc(*'avc1')
-    vidOut = cv2.VideoWriter(str(inputDir / 'detectOutput.mp4'), fourcc, fps, (int(width), int(height)))
+    vidOutScene = cv2.VideoWriter(str(inputDir / 'detectOutput_scene.mp4'), fourcc, fps, (int(width), int(height)))
+
+    # open output reference board video file
+    reference = Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')
+    vidOutBoard = cv2.VideoWriter(str(inputDir / 'detectOutput_board.mp4'), fourcc, fps, (reference.width, reference.height))
     
     # get info about markers on our board
     # Aruco markers have numeric keys, gaze targets have keys starting with 't'
@@ -158,6 +163,7 @@ def process(inputDir,basePath):
         ret, frame = vidIn.read()
         if not ret:
             break
+        refImg = reference.getImgCopy()
 
         # detect markers, undistort
         corners, ids, rejectedImgPoints = \
@@ -218,6 +224,7 @@ def process(inputDir,basePath):
                     # find intersection of 3D gaze with board, draw
                     g3Board  = utils.intersect_plane_ray(boardNormal, boardPoint, g3D.flatten(), np.array([0.,0.,0.]))  # vec origin (0,0,0) because we use g3D from camera's view point to be able to recreate Tobii 2D gaze pos data
                     (x,y,z)  = np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
+                    reference.draw(refImg, x, y, subPixelFac)
                     offsets['3D_gaze_point'] = [x,y]
 
                     # project gaze vectors to reference board (and draw on video)
@@ -237,7 +244,19 @@ def process(inputDir,basePath):
                         pgBoard = cv2.projectPoints(gBoard.reshape(1,3),np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
                         utils.drawOpenCVCircle(frame, pgBoard, 6, clr, -1, subPixelFac)
 
-                    # make average gaze point, draw on video
+                        # transform intersection with board from camera space to board space, draw on reference board
+                        if not math.isnan(gBoard[0]):
+                            (x,y,z) = np.matmul(RtBoardInv,np.append(gBoard,1.).reshape((4,1))).flatten() # z should be very close to zero
+                            reference.draw(refImg, x, y, subPixelFac, clr)
+                            offsets[eye] = [x,y]
+
+                    # make average gaze point
+                    # on reference
+                    if 'left' in offsets and 'right' in offsets:
+                        # on reference
+                        offsets['average'] = [(x+y)/2 for x,y in zip(offsets['left'],offsets['right'])]
+                        reference.draw(refImg, offsets['average'][0], offsets['average'][1], subPixelFac, (255,0,255), 3)
+                    # on video
                     if len(boardPosCam)==2:
                         gBoard = np.array([(x+y)/2 for x,y in zip(*boardPosCam)]).reshape(1,3)
                         pgBoard = cv2.projectPoints(gBoard,np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
@@ -248,7 +267,8 @@ def process(inputDir,basePath):
         cv2.putText(frame, '%8.2f [%6d]' % (frame_ts,frame_idx), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255))
 
         # store to file
-        vidOut.write(frame)
+        vidOutScene.write(frame)
+        vidOutBoard.write(refImg)
 
 
         if gShowVisualization:
@@ -267,7 +287,7 @@ def process(inputDir,basePath):
         frame_idx += 1
         
     vidIn.release()
-    vidOut.release()
+    vidOutScene.release()
     cv2.destroyAllWindows()
 
     return stopAllProcessing
