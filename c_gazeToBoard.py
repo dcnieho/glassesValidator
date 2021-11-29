@@ -17,57 +17,6 @@ gShowVisualization  = True      # if true, draw each frame and overlay info abou
 gShowReference      = True
 gFPSFac             = 1
 
-class Gaze:
-    def __init__(self, ts, x, y, world3D=None, lGazeVec=None, lGazeOrigin=None, rGazeVec=None, rGazeOrigin=None):
-        self.ts = ts
-        self.x = x
-        self.y = y
-        self.world3D = world3D
-        self.lGazeVec= lGazeVec
-        self.lGazeOrigin = lGazeOrigin
-        self.rGazeVec= rGazeVec
-        self.rGazeOrigin = rGazeOrigin
-
-
-    def draw(self, img, subPixelFac=1):
-        utils.drawOpenCVCircle(img, (self.x, self.y), 8, (0,255,0), 2, subPixelFac)
-
-
-class Reference:
-    def __init__(self, fileName, markerDir, validationSetup):
-        self.img = cv2.imread(fileName, cv2.IMREAD_COLOR)
-        self.scale = 400./self.img.shape[0]
-        self.img = cv2.resize(self.img, None, fx=self.scale, fy=self.scale, interpolation = cv2.INTER_AREA)
-        self.height, self.width, self.channels = self.img.shape
-        # get marker info
-        _, self.bbox = utils.getKnownMarkers(markerDir, validationSetup)
-
-    def getImgCopy(self):
-        return self.img.copy()
-
-    def draw(self, img, x, y, subPixelFac=1, color=None, size=6):
-        if not math.isnan(x):
-            xy = utils.toImagePos(x,y,self.bbox,[self.width, self.height])
-            if color is None:
-                utils.drawOpenCVCircle(img, xy, 8, (0,255,0), -1, subPixelFac)
-                color = (0,0,0)
-            utils.drawOpenCVCircle(img, xy, size, color, -1, subPixelFac)
-
-class Idx2Timestamp:
-    def __init__(self, fileName):
-        self.timestamps = []
-        with open(fileName, 'r' ) as f:
-            reader = csv.DictReader(f, delimiter='\t')
-            for entry in reader:
-                self.timestamps.append(float(entry['timestamp']))
-
-    def get(self, idx):
-        if idx < len(self.timestamps):
-            return self.timestamps[int(idx)]
-        else:
-            sys.stderr.write("[WARNING] %d requested (from %d)\n" % ( idx, len(self.timestamps) ) )
-            return self.timestamps[-1]
-
 
 def process(inputDir,basePath):
     global gShowVisualization
@@ -85,18 +34,12 @@ def process(inputDir,basePath):
         if gShowReference:
             cv2.namedWindow("reference")
 
-        reference = Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
+        reference = utils.Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
 
-    i2t = Idx2Timestamp(str(inputDir / 'frameTimestamps.tsv'))
+    i2t = utils.Idx2Timestamp(str(inputDir / 'frameTimestamps.tsv'))
     
     # get camera calibration info
-    fs = cv2.FileStorage(str(inputDir / "calibration.xml"), cv2.FILE_STORAGE_READ)
-    cameraMatrix    = fs.getNode("cameraMatrix").mat()
-    distCoeff       = fs.getNode("distCoeff").mat()
-    # camera extrinsics for 3D gaze
-    cameraRotation  = cv2.Rodrigues(fs.getNode("rotation").mat())[0]    # need rotation vector, not rotation matrix
-    cameraPosition  = fs.getNode("position").mat()
-    fs.release()
+    cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")
 
     # open video, if wanted
     if gShowVisualization:
@@ -107,40 +50,10 @@ def process(inputDir,basePath):
         ifi         = 1000./cap.get(cv2.CAP_PROP_FPS)/gFPSFac
 
     # Read gaze data
-    gazes = {}
-    maxFrameIdx = 0
-    with open( str(inputDir / 'gazeData.tsv'), 'r' ) as f:
-        reader = csv.DictReader(f, delimiter='\t')
-        for entry in reader:
-            frame_idx = int(float(entry['frame_idx']))
-            ts = float(entry['timestamp'])
-            gx = float(entry['vid_gaze_pos_x'])
-            gy = float(entry['vid_gaze_pos_y'])
-            world3D     = np.array([entry['3d_gaze_pos_x'],entry['3d_gaze_pos_y'],entry['3d_gaze_pos_z']]).astype('float32')
-            lGazeVec    = np.array([entry['l_gaze_dir_x'], entry['l_gaze_dir_y'], entry['l_gaze_dir_z']]).astype('float32')
-            lGazeOrigin = np.array([entry['l_gaze_ori_x'], entry['l_gaze_ori_y'], entry['l_gaze_ori_z']]).astype('float32')
-            rGazeVec    = np.array([entry['r_gaze_dir_x'], entry['r_gaze_dir_y'], entry['r_gaze_dir_z']]).astype('float32')
-            rGazeOrigin = np.array([entry['r_gaze_ori_x'], entry['r_gaze_ori_y'], entry['r_gaze_ori_z']]).astype('float32')
-            gaze = Gaze(ts, gx, gy, world3D, lGazeVec, lGazeOrigin, rGazeVec, rGazeOrigin)
-
-            if frame_idx in gazes:
-                gazes[frame_idx].append(gaze)
-            else:
-                gazes[frame_idx] = [gaze]
-
-            maxFrameIdx = max(maxFrameIdx,frame_idx)
-
+    gazes,maxFrameIdx = utils.getGazeData(inputDir / 'gazeData.tsv')
 
     # Read pose of marker board
-    rVec = {}
-    tVec = {}
-    temp = pd.read_csv(str(inputDir / 'boardPose.tsv'), delimiter='\t')
-    rvecCols = [col for col in temp.columns if 'poseRvec' in col]
-    tvecCols = [col for col in temp.columns if 'poseTvec' in col]
-    for idx, row in temp.iterrows():
-        frame_idx = int(row['frame_idx'])
-        rVec[frame_idx] = row[rvecCols].values
-        tVec[frame_idx] = row[tvecCols].values
+    rVec,tVec = utils.getMarkerBoardPose(inputDir / 'boardPose.tsv')
 
     csv_file = open(str(inputDir / 'gazeWorldPos.tsv'), 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')

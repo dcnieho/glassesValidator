@@ -2,6 +2,7 @@ import math
 import cv2
 import numpy as np
 import pandas as pd
+import csv
 import itertools
 from shlex import shlex
 
@@ -214,6 +215,7 @@ def drawOpenCVRectangle(img, p1, p2, color, thickness, subPixelFac):
         cv2.rectangle(img, p1, p2, color, thickness, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
 
 def drawOpenCVFrameAxis(img, cameraMatrix, distCoeffs, rvec,  tvec,  armLength, thickness, subPixelFac):
+    # same as the openCV function, but with anti-aliasing for a nicer image if subPixelFac>1
     points = np.vstack((np.zeros((1,3)), armLength*np.eye(3)))
     points = cv2.projectPoints(points, rvec, tvec, cameraMatrix, distCoeffs)[0]
     drawOpenCVLine(img, points[0].flatten(), points[1].flatten(), (0, 0, 255), thickness, subPixelFac)
@@ -221,6 +223,7 @@ def drawOpenCVFrameAxis(img, cameraMatrix, distCoeffs, rvec,  tvec,  armLength, 
     drawOpenCVLine(img, points[0].flatten(), points[3].flatten(), (255, 0, 0), thickness, subPixelFac)
 
 def drawArucoDetectedMarkers(img,corners,ids,borderColor=(0,255,0), drawIDs = True, subPixelFac=1):
+    # same as the openCV function, but with anti-aliasing for a (much) nicer image if subPixelFac>1
     textColor   = [x for x in borderColor]
     cornerColor = [x for x in borderColor]
     textColor[0]  , textColor[1]   = textColor[1]  , textColor[0]       #   text color just sawp G and R
@@ -244,3 +247,106 @@ def drawArucoDetectedMarkers(img,corners,ids,borderColor=(0,255,0), drawIDs = Tr
         if drawIDs:
             c = corners_intersection(corner)
             cv2.putText(img, str(ids[i][0]), tuple(c), cv2.FONT_HERSHEY_SIMPLEX, 0.6, textColor, 2, lineType=cv2.LINE_AA)
+
+
+
+class Gaze:
+    def __init__(self, ts, x, y, world3D=None, lGazeVec=None, lGazeOrigin=None, rGazeVec=None, rGazeOrigin=None):
+        self.ts = ts
+        self.x = x
+        self.y = y
+        self.world3D = world3D
+        self.lGazeVec= lGazeVec
+        self.lGazeOrigin = lGazeOrigin
+        self.rGazeVec= rGazeVec
+        self.rGazeOrigin = rGazeOrigin
+
+
+    def draw(self, img, subPixelFac=1):
+        drawOpenCVCircle(img, (self.x, self.y), 8, (0,255,0), 2, subPixelFac)
+
+
+class Reference:
+    def __init__(self, fileName, markerDir, validationSetup):
+        self.img = cv2.imread(fileName, cv2.IMREAD_COLOR)
+        self.scale = 400./self.img.shape[0]
+        self.img = cv2.resize(self.img, None, fx=self.scale, fy=self.scale, interpolation = cv2.INTER_AREA)
+        self.height, self.width, self.channels = self.img.shape
+        # get marker info
+        _, self.bbox = getKnownMarkers(markerDir, validationSetup)
+
+    def getImgCopy(self):
+        return self.img.copy()
+
+    def draw(self, img, x, y, subPixelFac=1, color=None, size=6):
+        if not math.isnan(x):
+            xy = toImagePos(x,y,self.bbox,[self.width, self.height])
+            if color is None:
+                drawOpenCVCircle(img, xy, 8, (0,255,0), -1, subPixelFac)
+                color = (0,0,0)
+            drawOpenCVCircle(img, xy, size, color, -1, subPixelFac)
+
+class Idx2Timestamp:
+    def __init__(self, fileName):
+        self.timestamps = []
+        with open(fileName, 'r' ) as f:
+            reader = csv.DictReader(f, delimiter='\t')
+            for entry in reader:
+                self.timestamps.append(float(entry['timestamp']))
+
+    def get(self, idx):
+        if idx < len(self.timestamps):
+            return self.timestamps[int(idx)]
+        else:
+            sys.stderr.write("[WARNING] %d requested (from %d)\n" % ( idx, len(self.timestamps) ) )
+            return self.timestamps[-1]
+
+def getCameraCalibrationInfo(fileName):
+    fs = cv2.FileStorage(str(fileName), cv2.FILE_STORAGE_READ)
+    cameraMatrix    = fs.getNode("cameraMatrix").mat()
+    distCoeff       = fs.getNode("distCoeff").mat()
+    # camera extrinsics for 3D gaze
+    cameraRotation  = cv2.Rodrigues(fs.getNode("rotation").mat())[0]    # need rotation vector, not rotation matrix
+    cameraPosition  = fs.getNode("position").mat()
+    fs.release()
+
+    return (cameraMatrix,distCoeff,cameraRotation,cameraPosition)
+
+def getGazeData(fileName):
+    gazes = {}
+    maxFrameIdx = 0
+    with open( str(fileName), 'r' ) as f:
+        reader = csv.DictReader(f, delimiter='\t')
+        for entry in reader:
+            frame_idx = int(float(entry['frame_idx']))
+            ts = float(entry['timestamp'])
+            gx = float(entry['vid_gaze_pos_x'])
+            gy = float(entry['vid_gaze_pos_y'])
+            world3D     = np.array([entry['3d_gaze_pos_x'],entry['3d_gaze_pos_y'],entry['3d_gaze_pos_z']]).astype('float32')
+            lGazeVec    = np.array([entry['l_gaze_dir_x'], entry['l_gaze_dir_y'], entry['l_gaze_dir_z']]).astype('float32')
+            lGazeOrigin = np.array([entry['l_gaze_ori_x'], entry['l_gaze_ori_y'], entry['l_gaze_ori_z']]).astype('float32')
+            rGazeVec    = np.array([entry['r_gaze_dir_x'], entry['r_gaze_dir_y'], entry['r_gaze_dir_z']]).astype('float32')
+            rGazeOrigin = np.array([entry['r_gaze_ori_x'], entry['r_gaze_ori_y'], entry['r_gaze_ori_z']]).astype('float32')
+            gaze = Gaze(ts, gx, gy, world3D, lGazeVec, lGazeOrigin, rGazeVec, rGazeOrigin)
+
+            if frame_idx in gazes:
+                gazes[frame_idx].append(gaze)
+            else:
+                gazes[frame_idx] = [gaze]
+
+            maxFrameIdx = max(maxFrameIdx,frame_idx)
+
+    return gazes,maxFrameIdx
+
+def getMarkerBoardPose(fileName):
+    rVec = {}
+    tVec = {}
+    temp = pd.read_csv(str(fileName), delimiter='\t')
+    rvecCols = [col for col in temp.columns if 'poseRvec' in col]
+    tvecCols = [col for col in temp.columns if 'poseTvec' in col]
+    for idx, row in temp.iterrows():
+        frame_idx = int(row['frame_idx'])
+        rVec[frame_idx] = row[rvecCols].values
+        tVec[frame_idx] = row[tvecCols].values
+
+    return rVec,tVec
