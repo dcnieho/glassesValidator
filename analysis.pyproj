@@ -34,7 +34,6 @@
     <Compile Include="utils.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="viewer.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="config\markerPositions.csv" />
