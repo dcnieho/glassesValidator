@@ -60,7 +60,7 @@ def process(inputDir,basePath):
     # 4. mediaplayer for sound playback, brief wait or get_pts() below crashes
     ff_opts = {'vn' : False, 'volume': 1. }#{'sync':'video', 'framedrop':True}
     player = MediaPlayer(str(inputDir / 'worldCamera.mp4'), ff_opts=ff_opts)
-    time.sleep(0.01)
+    time.sleep(0.1)
 
     # show
     lastIdx = None
