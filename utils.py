@@ -395,6 +395,19 @@ def getCameraCalibrationInfo(fileName):
 
     return (cameraMatrix,distCoeff,cameraRotation,cameraPosition)
 
+def getAnalysisInterval(fileName):
+    analyzeStartFrame = None
+    analyzeEndFrame   = None
+    if fileName.is_file():
+        with open(fileName, 'r' ) as f:
+            reader = csv.DictReader(f, delimiter='\t')
+            for entry in reader:
+                analyzeStartFrame = int(float(entry['start_frame']))
+                analyzeEndFrame = int(float(entry['end_frame']))
+                break # just read first line
+
+    return analyzeStartFrame,analyzeEndFrame
+
 def getGazeData(fileName):
     gazes = {}
     maxFrameIdx = 0

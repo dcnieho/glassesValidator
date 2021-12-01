@@ -45,6 +45,9 @@ def process(inputDir,basePath):
     # get camera calibration info
     cameraMatrix,distCoeff = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")[0:2]
 
+    # get interval coded to be analyzed, if available
+    analyzeStartFrame,analyzeEndFrame = utils.getAnalysisInterval(inputDir / "analysisInterval.tsv")
+
     # set up video playback
     # 1. OpenCV for showing the frame
     cv2.namedWindow("frame",cv2.WINDOW_NORMAL)
@@ -102,7 +105,11 @@ def process(inputDir,basePath):
                 if gShowReference:
                     gazesWorld[frame_idx][0].drawOnReferencePlane(refImg, reference, subPixelFac)
 
-            cv2.rectangle(frame,(0,int(height)),(int(0.25*width),int(height)-30), (0,0,0), -1)
+            if analyzeStartFrame is not None and analyzeEndFrame is not None and frame_idx>=analyzeStartFrame and frame_idx<=analyzeEndFrame:
+                frameClr = (0,0,255)
+            else:
+                frameClr = (0,0,0)
+            cv2.rectangle(frame,(0,int(height)),(int(0.25*width),int(height)-30), frameClr, -1)
             cv2.putText(frame, ("%8.2f [%6d]" % (audio_pts, frame_idx) ), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
 
             
@@ -126,6 +133,12 @@ def process(inputDir,basePath):
         elif key == ord('p'):
             player.toggle_pause()
 
+        elif key == ord('s'):
+            analyzeStartFrame = frame_idx
+
+        elif key == ord('e'):
+            analyzeEndFrame = frame_idx
+
         elif key == ord('q'):
             # quit fully
             stopAllProcessing = True
@@ -136,6 +149,14 @@ def process(inputDir,basePath):
 
     cap.release()
     cv2.destroyAllWindows()
+
+    # store coded interval to file, if available
+    if analyzeStartFrame is not None and analyzeEndFrame is not None:
+        with open(str(inputDir / 'analysisInterval.tsv'), 'w', newline='') as f:
+            csv_writer = csv.writer(f, delimiter='\t')
+            csv_writer.writerow(['start_frame', 'end_frame'])
+            csv_writer.writerow([analyzeStartFrame, analyzeEndFrame])
+
     return stopAllProcessing
 
 
