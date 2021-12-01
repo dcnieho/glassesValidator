@@ -51,6 +51,8 @@ def process(inputDir,basePath):
     cap     = cv2.VideoCapture( str(inputDir / 'worldCamera.mp4') )
     width   = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height  = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    frate   = cap.get(cv2.CAP_PROP_FPS)
+
     # 2. if wanted, second OpenCV window for reference board
     if gShowReference and hasWorldGaze:
         cv2.namedWindow("reference")
@@ -70,7 +72,7 @@ def process(inputDir,basePath):
     while True:
         frame, val = player.get_frame(force_refresh=True,show=False)
         if val == 'eof':
-            break
+            player.toggle_pause()
 
         audio_pts = player.get_pts()    # this is audio_pts because we're in default audio sync mode
 
@@ -112,21 +114,23 @@ def process(inputDir,basePath):
             lastIdx = frame_idx
 
         key = cv2.waitKey(1) & 0xFF
-        if key == ord('k'):
-            player.seek(audio_pts+10, relative=False)
         if key == ord('j'):
-            player.seek(max(0,audio_pts-10), relative=False)
-        if key == ord('l'):
-            player.seek(audio_pts+5, relative=False)
-        if key == ord('h'):
-            player.seek(max(0,audio_pts-5), relative=False)
-        if key == ord('p'):
+            player.seek(max(0,audio_pts-1/frate), relative=False)   # back one frame
+        elif key == ord('k'):
+            player.seek(max(0,audio_pts+1/frate), relative=False)   # forward one frame
+        elif key == ord('h'):
+            player.seek(max(0,audio_pts-1), relative=False)         # back one second
+        elif key == ord('l'):
+            player.seek(audio_pts+1, relative=False)                # forward one second
+
+        elif key == ord('p'):
             player.toggle_pause()
-        if key == ord('q'):
+
+        elif key == ord('q'):
             # quit fully
             stopAllProcessing = True
             break
-        if key == ord('n'):
+        elif key == ord('n'):
             # goto next
             break
 
