@@ -5,6 +5,7 @@ import pandas as pd
 import csv
 import itertools
 from shlex import shlex
+import bisect
 
 
 def getXYZLabels(stringList,N=3):
@@ -286,6 +287,74 @@ class Reference:
                 color = (0,0,0)
             drawOpenCVCircle(img, xy, size, color, -1, subPixelFac)
 
+class GazeWorld:
+    def __init__(self, ts, frame_ts, planePoint, planeNormal, gaze3D=None, gaze2D=None, lGazeOrigin=None, lGaze3D=None, lGaze2D=None, rGazeOrigin=None, rGaze3D=None, rGaze2D=None):
+        # 3D gaze (and plane info) is in world space, w.r.t. scene camera
+        # 2D gaze is on the reference board
+        self.ts = ts
+        self.frame_ts = frame_ts
+        self.planePoint = planePoint
+        self.planeNormal = planeNormal
+        self.gaze3D = gaze3D            # 3D gaze point on plane
+        self.gaze2D = gaze2D            # 2D gaze (3D projected to plane)
+        self.lGazeOrigin = lGazeOrigin
+        self.lGaze3D = lGaze3D          # 3D gaze point on plane
+        self.lGaze2D = lGaze2D          # 2D gaze (gaze vector left eye projected to plane)
+        self.rGazeOrigin = rGazeOrigin
+        self.rGaze3D = rGaze3D          # 3D gaze point on plane
+        self.rGaze2D = rGaze2D          # 2D gaze (gaze vector right eye projected to plane)
+
+    def _getWriteDataImpl(self,dat,numel):
+        if dat is None:
+            return [math.nan for x in range(numel)]
+        else:
+            return dat
+
+    def getWriteData(self):
+        writeData = [self.frame_ts, self.ts]
+        writeData.extend(self.planePoint)
+        writeData.extend(self.planeNormal)
+        writeData.extend(self._getWriteDataImpl(self.gaze3D,3))
+        writeData.extend(self._getWriteDataImpl(self.gaze2D,2))
+        writeData.extend(self._getWriteDataImpl(self.lGazeOrigin,3))
+        writeData.extend(self._getWriteDataImpl(self.lGaze3D,3))
+        writeData.extend(self._getWriteDataImpl(self.lGaze2D,2))
+        writeData.extend(self._getWriteDataImpl(self.rGazeOrigin,3))
+        writeData.extend(self._getWriteDataImpl(self.rGaze3D,3))
+        writeData.extend(self._getWriteDataImpl(self.rGaze2D,2))
+
+        return writeData
+
+    def drawOnWorldVideo(self, img, cameraMatrix, distCoeff, subPixelFac=1):
+        # project to camera, display
+        # left eye
+        if self.lGaze3D is not None:
+            pPointCam = cv2.projectPoints(self.lGaze3D.reshape(1,3),np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
+            drawOpenCVCircle(img, pPointCam, 3, (0,0,255), -1, subPixelFac)
+        # right eye
+        if self.rGaze3D is not None:
+            pPointCam = cv2.projectPoints(self.rGaze3D.reshape(1,3),np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
+            drawOpenCVCircle(img, pPointCam, 3, (255,0,0), -1, subPixelFac)
+        # average
+        if (self.lGaze3D is not None) and (self.rGaze3D is not None):
+            pointCam  = np.array([(x+y)/2 for x,y in zip(self.lGaze3D,self.rGaze3D)]).reshape(1,3)
+            pPointCam = cv2.projectPoints(pointCam,np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
+            if not math.isnan(pPointCam[0]):
+                drawOpenCVCircle(img, pPointCam, 6, (255,0,255), -1, subPixelFac)
+
+    def drawOnReferencePlane(self, img, reference, subPixelFac=1):
+        # left eye
+        if self.lGaze2D is not None:
+            reference.draw(img, self.lGaze2D[0],self.lGaze2D[1], subPixelFac, (0,0,255), 3)
+        # right eye
+        if self.rGaze2D is not None:
+            reference.draw(img, self.rGaze2D[0],self.rGaze2D[1], subPixelFac, (255,0,0), 3)
+        # average
+        if (self.lGaze2D is not None) and (self.rGaze2D is not None):
+            average = np.array([(x+y)/2 for x,y in zip(self.lGaze2D,self.rGaze2D)])
+            if not math.isnan(average[0]):
+                reference.draw(img, average[0], average[1], subPixelFac, (255,0,255))
+
 class Idx2Timestamp:
     def __init__(self, fileName):
         self.timestamps = []
@@ -300,6 +369,20 @@ class Idx2Timestamp:
         else:
             sys.stderr.write("[WARNING] %d requested (from %d)\n" % ( idx, len(self.timestamps) ) )
             return self.timestamps[-1]
+
+class Timestamp2Index:
+    def __init__(self, fileName):
+        self.indexes = []
+        self.timestamps = []
+        with open(fileName, 'r' ) as f:
+            reader = csv.DictReader(f, delimiter='\t')
+            for entry in reader:
+                self.indexes.append(int(float(entry['frame_idx'])))
+                self.timestamps.append(float(entry['timestamp']))
+
+    def find(self, ts):
+        idx = min(bisect.bisect(self.timestamps, ts), len(self.indexes)-1)
+        return self.indexes[idx]
 
 def getCameraCalibrationInfo(fileName):
     fs = cv2.FileStorage(str(fileName), cv2.FILE_STORAGE_READ)
@@ -337,6 +420,33 @@ def getGazeData(fileName):
             maxFrameIdx = max(maxFrameIdx,frame_idx)
 
     return gazes,maxFrameIdx
+
+def getGazeWorldData(fileName):
+    gazes = {}
+    with open( str(fileName), 'r' ) as f:
+        reader = csv.DictReader(f, delimiter='\t')
+        for entry in reader:
+            frame_idx = int(float(entry['frame_idx']))
+            frame_ts = float(entry['frame_timestamp'])
+            ts = float(entry['gaze_timestamp'])
+            planePoint    = np.array([entry[x] for x in getXYZLabels('planePoint')]).astype('float32')
+            planeNormal   = np.array([entry[x] for x in getXYZLabels('planeNormal')]).astype('float32')
+            gaze3D        = np.array([entry[x] for x in getXYZLabels('gazeCam3D_vidPos')]).astype('float32')
+            gaze2D        = np.array([entry[x] for x in getXYZLabels('gazeBoard2D_vidPos',2)]).astype('float32')
+            lGazeOrigin   = np.array([entry[x] for x in getXYZLabels('gazeOriLeft')]).astype('float32')
+            lGaze3D       = np.array([entry[x] for x in getXYZLabels('gazeCam3DLeft')]).astype('float32')
+            lGaze2D       = np.array([entry[x] for x in getXYZLabels('gazeBoard2DLeft',2)]).astype('float32')
+            rGazeOrigin   = np.array([entry[x] for x in getXYZLabels('gazeOriRight')]).astype('float32')
+            rGaze3D       = np.array([entry[x] for x in getXYZLabels('gazeCam3DRight')]).astype('float32')
+            rGaze2D       = np.array([entry[x] for x in getXYZLabels('gazeBoard2DRight',2)]).astype('float32')
+            gaze = GazeWorld(ts, frame_ts, planePoint, planeNormal, gaze3D, gaze2D, lGazeOrigin, lGaze3D, lGaze2D, rGazeOrigin, rGaze3D, rGaze2D)
+
+            if frame_idx in gazes:
+                gazes[frame_idx].append(gaze)
+            else:
+                gazes[frame_idx] = [gaze]
+
+    return gazes
 
 def getMarkerBoardPose(fileName):
     rVec = {}
