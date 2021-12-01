@@ -38,7 +38,7 @@ def process(inputDir,basePath):
 
     # Read gaze on board data, if available
     hasWorldGaze = False
-    if (inputDir / 'boardPose.tsv').is_file():
+    if (inputDir / 'gazeWorldPos.tsv').is_file():
         gazesWorld = utils.getGazeWorldData(inputDir / 'gazeWorldPos.tsv')
         hasWorldGaze = True
 
