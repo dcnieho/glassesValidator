@@ -15,7 +15,7 @@ from matplotlib import colors
 
 import utils
 
-gShowVisualization  = False      # if true, draw each frame and overlay info about detected markers and board
+gShowVisualization  = False     # if true, draw each frame and overlay info about detected markers and board
 
 
 def process(inputDir,basePath):
@@ -41,7 +41,7 @@ def process(inputDir,basePath):
     vidOutScene = cv2.VideoWriter(str(inputDir / 'detectOutput_scene.mp4'), fourcc, fps, (int(width), int(height)))
 
     # open output reference board video file
-    reference = Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
+    reference = utils.Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
     fourcc = cv2.VideoWriter_fourcc(*'avc1')
     vidOutBoard = cv2.VideoWriter(str(inputDir / 'detectOutput_board.mp4'), fourcc, fps, (reference.width, reference.height))
     
@@ -68,15 +68,10 @@ def process(inputDir,basePath):
     parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX;
 
     # get frame timestamps lookup file
-    i2t = Idx2Timestamp(str(inputDir / 'frameTimestamps.tsv'))
+    i2t = utils.Idx2Timestamp(str(inputDir / 'frameTimestamps.tsv'))
 
-    fs = cv2.FileStorage(str(inputDir / "calibration.xml"), cv2.FILE_STORAGE_READ)
-    cameraMatrix    = fs.getNode("cameraMatrix").mat()
-    distCoeff       = fs.getNode("distCoeff").mat()
-    # camera extrinsics for 3D gaze
-    cameraRotation  = cv2.Rodrigues(fs.getNode("rotation").mat())[0]    # need rotation vector, not rotation matrix
-    cameraPosition  = fs.getNode("position").mat()
-    fs.release()
+    # get camera calibration info
+    cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")
 
     # Read gaze data
     gazes,maxFrameIdx = utils.getGazeData(inputDir / 'gazeData.tsv')
@@ -112,7 +107,6 @@ def process(inputDir,basePath):
             utils.drawArucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac)
         
         # process gaze
-        frame_ts  = i2t.get(frame_idx)
         if frame_idx in gazes:
             for gaze in gazes[frame_idx]:
 
@@ -122,74 +116,21 @@ def process(inputDir,basePath):
                 # draw 3D gaze point as well, should coincide with 2D gaze point
                 a = cv2.projectPoints(np.array(gaze.world3D).reshape(1,3),cameraRotation,cameraPosition,cameraMatrix,distCoeff)[0][0][0]
                 utils.drawOpenCVCircle(frame, a, 6, (0,0,0), -1, subPixelFac)
-
                 
                 # if we have pose information, figure out where gaze vectors
                 # intersect with reference board. Do same for 3D gaze point
                 # (the projection of which coincides with 2D gaze provided by
                 # the eye tracker)
-                # store positions on marker board plane in camera coordinate frame to
-                # file, along with gaze vector origins in same coordinate frame
-                offsets = {}
                 if gotPose:
-                    # get board normal
-                    RBoard      = cv2.Rodrigues(rVec)[0]
-                    boardNormal = np.matmul(RBoard, np.array([0,0,1.]))
-                    # get point on board (just use origin)
-                    RtBoard     = np.hstack((RBoard  ,                    tVec.reshape(3,1)))
-                    RtBoardInv  = np.hstack((RBoard.T,np.matmul(-RBoard.T,tVec.reshape(3,1))))
-                    boardPoint  = np.matmul(RtBoard,np.array([0, 0, 0., 1.]))
+                    gazeWorld = utils.gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition)
 
-                    # get transform from ET data's coordinate frame to camera's coordinate frame
-                    RCam        = cv2.Rodrigues(cameraRotation)[0]
-                    RtCam       = np.hstack((RCam, cameraPosition))
-
-                    # project 3D gaze to reference board
-                    # turn 3D gaze point into ray from camera
-                    g3D = np.matmul(RCam,np.array(gaze.world3D).reshape(3,1))
-                    g3D /= np.sqrt((g3D**2).sum()) # normalize
-                    # find intersection of 3D gaze with board, draw
-                    g3Board  = utils.intersect_plane_ray(boardNormal, boardPoint, g3D.flatten(), np.array([0.,0.,0.]))  # vec origin (0,0,0) because we use g3D from camera's view point to be able to recreate Tobii 2D gaze pos data
-                    (x,y,z)  = np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
-                    reference.draw(refImg, x, y, subPixelFac)
-                    offsets['3D_gaze_point'] = [x,y]
-
-                    # project gaze vectors to reference board (and draw on video)
-                    gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]
-                    gazeOrigins = [gaze.lGazeOrigin, gaze.rGazeOrigin]
-                    clrs        = [(0,0,255)       , (255,0,0)]
-                    boardPosCam = []
-                    for gVec,gOri,clr,eye in zip(gazeVecs,gazeOrigins,clrs,['left','right']):
-                        # get gaze vector and point on vector (pupil center) ->
-                        # transform from ET data coordinate frame into camera coordinate frame
-                        gVec    = np.matmul(RtCam,np.append(gVec,1.))
-                        gOri    = np.matmul(RtCam,np.append(gOri,1.))
-                        # intersect with board -> yield point on board in camera reference frame
-                        gBoard  = utils.intersect_plane_ray(boardNormal, boardPoint, gVec, gOri)
-                        boardPosCam.append(gBoard)
-                        # project and draw on video
-                        pgBoard = cv2.projectPoints(gBoard.reshape(1,3),np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
-                        utils.drawOpenCVCircle(frame, pgBoard, 6, clr, -1, subPixelFac)
-
-                        # transform intersection with board from camera space to board space, draw on reference board
-                        if not math.isnan(gBoard[0]):
-                            (x,y,z) = np.matmul(RtBoardInv,np.append(gBoard,1.).reshape((4,1))).flatten() # z should be very close to zero
-                            reference.draw(refImg, x, y, subPixelFac, clr)
-                            offsets[eye] = [x,y]
-
-                    # make average gaze point
-                    # on reference
-                    if 'left' in offsets and 'right' in offsets:
-                        # on reference
-                        offsets['average'] = [(x+y)/2 for x,y in zip(offsets['left'],offsets['right'])]
-                        reference.draw(refImg, offsets['average'][0], offsets['average'][1], subPixelFac, (255,0,255), 3)
-                    # on video
-                    if len(boardPosCam)==2:
-                        gBoard = np.array([(x+y)/2 for x,y in zip(*boardPosCam)]).reshape(1,3)
-                        pgBoard = cv2.projectPoints(gBoard,np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
-                        utils.drawOpenCVCircle(frame, pgBoard, 3, (255,0,255), -1, subPixelFac)
+                    # draw gazes on video and reference image
+                    if gShowVisualization:
+                        gazeWorld.drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
+                        gazeWorld.drawOnReferencePlane(refImg, reference, subPixelFac)
         
         # annotate frame
+        frame_ts  = i2t.get(frame_idx)
         cv2.rectangle(frame,(0,int(height)),(int(0.25*width),int(height)-30),(0,0,0),-1)
         cv2.putText(frame, '%8.2f [%6d]' % (frame_ts,frame_idx), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255))
 

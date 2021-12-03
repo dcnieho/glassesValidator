@@ -252,8 +252,9 @@ def drawArucoDetectedMarkers(img,corners,ids,borderColor=(0,255,0), drawIDs = Tr
 
 
 class Gaze:
-    def __init__(self, ts, x, y, world3D=None, lGazeVec=None, lGazeOrigin=None, rGazeVec=None, rGazeOrigin=None):
+    def __init__(self, ts, x, y, world3D=None, lGazeVec=None, lGazeOrigin=None, rGazeVec=None, rGazeOrigin=None, frame_ts=None):
         self.ts = ts
+        self.frame_ts = frame_ts
         self.x = x
         self.y = y
         self.world3D = world3D
@@ -416,6 +417,7 @@ def getGazeData(fileName):
         for entry in reader:
             frame_idx = int(float(entry['frame_idx']))
             ts = float(entry['timestamp'])
+            frame_ts = float(entry['video_timestamp'])
             gx = float(entry['vid_gaze_pos_x'])
             gy = float(entry['vid_gaze_pos_y'])
             world3D     = np.array([entry['3d_gaze_pos_x'],entry['3d_gaze_pos_y'],entry['3d_gaze_pos_z']]).astype('float32')
@@ -423,7 +425,7 @@ def getGazeData(fileName):
             lGazeOrigin = np.array([entry['l_gaze_ori_x'], entry['l_gaze_ori_y'], entry['l_gaze_ori_z']]).astype('float32')
             rGazeVec    = np.array([entry['r_gaze_dir_x'], entry['r_gaze_dir_y'], entry['r_gaze_dir_z']]).astype('float32')
             rGazeOrigin = np.array([entry['r_gaze_ori_x'], entry['r_gaze_ori_y'], entry['r_gaze_ori_z']]).astype('float32')
-            gaze = Gaze(ts, gx, gy, world3D, lGazeVec, lGazeOrigin, rGazeVec, rGazeOrigin)
+            gaze = Gaze(ts, gx, gy, world3D, lGazeVec, lGazeOrigin, rGazeVec, rGazeOrigin, frame_ts)
 
             if frame_idx in gazes:
                 gazes[frame_idx].append(gaze)
@@ -473,3 +475,54 @@ def getMarkerBoardPose(fileName):
         tVec[frame_idx] = row[tvecCols].values
 
     return rVec,tVec
+
+def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition):
+    # get board normal
+    RBoard      = cv2.Rodrigues(rVec)[0]
+    boardNormal = np.matmul(RBoard, np.array([0,0,1.]))
+    # get point on board (just use origin)
+    RtBoard     = np.hstack((RBoard  ,                    tVec.reshape(3,1)))
+    RtBoardInv  = np.hstack((RBoard.T,np.matmul(-RBoard.T,tVec.reshape(3,1))))
+    boardPoint  = np.matmul(RtBoard,np.array([0, 0, 0., 1.]))
+    gazeWorld   = GazeWorld(gaze.ts,gaze.frame_ts,boardPoint,boardNormal)
+
+    # get transform from ET data's coordinate frame to camera's coordinate frame
+    RCam        = cv2.Rodrigues(cameraRotation)[0]
+    RtCam       = np.hstack((RCam, cameraPosition))
+
+    # project 3D gaze to reference board
+    # turn 3D gaze point into ray from camera
+    g3D = np.matmul(RCam,np.array(gaze.world3D).reshape(3,1))
+    g3D /= np.sqrt((g3D**2).sum()) # normalize
+    # find intersection of 3D gaze with board, draw
+    g3Board  = intersect_plane_ray(boardNormal, boardPoint, g3D.flatten(), np.array([0.,0.,0.]))  # vec origin (0,0,0) because we use g3D from camera's view point to be able to recreate Tobii 2D gaze pos data
+    (x,y,z)  = np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
+    gazeWorld.gaze3D = g3Board
+    gazeWorld.gaze2D = [x,y]
+
+    # project gaze vectors to reference board (and draw on video)
+    gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]
+    gazeOrigins = [gaze.lGazeOrigin, gaze.rGazeOrigin]
+    clrs        = [(0,0,255)       , (255,0,0)]
+    eyes        = ['left'          ,'right']
+    attrs       = [['lGazeOrigin','lGaze3D','lGaze2D'],['rGazeOrigin','rGaze3D','rGaze2D']]
+    for gVec,gOri,clr,eye,attr in zip(gazeVecs,gazeOrigins,clrs,eyes,attrs):
+        # get gaze vector and point on vector (pupil center) ->
+        # transform from ET data coordinate frame into camera coordinate frame
+        gVec    = np.matmul(RtCam,np.append(gVec,1.))
+        gOri    = np.matmul(RtCam,np.append(gOri,1.))
+        setattr(gazeWorld,attr[0],gOri)
+
+        # intersect with board -> yield point on board in camera reference frame
+        gBoard  = intersect_plane_ray(boardNormal, boardPoint, gVec, gOri)
+        setattr(gazeWorld,attr[1],gBoard)
+                        
+        # transform intersection with board from camera space to board space
+        if not math.isnan(gBoard[0]):
+            (x,y,z) = np.matmul(RtBoardInv,np.append(gBoard,1.).reshape((4,1))).flatten() # z should be very close to zero
+            pgBoard = [x,y]
+        else:
+            pgBoard = [np.nan,np.nan]
+        setattr(gazeWorld,attr[2],pgBoard)
+
+    return gazeWorld
