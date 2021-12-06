@@ -242,13 +242,14 @@ def json2df(jsonFile,sceneVideoDimensions):
         for line in j:
             entry = json.loads(line)
             
-            # if non-zero status, skip packet
+            # if non-zero status (error), ensure data foudn in packet is marked as missing
+            isError = False
             if entry['s'] != 0:
-                continue
+                isError = True
 
             ### a number of different dictKeys are possible, respond accordingly
             if 'vts' in entry.keys(): # "vts" key signfies a video timestamp (first frame, first keyframe, and ~1/min afterwards)
-                vtsSync[entry['ts']] = entry['vts']
+                vtsSync[entry['ts']] = entry['vts'] if not isError else math.nan
                 continue
 
             # if this json object contains "eye" data (e.g. pupil info)
@@ -256,25 +257,25 @@ def json2df(jsonFile,sceneVideoDimensions):
                 which_eye = entry['eye'][:1]
                 if 'pc' in entry.keys():
                     # origin of gaze vector is the pupil center
-                    df.loc[entry['ts'], which_eye + '_gaze_ori_x'] = entry['pc'][0]
-                    df.loc[entry['ts'], which_eye + '_gaze_ori_y'] = entry['pc'][1]
-                    df.loc[entry['ts'], which_eye + '_gaze_ori_z'] = entry['pc'][2]
+                    df.loc[entry['ts'], which_eye + '_gaze_ori_x'] = entry['pc'][0] if not isError else math.nan
+                    df.loc[entry['ts'], which_eye + '_gaze_ori_y'] = entry['pc'][1] if not isError else math.nan
+                    df.loc[entry['ts'], which_eye + '_gaze_ori_z'] = entry['pc'][2] if not isError else math.nan
                 elif 'pd' in entry.keys():
-                    df.loc[entry['ts'], which_eye + '_pup_diam'] = entry['pd']
+                    df.loc[entry['ts'], which_eye + '_pup_diam'] = entry['pd'] if not isError else math.nan
                 elif 'gd' in entry.keys():
-                    df.loc[entry['ts'], which_eye + '_gaze_dir_x'] = entry['gd'][0]
-                    df.loc[entry['ts'], which_eye + '_gaze_dir_y'] = entry['gd'][1]
-                    df.loc[entry['ts'], which_eye + '_gaze_dir_z'] = entry['gd'][2]
+                    df.loc[entry['ts'], which_eye + '_gaze_dir_x'] = entry['gd'][0] if not isError else math.nan
+                    df.loc[entry['ts'], which_eye + '_gaze_dir_y'] = entry['gd'][1] if not isError else math.nan
+                    df.loc[entry['ts'], which_eye + '_gaze_dir_z'] = entry['gd'][2] if not isError else math.nan
 
             # otherwise it contains gaze position data
             else:
                 if 'gp' in entry.keys():
-                    df.loc[entry['ts'], 'vid_gaze_pos_x'] = entry['gp'][0]*sceneVideoDimensions[0]
-                    df.loc[entry['ts'], 'vid_gaze_pos_y'] = entry['gp'][1]*sceneVideoDimensions[1]
+                    df.loc[entry['ts'], 'vid_gaze_pos_x'] = entry['gp'][0]*sceneVideoDimensions[0] if not isError else math.nan
+                    df.loc[entry['ts'], 'vid_gaze_pos_y'] = entry['gp'][1]*sceneVideoDimensions[1] if not isError else math.nan
                 elif 'gp3' in entry.keys():
-                    df.loc[entry['ts'], '3d_gaze_pos_x'] = entry['gp3'][0]
-                    df.loc[entry['ts'], '3d_gaze_pos_y'] = entry['gp3'][1]
-                    df.loc[entry['ts'], '3d_gaze_pos_z'] = entry['gp3'][2]
+                    df.loc[entry['ts'], '3d_gaze_pos_x'] = entry['gp3'][0] if not isError else math.nan
+                    df.loc[entry['ts'], '3d_gaze_pos_y'] = entry['gp3'][1] if not isError else math.nan
+                    df.loc[entry['ts'], '3d_gaze_pos_z'] = entry['gp3'][2] if not isError else math.nan
                     
             # ignore anything else
 
