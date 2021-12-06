@@ -23,6 +23,12 @@
     <Compile Include="b_detectMarkers.py" />
     <Compile Include="d_codeAnalysisInterval.py" />
     <Compile Include="c_gazeToBoard.py" />
+    <Compile Include="I2MC\functions\I2MC_funcs.py" />
+    <Compile Include="I2MC\functions\import_funcs.py" />
+    <Compile Include="I2MC\functions\plot_funcs.py" />
+    <Compile Include="I2MC\functions\__init__.py" />
+    <Compile Include="I2MC\I2MC.py" />
+    <Compile Include="I2MC\__init__.py" />
     <Compile Include="makeMarkerGazeVideo.py" />
     <Compile Include="markerBoard\getMarkerImages.py" />
     <Compile Include="mp4analyser\core.py" />
@@ -43,6 +49,8 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="config" />
+    <Folder Include="I2MC\" />
+    <Folder Include="I2MC\functions\" />
     <Folder Include="markerBoard" />
     <Folder Include="mp4analyser" />
   </ItemGroup>
