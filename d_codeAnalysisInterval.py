@@ -55,13 +55,13 @@ def process(inputDir,basePath):
     width   = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height  = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     frate   = cap.get(cv2.CAP_PROP_FPS)
-
-    # 2. if wanted, second OpenCV window for reference board
+    # 2. if wanted and available, second OpenCV window for reference board with gaze on that plane
     if gShowReference and hasWorldGaze:
         cv2.namedWindow("reference")
         reference = utils.Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
     # 3. timestamp info for relating audio to video frames
     t2i = utils.Timestamp2Index( str(inputDir / 'frameTimestamps.tsv') )
+    i2t = utils.Idx2Timestamp( str(inputDir / 'frameTimestamps.tsv') )
     # 4. mediaplayer for sound playback, brief wait or get_pts() below crashes
     ff_opts = {'vn' : False, 'volume': 1. }#{'sync':'video', 'framedrop':True}
     player = MediaPlayer(str(inputDir / 'worldCamera.mp4'), ff_opts=ff_opts)
@@ -135,9 +135,17 @@ def process(inputDir,basePath):
 
         elif key == ord('s'):
             analyzeStartFrame = frame_idx
-
         elif key == ord('e'):
             analyzeEndFrame = frame_idx
+
+        elif key == ord('v'):
+            if analyzeStartFrame is not None:
+                ts = i2t.get(analyzeStartFrame)
+                player.seek(ts/1000, relative=False)   # seek to start of analysis interval
+        elif key == ord('b'):
+            if analyzeEndFrame is not None:
+                ts = i2t.get(analyzeEndFrame)
+                player.seek(ts/1000, relative=False)   # seek to  end  of analysis interval
 
         elif key == ord('q'):
             # quit fully
