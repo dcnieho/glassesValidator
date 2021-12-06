@@ -3,11 +3,8 @@
 import sys
 from pathlib import Path
 import math
-import bisect
 
 import cv2
-import numpy as np
-import pandas as pd
 import csv
 import time
 

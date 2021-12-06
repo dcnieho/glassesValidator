@@ -5,13 +5,10 @@
 import sys
 from pathlib import Path
 import math
-import bisect
 import csv
 
 import cv2
 import numpy as np
-import pandas as pd
-from matplotlib import colors
 
 import utils
 

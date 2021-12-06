@@ -3,17 +3,15 @@
 import sys
 from pathlib import Path
 import math
-import bisect
 
 import cv2
 import numpy as np
-import pandas as pd
 import csv
 import time
 
 import utils
 
-gShowVisualization  = True      # if true, draw each frame and overlay info about detected markers and board
+gShowVisualization  = False      # if true, draw each frame and overlay info about detected markers and board
 gShowReference      = True
 gFPSFac             = 1
 
