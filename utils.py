@@ -326,6 +326,10 @@ class GazeWorld:
 
         return writeData
 
+    @staticmethod
+    def getMissingWriteData():
+        return [math.nan for x in range(29)]
+
     def drawOnWorldVideo(self, img, cameraMatrix, distCoeff, subPixelFac=1):
         # project to camera, display
         # left eye

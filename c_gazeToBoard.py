@@ -97,6 +97,7 @@ def process(inputDir,basePath):
                 # the eye tracker)
                 # store positions on marker board plane in camera coordinate frame to
                 # file, along with gaze vector origins in same coordinate frame
+                writeData = [frame_idx]
                 if frame_idx in rVec:
                     gazeWorld = utils.gazeToPlane(gaze,rVec[frame_idx],tVec[frame_idx],cameraRotation,cameraPosition)
                     
@@ -107,9 +108,10 @@ def process(inputDir,basePath):
                             gazeWorld.drawOnReferencePlane(refImg, reference, subPixelFac)
 
                     # store gaze-on-plane to csv
-                    writeData = [frame_idx]
                     writeData.extend(gazeWorld.getWriteData())
-                    csv_writer.writerow( writeData )
+                else:
+                    writeData.extend(utils.GazeWorld.getMissingWriteData())
+                csv_writer.writerow( writeData )
 
         if gShowVisualization:
             if gShowReference:
