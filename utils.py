@@ -74,6 +74,8 @@ def getKnownMarkers(configDir, validationSetup):
         markers[key] = Marker(key, c, corners=[ tl, tr, br, bl ])
     
     # determine bounding box of markers ([left, top, right, bottom])
+    # NB: this assumes that board has an outer edge of markers, i.e.,
+    # that it does not have targets at its edges
     bbox = []
     bbox.append(markerPos.x.min()-markerHalfSizeMm)
     bbox.append(markerPos.y.max()+markerHalfSizeMm) # top is at positive
@@ -440,12 +442,19 @@ def getGazeData(fileName):
 
     return gazes,maxFrameIdx
 
-def getGazeWorldData(fileName):
+def getGazeWorldData(fileName,start=None,end=None,stopOnceExceeded=False):
     gazes = {}
+    readSubset = start is not None and end is not None
     with open( str(fileName), 'r' ) as f:
         reader = csv.DictReader(f, delimiter='\t')
         for entry in reader:
             frame_idx = int(float(entry['frame_idx']))
+            if readSubset and (frame_idx<start or frame_idx>end):
+                if stopOnceExceeded and frame_idx>end:
+                    break
+                else:
+                    continue
+
             frame_ts = float(entry['frame_timestamp'])
             ts = float(entry['gaze_timestamp'])
             planePoint    = np.array([entry[x] for x in getXYZLabels('planePoint')]).astype('float32')
@@ -467,14 +476,21 @@ def getGazeWorldData(fileName):
 
     return gazes
 
-def getMarkerBoardPose(fileName):
+def getMarkerBoardPose(fileName,start=None,end=None,stopOnceExceeded=False):
     rVec = {}
     tVec = {}
+    readSubset = start is not None and end is not None
     temp = pd.read_csv(str(fileName), delimiter='\t')
     rvecCols = [col for col in temp.columns if 'poseRvec' in col]
     tvecCols = [col for col in temp.columns if 'poseTvec' in col]
     for idx, row in temp.iterrows():
         frame_idx = int(row['frame_idx'])
+        if readSubset and (frame_idx<start or frame_idx>end):
+            if stopOnceExceeded and frame_idx>end:
+                break
+            else:
+                continue
+
         rVec[frame_idx] = row[rvecCols].values
         tVec[frame_idx] = row[tvecCols].values
 
@@ -530,3 +546,6 @@ def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition):
         setattr(gazeWorld,attr[2],pgBoard)
 
     return gazeWorld
+
+def selectDictRange(theDict,start,end):
+    return {k: theDict[k] for k in theDict if k>=start and k<=end}
