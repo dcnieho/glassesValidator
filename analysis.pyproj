@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{9d789e13-f9b3-4906-8a0d-025bd6d1f010}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>d_codeAnalysisInterval.py</StartupFile>
+    <StartupFile>e_calculateDataQuality.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -22,6 +22,7 @@
     <Compile Include="a_preproc_tobiiG2.py" />
     <Compile Include="b_detectMarkers.py" />
     <Compile Include="d_codeAnalysisInterval.py" />
+    <Compile Include="e_calculateDataQuality.py" />
     <Compile Include="c_gazeToBoard.py" />
     <Compile Include="I2MC\functions\I2MC_funcs.py" />
     <Compile Include="I2MC\functions\import_funcs.py" />
