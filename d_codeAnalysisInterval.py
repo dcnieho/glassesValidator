@@ -43,7 +43,9 @@ def process(inputDir,basePath):
     cameraMatrix,distCoeff = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")[0:2]
 
     # get interval coded to be analyzed, if available
-    analyzeStartFrame,analyzeEndFrame = utils.getAnalysisInterval(inputDir / "analysisInterval.tsv")
+    analyzeFrames = utils.getAnalysisIntervals(inputDir / "analysisInterval.tsv")
+    if analyzeFrames is None:
+        analyzeFrames = []
 
     # set up video playback
     # 1. OpenCV for showing the frame
@@ -69,6 +71,7 @@ def process(inputDir,basePath):
     subPixelFac = 8   # for sub-pixel positioning
     armLength = 2.*math.tan(math.radians(.5))*validationSetup['distance']*10*validationSetup['markerSide']/2 # arms of axis are half a marker long
     stopAllProcessing = False
+    shouldRedraw = False
     while True:
         frame, val = player.get_frame(force_refresh=True,show=False)
         if val == 'eof':
@@ -82,7 +85,8 @@ def process(inputDir,basePath):
         idxOffset = cap.get(cv2.CAP_PROP_POS_FRAMES) - frame_idx
         if abs(idxOffset) > 0:
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-        if lastIdx is None or lastIdx!=frame_idx:
+        if lastIdx is None or lastIdx!=frame_idx or shouldRedraw:
+            shouldRedraw = False
             ret, frame = cap.read()
             if gShowReference and hasWorldGaze:
                 refImg = reference.getImgCopy()
@@ -102,20 +106,24 @@ def process(inputDir,basePath):
                 if gShowReference:
                     gazesWorld[frame_idx][0].drawOnReferencePlane(refImg, reference, subPixelFac)
 
-            if analyzeStartFrame is not None and analyzeEndFrame is not None and frame_idx>=analyzeStartFrame and frame_idx<=analyzeEndFrame:
-                frameClr = (0,0,255)
-            else:
-                frameClr = (0,0,0)
+            analysisIntervalIdx = None
+            analysisLbl = ''
+            for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't try incomplete intervals
+                if frame_idx>=analyzeFrames[f] and frame_idx<=analyzeFrames[f+1]:
+                    analysisIntervalIdx = f
+                if len(analysisLbl)>0:
+                    analysisLbl += ', '
+                analysisLbl += '{} -- {}'.format(*analyzeFrames[f:f+2])
+            if len(analyzeFrames)%2:
+                analysisLbl += ', {} -- xx'.format(analyzeFrames[-1])
+            
+            # annotate what frame we're on
+            frameClr = (0,0,255) if analysisIntervalIdx is not None else (0,0,0)
             cv2.rectangle(frame,(0,int(height)),(int(0.25*width),int(height)-30), frameClr, -1)
             cv2.putText(frame, ("%8.2f [%6d]" % (audio_pts, frame_idx) ), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
-            sLbl = 'xxx'
-            eLbl = 'xxx'
-            if analyzeStartFrame is not None:
-                sLbl = '{}'.format(analyzeStartFrame)
-            if analyzeEndFrame is not None:
-                eLbl = '{}'.format(analyzeEndFrame)
-            cv2.rectangle(frame,(0,30),(int(0.13*width),0), frameClr, -1)
-            cv2.putText(frame, ('{} -- {}'.format(sLbl,eLbl) ), (0, 25), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
+            # annotate analysis intervals
+            cv2.rectangle(frame,(0,30),(int(width),0), frameClr, -1)
+            cv2.putText(frame, (analysisLbl), (0, 25), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
 
             
             cv2.imshow("frame", frame)
@@ -138,19 +146,43 @@ def process(inputDir,basePath):
         elif key == ord('p'):
             player.toggle_pause()
 
-        elif key == ord('s'):
-            analyzeStartFrame = frame_idx
-        elif key == ord('e'):
-            analyzeEndFrame = frame_idx
+        elif key == ord('f'):
+            if not frame_idx in analyzeFrames:
+                analyzeFrames.append(frame_idx)
+                analyzeFrames.sort()
+                shouldRedraw = True
+        elif key == ord('d'):
+            if frame_idx in analyzeFrames:
+                # delete this one marker from analysis frames
+                analyzeFrames.remove(frame_idx)
+                shouldRedraw = True
+            elif analysisIntervalIdx is not None:
+                # delete current interval from analysis frames
+                del analyzeFrames[analysisIntervalIdx:analysisIntervalIdx+2]
+                shouldRedraw = True
 
-        elif key == ord('v'):
-            if analyzeStartFrame is not None:
-                ts = i2t.get(analyzeStartFrame)
-                player.seek(ts/1000, relative=False)   # seek to start of analysis interval
-        elif key == ord('b'):
-            if analyzeEndFrame is not None:
-                ts = i2t.get(analyzeEndFrame)
-                player.seek(ts/1000, relative=False)   # seek to  end  of analysis interval
+        elif key == ord('s'):
+            if analysisIntervalIdx is not None:
+                # seek to start of current interval
+                ts = i2t.get(analyzeFrames[analysisIntervalIdx]-1)
+                player.seek(ts/1000, relative=False)
+            else:
+                # seek to start of preceding analysis interval, if any
+                idx = next((x for x in analyzeFrames[(len(analyzeFrames)//2)*2-2::-2] if x<frame_idx), None) # slice gets starts of all whole intervals in reverse order
+                if idx is not None:
+                    ts = i2t.get(idx-1)
+                    player.seek(ts/1000, relative=False)
+        elif key == ord('e'):
+            if analysisIntervalIdx is not None:
+                # seek to end of current interval
+                ts = i2t.get(analyzeFrames[analysisIntervalIdx+1]-1)
+                player.seek(ts/1000, relative=False)
+            else:
+                # seek to end of next analysis interval, if any
+                idx = next((x for x in analyzeFrames[1:(len(analyzeFrames)//2)*2:2] if x>frame_idx), None) # slice gets ends of all whole intervals
+                if idx is not None:
+                    ts = i2t.get(idx-1)
+                    player.seek(ts/1000, relative=False)
 
         elif key == ord('q'):
             # quit fully
@@ -164,11 +196,11 @@ def process(inputDir,basePath):
     cv2.destroyAllWindows()
 
     # store coded interval to file, if available
-    if analyzeStartFrame is not None and analyzeEndFrame is not None:
-        with open(str(inputDir / 'analysisInterval.tsv'), 'w', newline='') as f:
-            csv_writer = csv.writer(f, delimiter='\t')
-            csv_writer.writerow(['start_frame', 'end_frame'])
-            csv_writer.writerow([analyzeStartFrame, analyzeEndFrame])
+    with open(str(inputDir / 'analysisInterval.tsv'), 'w', newline='') as file:
+        csv_writer = csv.writer(file, delimiter='\t')
+        csv_writer.writerow(['start_frame', 'end_frame'])
+        for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't write out incomplete intervals
+            csv_writer.writerow(analyzeFrames[f:f+2])
 
     return stopAllProcessing
 
