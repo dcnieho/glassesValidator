@@ -108,6 +108,14 @@ def process(inputDir,basePath):
                 frameClr = (0,0,0)
             cv2.rectangle(frame,(0,int(height)),(int(0.25*width),int(height)-30), frameClr, -1)
             cv2.putText(frame, ("%8.2f [%6d]" % (audio_pts, frame_idx) ), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
+            sLbl = 'xxx'
+            eLbl = 'xxx'
+            if analyzeStartFrame is not None:
+                sLbl = '{}'.format(analyzeStartFrame)
+            if analyzeEndFrame is not None:
+                eLbl = '{}'.format(analyzeEndFrame)
+            cv2.rectangle(frame,(0,30),(int(0.13*width),0), frameClr, -1)
+            cv2.putText(frame, ('{} -- {}'.format(sLbl,eLbl) ), (0, 25), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
 
             
             cv2.imshow("frame", frame)
