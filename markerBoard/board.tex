@@ -97,14 +97,14 @@
 		\draw[step=\step, line width=3pt] (0cm,0cm) grid (\step*\gridCols,\step*\gridRows);
 	\fi
 	
-\csvreader[no head]{../config/\markerPosFile}{1=\ID, 2=\x, 3=\y}%
+\csvreader[no head]{../config/\markerPosFile}{1=\ID, 2=\x, 3=\y, 4=\rotang}%
 {
 	\coordinate (m) at (
 	\x*\step,
 	\y*\step
 	);
 	
-	\node[inner sep=0pt] (m2) at (m)			{\includegraphics[width=\markerSideCm]{\markerFilename{\ID}}};
+	\node[inner sep=0pt] (m2) at (m)			{\includegraphics[width=\markerSideCm,angle=\rotang,origin=c]{\markerFilename{\ID}}};
 };
 
 
