@@ -18,4 +18,4 @@ for i in range(250):
     markerImage = np.zeros((sz, sz), dtype=np.uint8)
     markerImage = cv2.aruco.drawMarker(dictionary, i, sz, markerImage, validationSetup['markerBorderBits'])
 
-    cv2.imwrite("all-markers/{}.png".format(i), markerImage)
+    cv2.imwrite(str(Path(__file__).resolve().parent / "all-markers" / "{}.png".format(i)), markerImage)
