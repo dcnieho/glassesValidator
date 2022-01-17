@@ -13,7 +13,8 @@ gShowRejectedMarkers= False     # if true, rejected marker candidates are also d
 gFPSFac             = 1
 
 
-def storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,markerBBox):
+def storeReferenceBoard(inputDir,validationSetup,knownMarkers, aruco_dict,markerBBox):
+    referenceBoard = utils.getReferenceBoard(knownMarkers, aruco_dict, unRotateMarkers = True)
     # get image with markers
     bboxExtents    = [markerBBox[2]-markerBBox[0], math.fabs(markerBBox[3]-markerBBox[1])]  # math.fabs to deal with bboxes where (-,-) is bottom left
     aspectRatio    = bboxExtents[0]/bboxExtents[1]
@@ -69,18 +70,9 @@ def process(inputDir,basePath):
     knownMarkers, markerBBox = utils.getKnownMarkers(configDir, validationSetup)
     
     # turn into aruco board object to be used for pose estimation
-    boardCornerPoints = []
-    ids = []
-    for key in knownMarkers:
-        if not key.startswith('t'):
-            ids.append(int(key))
-            boardCornerPoints.append(np.vstack(knownMarkers[key].corners).astype('float32'))
-    boardCornerPoints = np.dstack(boardCornerPoints)        # list of 2D arrays -> 3D array
-    boardCornerPoints = np.rollaxis(boardCornerPoints,-1)   # 4x2xN -> Nx4x2
-    boardCornerPoints = np.pad(boardCornerPoints,((0,0),(0,0),(0,1)),'constant', constant_values=(0.,0.)) # Nx4x2 -> Nx4x3
-    referenceBoard    = cv2.aruco.Board_create(boardCornerPoints, aruco_dict, np.array(ids))
+    referenceBoard = utils.getReferenceBoard(knownMarkers, aruco_dict)
     # store image of reference board to file
-    storeReferenceBoard(referenceBoard,inputDir,validationSetup,knownMarkers,markerBBox)
+    storeReferenceBoard(inputDir,validationSetup,knownMarkers,aruco_dict,markerBBox)
     
     # setup aruco marker detection
     parameters = cv2.aruco.DetectorParameters_create()

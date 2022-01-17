@@ -92,6 +92,30 @@ def getKnownMarkers(configDir, validationSetup):
 
     return markers, bbox
 
+def getReferenceBoard(knownMarkers, aruco_dict, unRotateMarkers=False):
+    boardCornerPoints = []
+    ids = []
+    for key in knownMarkers:
+        if not key.startswith('t'):
+            ids.append(int(key))
+            cornerPoints = np.vstack(knownMarkers[key].corners).astype('float32')
+            if unRotateMarkers:
+                # markers are rotated in multiples of 90 only, so can easily detect which and unrotate
+                if cornerPoints[0,1]>cornerPoints[1,1]:
+                    # 270 deg
+                    cornerPoints = np.vstack((cornerPoints[-1,:], cornerPoints[0:3,:]))
+                elif cornerPoints[1,1]>cornerPoints[0,1]:
+                    # 90 deg
+                    cornerPoints = np.vstack((cornerPoints[1:,:], cornerPoints[0,:]))
+                elif cornerPoints[2,1]>cornerPoints[1,1]:
+                    # 180 deg
+                    cornerPoints = np.vstack((cornerPoints[2:,:], cornerPoints[0:2,:]))
+            boardCornerPoints.append(cornerPoints)
+    boardCornerPoints = np.dstack(boardCornerPoints)        # list of 2D arrays -> 3D array
+    boardCornerPoints = np.rollaxis(boardCornerPoints,-1)   # 4x2xN -> Nx4x2
+    boardCornerPoints = np.pad(boardCornerPoints,((0,0),(0,0),(0,1)),'constant', constant_values=(0.,0.)) # Nx4x2 -> Nx4x3
+    return cv2.aruco.Board_create(boardCornerPoints, aruco_dict, np.array(ids))
+
 def corners_intersection(corners):
     line1 = ( corners[0], corners[2] )
     line2 = ( corners[1], corners[3] )
