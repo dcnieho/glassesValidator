@@ -67,7 +67,10 @@ def getKnownMarkers(configDir, validationSetup):
         key = '%d' % idx
         c   = row[['x','y']].values
         # rotate markers (negative because poster coordinate system)
-        rot = -math.radians(row[['rot']].values)
+        rot = row[['rot']].values
+        if rot%90 != 0:
+            raise ValueError("Rotation of a marker must be a multiple of 90 degrees")
+        rot = -math.radians(rot)
         R   = np.array([[math.cos(rot), math.sin(rot)], [-math.sin(rot), math.cos(rot)]])
         # top left first, and clockwise: same order as detected aruco marker corners
         tl = c + np.matmul(R,np.array( [ -markerHalfSizeMm ,  markerHalfSizeMm ] ))
