@@ -60,22 +60,27 @@ def getKnownMarkers(configDir, validationSetup):
         markers[key] = Marker(key, row[['x','y']].values, color=row.clr)
     
     # read in aruco marker positions
-    markerPos = pd.read_csv(str(configDir / validationSetup['markerPosFile']),index_col=0,names=['x','y'])
+    markerPos = pd.read_csv(str(configDir / validationSetup['markerPosFile']),index_col=0,names=['x','y','rot'])
     markerPos.x = cellSizeMm * (markerPos.x.astype('float32') - center.x)
     markerPos.y = cellSizeMm * (markerPos.y.astype('float32') - center.y)
     for idx, row in markerPos.iterrows():
         key = '%d' % idx
         c   = row[['x','y']].values
+        # rotate markers (negative because poster coordinate system)
+        rot = -math.radians(row[['rot']].values)
+        R   = np.array([[math.cos(rot), math.sin(rot)], [-math.sin(rot), math.cos(rot)]])
         # top left first, and clockwise: same order as detected aruco marker corners
-        tl = c + np.array( [ -markerHalfSizeMm ,  markerHalfSizeMm ] )
-        tr = c + np.array( [  markerHalfSizeMm ,  markerHalfSizeMm ] )
-        br = c + np.array( [  markerHalfSizeMm , -markerHalfSizeMm ] )
-        bl = c + np.array( [ -markerHalfSizeMm , -markerHalfSizeMm ] )
+        tl = c + np.matmul(R,np.array( [ -markerHalfSizeMm ,  markerHalfSizeMm ] ))
+        tr = c + np.matmul(R,np.array( [  markerHalfSizeMm ,  markerHalfSizeMm ] ))
+        br = c + np.matmul(R,np.array( [  markerHalfSizeMm , -markerHalfSizeMm ] ))
+        bl = c + np.matmul(R,np.array( [ -markerHalfSizeMm , -markerHalfSizeMm ] ))
+        
         markers[key] = Marker(key, c, corners=[ tl, tr, br, bl ])
     
     # determine bounding box of markers ([left, top, right, bottom])
     # NB: this assumes that board has an outer edge of markers, i.e.,
-    # that it does not have targets at its edges
+    # that it does not have targets at its edges. Also assumes markers
+    # are rotated by multiples of 90 degrees
     bbox = []
     bbox.append(markerPos.x.min()-markerHalfSizeMm)
     bbox.append(markerPos.y.max()+markerHalfSizeMm) # top is at positive
