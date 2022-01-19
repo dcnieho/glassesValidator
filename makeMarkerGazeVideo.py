@@ -117,9 +117,8 @@ def process(inputDir,basePath):
                     gazeWorld = utils.gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition)
 
                     # draw gazes on video and reference image
-                    if gShowVisualization:
-                        gazeWorld.drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
-                        gazeWorld.drawOnReferencePlane(refImg, reference, subPixelFac)
+                    gazeWorld.drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
+                    gazeWorld.drawOnReferencePlane(refImg, reference, subPixelFac)
         
         # annotate frame
         frame_ts  = i2t.get(frame_idx)
