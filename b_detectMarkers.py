@@ -30,6 +30,59 @@ def storeReferenceBoard(inputDir,validationSetup,knownMarkers, aruco_dict,marker
     assert refBoardImage.shape[0]==refBoardHeight+2*margin,"Output image height is not as expected"
     assert refBoardImage.shape[1]==refBoardWidth +2*margin,"Output image width is not as expected"
     refBoardImage  = refBoardImage[1:-1,1:-1,:]
+    # walk through all markers, if any are supposed to be rotated, do so
+    minX =  np.inf
+    maxX = -np.inf
+    minY =  np.inf
+    maxY = -np.inf
+    rots = []
+    cornerPointsU = []
+    for key in knownMarkers:
+        if not key.startswith('t'):
+            cornerPoints    = np.vstack(knownMarkers[key].corners).astype('float32')
+            cpu,rot         = utils.getMarkerUnrotated(cornerPoints)
+            rots.append(rot)
+            cornerPointsU.append(cpu)
+            minX = np.min(np.hstack((minX,cornerPoints[:,0])))
+            maxX = np.max(np.hstack((maxX,cornerPoints[:,0])))
+            minY = np.min(np.hstack((minY,cornerPoints[:,1])))
+            maxY = np.max(np.hstack((maxY,cornerPoints[:,1])))
+    if np.any(np.array(rots)!=0):
+        # determine where the markers are placed
+        sizeX = maxX - minX
+        sizeY = maxY - minY
+        xReduction = sizeX / float(refBoardImage.shape[1])
+        yReduction = sizeY / float(refBoardImage.shape[0])
+        if xReduction > yReduction:
+            nRows = int(sizeY / xReduction);
+            yMargin = (refBoardImage.shape[0] - nRows) / 2;
+            xMargin = 0
+        else:
+            nCols = int(sizeX / yReduction);
+            xMargin = (refBoardImage.shape[1] - nCols) / 2;
+            yMargin = 0
+        
+        for r,cpu in zip(rots,cornerPointsU):
+            if r != 0:
+                # figure out where marker is
+                cpu -= np.array([[minX,minY]])
+                cpu[:,0] =       cpu[:,0] / sizeX  * float(refBoardImage.shape[1]) + xMargin
+                cpu[:,1] = (1. - cpu[:,1] / sizeY) * float(refBoardImage.shape[0]) + yMargin
+                sz = np.min(cpu[2,:]-cpu[0,:])
+                # get marker
+                cpu = np.floor(cpu)
+                idxs = np.floor([cpu[0,1], cpu[0,1]+sz, cpu[0,0], cpu[0,0]+sz]).astype('int')
+                marker = refBoardImage[idxs[0]:idxs[1], idxs[2]:idxs[3]]
+                # rotate (opposite because coordinate system) and put back
+                if r==-90:
+                    marker = cv2.rotate(marker, cv2.ROTATE_90_CLOCKWISE)
+                elif r==90:
+                    marker = cv2.rotate(marker, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                elif r==180:
+                    marker = cv2.rotate(marker, cv2.ROTATE_180)
+
+                refBoardImage[idxs[0]:idxs[1], idxs[2]:idxs[3]] = marker
+
     # add targets
     subPixelFac = 8   # for sub-pixel positioning
     for key in knownMarkers:
