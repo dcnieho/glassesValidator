@@ -14,14 +14,15 @@ def getXYZLabels(stringList,N=3):
     return list(itertools.chain(*[[s+'_%s' % (chr(c)) for c in range(ord('x'), ord('x')+N)] for s in stringList]))
 
 class Marker:
-    def __init__(self, key, center, corners=None, color=None):
+    def __init__(self, key, center, corners=None, color=None, rot=0):
         self.key = key
         self.center = center
         self.corners = corners
         self.color = color
+        self.rot = rot
 
     def __str__(self):
-        ret = '[%s]: center @ (%.2f, %.2f)' % (self.key, self.center[0], self.center[1])
+        ret = '[%s]: center @ (%.2f, %.2f), rot %.0f deg' % (self.key, self.center[0], self.center[1], self.rot)
         return ret
 
 def getValidationSetup(configDir):
@@ -67,18 +68,18 @@ def getKnownMarkers(configDir, validationSetup):
         key = '%d' % idx
         c   = row[['x','y']].values
         # rotate markers (negative because poster coordinate system)
-        rot = row[['rot']].values
+        rot = row[['rot']].values[0]
         if rot%90 != 0:
             raise ValueError("Rotation of a marker must be a multiple of 90 degrees")
-        rot = -math.radians(rot)
-        R   = np.array([[math.cos(rot), math.sin(rot)], [-math.sin(rot), math.cos(rot)]])
+        rotr= -math.radians(rot)
+        R   = np.array([[math.cos(rotr), math.sin(rotr)], [-math.sin(rotr), math.cos(rotr)]])
         # top left first, and clockwise: same order as detected aruco marker corners
         tl = c + np.matmul(R,np.array( [ -markerHalfSizeMm ,  markerHalfSizeMm ] ))
         tr = c + np.matmul(R,np.array( [  markerHalfSizeMm ,  markerHalfSizeMm ] ))
         br = c + np.matmul(R,np.array( [  markerHalfSizeMm , -markerHalfSizeMm ] ))
         bl = c + np.matmul(R,np.array( [ -markerHalfSizeMm , -markerHalfSizeMm ] ))
         
-        markers[key] = Marker(key, c, corners=[ tl, tr, br, bl ])
+        markers[key] = Marker(key, c, corners=[ tl, tr, br, bl ], rot=rot)
     
     # determine bounding box of markers ([left, top, right, bottom])
     # NB: this assumes that board has an outer edge of markers, i.e.,
@@ -92,6 +93,20 @@ def getKnownMarkers(configDir, validationSetup):
 
     return markers, bbox
 
+def getMarkerUnrotated(cornerPoints, rot):
+    # markers are rotated in multiples of 90 only, so can easily unrotate
+    if rot == -90:
+        # -90 deg
+        cornerPoints = np.vstack((cornerPoints[-1,:], cornerPoints[0:3,:]))
+    elif rot == 90:
+        # 90 deg
+        cornerPoints = np.vstack((cornerPoints[1:,:], cornerPoints[0,:]))
+    elif rot == 180:
+        # 180 deg
+        cornerPoints = np.vstack((cornerPoints[2:,:], cornerPoints[0:2,:]))
+
+    return cornerPoints
+
 def getReferenceBoard(knownMarkers, aruco_dict, unRotateMarkers=False):
     boardCornerPoints = []
     ids = []
@@ -100,17 +115,10 @@ def getReferenceBoard(knownMarkers, aruco_dict, unRotateMarkers=False):
             ids.append(int(key))
             cornerPoints = np.vstack(knownMarkers[key].corners).astype('float32')
             if unRotateMarkers:
-                # markers are rotated in multiples of 90 only, so can easily detect which and unrotate
-                if cornerPoints[0,1]>cornerPoints[1,1]:
-                    # 270 deg
-                    cornerPoints = np.vstack((cornerPoints[-1,:], cornerPoints[0:3,:]))
-                elif cornerPoints[1,1]>cornerPoints[0,1]:
-                    # 90 deg
-                    cornerPoints = np.vstack((cornerPoints[1:,:], cornerPoints[0,:]))
-                elif cornerPoints[2,1]>cornerPoints[1,1]:
-                    # 180 deg
-                    cornerPoints = np.vstack((cornerPoints[2:,:], cornerPoints[0:2,:]))
+                cornerPoints = getMarkerUnrotated(cornerPoints,knownMarkers[key].rot)
+
             boardCornerPoints.append(cornerPoints)
+
     boardCornerPoints = np.dstack(boardCornerPoints)        # list of 2D arrays -> 3D array
     boardCornerPoints = np.rollaxis(boardCornerPoints,-1)   # 4x2xN -> Nx4x2
     boardCornerPoints = np.pad(boardCornerPoints,((0,0),(0,0),(0,1)),'constant', constant_values=(0.,0.)) # Nx4x2 -> Nx4x3
@@ -254,8 +262,8 @@ def drawArucoDetectedMarkers(img,corners,ids,borderColor=(0,255,0), drawIDs = Tr
     # same as the openCV function, but with anti-aliasing for a (much) nicer image if subPixelFac>1
     textColor   = [x for x in borderColor]
     cornerColor = [x for x in borderColor]
-    textColor[0]  , textColor[1]   = textColor[1]  , textColor[0]       #   text color just sawp G and R
-    cornerColor[1], cornerColor[2] = cornerColor[2], cornerColor[1]     # corner color just sawp G and B
+    textColor[0]  , textColor[1]   = textColor[1]  , textColor[0]       #   text color just swap G and R
+    cornerColor[1], cornerColor[2] = cornerColor[2], cornerColor[1]     # corner color just swap G and B
 
     drawIDs = drawIDs and (ids is not None) and len(ids)>0
 

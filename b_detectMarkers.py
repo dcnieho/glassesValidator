@@ -39,10 +39,9 @@ def storeReferenceBoard(inputDir,validationSetup,knownMarkers, aruco_dict,marker
     cornerPointsU = []
     for key in knownMarkers:
         if not key.startswith('t'):
-            cornerPoints    = np.vstack(knownMarkers[key].corners).astype('float32')
-            cpu,rot         = utils.getMarkerUnrotated(cornerPoints)
-            rots.append(rot)
-            cornerPointsU.append(cpu)
+            cornerPoints = np.vstack(knownMarkers[key].corners).astype('float32')
+            cornerPointsU.append(utils.getMarkerUnrotated(cornerPoints, knownMarkers[key].rot))
+            rots.append(knownMarkers[key].rot)
             minX = np.min(np.hstack((minX,cornerPoints[:,0])))
             maxX = np.max(np.hstack((maxX,cornerPoints[:,0])))
             minY = np.min(np.hstack((minY,cornerPoints[:,1])))
