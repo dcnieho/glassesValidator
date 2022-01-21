@@ -46,7 +46,7 @@ def getValidationSetup(configDir):
     return validationSetup
 
 def getKnownMarkers(configDir, validationSetup):
-    """ (0,0) is at center target, (-,-) bottom left """
+    """ board space: (0,0) is at center target, (-,-) bottom left """
     cellSizeMm = 2.*math.tan(math.radians(.5))*validationSetup['distance']*10
     markerHalfSizeMm = cellSizeMm*validationSetup['markerSide']/2.
             
