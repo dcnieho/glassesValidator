@@ -61,7 +61,7 @@ def copyTobiiRecording(inputDir, outputDir):
         rInfo = json.load(j)
     recording = rInfo['rec_info']['Name']
 
-    outputDir = outputDir / ('tobii_%s_%s' % (participant,recording))
+    outputDir = outputDir / ('tobiiG2_%s_%s' % (participant,recording))
     if not outputDir.is_dir():
         outputDir.mkdir()
 
