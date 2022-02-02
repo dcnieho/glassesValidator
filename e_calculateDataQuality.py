@@ -10,7 +10,7 @@ import pandas as pd
 import csv
 
 import utils
-import I2MC.functions.I2MC_funcs as I2MC
+import I2MC
 
 
 
@@ -62,7 +62,7 @@ def process(inputDir,basePath):
         data['R_X']  = np.array([s.rGaze2D[0] for v in gazeWorldToAnal.values() for s in v])
         data['R_Y']  = np.array([s.rGaze2D[1] for v in gazeWorldToAnal.values() for s in v])
         # 3. run event classification to find fixations
-        fix,dat,par = I2MC.I2MC(data,opt)
+        fix,dat,par = I2MC.I2MC(data,opt,False)
 
         # for each target, find closest fixation
         minDur      = 150       # ms
