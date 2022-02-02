@@ -23,7 +23,9 @@ def process(inputDir,basePath):
 
     # get interval coded to be analyzed
     analyzeFrames = utils.getAnalysisIntervals(inputDir / "analysisInterval.tsv")
-    assert(analyzeFrames is not None)
+    if analyzeFrames is None:
+        print('  no analysis intervals defined for this file, skipping')
+        return
 
     # Read pose of marker board
     rVec,tVec = utils.getMarkerBoardPose(inputDir / 'boardPose.tsv',analyzeFrames[0],analyzeFrames[-1],True)
