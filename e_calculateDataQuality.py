@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import csv
+import warnings
 
 import utils
 import I2MC
@@ -159,14 +160,16 @@ def process(inputDir,basePath):
         for i,t in zip(range(len(selected)),targets):
             qData = whichTarget==t
         
-            accuracy2D[i,:,:] = np.nanmean(offset[:,:,qData],axis=2)
-            accuracy1D[i,:]   = np.nanmean(np.hypot(offset[0,:,qData],offset[1,:,qData]),axis=0)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore") # ignore warnings from np.nanmean and np.nanstd
+                accuracy2D[i,:,:] = np.nanmean(offset[:,:,qData],axis=2)
+                accuracy1D[i,:]   = np.nanmean(np.hypot(offset[0,:,qData],offset[1,:,qData]),axis=0)
     
-            RMS2D[i,:,:]      = np.sqrt(np.nanmean(np.diff(offset[:,:,qData],axis=2)**2,axis=2))
-            RMS1D[i,:]        = np.hypot(RMS2D[i,0,:],RMS2D[i,1,:])
+                RMS2D[i,:,:]      = np.sqrt(np.nanmean(np.diff(offset[:,:,qData],axis=2)**2,axis=2))
+                RMS1D[i,:]        = np.hypot(RMS2D[i,0,:],RMS2D[i,1,:])
     
-            STD2D[i,:,:]      = np.nanstd(offset[:,:,qData],axis=2,ddof=1)
-            STD1D[i,:]        = np.hypot(STD2D[i,0,:],STD2D[i,1,:])
+                STD2D[i,:,:]      = np.nanstd(offset[:,:,qData],axis=2,ddof=1)
+                STD1D[i,:]        = np.hypot(STD2D[i,0,:],STD2D[i,1,:])
     
             dataLoss[i,:]     = np.sum(np.isnan(offset[0,:,qData]),axis=0)/np.sum(qData)
         
