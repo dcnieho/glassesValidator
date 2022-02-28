@@ -77,9 +77,12 @@ def process(inputDir,basePath):
             nUsed = np.invert(used)
 
             # select fixation
-            dist = np.hypot(fix['xpos']-targets[t][0], fix['ypos']-targets[t][1])
-            dist[fix['dur'][nUsed]<minDur] = math.inf   # make sure that fixations that are too short are not selected
-            selected[i] = np.argmin(dist)
+            dist                    = np.hypot(fix['xpos']-targets[t][0], fix['ypos']-targets[t][1])
+            dist[used]              = math.inf  # make sure fixations already bound to a target are not used again
+            dist[fix['dur']<minDur] = math.inf  # make sure that fixations that are too short are not selected
+            iFix        = np.argmin(dist)
+            selected[i] = iFix
+            used[iFix]  = True
     
         # 2. calculate offsets from targets
         # a. determine which samples to process (those during selected fixation)
