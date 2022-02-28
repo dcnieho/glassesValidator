@@ -138,9 +138,8 @@ def process(inputDir,basePath):
         # determine order in which targets were looked at
         u,i=np.unique(whichTarget, return_index=True)
         i=np.delete(i,u==-1)
-        u=np.delete(u,u==-1)
         i=np.argsort(i)
-        lookOrder = u[i]
+        lookOrder = np.argsort(i)+1
 
         # 3. calculate metrics per target
         accuracy2D = np.empty((len(targets),2,3))       # nTarget x [X Y] x nEye (L,R,Avg)
