@@ -174,7 +174,7 @@ def process(inputDir,basePath):
                 STD2D[i,:,:]      = np.nanstd(offset[:,:,qData],axis=2,ddof=1)
                 STD1D[i,:]        = np.hypot(STD2D[i,0,:],STD2D[i,1,:])
     
-            dataLoss[i,:]     = np.sum(np.isnan(offset[0,:,qData]),axis=0)/np.sum(qData)
+                dataLoss[i,:]     = np.sum(np.isnan(offset[0,:,qData]),axis=0)/np.sum(qData)
         
         # organize for output and write to file
         df = pd.DataFrame()
