@@ -133,7 +133,7 @@ def process(inputDir,basePath):
                 offset[:,e,s]   = ang2D*np.array([math.cos(onBoardAngle), math.sin(onBoardAngle)])
 
         # Add average of the two eyes
-        offset = np.concatenate((offset,np.mean(offset,axis=1,keepdims=True)),axis=1)
+        offset = np.concatenate((offset,np.nanmean(offset,axis=1,keepdims=True)),axis=1)
 
         # determine order in which targets were looked at
         u,i=np.unique(whichTarget, return_index=True)
