@@ -13,6 +13,9 @@ import warnings
 import utils
 import I2MC
 
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+
 
 
 def process(inputDir,basePath):
@@ -30,17 +33,20 @@ def process(inputDir,basePath):
 
     # Read pose of marker board
     rVec,tVec = utils.getMarkerBoardPose(inputDir / 'boardPose.tsv',analyzeFrames[0],analyzeFrames[-1],True)
+    reference = utils.Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
 
     # Read gaze on board data
     gazeWorld = utils.getGazeWorldData(inputDir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
     # get info about markers on our board
     # Aruco markers have numeric keys, gaze targets have keys starting with 't'
-    knownMarkers = utils.getKnownMarkers(configDir, validationSetup)[0]
+    knownMarkers, markerBBox = utils.getKnownMarkers(configDir, validationSetup)
     targets = {}
     for key in knownMarkers:
         if key.startswith('t'):
             targets[int(key[1:])] = knownMarkers[key].center
+    cellSizeMm       = 2.*math.tan(math.radians(.5))*validationSetup['distance']*10
+    markerHalfSizeMm = cellSizeMm*validationSetup['markerSide']/2.
     
     # run I2MC on data in board space
     # 1. set I2MC options
@@ -83,6 +89,20 @@ def process(inputDir,basePath):
             iFix        = np.argmin(dist)
             selected[i] = iFix
             used[iFix]  = True
+
+        # make plot of data overlaid on board, and show for each target which fixation
+        # was selected
+        f       = plt.figure(dpi=300)
+        imgplot = plt.imshow(reference.getImgCopy(),extent=(np.array(markerBBox)[[0,2,3,1]]),alpha=.5)
+        plt.plot(fix['xpos'],fix['ypos'],'b-')
+        plt.plot(fix['xpos'],fix['ypos'],'go')
+        plt.xlim([markerBBox[0]-markerHalfSizeMm, markerBBox[2]+markerHalfSizeMm])
+        plt.ylim([markerBBox[3]-markerHalfSizeMm, markerBBox[1]+markerHalfSizeMm])
+        for i,t in zip(range(len(selected)),targets):
+            plt.plot([fix['xpos'][selected[i]], targets[t][0]], [fix['ypos'][selected[i]], targets[t][1]],'r-')
+        
+        f.savefig(str(inputDir / 'target_selection.png'))
+        plt.close(f)
     
         # 2. calculate offsets from targets
         # a. determine which samples to process (those during selected fixation)
