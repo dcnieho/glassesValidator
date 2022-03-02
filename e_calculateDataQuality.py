@@ -80,8 +80,6 @@ def process(inputDir,basePath):
         selected[:] = -1
 
         for i,t in zip(range(len(targets)),targets):
-            nUsed = np.invert(used)
-
             # select fixation
             dist                    = np.hypot(fix['xpos']-targets[t][0], fix['ypos']-targets[t][1])
             dist[used]              = math.inf  # make sure fixations already bound to a target are not used again
@@ -107,7 +105,7 @@ def process(inputDir,basePath):
         f.savefig(str(inputDir / 'target_selection.png'))
         plt.close(f)
     
-        # 2. calculate offsets from targets
+        # 4. calculate offsets from targets
         # a. determine which samples to process (those during selected fixation)
         whichTarget     = np.empty((len(data['time']),),dtype='int')
         whichTarget[:]  = -1
@@ -166,7 +164,7 @@ def process(inputDir,basePath):
         i=np.argsort(i)
         lookOrder = np.argsort(i)+1
 
-        # 3. calculate metrics per target
+        # 5. calculate metrics per target
         accuracy2D = np.empty((len(targets),2,3))       # nTarget x [X Y] x nEye (L,R,Avg)
         accuracy2D[:] = np.nan
         accuracy1D = np.empty((len(targets),3))         # nTarget x nEye (L,R,Avg)
@@ -200,47 +198,47 @@ def process(inputDir,basePath):
     
                 dataLoss[i,:]     = np.sum(np.isnan(offset[0,:,qData]),axis=0)/np.sum(qData)
         
-        # organize for output and write to file
+        # 6. organize for output and write to file
         df = pd.DataFrame()
         df.index.name = 'target'
         for i,t in zip(range(len(selected)),targets):
             df.loc[t,'interval'] = ival+1
-            df.loc[t,'pos_x'] = targets[t][0]
-            df.loc[t,'pos_y'] = targets[t][1]
-            df.loc[t,'order'] = lookOrder[i]
-            df.loc[t,'acc_left_x'] = accuracy2D[i,0,0]
-            df.loc[t,'acc_left_y'] = accuracy2D[i,1,0]
-            df.loc[t,'acc_left'] = accuracy1D[i,0]
+            df.loc[t,'pos_x']    = targets[t][0]
+            df.loc[t,'pos_y']    = targets[t][1]
+            df.loc[t,'order']    = lookOrder[i]
+            df.loc[t,'acc_left_x']  = accuracy2D[i,0,0]
+            df.loc[t,'acc_left_y']  = accuracy2D[i,1,0]
+            df.loc[t,'acc_left']    = accuracy1D[i,0]
             df.loc[t,'acc_right_x'] = accuracy2D[i,0,1]
             df.loc[t,'acc_right_y'] = accuracy2D[i,1,1]
-            df.loc[t,'acc_right'] = accuracy1D[i,1]
-            df.loc[t,'acc_avg_x'] = accuracy2D[i,0,2]
-            df.loc[t,'acc_avg_y'] = accuracy2D[i,1,2]
-            df.loc[t,'acc_avg'] = accuracy1D[i,2]
+            df.loc[t,'acc_right']   = accuracy1D[i,1]
+            df.loc[t,'acc_avg_x']   = accuracy2D[i,0,2]
+            df.loc[t,'acc_avg_y']   = accuracy2D[i,1,2]
+            df.loc[t,'acc_avg']     = accuracy1D[i,2]
             
-            df.loc[t,'rms_left_x'] = RMS2D[i,0,0]
-            df.loc[t,'rms_left_y'] = RMS2D[i,1,0]
-            df.loc[t,'rms_left'] = RMS1D[i,0]
+            df.loc[t,'rms_left_x']  = RMS2D[i,0,0]
+            df.loc[t,'rms_left_y']  = RMS2D[i,1,0]
+            df.loc[t,'rms_left']    = RMS1D[i,0]
             df.loc[t,'rms_right_x'] = RMS2D[i,0,1]
             df.loc[t,'rms_right_y'] = RMS2D[i,1,1]
-            df.loc[t,'rms_right'] = RMS1D[i,1]
-            df.loc[t,'rms_avg_x'] = RMS2D[i,0,2]
-            df.loc[t,'rms_avg_y'] = RMS2D[i,1,2]
-            df.loc[t,'rms_avg'] = RMS1D[i,2]
+            df.loc[t,'rms_right']   = RMS1D[i,1]
+            df.loc[t,'rms_avg_x']   = RMS2D[i,0,2]
+            df.loc[t,'rms_avg_y']   = RMS2D[i,1,2]
+            df.loc[t,'rms_avg']     = RMS1D[i,2]
             
-            df.loc[t,'std_left_x'] = STD2D[i,0,0]
-            df.loc[t,'std_left_y'] = STD2D[i,1,0]
-            df.loc[t,'std_left'] = STD1D[i,0]
+            df.loc[t,'std_left_x']  = STD2D[i,0,0]
+            df.loc[t,'std_left_y']  = STD2D[i,1,0]
+            df.loc[t,'std_left']    = STD1D[i,0]
             df.loc[t,'std_right_x'] = STD2D[i,0,1]
             df.loc[t,'std_right_y'] = STD2D[i,1,1]
-            df.loc[t,'std_right'] = STD1D[i,1]
-            df.loc[t,'std_avg_x'] = STD2D[i,0,2]
-            df.loc[t,'std_avg_y'] = STD2D[i,1,2]
-            df.loc[t,'std_avg'] = STD1D[i,2]
+            df.loc[t,'std_right']   = STD1D[i,1]
+            df.loc[t,'std_avg_x']   = STD2D[i,0,2]
+            df.loc[t,'std_avg_y']   = STD2D[i,1,2]
+            df.loc[t,'std_avg']     = STD1D[i,2]
             
-            df.loc[t,'dataLoss_left'] = dataLoss[i,0]
+            df.loc[t,'dataLoss_left']  = dataLoss[i,0]
             df.loc[t,'dataLoss_right'] = dataLoss[i,1]
-            df.loc[t,'dataLoss_avg'] = dataLoss[i,2]
+            df.loc[t,'dataLoss_avg']   = dataLoss[i,2]
 
         df.to_csv(str(inputDir / 'dataQuality.tsv'), mode='w' if ival==0 else 'a', header=ival==0, sep='\t', na_rep='nan', float_format="%.3f")
 
