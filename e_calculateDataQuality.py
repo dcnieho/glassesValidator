@@ -100,7 +100,10 @@ def process(inputDir,basePath):
         plt.ylim([markerBBox[3]-markerHalfSizeMm, markerBBox[1]+markerHalfSizeMm])
         for i,t in zip(range(len(selected)),targets):
             plt.plot([fix['xpos'][selected[i]], targets[t][0]], [fix['ypos'][selected[i]], targets[t][1]],'r-')
-        
+       
+        plt.xlabel('mm')
+        plt.ylabel('mm')
+
         f.savefig(str(inputDir / 'target_selection.png'))
         plt.close(f)
     
