@@ -43,7 +43,7 @@ def preprocessData(inputDir, outputDir):
     gazeDf.to_csv(str(newDataDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")
 
     # also store frame timestamps
-    frameTimestamps.to_csv(str(newDataDir / 'frameTimestamps.tsv'), sep='\t', index=False)
+    frameTimestamps.to_csv(str(newDataDir / 'frameTimestamps.tsv'), sep='\t')
 
     ### cleanup
     for f in ['livedata.json', 'et.tslv']:
@@ -149,36 +149,34 @@ def formatGazeData(inputDir, sceneVideoDimensions):
     """
 
     # convert the json file to pandas dataframe
-    df = json2df(str(inputDir / 'livedata.json'), sceneVideoDimensions)
-
-    # drop any row that precedes the start of the video timestamps
-    df = df[df['video_timestamp'] >= df['video_timestamp'].min()]
+    df,scene_video_ts_offset = json2df(str(inputDir / 'livedata.json'), sceneVideoDimensions)
 
     # read video file, create array of frame timestamps
     frameTimestamps = getVidFrameTimestamps(str(inputDir / 'worldCamera.mp4'))
+    frameTimestamps['timestamp'] += scene_video_ts_offset
 
     # use the frame timestamps to assign a frame number to each data point
-    df['frame_idx'] = np.zeros(df.index.shape,dtype='int64')
-    for i,vts in enumerate(df['video_timestamp']):
+    df.insert(0,'frame_idx',np.int64(0))
+    for ts in df.index:
 
-        # get index where this vts would be inserted into the frame_timestamp array
-        idx = np.searchsorted(frameTimestamps['timestamp'], vts)
+        # get index where this ts would be inserted into the frame_timestamp array
+        idx = np.searchsorted(frameTimestamps['timestamp'], ts)
         if idx == 0:
-            idx = 1
+            df.loc[ts, 'frame_idx'] = math.nan
+            continue
+
         # since idx points to frame timestamp for frame after the one during
-        # which the vts ocurred, correct
+        # which the ts ocurred, correct
         idx -= 1
 
         # set the frame index based on this index value
-        df.loc[df.index[i], 'frame_idx'] = frameTimestamps['frame_idx'].iat[idx]
+        df.loc[ts, 'frame_idx'] = frameTimestamps.index[idx]
 
     # build the formatted dataframe
     df.index.name = 'timestamp'
 
     # return the gaze data df and frame time stamps array
-    colOrder = [x for x in df.columns.tolist() if x!='frame_idx']
-    colOrder.insert(0,'frame_idx')  # make frame_idx the first column
-    return df[colOrder], frameTimestamps
+    return df, frameTimestamps
 
 
 def getVidFrameTimestamps(vid_file):
@@ -224,6 +222,7 @@ def getVidFrameTimestamps(vid_file):
     ### convert the frame_timestamps to dataframe
     frameIdx = np.arange(0, len(frameTs))
     frameTsDf = pd.DataFrame({'frame_idx': frameIdx, 'timestamp': frameTs})
+    frameTsDf.set_index('frame_idx', inplace=True)
     
     return frameTsDf
 
@@ -233,7 +232,8 @@ def json2df(jsonFile,sceneVideoDimensions):
     convert the livedata.json file to a pandas dataframe
     """
     # dicts to store sync points
-    vtsSync = {}			# RECORDED video timestamp sync
+    vtsSync  = list()       # scene video timestamp sync
+    evtsSync = list()       # eye video timestamp sync (only if eye video was recorded)
     df = pd.DataFrame()     # empty dataframe to write data to
 
     with open(jsonFile, 'rb') as j:
@@ -242,14 +242,19 @@ def json2df(jsonFile,sceneVideoDimensions):
         for line in j:
             entry = json.loads(line)
             
-            # if non-zero status (error), ensure data foudn in packet is marked as missing
+            # if non-zero status (error), ensure data found in packet is marked as missing
             isError = False
             if entry['s'] != 0:
                 isError = True
 
             ### a number of different dictKeys are possible, respond accordingly
-            if 'vts' in entry.keys(): # "vts" key signfies a video timestamp (first frame, first keyframe, and ~1/min afterwards)
-                vtsSync[entry['ts']] = entry['vts'] if not isError else math.nan
+            if 'vts' in entry.keys(): # "vts" key signfies a scene video timestamp (first frame, first keyframe, and ~1/min afterwards)
+                vtsSync.append((entry['ts'], entry['vts'] if not isError else math.nan))
+                continue
+
+            ### a number of different dictKeys are possible, respond accordingly
+            if 'evts' in entry.keys(): # "evts" key signfies an eye video timestamp (first frame, first keyframe, and ~1/min afterwards)
+                evtsSync.append((entry['ts'], entry['evts'] if not isError else math.nan))
                 continue
 
             # if this json object contains "eye" data (e.g. pupil info)
@@ -279,25 +284,23 @@ def json2df(jsonFile,sceneVideoDimensions):
                     
             # ignore anything else
 
-        
-        # now we need to make a video timestamp column
-        df['video_timestamp'] = np.array(df.index)	   # df.index is the gaze data timestamps
-        df.loc[df.index < min(sorted(vtsSync.keys())), 'video_timestamp'] = np.nan		# set rows that occur before the first frame to nan
+        # find out t0. Do the same as GlassesViewer so timestamps are compatible
+        # that is t0 is at timestamp of last video start (scene or eye)
+        vtsSync  = np.array( vtsSync)
+        evtsSync = np.array(evtsSync)
+        t0s = [vtsSync[vtsSync[:,1]==0,0]]
+        if len(evtsSync)>0:
+            t0s.append(evtsSync[evtsSync[:,1]==0,0])
+        t0 = max(t0s)
 
-        # for each new vts sync package, reindex all of the rows after that timestamp
-        for key in sorted(vtsSync.keys()):
-            df.loc[df.index >= key, 'video_timestamp'] = np.array(df.index)[df.index >= key]   # necessary if there are more than 2 keys in the list (prior key changes need to be reset for higher vts syncs)
-            df.loc[df.index >= key, 'video_timestamp'] = df['video_timestamp'] - key + vtsSync[key]
-
-        # note: the vts column indicates, in microseconds, where a given datapoint would occur in the video timeline
-        # the timestamps of the videoframes themselves need to be gotten from the video file instead
+        # get timestamp offset for scene video
+        scene_video_ts_offset = (t0s[0]-t0) / 1000.0
 
         # convert timestamps from us to ms
-        df.index              = (df.index - df.index[0]) / 1000.0
-        df['video_timestamp'] = df['video_timestamp'] / 1000.0
+        df.index = (df.index - t0) / 1000.0
 
         # return the dataframe
-        return df
+        return df, scene_video_ts_offset
 
 
 if __name__ == '__main__':
