@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{9d789e13-f9b3-4906-8a0d-025bd6d1f010}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>e_calculateDataQuality.py</StartupFile>
+    <StartupFile>f_calculateDataQuality.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -21,8 +21,10 @@
   <ItemGroup>
     <Compile Include="a_preproc_tobiiG2.py" />
     <Compile Include="b_detectMarkers.py" />
-    <Compile Include="d_codeAnalysisInterval.py" />
-    <Compile Include="e_calculateDataQuality.py" />
+    <Compile Include="d_codeMarkerInterval.py" />
+    <Compile Include="e1_computeOffsetsToTargets.py" />
+    <Compile Include="e2_determineFixationIntervals.py" />
+    <Compile Include="f_calculateDataQuality.py" />
     <Compile Include="c_gazeToBoard.py" />
     <Compile Include="makeMarkerGazeVideo.py" />
     <Compile Include="markerBoard\getMarkerImages.py" />

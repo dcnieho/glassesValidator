@@ -196,7 +196,7 @@ def process(inputDir,basePath):
     cv2.destroyAllWindows()
 
     # store coded interval to file, if available
-    with open(str(inputDir / 'analysisInterval.tsv'), 'w', newline='') as file:
+    with open(str(inputDir / 'markerInterval.tsv'), 'w', newline='') as file:
         csv_writer = csv.writer(file, delimiter='\t')
         csv_writer.writerow(['start_frame', 'end_frame'])
         for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't write out incomplete intervals

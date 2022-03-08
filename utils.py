@@ -435,7 +435,7 @@ def getCameraCalibrationInfo(fileName):
 
     return (cameraMatrix,distCoeff,cameraRotation,cameraPosition)
 
-def getAnalysisIntervals(fileName):
+def getMarkerIntervals(fileName):
     analyzeFrames = []
     if fileName.is_file():
         with open(fileName, 'r' ) as f:
