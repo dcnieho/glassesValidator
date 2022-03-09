@@ -287,9 +287,8 @@ def drawArucoDetectedMarkers(img,corners,ids,borderColor=(0,255,0), drawIDs = Tr
 
 
 class Gaze:
-    def __init__(self, ts, x, y, world3D=None, lGazeVec=None, lGazeOrigin=None, rGazeVec=None, rGazeOrigin=None, frame_ts=None):
+    def __init__(self, ts, x, y, world3D=None, lGazeVec=None, lGazeOrigin=None, rGazeVec=None, rGazeOrigin=None):
         self.ts = ts
-        self.frame_ts = frame_ts
         self.x = x
         self.y = y
         self.world3D = world3D
@@ -324,11 +323,10 @@ class Reference:
             drawOpenCVCircle(img, xy, size, color, -1, subPixelFac)
 
 class GazeWorld:
-    def __init__(self, ts, frame_ts, planePoint, planeNormal, gaze3D=None, gaze2D=None, lGazeOrigin=None, lGaze3D=None, lGaze2D=None, rGazeOrigin=None, rGaze3D=None, rGaze2D=None):
+    def __init__(self, ts, planePoint, planeNormal, gaze3D=None, gaze2D=None, lGazeOrigin=None, lGaze3D=None, lGaze2D=None, rGazeOrigin=None, rGaze3D=None, rGaze2D=None):
         # 3D gaze (and plane info) is in world space, w.r.t. scene camera
         # 2D gaze is on the reference board
         self.ts = ts
-        self.frame_ts = frame_ts
         self.planePoint = planePoint
         self.planeNormal = planeNormal
         self.gaze3D = gaze3D            # 3D gaze point on plane
@@ -347,7 +345,7 @@ class GazeWorld:
             return dat
 
     def getWriteData(self):
-        writeData = [self.frame_ts, self.ts]
+        writeData = [self.ts]
         writeData.extend(self.planePoint)
         writeData.extend(self.planeNormal)
         writeData.extend(self._getWriteDataImpl(self.gaze3D,3))
@@ -452,9 +450,8 @@ def getGazeData(fileName):
     with open( str(fileName), 'r' ) as f:
         reader = csv.DictReader(f, delimiter='\t')
         for entry in reader:
-            frame_idx = int(float(entry['frame_idx']))
+            frame_idx = float(entry['frame_idx'])
             ts = float(entry['timestamp'])
-            frame_ts = float(entry['video_timestamp'])
             gx = float(entry['vid_gaze_pos_x'])
             gy = float(entry['vid_gaze_pos_y'])
             world3D     = np.array([entry['3d_gaze_pos_x'],entry['3d_gaze_pos_y'],entry['3d_gaze_pos_z']]).astype('float32')
@@ -462,14 +459,14 @@ def getGazeData(fileName):
             lGazeOrigin = np.array([entry['l_gaze_ori_x'], entry['l_gaze_ori_y'], entry['l_gaze_ori_z']]).astype('float32')
             rGazeVec    = np.array([entry['r_gaze_dir_x'], entry['r_gaze_dir_y'], entry['r_gaze_dir_z']]).astype('float32')
             rGazeOrigin = np.array([entry['r_gaze_ori_x'], entry['r_gaze_ori_y'], entry['r_gaze_ori_z']]).astype('float32')
-            gaze = Gaze(ts, gx, gy, world3D, lGazeVec, lGazeOrigin, rGazeVec, rGazeOrigin, frame_ts)
+            gaze = Gaze(ts, gx, gy, world3D, lGazeVec, lGazeOrigin, rGazeVec, rGazeOrigin)
 
             if frame_idx in gazes:
                 gazes[frame_idx].append(gaze)
             else:
                 gazes[frame_idx] = [gaze]
 
-            maxFrameIdx = max(maxFrameIdx,frame_idx)
+            maxFrameIdx = int(max(maxFrameIdx,frame_idx))
 
     return gazes,maxFrameIdx
 
@@ -485,8 +482,7 @@ def getGazeWorldData(fileName,start=None,end=None,stopOnceExceeded=False):
                     break
                 else:
                     continue
-
-            frame_ts = float(entry['frame_timestamp'])
+            
             ts = float(entry['gaze_timestamp'])
             planePoint    = np.array([entry[x] for x in getXYZLabels('planePoint')]).astype('float32')
             planeNormal   = np.array([entry[x] for x in getXYZLabels('planeNormal')]).astype('float32')
@@ -498,7 +494,7 @@ def getGazeWorldData(fileName,start=None,end=None,stopOnceExceeded=False):
             rGazeOrigin   = np.array([entry[x] for x in getXYZLabels('gazeOriRight')]).astype('float32')
             rGaze3D       = np.array([entry[x] for x in getXYZLabels('gazeCam3DRight')]).astype('float32')
             rGaze2D       = np.array([entry[x] for x in getXYZLabels('gazeBoard2DRight',2)]).astype('float32')
-            gaze = GazeWorld(ts, frame_ts, planePoint, planeNormal, gaze3D, gaze2D, lGazeOrigin, lGaze3D, lGaze2D, rGazeOrigin, rGaze3D, rGaze2D)
+            gaze = GazeWorld(ts, planePoint, planeNormal, gaze3D, gaze2D, lGazeOrigin, lGaze3D, lGaze2D, rGazeOrigin, rGaze3D, rGaze2D)
 
             if frame_idx in gazes:
                 gazes[frame_idx].append(gaze)
@@ -535,7 +531,7 @@ def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition):
     RtBoard     = np.hstack((RBoard  ,                    tVec.reshape(3,1)))
     RtBoardInv  = np.hstack((RBoard.T,np.matmul(-RBoard.T,tVec.reshape(3,1))))
     boardPoint  = np.matmul(RtBoard,np.array([0, 0, 0., 1.]))
-    gazeWorld   = GazeWorld(gaze.ts,gaze.frame_ts,boardPoint,boardNormal)
+    gazeWorld   = GazeWorld(gaze.ts,boardPoint,boardNormal)
 
     # get transform from ET data's coordinate frame to camera's coordinate frame
     RCam        = cv2.Rodrigues(cameraRotation)[0]

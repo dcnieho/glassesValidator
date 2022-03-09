@@ -54,7 +54,7 @@ def process(inputDir,basePath):
 
     csv_file = open(str(inputDir / 'gazeWorldPos.tsv'), 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
-    header = ['frame_idx', 'frame_timestamp', 'gaze_timestamp']
+    header = ['frame_idx', 'gaze_timestamp']
     header.extend(utils.getXYZLabels(['planePoint','planeNormal']))
     header.extend(utils.getXYZLabels('gazeCam3D_vidPos'))
     header.extend(utils.getXYZLabels('gazeBoard2D_vidPos',2))
