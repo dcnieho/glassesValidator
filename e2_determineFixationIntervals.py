@@ -91,7 +91,7 @@ def process(inputDir,basePath):
         # make plot of data overlaid on board, and show for each target which fixation
         # was selected
         f       = plt.figure(dpi=300)
-        imgplot = plt.imshow(reference.getImgCopy(),extent=(np.array(markerBBox)[[0,2,3,1]]),alpha=.5)
+        imgplot = plt.imshow(reference.getImgCopy(asRGB=True),extent=(np.array(markerBBox)[[0,2,3,1]]),alpha=.5)
         plt.plot(fix['xpos'],fix['ypos'],'b-')
         plt.plot(fix['xpos'],fix['ypos'],'go')
         plt.xlim([markerBBox[0]-markerHalfSizeMm, markerBBox[2]+markerHalfSizeMm])

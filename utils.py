@@ -311,8 +311,11 @@ class Reference:
         # get marker info
         _, self.bbox = getKnownMarkers(markerDir, validationSetup)
 
-    def getImgCopy(self):
-        return self.img.copy()
+    def getImgCopy(self, asRGB=False):
+        if asRGB:
+            return self.img[:,:,[2,1,0]]    # indexing returns a copy
+        else:
+            return self.img.copy()
 
     def draw(self, img, x, y, subPixelFac=1, color=None, size=6):
         if not math.isnan(x):
