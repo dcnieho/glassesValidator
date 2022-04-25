@@ -43,7 +43,7 @@ def process(inputDir,basePath):
     cameraMatrix,distCoeff = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")[0:2]
 
     # get interval coded to be analyzed, if available
-    analyzeFrames = utils.getAnalysisIntervals(inputDir / "analysisInterval.tsv")
+    analyzeFrames = utils.getMarkerIntervals(inputDir / "markerInterval.tsv")
     if analyzeFrames is None:
         analyzeFrames = []
 
