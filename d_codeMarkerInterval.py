@@ -30,7 +30,7 @@ def process(inputDir,basePath):
     # Read pose of marker board, if available
     hasBoardPose = False
     if (inputDir / 'boardPose.tsv').is_file():
-        rVec,tVec = utils.getMarkerBoardPose(inputDir / 'boardPose.tsv')
+        rVec,tVec,homography = utils.getMarkerBoardPose(inputDir / 'boardPose.tsv')
         hasBoardPose = True
 
     # Read gaze on board data, if available

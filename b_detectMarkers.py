@@ -120,6 +120,7 @@ def process(inputDir,basePath):
     # Aruco markers have numeric keys, gaze targets have keys starting with 't'
     aruco_dict   = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
     knownMarkers, markerBBox = utils.getKnownMarkers(configDir, validationSetup)
+    centerTarget = knownMarkers['t%d'%validationSetup['centerTarget']].center
     
     # turn into aruco board object to be used for pose estimation
     referenceBoard = utils.getReferenceBoard(knownMarkers, aruco_dict)
@@ -140,6 +141,7 @@ def process(inputDir,basePath):
     header = ['frame_idx']
     header.append('poseNMarker')
     header.extend(utils.getXYZLabels(['poseRvec','poseTvec']))
+    header.extend(['transformation[%d,%d]' % (r,c) for r in range(3) for c in range(3)])
     csv_writer.writerow( header )
 
     frame_idx = 0
@@ -162,16 +164,38 @@ def process(inputDir,basePath):
                 # get camera pose
                 nMarkersUsed, Rvec, Tvec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
                 
+                writeDat = [frame_idx]
                 if nMarkersUsed>0:
                     # draw axis indicating board pose (origin and orientation)
                     if gVisualizeDetection and nMarkersUsed>0:
                         utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, Rvec, Tvec, armLength, 3, subPixelFac)
 
                     # store pose to file
-                    writeDat = [frame_idx]
                     writeDat.append( nMarkersUsed )
                     writeDat.extend( Rvec.flatten() )
                     writeDat.extend( Tvec.flatten() )
+                else:
+                    writeDat.extend([math.nan for x in range(7)])
+
+                # also get homography (direct image plane to plane in world transform). Use undistorted marker corners
+                cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
+                H, status = utils.estimateHomography(knownMarkers, cornersU, ids)
+
+                if status:
+                    # find where target is expected to be in the image
+                    iH = np.linalg.inv(H)
+                    target = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
+                    target = utils.distortPoint( *target, cameraMatrix, distCoeff)
+                    # draw target location on image
+                    if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
+                        utils.drawOpenCVCircle(frame, target, 3, (0,0,0), -1, subPixelFac)
+
+                    # write transform to file
+                    writeDat.extend( H.flatten() )
+                else:
+                    writeDat.extend([math.nan for x in range(9)])
+
+                if nMarkersUsed>0 or status:
                     csv_writer.writerow( writeDat )
 
             # if any markers were detected, draw where on the frame

@@ -164,7 +164,27 @@ def toImagePos(x,y,bbox,imSize,margin=[0,0]):
     pos = [p*s+m for p,s,m in zip(pos,imSize,margin)]
     return pos
 
-def transform(h, x, y):
+def estimateHomography(known, detectedCorners, detectedIDs):
+    # collect matching corners in image and in world
+    pts_src = []
+    pts_dst = []
+    for i in range(0, len(detectedIDs)):
+        key = '%d' % detectedIDs[i]
+        if key in known:
+            pts_src.extend( detectedCorners[i][0] )
+            pts_dst.extend(    known[key].corners )
+
+    if len(pts_src) < 4:
+        return None, False
+
+    # compute Homography
+    pts_src = np.float32(pts_src)
+    pts_dst = np.float32(pts_dst)
+    h, _ = cv2.findHomography(pts_src, pts_dst)
+
+    return h, True
+
+def applyHomography(h, x, y):
     if math.isnan(x):
         return [math.nan, math.nan]
 
@@ -509,10 +529,12 @@ def getGazeWorldData(fileName,start=None,end=None,stopOnceExceeded=False):
 def getMarkerBoardPose(fileName,start=None,end=None,stopOnceExceeded=False):
     rVec = {}
     tVec = {}
+    H = {}
     readSubset = start is not None and end is not None
     temp = pd.read_csv(str(fileName), delimiter='\t')
     rvecCols = [col for col in temp.columns if 'poseRvec' in col]
     tvecCols = [col for col in temp.columns if 'poseTvec' in col]
+    hCols    = [col for col in temp.columns if 'transformation' in col]
     for idx, row in temp.iterrows():
         frame_idx = int(row['frame_idx'])
         if readSubset and (frame_idx<start or frame_idx>end):
@@ -523,8 +545,9 @@ def getMarkerBoardPose(fileName,start=None,end=None,stopOnceExceeded=False):
 
         rVec[frame_idx] = row[rvecCols].values
         tVec[frame_idx] = row[tvecCols].values
+        H   [frame_idx] = row[hCols].values.reshape(3,3)
 
-    return rVec,tVec
+    return rVec,tVec,H
 
 def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition):
     # get board normal
