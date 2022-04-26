@@ -84,8 +84,8 @@ def process(inputDir,basePath):
                     gaze.draw(frame, subPixelFac)
 
                 # draw 3D gaze point as well, should coincide with 2D gaze point
-                a = cv2.projectPoints(np.array(gaze.world3D).reshape(1,3),cameraRotation,cameraPosition,cameraMatrix,distCoeff)[0][0][0]
                 if gShowVisualization:
+                    a = cv2.projectPoints(np.array(gaze.world3D).reshape(1,3),cameraRotation,cameraPosition,cameraMatrix,distCoeff)[0][0][0]
                     utils.drawOpenCVCircle(frame, a, 6, (0,0,0), -1, subPixelFac)
 
                 
