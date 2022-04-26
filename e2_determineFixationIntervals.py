@@ -34,7 +34,7 @@ def process(inputDir,basePath):
     reference = utils.Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
 
     # Read gaze on board data
-    gazeWorld = utils.getGazeWorldData(inputDir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
+    gazeWorld = utils.GazeWorld.readDataFromFile(inputDir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
     # get info about markers on our board
     # Aruco markers have numeric keys, gaze targets have keys starting with 't'

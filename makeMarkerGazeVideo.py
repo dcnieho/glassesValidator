@@ -66,7 +66,7 @@ def process(inputDir,basePath):
     cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")
 
     # Read gaze data
-    gazes,maxFrameIdx = utils.getGazeData(inputDir / 'gazeData.tsv')
+    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(inputDir / 'gazeData.tsv')
     
     frame_idx = 0
     armLength = 2.*math.tan(math.radians(.5))*validationSetup['distance']*10*validationSetup['markerSide']/2 # arms of axis are half a marker long

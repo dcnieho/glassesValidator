@@ -47,21 +47,15 @@ def process(inputDir,basePath):
         ifi         = 1000./cap.get(cv2.CAP_PROP_FPS)/gFPSFac
 
     # Read gaze data
-    gazes,maxFrameIdx = utils.getGazeData(inputDir / 'gazeData.tsv')
+    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(inputDir / 'gazeData.tsv')
 
     # Read pose of marker board
     rVec,tVec,homography = utils.getMarkerBoardPose(inputDir / 'boardPose.tsv')
 
     csv_file = open(str(inputDir / 'gazeWorldPos.tsv'), 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
-    header = ['frame_idx', 'gaze_timestamp']
-    header.extend(utils.getXYZLabels(['planePoint','planeNormal']))
-    header.extend(utils.getXYZLabels('gazeCam3D_vidPos'))
-    header.extend(utils.getXYZLabels('gazeBoard2D_vidPos',2))
-    header.extend(utils.getXYZLabels(['gazeOriLeft','gazeCam3DLeft']))
-    header.extend(utils.getXYZLabels('gazeBoard2DLeft',2))
-    header.extend(utils.getXYZLabels(['gazeOriRight','gazeCam3DRight']))
-    header.extend(utils.getXYZLabels('gazeBoard2DRight',2))
+    header = ['frame_idx']
+    header.extend(utils.GazeWorld.getWriteHeader())
     csv_writer.writerow(header)
     
     subPixelFac = 8   # for sub-pixel positioning

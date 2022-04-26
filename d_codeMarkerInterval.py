@@ -25,7 +25,7 @@ def process(inputDir,basePath):
     validationSetup = utils.getValidationSetup(configDir)
 
     # Read gaze data
-    gazes,maxFrameIdx = utils.getGazeData(inputDir / 'gazeData.tsv')
+    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(inputDir / 'gazeData.tsv')
 
     # Read pose of marker board, if available
     hasBoardPose = False
@@ -36,7 +36,7 @@ def process(inputDir,basePath):
     # Read gaze on board data, if available
     hasWorldGaze = False
     if (inputDir / 'gazeWorldPos.tsv').is_file():
-        gazesWorld = utils.getGazeWorldData(inputDir / 'gazeWorldPos.tsv')
+        gazesWorld = utils.GazeWorld.readDataFromFile(inputDir / 'gazeWorldPos.tsv')
         hasWorldGaze = True
 
     # get camera calibration info

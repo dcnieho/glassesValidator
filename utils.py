@@ -13,6 +13,9 @@ def getXYZLabels(stringList,N=3):
         stringList = [stringList]
     return list(itertools.chain(*[[s+'_%s' % (chr(c)) for c in range(ord('x'), ord('x')+N)] for s in stringList]))
 
+def dataReaderHelper(entry,lbl,N=3,type='float32'):
+    return np.array([entry[x] for x in getXYZLabels(lbl,N)]).astype(type)
+
 class Marker:
     def __init__(self, key, center, corners=None, color=None, rot=0):
         self.key = key
@@ -316,7 +319,34 @@ class Gaze:
         self.lGazeOrigin = lGazeOrigin
         self.rGazeVec= rGazeVec
         self.rGazeOrigin = rGazeOrigin
+        
+    @staticmethod
+    def readDataFromFile(fileName):
+        gazes = {}
+        maxFrameIdx = 0
+        with open( str(fileName), 'r' ) as f:
+            reader = csv.DictReader(f, delimiter='\t')
+            for entry in reader:
+                frame_idx = float(entry['frame_idx'])
+                ts = float(entry['timestamp'])
+                gx = float(entry['vid_gaze_pos_x'])
+                gy = float(entry['vid_gaze_pos_y'])
 
+                world3D     = dataReaderHelper(entry,'3d_gaze_pos')
+                lGazeVec    = dataReaderHelper(entry,'l_gaze_dir')
+                lGazeOrigin = dataReaderHelper(entry,'l_gaze_ori')
+                rGazeVec    = dataReaderHelper(entry,'r_gaze_dir')
+                rGazeOrigin = dataReaderHelper(entry,'r_gaze_ori')
+                gaze = Gaze(ts, gx, gy, world3D, lGazeVec, lGazeOrigin, rGazeVec, rGazeOrigin)
+
+                if frame_idx in gazes:
+                    gazes[frame_idx].append(gaze)
+                else:
+                    gazes[frame_idx] = [gaze]
+
+                maxFrameIdx = int(max(maxFrameIdx,frame_idx))
+
+        return gazes,maxFrameIdx
 
     def draw(self, img, subPixelFac=1):
         drawOpenCVCircle(img, (self.x, self.y), 8, (0,255,0), 2, subPixelFac)
@@ -346,20 +376,25 @@ class Reference:
             drawOpenCVCircle(img, xy, size, color, -1, subPixelFac)
 
 class GazeWorld:
-    def __init__(self, ts, planePoint, planeNormal, gaze3D=None, gaze2D=None, lGazeOrigin=None, lGaze3D=None, lGaze2D=None, rGazeOrigin=None, rGaze3D=None, rGaze2D=None):
+    def __init__(self, ts, planePoint, planeNormal, gaze3D=None, lGazeOrigin=None, lGaze3D=None, rGazeOrigin=None, rGaze3D=None, gaze2DRay=None, gaze2DHomography=None, lGaze2D=None, rGaze2D=None):
         # 3D gaze (and plane info) is in world space, w.r.t. scene camera
         # 2D gaze is on the reference board
         self.ts = ts
-        self.planePoint = planePoint
+
+        # in camera space
+        self.planePoint  = planePoint
         self.planeNormal = planeNormal
-        self.gaze3D = gaze3D            # 3D gaze point on plane
-        self.gaze2D = gaze2D            # 2D gaze (3D projected to plane)
+        self.gaze3D      = gaze3D                   # 3D gaze point on plane (3D gaze point <-> camera ray intersected with plane)
         self.lGazeOrigin = lGazeOrigin
-        self.lGaze3D = lGaze3D          # 3D gaze point on plane
-        self.lGaze2D = lGaze2D          # 2D gaze (gaze vector left eye projected to plane)
+        self.lGaze3D     = lGaze3D                  # 3D gaze point on plane ( left eye gaze vector intersected with plane)
         self.rGazeOrigin = rGazeOrigin
-        self.rGaze3D = rGaze3D          # 3D gaze point on plane
-        self.rGaze2D = rGaze2D          # 2D gaze (gaze vector right eye projected to plane)
+        self.rGaze3D     = rGaze3D                  # 3D gaze point on plane (right eye gaze vector intersected with plane)
+
+        # in board space
+        self.gaze2DRay        = gaze2DRay           # gaze3D in board space
+        self.gaze2DHomography = gaze2DHomography    # Video gaze point directly mapped to board through homography transformation
+        self.lGaze2D          = lGaze2D             # lGaze3D in board space
+        self.rGaze2D          = rGaze2D             # rGaze3D in board space
 
     def _getWriteDataImpl(self,dat,numel):
         if dat is None:
@@ -367,24 +402,75 @@ class GazeWorld:
         else:
             return dat
 
-    def getWriteData(self):
-        writeData = [self.ts]
-        writeData.extend(self.planePoint)
-        writeData.extend(self.planeNormal)
-        writeData.extend(self._getWriteDataImpl(self.gaze3D,3))
-        writeData.extend(self._getWriteDataImpl(self.gaze2D,2))
-        writeData.extend(self._getWriteDataImpl(self.lGazeOrigin,3))
-        writeData.extend(self._getWriteDataImpl(self.lGaze3D,3))
-        writeData.extend(self._getWriteDataImpl(self.lGaze2D,2))
-        writeData.extend(self._getWriteDataImpl(self.rGazeOrigin,3))
-        writeData.extend(self._getWriteDataImpl(self.rGaze3D,3))
-        writeData.extend(self._getWriteDataImpl(self.rGaze2D,2))
-
-        return writeData
+    @staticmethod
+    def getWriteHeader():
+        header = ['gaze_timestamp']
+        header.extend(getXYZLabels(['planePoint','planeNormal']))
+        header.extend(getXYZLabels('gazePosCam_vidPos'))
+        header.extend(getXYZLabels(['gazeOriCamLeft','gazePosCamLeft']))
+        header.extend(getXYZLabels(['gazeOriCamRight','gazePosCamRight']))
+        header.extend(getXYZLabels('gazePosBoard2D_vidPos_ray',2))
+        header.extend(getXYZLabels('gazePosBoard2D_vidPos_homography',2))
+        header.extend(getXYZLabels('gazePosBoard2DLeft',2))
+        header.extend(getXYZLabels('gazePosBoard2DRight',2))
+        return header
 
     @staticmethod
     def getMissingWriteData():
-        return [math.nan for x in range(29)]
+        return [math.nan for x in range(30)]
+
+    def getWriteData(self):
+        writeData = [self.ts]
+        # in camera space
+        writeData.extend(self.planePoint)
+        writeData.extend(self.planeNormal)
+        writeData.extend(self._getWriteDataImpl(self.gaze3D,3))
+        writeData.extend(self._getWriteDataImpl(self.lGazeOrigin,3))
+        writeData.extend(self._getWriteDataImpl(self.lGaze3D,3))
+        writeData.extend(self._getWriteDataImpl(self.rGazeOrigin,3))
+        writeData.extend(self._getWriteDataImpl(self.rGaze3D,3))
+        # in board space
+        writeData.extend(self._getWriteDataImpl(self.gaze2DRay,2))
+        writeData.extend(self._getWriteDataImpl(self.gaze2DHomography,2))
+        writeData.extend(self._getWriteDataImpl(self.lGaze2D,2))
+        writeData.extend(self._getWriteDataImpl(self.rGaze2D,2))
+
+        return writeData
+    
+    @staticmethod
+    def readDataFromFile(fileName,start=None,end=None,stopOnceExceeded=False):
+        gazes = {}
+        readSubset = start is not None and end is not None
+        with open( str(fileName), 'r' ) as f:
+            reader = csv.DictReader(f, delimiter='\t')
+            for entry in reader:
+                frame_idx = int(float(entry['frame_idx']))
+                if readSubset and (frame_idx<start or frame_idx>end):
+                    if stopOnceExceeded and frame_idx>end:
+                        break
+                    else:
+                        continue
+            
+                ts = float(entry['gaze_timestamp'])
+                planePoint      = dataReaderHelper(entry,'planePoint')
+                planeNormal     = dataReaderHelper(entry,'planeNormal')
+                gaze3D          = dataReaderHelper(entry,'gazePosCam_vidPos')
+                lGazeOrigin     = dataReaderHelper(entry,'gazeOriCamLeft')
+                lGaze3D         = dataReaderHelper(entry,'gazePosCamLeft')
+                rGazeOrigin     = dataReaderHelper(entry,'gazeOriCamRight')
+                rGaze3D         = dataReaderHelper(entry,'gazePosCamRight')
+                gaze2DRay       = dataReaderHelper(entry,'gazePosBoard2D_vidPos_ray',2)
+                gaze2DHomography= dataReaderHelper(entry,'gazePosBoard2D_vidPos_homography',2)
+                lGaze2D         = dataReaderHelper(entry,'gazePosBoard2DLeft',2)
+                rGaze2D         = dataReaderHelper(entry,'gazePosBoard2DRight',2)
+                gaze = GazeWorld(ts, planePoint, planeNormal, gaze3D, lGazeOrigin, lGaze3D, rGazeOrigin, rGaze3D, gaze2DRay, gaze2DHomography, lGaze2D, rGaze2D)
+
+                if frame_idx in gazes:
+                    gazes[frame_idx].append(gaze)
+                else:
+                    gazes[frame_idx] = [gaze]
+
+        return gazes
 
     def drawOnWorldVideo(self, img, cameraMatrix, distCoeff, subPixelFac=1):
         # project to camera, display
@@ -415,6 +501,11 @@ class GazeWorld:
             average = np.array([(x+y)/2 for x,y in zip(self.lGaze2D,self.rGaze2D)])
             if not math.isnan(average[0]):
                 reference.draw(img, average[0], average[1], subPixelFac, (255,0,255))
+        # video gaze position
+        if self.gaze2DHomography is not None:
+            reference.draw(img, self.gaze2DHomography[0],self.gaze2DHomography[1], subPixelFac, (0,255,0), 5)
+        if self.gaze2DRay is not None:
+            reference.draw(img, self.gaze2DRay[0],self.gaze2DRay[1], subPixelFac, (0,0,0), 3)
 
 class Idx2Timestamp:
     def __init__(self, fileName):
@@ -438,8 +529,8 @@ class Timestamp2Index:
         with open(fileName, 'r' ) as f:
             reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
-                self.indexes.append(int(float(entry['frame_idx'])))
-                self.timestamps.append(float(entry['timestamp']))
+                self.indexes   .append(int(float(entry['frame_idx'])))
+                self.timestamps.append(    float(entry['timestamp']))
 
     def find(self, ts):
         idx = min(bisect.bisect(self.timestamps, ts), len(self.indexes)-1)
@@ -466,65 +557,6 @@ def getMarkerIntervals(fileName):
                 analyzeFrames.append(int(float(entry['end_frame'])))
 
     return None if len(analyzeFrames)==0 else analyzeFrames
-
-def getGazeData(fileName):
-    gazes = {}
-    maxFrameIdx = 0
-    with open( str(fileName), 'r' ) as f:
-        reader = csv.DictReader(f, delimiter='\t')
-        for entry in reader:
-            frame_idx = float(entry['frame_idx'])
-            ts = float(entry['timestamp'])
-            gx = float(entry['vid_gaze_pos_x'])
-            gy = float(entry['vid_gaze_pos_y'])
-            world3D     = np.array([entry['3d_gaze_pos_x'],entry['3d_gaze_pos_y'],entry['3d_gaze_pos_z']]).astype('float32')
-            lGazeVec    = np.array([entry['l_gaze_dir_x'], entry['l_gaze_dir_y'], entry['l_gaze_dir_z']]).astype('float32')
-            lGazeOrigin = np.array([entry['l_gaze_ori_x'], entry['l_gaze_ori_y'], entry['l_gaze_ori_z']]).astype('float32')
-            rGazeVec    = np.array([entry['r_gaze_dir_x'], entry['r_gaze_dir_y'], entry['r_gaze_dir_z']]).astype('float32')
-            rGazeOrigin = np.array([entry['r_gaze_ori_x'], entry['r_gaze_ori_y'], entry['r_gaze_ori_z']]).astype('float32')
-            gaze = Gaze(ts, gx, gy, world3D, lGazeVec, lGazeOrigin, rGazeVec, rGazeOrigin)
-
-            if frame_idx in gazes:
-                gazes[frame_idx].append(gaze)
-            else:
-                gazes[frame_idx] = [gaze]
-
-            maxFrameIdx = int(max(maxFrameIdx,frame_idx))
-
-    return gazes,maxFrameIdx
-
-def getGazeWorldData(fileName,start=None,end=None,stopOnceExceeded=False):
-    gazes = {}
-    readSubset = start is not None and end is not None
-    with open( str(fileName), 'r' ) as f:
-        reader = csv.DictReader(f, delimiter='\t')
-        for entry in reader:
-            frame_idx = int(float(entry['frame_idx']))
-            if readSubset and (frame_idx<start or frame_idx>end):
-                if stopOnceExceeded and frame_idx>end:
-                    break
-                else:
-                    continue
-            
-            ts = float(entry['gaze_timestamp'])
-            planePoint    = np.array([entry[x] for x in getXYZLabels('planePoint')]).astype('float32')
-            planeNormal   = np.array([entry[x] for x in getXYZLabels('planeNormal')]).astype('float32')
-            gaze3D        = np.array([entry[x] for x in getXYZLabels('gazeCam3D_vidPos')]).astype('float32')
-            gaze2D        = np.array([entry[x] for x in getXYZLabels('gazeBoard2D_vidPos',2)]).astype('float32')
-            lGazeOrigin   = np.array([entry[x] for x in getXYZLabels('gazeOriLeft')]).astype('float32')
-            lGaze3D       = np.array([entry[x] for x in getXYZLabels('gazeCam3DLeft')]).astype('float32')
-            lGaze2D       = np.array([entry[x] for x in getXYZLabels('gazeBoard2DLeft',2)]).astype('float32')
-            rGazeOrigin   = np.array([entry[x] for x in getXYZLabels('gazeOriRight')]).astype('float32')
-            rGaze3D       = np.array([entry[x] for x in getXYZLabels('gazeCam3DRight')]).astype('float32')
-            rGaze2D       = np.array([entry[x] for x in getXYZLabels('gazeBoard2DRight',2)]).astype('float32')
-            gaze = GazeWorld(ts, planePoint, planeNormal, gaze3D, gaze2D, lGazeOrigin, lGaze3D, lGaze2D, rGazeOrigin, rGaze3D, rGaze2D)
-
-            if frame_idx in gazes:
-                gazes[frame_idx].append(gaze)
-            else:
-                gazes[frame_idx] = [gaze]
-
-    return gazes
 
 def getMarkerBoardPose(fileName,start=None,end=None,stopOnceExceeded=False):
     rVec = {}
@@ -570,14 +602,14 @@ def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition):
     # find intersection of 3D gaze with board, draw
     g3Board  = intersect_plane_ray(boardNormal, boardPoint, g3D.flatten(), np.array([0.,0.,0.]))  # vec origin (0,0,0) because we use g3D from camera's view point to be able to recreate Tobii 2D gaze pos data
     (x,y,z)  = np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
-    gazeWorld.gaze3D = g3Board
-    gazeWorld.gaze2D = [x,y]
+    gazeWorld.gaze3D    = g3Board
+    gazeWorld.gaze2DRay = [x, y]
 
     # project gaze vectors to reference board (and draw on video)
     gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]
     gazeOrigins = [gaze.lGazeOrigin, gaze.rGazeOrigin]
     clrs        = [(0,0,255)       , (255,0,0)]
-    eyes        = ['left'          ,'right']
+    eyes        = ['left'          , 'right']
     attrs       = [['lGazeOrigin','lGaze3D','lGaze2D'],['rGazeOrigin','rGaze3D','rGaze2D']]
     for gVec,gOri,clr,eye,attr in zip(gazeVecs,gazeOrigins,clrs,eyes,attrs):
         # get gaze vector and point on vector (pupil center) ->
