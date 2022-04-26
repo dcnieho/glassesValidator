@@ -11,3 +11,4 @@ results/
 *.log
 *.aux
 __pycache__
+*.png

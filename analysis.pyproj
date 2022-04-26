@@ -21,6 +21,7 @@
   <ItemGroup>
     <Compile Include="a_preproc_tobiiG2.py" />
     <Compile Include="b_detectMarkers.py" />
+    <Compile Include="cameraCalibration\getCalibrationBoard.py" />
     <Compile Include="d_codeMarkerInterval.py" />
     <Compile Include="e1_computeOffsetsToTargets.py" />
     <Compile Include="e2_determineFixationIntervals.py" />
@@ -45,6 +46,7 @@
     <Content Include="config\validationSetup.txt" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="cameraCalibration\" />
     <Folder Include="config" />
     <Folder Include="markerBoard" />
     <Folder Include="mp4analyser" />
