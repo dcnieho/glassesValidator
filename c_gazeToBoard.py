@@ -107,9 +107,7 @@ def process(inputDir,basePath):
 
                     # store gaze-on-plane to csv
                     writeData.extend(gazeWorld.getWriteData())
-                else:
-                    writeData.extend(utils.GazeWorld.getMissingWriteData())
-                csv_writer.writerow( writeData )
+                    csv_writer.writerow( writeData )
 
         if gShowVisualization:
             if gShowReference:
