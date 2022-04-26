@@ -581,7 +581,7 @@ def getMarkerBoardPose(fileName,start=None,end=None,stopOnceExceeded=False):
 
     return rVec,tVec,H
 
-def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition):
+def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition, cameraMatrix=None, distCoeffs=None, homographyT=None):
     # get board normal
     RBoard      = cv2.Rodrigues(rVec)[0]
     boardNormal = np.matmul(RBoard, np.array([0,0,1.]))
@@ -604,6 +604,15 @@ def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition):
     (x,y,z)  = np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
     gazeWorld.gaze3D    = g3Board
     gazeWorld.gaze2DRay = [x, y]
+
+    # unproject 2D gaze point on video to point on board (should yield the same as
+    # the method above)
+    if homographyT is not None:
+        ux, uy   = (gaze.x, gaze.y)
+        if (cameraMatrix is not None) and (distCoeffs is not None):
+            ux, uy   = undistortPoint( ux, uy, cameraMatrix, distCoeffs)
+        (xW, yW) = applyHomography(homographyT, ux, uy)
+        gazeWorld.gaze2DHomography = [xW, yW]
 
     # project gaze vectors to reference board (and draw on video)
     gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]

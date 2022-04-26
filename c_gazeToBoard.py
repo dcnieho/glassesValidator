@@ -91,7 +91,7 @@ def process(inputDir,basePath):
                 # file, along with gaze vector origins in same coordinate frame
                 writeData = [frame_idx]
                 if frame_idx in rVec:
-                    gazeWorld = utils.gazeToPlane(gaze,rVec[frame_idx],tVec[frame_idx],cameraRotation,cameraPosition)
+                    gazeWorld = utils.gazeToPlane(gaze,rVec[frame_idx],tVec[frame_idx],cameraRotation,cameraPosition, cameraMatrix, distCoeff, homography[frame_idx])
                     
                     # draw gazes on video and reference image
                     if gShowVisualization:
