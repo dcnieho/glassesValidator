@@ -220,69 +220,38 @@ def json2df(jsonFile,sceneVideoDimensions):
     """
     convert the livedata.json file to a pandas dataframe
     """
-    df = pd.DataFrame()     # empty dataframe to write data to
 
-    with open(str(jsonFile), 'rb') as j:
-        # loop over all lines in json file, each line represents unique json object
-        for line in j:
-            entry = json.loads(line)
-
-            if entry['type'] != 'gaze':
-                continue
-
-            # get timestamp
-            ts = entry['timestamp']
-
-            # check if this contains any data or is empty
-            if not entry['data']:
-                for which_eye in 'lr':
-                    df.loc[ts, which_eye + '_gaze_ori_x'] = math.nan
-                    df.loc[ts, which_eye + '_gaze_ori_y'] = math.nan
-                    df.loc[ts, which_eye + '_gaze_ori_z'] = math.nan
-                    df.loc[ts, which_eye + '_pup_diam']   = math.nan
-                    df.loc[ts, which_eye + '_gaze_dir_x'] = math.nan
-                    df.loc[ts, which_eye + '_gaze_dir_y'] = math.nan
-                    df.loc[ts, which_eye + '_gaze_dir_z'] = math.nan
-
-                df.loc[ts, 'vid_gaze_pos_x'] = math.nan
-                df.loc[ts, 'vid_gaze_pos_y'] = math.nan
-                df.loc[ts, '3d_gaze_pos_x']  = math.nan
-                df.loc[ts, '3d_gaze_pos_y']  = math.nan
-                df.loc[ts, '3d_gaze_pos_z']  = math.nan
-                continue
-
-            # process binocular gaze data
-            df.loc[ts, 'vid_gaze_pos_x'] = entry['data']['gaze2d'][0]*sceneVideoDimensions[0]
-            df.loc[ts, 'vid_gaze_pos_y'] = entry['data']['gaze2d'][1]*sceneVideoDimensions[1]
-            df.loc[ts, '3d_gaze_pos_x']  = entry['data']['gaze3d'][0]
-            df.loc[ts, '3d_gaze_pos_y']  = entry['data']['gaze3d'][1]
-            df.loc[ts, '3d_gaze_pos_z']  = entry['data']['gaze3d'][2]
-                    
-            # monocular gaze data
-            for eye in ('left','right'):
-                which_eye = eye[:1]
-                if entry['data']['eye'+eye]:
-                    df.loc[ts, which_eye + '_gaze_ori_x'] = entry['data']['eye'+eye]['gazeorigin'][0]
-                    df.loc[ts, which_eye + '_gaze_ori_y'] = entry['data']['eye'+eye]['gazeorigin'][1]
-                    df.loc[ts, which_eye + '_gaze_ori_z'] = entry['data']['eye'+eye]['gazeorigin'][2]
-                    df.loc[ts, which_eye + '_pup_diam']   = entry['data']['eye'+eye]['pupildiameter']
-                    df.loc[ts, which_eye + '_gaze_dir_x'] = entry['data']['eye'+eye]['gazedirection'][0]
-                    df.loc[ts, which_eye + '_gaze_dir_y'] = entry['data']['eye'+eye]['gazedirection'][1]
-                    df.loc[ts, which_eye + '_gaze_dir_z'] = entry['data']['eye'+eye]['gazedirection'][2]
-                else:
-                    df.loc[ts, which_eye + '_gaze_ori_x'] = math.nan
-                    df.loc[ts, which_eye + '_gaze_ori_y'] = math.nan
-                    df.loc[ts, which_eye + '_gaze_ori_z'] = math.nan
-                    df.loc[ts, which_eye + '_pup_diam']   = math.nan
-                    df.loc[ts, which_eye + '_gaze_dir_x'] = math.nan
-                    df.loc[ts, which_eye + '_gaze_dir_y'] = math.nan
-                    df.loc[ts, which_eye + '_gaze_dir_z'] = math.nan
-
-    # convert timestamps from s to ms
-    df.index = df.index * 1000.0
+    with open(str(jsonFile), 'r') as file:
+        entries = json.loads('[' + file.read().replace('\n', ',')[:-1] + ']')
 
     # json no longer needed, remove
     jsonFile.unlink(missing_ok=True)
+
+
+    # turn gaze data into data frame
+    dfR = pd.json_normalize(entries)
+    # convert timestamps from s to ms and set as index
+    dfR.loc[:,'timestamp'] *= 1000.0
+    dfR = dfR.set_index('timestamp')
+    # drop anything thats not gaze
+    dfR = dfR.drop(dfR[dfR.type != 'gaze'].index)
+    # manipulate data frame to expand columns as needed
+    df = pd.DataFrame([],index=dfR.index)
+    expander = lambda a,n: [[math.nan]*n if not isinstance(x,list) else x for x in a]
+    # monocular gaze data
+    for eye in ('left','right'):
+        which_eye = eye[:1]
+        df[[which_eye + '_gaze_ori_x', which_eye + '_gaze_ori_y', which_eye + '_gaze_ori_z']] = \
+            pd.DataFrame(expander(dfR['data.eye'+eye+'.gazeorigin'].tolist(),3), index=dfR.index)
+        df[which_eye + '_pup_diam'] = dfR['data.eye'+eye+'.pupildiameter']
+        df[[which_eye + '_gaze_dir_x', which_eye + '_gaze_dir_y', which_eye + '_gaze_dir_z']] = \
+            pd.DataFrame(expander(dfR['data.eye'+eye+'.gazedirection'].tolist(),3), index=dfR.index)
+    
+    # binocular gaze data
+    df[['3d_gaze_pos_x', '3d_gaze_pos_y', '3d_gaze_pos_z']] = pd.DataFrame(expander(dfR['data.gaze3d'].tolist(),3), index=dfR.index)
+    df[['vid_gaze_pos_x', 'vid_gaze_pos_y']] = pd.DataFrame(expander(dfR['data.gaze2d'].tolist(),2), index=dfR.index)
+    df.loc[:,'vid_gaze_pos_x'] *= sceneVideoDimensions[0]
+    df.loc[:,'vid_gaze_pos_y'] *= sceneVideoDimensions[1]
 
     # return the dataframe
     return df

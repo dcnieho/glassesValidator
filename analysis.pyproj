@@ -20,6 +20,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="a_preproc_tobiiG2.py" />
+    <Compile Include="a_preproc_tobiiG3.py" />
     <Compile Include="b_detectMarkers.py" />
     <Compile Include="cameraCalibration\getCalibrationBoard.py" />
     <Compile Include="d_codeMarkerInterval.py" />
