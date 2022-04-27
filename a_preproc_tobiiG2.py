@@ -113,7 +113,7 @@ def getCameraFromTSLV(inputDir):
         camera['principalPoint'] = np.array(struct.unpack('2f',f.read(4*2)))
         camera['radialDistortion'] = np.array(struct.unpack('3f',f.read(4*3)))
         camera['tangentialDistortion'] = np.array(struct.unpack('3f',f.read(4*3))[:-1]) # drop last element (always zero), since there are only two tangential distortion parameters
-        camera['sensorDimensions'] = np.array(struct.unpack('2h',f.read(2*2)))
+        camera['resolution'] = np.array(struct.unpack('2h',f.read(2*2)))
     
     # turn into camera matrix and distortion coefficients as used by OpenCV
     camera['cameraMatrix'] = np.identity(3)
@@ -138,7 +138,7 @@ def getCameraFromTSLV(inputDir):
     # tslv no longer needed, remove
     (inputDir / 'et.tslv').unlink(missing_ok=True)
 
-    return camera['sensorDimensions']
+    return camera['resolution']
 
 
 def formatGazeData(inputDir, sceneVideoDimensions):
