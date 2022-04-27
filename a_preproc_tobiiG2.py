@@ -135,6 +135,9 @@ def getCameraFromTSLV(inputDir):
         fs.write(name=key,val=value)
     fs.release()
 
+    # tslv no longer needed, remove
+    (inputDir / 'et.tslv').unlink(missing_ok=True)
+
     return camera['sensorDimensions']
 
 
@@ -149,7 +152,7 @@ def formatGazeData(inputDir, sceneVideoDimensions):
     """
 
     # convert the json file to pandas dataframe
-    df,scene_video_ts_offset = json2df(str(inputDir / 'livedata.json'), sceneVideoDimensions)
+    df,scene_video_ts_offset = json2df(inputDir / 'livedata.json', sceneVideoDimensions)
 
     # read video file, create array of frame timestamps
     frameTimestamps = getVidFrameTimestamps(str(inputDir / 'worldCamera.mp4'))
@@ -236,7 +239,7 @@ def json2df(jsonFile,sceneVideoDimensions):
     evtsSync = list()       # eye video timestamp sync (only if eye video was recorded)
     df = pd.DataFrame()     # empty dataframe to write data to
 
-    with open(jsonFile, 'rb') as j:
+    with open(str(jsonFile), 'rb') as j:
 
         # loop over all lines in json file, each line represents unique json object
         for line in j:
@@ -284,23 +287,26 @@ def json2df(jsonFile,sceneVideoDimensions):
                     
             # ignore anything else
 
-        # find out t0. Do the same as GlassesViewer so timestamps are compatible
-        # that is t0 is at timestamp of last video start (scene or eye)
-        vtsSync  = np.array( vtsSync)
-        evtsSync = np.array(evtsSync)
-        t0s = [vtsSync[vtsSync[:,1]==0,0]]
-        if len(evtsSync)>0:
-            t0s.append(evtsSync[evtsSync[:,1]==0,0])
-        t0 = max(t0s)
+    # find out t0. Do the same as GlassesViewer so timestamps are compatible
+    # that is t0 is at timestamp of last video start (scene or eye)
+    vtsSync  = np.array( vtsSync)
+    evtsSync = np.array(evtsSync)
+    t0s = [vtsSync[vtsSync[:,1]==0,0]]
+    if len(evtsSync)>0:
+        t0s.append(evtsSync[evtsSync[:,1]==0,0])
+    t0 = max(t0s)
 
-        # get timestamp offset for scene video
-        scene_video_ts_offset = (t0s[0]-t0) / 1000.0
+    # get timestamp offset for scene video
+    scene_video_ts_offset = (t0s[0]-t0) / 1000.0
 
-        # convert timestamps from us to ms
-        df.index = (df.index - t0) / 1000.0
+    # convert timestamps from us to ms
+    df.index = (df.index - t0) / 1000.0
 
-        # return the dataframe
-        return df, scene_video_ts_offset
+    # json no longer needed, remove
+    jsonFile.unlink(missing_ok=True)
+
+    # return the dataframe
+    return df, scene_video_ts_offset
 
 
 if __name__ == '__main__':
