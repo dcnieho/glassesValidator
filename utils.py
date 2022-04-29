@@ -21,41 +21,58 @@ def getVidFrameTimestamps(vid_file):
     """
     Parse the supplied video, return an array of frame timestamps
     """
-    
-    # method 2, parse mp4 file
-    boxes   = mp4analyser.iso.Mp4File(str(vid_file))
-    # 1. find mdat box
-    moov    = boxes.child_boxes[[i for i,x in enumerate(boxes.child_boxes) if x.type=='moov'][0]]
-    # 2. find track boxes
-    trakIdxs= [i for i,x in enumerate(moov.child_boxes) if x.type=='trak']
-    # 3. check which track contains video
-    trakIdx = [i for i,x in enumerate(boxes.get_summary()['track_list']) if x['media_type']=='video'][0]
-    trak    = moov.child_boxes[trakIdxs[trakIdx]]
-    # 4. get mdia
-    mdia    = trak.child_boxes[[i for i,x in enumerate(trak.child_boxes) if x.type=='mdia'][0]]
-    # 5. get time_scale field from mdhd
-    time_base = mdia.child_boxes[[i for i,x in enumerate(mdia.child_boxes) if x.type=='mdhd'][0]].box_info['timescale']
-    # 6. get minf
-    minf    = mdia.child_boxes[[i for i,x in enumerate(mdia.child_boxes) if x.type=='minf'][0]]
-    # 7. get stbl
-    stbl    = minf.child_boxes[[i for i,x in enumerate(minf.child_boxes) if x.type=='stbl'][0]]
-    # 8. get sample table from stts
-    samp_table = stbl.child_boxes[[i for i,x in enumerate(stbl.child_boxes) if x.type=='stts'][0]].box_info['entry_list']
-    # 9. now we have all the info to determine the timestamps of each frame
-    df = pd.DataFrame(samp_table) # easier to use that way
-    totalFrames = df['sample_count'].sum()
-    frameTs = np.zeros(totalFrames)
-    # first uncompress delta table
-    idx = 0
-    for count,dur in zip(df['sample_count'], df['sample_delta']):
-        frameTs[idx:idx+count] = dur
-        idx = idx+count
-    # turn into timestamps, first in time_base units
-    frameTs = np.roll(frameTs,1)
-    frameTs[0] = 0.
-    frameTs = np.cumsum(frameTs)
-    # now into timestamps in ms
-    frameTs = frameTs/time_base*1000
+    if vid_file.suffix in ['.mp4', '.mov']:
+        # parse mp4 file
+        boxes   = mp4analyser.iso.Mp4File(str(vid_file))
+        # 1. find mdat box
+        moov    = boxes.child_boxes[[i for i,x in enumerate(boxes.child_boxes) if x.type=='moov'][0]]
+        # 2. find track boxes
+        trakIdxs= [i for i,x in enumerate(moov.child_boxes) if x.type=='trak']
+        # 3. check which track contains video
+        trakIdx = [i for i,x in enumerate(boxes.get_summary()['track_list']) if x['media_type']=='video'][0]
+        trak    = moov.child_boxes[trakIdxs[trakIdx]]
+        # 4. get mdia
+        mdia    = trak.child_boxes[[i for i,x in enumerate(trak.child_boxes) if x.type=='mdia'][0]]
+        # 5. get time_scale field from mdhd
+        time_base = mdia.child_boxes[[i for i,x in enumerate(mdia.child_boxes) if x.type=='mdhd'][0]].box_info['timescale']
+        # 6. get minf
+        minf    = mdia.child_boxes[[i for i,x in enumerate(mdia.child_boxes) if x.type=='minf'][0]]
+        # 7. get stbl
+        stbl    = minf.child_boxes[[i for i,x in enumerate(minf.child_boxes) if x.type=='stbl'][0]]
+        # 8. get sample table from stts
+        samp_table = stbl.child_boxes[[i for i,x in enumerate(stbl.child_boxes) if x.type=='stts'][0]].box_info['entry_list']
+        # 9. now we have all the info to determine the timestamps of each frame
+        df = pd.DataFrame(samp_table) # easier to use that way
+        totalFrames = df['sample_count'].sum()
+        frameTs = np.zeros(totalFrames)
+        # first uncompress delta table
+        idx = 0
+        for count,dur in zip(df['sample_count'], df['sample_delta']):
+            frameTs[idx:idx+count] = dur
+            idx = idx+count
+        # turn into timestamps, first in time_base units
+        frameTs = np.roll(frameTs,1)
+        frameTs[0] = 0.
+        frameTs = np.cumsum(frameTs)
+        # now into timestamps in ms
+        frameTs = frameTs/time_base*1000
+    else:
+        # open file with opencv and get timestamps of each frame
+        vid = cv2.VideoCapture(str(vid_file))
+        frameTs = []
+        while vid.isOpened():
+            # get current time (we want start time of frame
+            frameTs.append(vid.get(cv2.CAP_PROP_POS_MSEC))
+            
+            # Capture frame-by-frame
+            ret, frame = vid.read()
+
+            if not ret == True:
+                break
+
+        # release the video capture object
+        vid.release()
+        frameTs = np.array(frameTs)
 
     ### convert the frame_timestamps to dataframe
     frameIdx = np.arange(0, len(frameTs))
