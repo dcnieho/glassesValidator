@@ -162,9 +162,6 @@ def formatGazeData(inputDir, sceneVideoDimensions):
         # set the frame index based on this index value
         df.loc[ts, 'frame_idx'] = frameTimestamps.index[idx]
 
-    # build the formatted dataframe
-    df.index.name = 'timestamp'
-
     # return the gaze data df and frame time stamps array
     return df, frameTimestamps
 
