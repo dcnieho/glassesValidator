@@ -108,10 +108,12 @@ def process(inputDir,basePath):
     validationSetup = utils.getValidationSetup(configDir)
     
     # open video file, query it for size
-    inVideo = str(inputDir / 'worldCamera.mp4')
-    cap    = cv2.VideoCapture( inVideo )
+    inVideo = inputDir / 'worldCamera.mp4'
+    if not inVideo.is_file():
+        inVideo = inputDir / 'worldCamera.avi'
+    cap    = cv2.VideoCapture(str(inVideo))
     if not cap.isOpened():
-        raise RuntimeError('the file "{}" could not be opened'.format(inVideo))
+        raise RuntimeError('the file "{}" could not be opened'.format(str(inVideo)))
     width  = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     ifi    = 1000./cap.get(cv2.CAP_PROP_FPS)/gFPSFac
