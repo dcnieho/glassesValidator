@@ -164,7 +164,10 @@ def process(inputDir,basePath):
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
                 # get camera pose
-                nMarkersUsed, Rvec, Tvec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
+                if (cameraMatrix is not None) and (distCoeff is not None):
+                    nMarkersUsed, Rvec, Tvec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
+                else:
+                    nMarkersUsed = 0
                 
                 writeDat = [frame_idx]
                 if nMarkersUsed>0:
@@ -180,14 +183,18 @@ def process(inputDir,basePath):
                     writeDat.extend([math.nan for x in range(7)])
 
                 # also get homography (direct image plane to plane in world transform). Use undistorted marker corners
-                cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
+                if (cameraMatrix is not None) and (distCoeff is not None):
+                    cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
+                else:
+                    cornersU = corners
                 H, status = utils.estimateHomography(knownMarkers, cornersU, ids)
 
                 if status:
                     # find where target is expected to be in the image
                     iH = np.linalg.inv(H)
                     target = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
-                    target = utils.distortPoint( *target, cameraMatrix, distCoeff)
+                    if (cameraMatrix is not None) and (distCoeff is not None):
+                        target = utils.distortPoint(*target, cameraMatrix, distCoeff)
                     # draw target location on image
                     if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
                         utils.drawOpenCVCircle(frame, target, 3, (0,0,0), -1, subPixelFac)
