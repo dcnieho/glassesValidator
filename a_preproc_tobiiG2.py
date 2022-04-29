@@ -20,7 +20,6 @@ import pandas as pd
 import numpy as np
 import struct
 import math
-import mp4analyser.iso
 
 import utils
 
