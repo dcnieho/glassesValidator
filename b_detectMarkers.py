@@ -165,7 +165,7 @@ def process(inputDir,basePath):
             if len(ids) >= validationSetup['minNumMarkers']:
                 # get camera pose
                 if (cameraMatrix is not None) and (distCoeff is not None):
-                    nMarkersUsed, Rvec, Tvec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
+                    nMarkersUsed, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
                 else:
                     nMarkersUsed = 0
                 
@@ -173,12 +173,12 @@ def process(inputDir,basePath):
                 if nMarkersUsed>0:
                     # draw axis indicating board pose (origin and orientation)
                     if gVisualizeDetection and nMarkersUsed>0:
-                        utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, Rvec, Tvec, armLength, 3, subPixelFac)
+                        utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, rVec, tVec, armLength, 3, subPixelFac)
 
                     # store pose to file
                     writeDat.append( nMarkersUsed )
-                    writeDat.extend( Rvec.flatten() )
-                    writeDat.extend( Tvec.flatten() )
+                    writeDat.extend( rVec.flatten() )
+                    writeDat.extend( tVec.flatten() )
                 else:
                     writeDat.extend([math.nan for x in range(7)])
 
