@@ -20,6 +20,7 @@ import numpy as np
 import math
 import configparser
 from io import StringIO
+from scipy.spatial.transform import Rotation
 
 import utils
 
@@ -109,6 +110,7 @@ def getCameraFromFile(inputDir):
     camera = {}
     camera['FOV'] = caminfo.getfloat("MiiSimulation",'SceneCamFOV')
     camera['resolution'] = np.array([caminfo.getint("MiiSimulation",'SceneCamWidth'), caminfo.getint("MiiSimulation",'SceneCamHeight')])
+    camera['sensorOffsets'] = np.array([caminfo.getfloat("MiiSimulation",'SceneCamSensorOffsetX'), caminfo.getfloat("MiiSimulation",'SceneCamSensorOffsetY')])
     
     camera['radialDistortion'] = caminfo.getnparray("MiiSimulation",'SceneCamRadialDistortion')
     camera['tangentialDistortion'] = caminfo.getnparray("MiiSimulation",'SceneCamTangentialDistortion')
@@ -116,25 +118,22 @@ def getCameraFromFile(inputDir):
     camera['position'] = caminfo.getnparray("MiiSimulation",'SceneCamPos')
     camera['eulerAngles'] = np.array([caminfo.getfloat("MiiSimulation",'SceneCamOrX'), caminfo.getfloat("MiiSimulation",'SceneCamOrY'), caminfo.getfloat("MiiSimulation",'SceneCamOrZ')])
 
-    
+    # now turn these fields into focal length and principal point
+    # 1. FOV is horizontal FOV of camera, given resolution we can compute
+    # focal length. We assume vertical focal length is the same, best we can do
+    fl = camera['resolution'][0]/(2*math.tan(camera['FOV']/2/180*math.pi))
+    camera['focalLength'] = np.array([fl, fl])
+    # 2. sensor offsets seem to be relative to center of sensor
+    camera['principalPoint'] = camera['resolution']/2.+camera['sensorOffsets']
+    # 3. turn euler angles into rotation matrix (180-Rz because board space has positive X rightward and positive Y downward)
+    camera['rotation'] = Rotation.from_euler('XYZ', [camera['eulerAngles'][0], camera['eulerAngles'][1], 180-camera['eulerAngles'][2]], degrees=True).as_matrix()
 
-    ## rename some fields, ensure they are numpy arrays
-    #camera['focalLength'] = np.array(camera.pop('focal-length'))
-    #camera['principalPoint'] = np.array(camera.pop('principal-point'))
-    #camera['radialDistortion'] = np.array(camera.pop('radial-distortion'))
-    #camera['tangentialDistortion'] = np.array(camera.pop('tangential-distortion'))
-    
-    #camera['position'] = np.array(camera['position'])
-    #camera['resolution'] = np.array(camera['resolution'])
-    #camera['rotation'] = np.array(camera['rotation'])
-
-    ## turn into camera matrix and distortion coefficients as used by OpenCV
-    #camera['cameraMatrix'] = np.identity(3)
-    #camera['cameraMatrix'][0,0] = camera['focalLength'][0]
-    #camera['cameraMatrix'][0,1] = camera['skew']
-    #camera['cameraMatrix'][1,1] = camera['focalLength'][1]
-    #camera['cameraMatrix'][0,2] = camera['principalPoint'][0]
-    #camera['cameraMatrix'][1,2] = camera['principalPoint'][1]
+    # turn into camera matrix and distortion coefficients as used by OpenCV
+    camera['cameraMatrix'] = np.identity(3)
+    camera['cameraMatrix'][0,0] = camera['focalLength'][0]
+    camera['cameraMatrix'][1,1] = camera['focalLength'][1]
+    camera['cameraMatrix'][0,2] = camera['principalPoint'][0]
+    camera['cameraMatrix'][1,2] = camera['principalPoint'][1]
 
     camera['distCoeff'] = np.zeros(5)
     camera['distCoeff'][:2]  = camera['radialDistortion'][:2]
