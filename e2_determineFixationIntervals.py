@@ -51,7 +51,8 @@ def process(inputDir,basePath):
     opt = {'xres': None, 'yres': None}  # dummy values for required options
     opt['missingx']         = math.nan
     opt['missingy']         = math.nan
-    opt['freq']             = 50        # Hz
+    ts                      = np.array([s.ts for v in gazeWorld.values() for s in v])
+    opt['freq']             = np.round(np.mean(1000./np.diff(ts)))    # Hz
     opt['downsamples']      = [2, 5]
     opt['downsampFilter']   = False
     opt['maxdisp']          = 50        # mm
