@@ -663,14 +663,15 @@ def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition, cameraMatrix=None,
     RtCam       = np.hstack((RCam, cameraPosition))
 
     # project 3D gaze to reference board
-    # turn 3D gaze point into ray from camera
-    g3D = np.matmul(RCam,np.array(gaze.world3D).reshape(3,1))
-    g3D /= np.sqrt((g3D**2).sum()) # normalize
-    # find intersection of 3D gaze with board, draw
-    g3Board  = intersect_plane_ray(boardNormal, boardPoint, g3D.flatten(), np.array([0.,0.,0.]))  # vec origin (0,0,0) because we use g3D from camera's view point to be able to recreate Tobii 2D gaze pos data
-    (x,y,z)  = np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
-    gazeWorld.gaze3D    = g3Board
-    gazeWorld.gaze2DRay = [x, y]
+    if gaze.world3D is not None:
+        # turn 3D gaze point into ray from camera
+        g3D = np.matmul(RCam,np.array(gaze.world3D).reshape(3,1))
+        g3D /= np.sqrt((g3D**2).sum()) # normalize
+        # find intersection of 3D gaze with board, draw
+        g3Board  = intersect_plane_ray(boardNormal, boardPoint, g3D.flatten(), np.array([0.,0.,0.]))  # vec origin (0,0,0) because we use g3D from camera's view point to be able to recreate Tobii 2D gaze pos data
+        (x,y,z)  = np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
+        gazeWorld.gaze3D    = g3Board
+        gazeWorld.gaze2DRay = [x, y]
 
     # unproject 2D gaze point on video to point on board (should yield the same as
     # the method above)
