@@ -15,7 +15,11 @@ def getXYZLabels(stringList,N=3):
     return list(itertools.chain(*[[s+'_%s' % (chr(c)) for c in range(ord('x'), ord('x')+N)] for s in stringList]))
 
 def dataReaderHelper(entry,lbl,N=3,type='float32'):
-    return np.array([entry[x] for x in getXYZLabels(lbl,N)]).astype(type)
+    columns = getXYZLabels(lbl,N)
+    if np.all([x in entry for x in columns]):
+        return np.array([entry[x] for x in columns]).astype(type)
+    else:
+        return None
 
 def getVidFrameTimestamps(vid_file):
     """
