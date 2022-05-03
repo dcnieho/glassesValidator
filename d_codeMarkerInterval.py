@@ -50,7 +50,10 @@ def process(inputDir,basePath):
     # set up video playback
     # 1. OpenCV for showing the frame
     cv2.namedWindow("frame",cv2.WINDOW_NORMAL)
-    cap     = cv2.VideoCapture( str(inputDir / 'worldCamera.mp4') )
+    inVideo = inputDir / 'worldCamera.mp4'
+    if not inVideo.is_file():
+        inVideo = inputDir / 'worldCamera.avi'
+    cap    = cv2.VideoCapture(str(inVideo))
     width   = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height  = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     frate   = cap.get(cv2.CAP_PROP_FPS)
@@ -63,7 +66,10 @@ def process(inputDir,basePath):
     i2t = utils.Idx2Timestamp( str(inputDir / 'frameTimestamps.tsv') )
     # 4. mediaplayer for sound playback, brief wait or get_pts() below crashes
     ff_opts = {'vn' : False, 'volume': 1. }#{'sync':'video', 'framedrop':True}
-    player = MediaPlayer(str(inputDir / 'worldCamera.mp4'), ff_opts=ff_opts)
+    inAudio = inputDir / 'worldCamera.wav'
+    if not inAudio.is_file():
+        inAudio = inputDir / 'worldCamera.mp4'
+    player = MediaPlayer(str(inAudio), ff_opts=ff_opts)
     time.sleep(0.1)
 
     # show
