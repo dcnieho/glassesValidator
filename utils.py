@@ -690,7 +690,7 @@ def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition, cameraMatrix=None,
     for gVec,gOri,clr,eye,attr in zip(gazeVecs,gazeOrigins,clrs,eyes,attrs):
         # get gaze vector and point on vector (pupil center) ->
         # transform from ET data coordinate frame into camera coordinate frame
-        gVec    = np.matmul(RtCam,np.append(gVec,1.))
+        gVec    = np.matmul(RCam ,          gVec    )
         gOri    = np.matmul(RtCam,np.append(gOri,1.))
         setattr(gazeWorld,attr[0],gOri)
 
