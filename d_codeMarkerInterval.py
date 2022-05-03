@@ -3,6 +3,7 @@
 import sys
 from pathlib import Path
 import math
+import numpy as np
 
 import cv2
 import csv
@@ -41,6 +42,7 @@ def process(inputDir,basePath):
 
     # get camera calibration info
     cameraMatrix,distCoeff = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")[0:2]
+    hasCamCal = (cameraMatrix is not None) and (distCoeff is not None)
 
     # get interval coded to be analyzed, if available
     analyzeFrames = utils.getMarkerIntervals(inputDir / "markerInterval.tsv")
@@ -98,7 +100,8 @@ def process(inputDir,basePath):
                 refImg = reference.getImgCopy()
 
             # if we have board pose, draw board origin on video
-            if hasBoardPose and frame_idx in rVec:
+            if hasBoardPose and frame_idx in rVec and hasCamCal and\
+                not np.any(np.isnan(rVec[frame_idx])) and not np.any(np.isnan(tVec[frame_idx])):
                 utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, rVec[frame_idx], tVec[frame_idx], armLength, 3, subPixelFac)
 
             # if have gaze for this frame, draw it
@@ -108,7 +111,8 @@ def process(inputDir,basePath):
                
             # if have gaze in world info, draw it too (also only first)
             if hasWorldGaze and frame_idx in gazesWorld:
-                gazesWorld[frame_idx][0].drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
+                if hasCamCal:
+                    gazesWorld[frame_idx][0].drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
                 if gShowReference:
                     gazesWorld[frame_idx][0].drawOnReferencePlane(refImg, reference, subPixelFac)
 
