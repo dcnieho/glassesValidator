@@ -443,22 +443,23 @@ class Reference:
             drawOpenCVCircle(img, xy, size, color, -1, subPixelFac)
 
 class GazeWorld:
-    def __init__(self, ts, planePoint, planeNormal, gaze3D=None, lGazeOrigin=None, lGaze3D=None, rGazeOrigin=None, rGaze3D=None, gaze2DRay=None, gaze2DHomography=None, lGaze2D=None, rGaze2D=None):
+    def __init__(self, ts, planePoint, planeNormal, gaze3DRay=None, gaze3DHomography=None, lGazeOrigin=None, lGaze3D=None, rGazeOrigin=None, rGaze3D=None, gaze2DRay=None, gaze2DHomography=None, lGaze2D=None, rGaze2D=None):
         # 3D gaze (and plane info) is in world space, w.r.t. scene camera
         # 2D gaze is on the reference board
         self.ts = ts
 
         # in camera space
-        self.planePoint  = planePoint
-        self.planeNormal = planeNormal
-        self.gaze3D      = gaze3D                   # 3D gaze point on plane (3D gaze point <-> camera ray intersected with plane)
-        self.lGazeOrigin = lGazeOrigin
-        self.lGaze3D     = lGaze3D                  # 3D gaze point on plane ( left eye gaze vector intersected with plane)
-        self.rGazeOrigin = rGazeOrigin
-        self.rGaze3D     = rGaze3D                  # 3D gaze point on plane (right eye gaze vector intersected with plane)
+        self.planePoint       = planePoint
+        self.planeNormal      = planeNormal
+        self.gaze3DRay        = gaze3DRay           # 3D gaze point on plane (3D gaze point <-> camera ray intersected with plane)
+        self.gaze3DHomography = gaze3DHomography    # gaze2DHomography in camera space
+        self.lGazeOrigin      = lGazeOrigin
+        self.lGaze3D          = lGaze3D             # 3D gaze point on plane ( left eye gaze vector intersected with plane)
+        self.rGazeOrigin      = rGazeOrigin
+        self.rGaze3D          = rGaze3D             # 3D gaze point on plane (right eye gaze vector intersected with plane)
 
         # in board space
-        self.gaze2DRay        = gaze2DRay           # gaze3D in board space
+        self.gaze2DRay        = gaze2DRay           # gaze3DRay in board space
         self.gaze2DHomography = gaze2DHomography    # Video gaze point directly mapped to board through homography transformation
         self.lGaze2D          = lGaze2D             # lGaze3D in board space
         self.rGaze2D          = rGaze2D             # rGaze3D in board space
@@ -473,7 +474,7 @@ class GazeWorld:
     def getWriteHeader():
         header = ['gaze_timestamp']
         header.extend(getXYZLabels(['planePoint','planeNormal']))
-        header.extend(getXYZLabels('gazePosCam_vidPos'))
+        header.extend(getXYZLabels(['gazePosCam_vidPos_ray','gazePosCam_vidPos_homography']))
         header.extend(getXYZLabels(['gazeOriCamLeft','gazePosCamLeft']))
         header.extend(getXYZLabels(['gazeOriCamRight','gazePosCamRight']))
         header.extend(getXYZLabels('gazePosBoard2D_vidPos_ray',2))
@@ -491,7 +492,8 @@ class GazeWorld:
         # in camera space
         writeData.extend(self.planePoint)
         writeData.extend(self.planeNormal)
-        writeData.extend(self._getWriteDataImpl(self.gaze3D,3))
+        writeData.extend(self._getWriteDataImpl(self.gaze3DRay,3))
+        writeData.extend(self._getWriteDataImpl(self.gaze3DHomography,3))
         writeData.extend(self._getWriteDataImpl(self.lGazeOrigin,3))
         writeData.extend(self._getWriteDataImpl(self.lGaze3D,3))
         writeData.extend(self._getWriteDataImpl(self.rGazeOrigin,3))
@@ -521,7 +523,8 @@ class GazeWorld:
                 ts = float(entry['gaze_timestamp'])
                 planePoint      = dataReaderHelper(entry,'planePoint')
                 planeNormal     = dataReaderHelper(entry,'planeNormal')
-                gaze3D          = dataReaderHelper(entry,'gazePosCam_vidPos')
+                gaze3DRay       = dataReaderHelper(entry,'gazePosCam_vidPos_ray')
+                gaze3DHomography= dataReaderHelper(entry,'gazePosCam_vidPos_homography')
                 lGazeOrigin     = dataReaderHelper(entry,'gazeOriCamLeft')
                 lGaze3D         = dataReaderHelper(entry,'gazePosCamLeft')
                 rGazeOrigin     = dataReaderHelper(entry,'gazeOriCamRight')
@@ -530,7 +533,7 @@ class GazeWorld:
                 gaze2DHomography= dataReaderHelper(entry,'gazePosBoard2D_vidPos_homography',2)
                 lGaze2D         = dataReaderHelper(entry,'gazePosBoard2DLeft',2)
                 rGaze2D         = dataReaderHelper(entry,'gazePosBoard2DRight',2)
-                gaze = GazeWorld(ts, planePoint, planeNormal, gaze3D, lGazeOrigin, lGaze3D, rGazeOrigin, rGaze3D, gaze2DRay, gaze2DHomography, lGaze2D, rGaze2D)
+                gaze = GazeWorld(ts, planePoint, planeNormal, gaze3DRay, gaze3DHomography, lGazeOrigin, lGaze3D, rGazeOrigin, rGaze3D, gaze2DRay, gaze2DHomography, lGaze2D, rGaze2D)
 
                 if frame_idx in gazes:
                     gazes[frame_idx].append(gaze)
@@ -672,7 +675,7 @@ def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition, cameraMatrix=None,
         # find intersection of 3D gaze with board, draw
         g3Board  = intersect_plane_ray(boardNormal, boardPoint, g3D.flatten(), np.array([0.,0.,0.]))  # vec origin (0,0,0) because we use g3D from camera's view point to be able to recreate Tobii 2D gaze pos data
         (x,y,z)  = np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
-        gazeWorld.gaze3D    = g3Board
+        gazeWorld.gaze3DRay = g3Board
         gazeWorld.gaze2DRay = [x, y]
 
     # unproject 2D gaze point on video to point on board (should yield values very close to
@@ -683,6 +686,9 @@ def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition, cameraMatrix=None,
             ux, uy   = undistortPoint( ux, uy, cameraMatrix, distCoeffs)
         (xW, yW) = applyHomography(homographyT, ux, uy)
         gazeWorld.gaze2DHomography = [xW, yW]
+
+        # get this point in board space
+        gazeWorld.gaze3DHomography = np.matmul(RtBoard,np.array([xW,yW,0.,1.]).reshape((4,1))).flatten()
 
     # project gaze vectors to reference board (and draw on video)
     gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]

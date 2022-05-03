@@ -33,12 +33,26 @@ def process(inputDir,basePath):
         print('  no gaze offsets precomputed defined for this recording, skipping')
         return
     offset = pd.read_csv(str(fileName), delimiter='\t',index_col=['marker_interval','timestamp','eye','target'])
-    offset.index = offset.index.set_levels(['left','right'],level='eye')
 
     # prep output data frame
     df  = pd.DataFrame().reindex(index=analysisIntervals.index)
     idx = pd.IndexSlice
     ts  = offset.index.get_level_values('timestamp')
+    qHasLeft        = ('left'  in offset.index.levels[2]) and np.any(np.logical_not(np.isnan(offset.loc[idx[:,:,'left'      ,:],:].to_numpy())))
+    qHasRight       = ('right' in offset.index.levels[2]) and np.any(np.logical_not(np.isnan(offset.loc[idx[:,:,'right'     ,:],:].to_numpy())))
+    qHasRay         = ('ray'   in offset.index.levels[2]) and np.any(np.logical_not(np.isnan(offset.loc[idx[:,:,'ray'       ,:],:].to_numpy())))
+    qHasHomography  = ('ray'   in offset.index.levels[2]) and np.any(np.logical_not(np.isnan(offset.loc[idx[:,:,'homography',:],:].to_numpy())))
+    todo = []
+    if qHasHomography:
+        todo.append('homography')
+    if qHasRay:
+        todo.append('ray')
+    if qHasLeft:
+        todo.append('left')
+    if qHasRight:
+        todo.append('right')
+    if qHasLeft and qHasRight:
+        todo.append('avg')
     with warnings.catch_warnings():
         warnings.simplefilter("ignore") # ignore warnings from np.nanmean and np.nanstd
         for i in analysisIntervals.index.levels[0]:
@@ -51,12 +65,12 @@ def process(inputDir,basePath):
                 qData= np.logical_and(ts>=st, ts<=et)
 
                 # per eye
-                for e in ('left','right','avg'):
-                    if e in ('left','right'):
-                        data = offset.loc[idx[i,qData,e,t],:]
+                for e in todo:
+                    if e in ('left','right','ray','homography'):
+                        data = offset.loc[idx[i,qData,        e       ,t],:]
                     else:
                         # binocular average
-                        data = offset.loc[idx[i,qData,:,t],:].mean(level=['marker_interval','timestamp','target'],skipna=True)
+                        data = offset.loc[idx[i,qData,['left','right'],t],:].mean(level=['marker_interval','timestamp','target'],skipna=True)
                     
                     df.loc[(i,t),'acc_'+e+'_x'] = np.nanmean(data['offset_x'])
                     df.loc[(i,t),'acc_'+e+'_y'] = np.nanmean(data['offset_y'])

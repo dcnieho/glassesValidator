@@ -54,32 +54,46 @@ def process(inputDir,basePath):
     for ival in range(0,len(analyzeFrames)//2):
         gazeWorldToAnal = {k:v for (k,v) in gazeWorld.items() if k>=analyzeFrames[ival*2] and k<=analyzeFrames[ival*2+1]}
         frameIdxs = [k for k,v in gazeWorldToAnal.items() for s in v]
-        ts    = np.vstack([s.ts          for v in gazeWorldToAnal.values() for s in v])
-        oriL  = np.vstack([s.lGazeOrigin for v in gazeWorldToAnal.values() for s in v])
-        oriR  = np.vstack([s.rGazeOrigin for v in gazeWorldToAnal.values() for s in v])
-        gaze3L= np.vstack([s.lGaze3D     for v in gazeWorldToAnal.values() for s in v])
-        gaze3R= np.vstack([s.rGaze3D     for v in gazeWorldToAnal.values() for s in v])
-        gaze2L= np.vstack([s.lGaze2D     for v in gazeWorldToAnal.values() for s in v])
-        gaze2R= np.vstack([s.rGaze2D     for v in gazeWorldToAnal.values() for s in v])
+        ts              = np.vstack([s.ts               for v in gazeWorldToAnal.values() for s in v])
+        oriLeft         = np.vstack([s.lGazeOrigin      for v in gazeWorldToAnal.values() for s in v])
+        oriRight        = np.vstack([s.rGazeOrigin      for v in gazeWorldToAnal.values() for s in v])
+        gaze3DLeft      = np.vstack([s.lGaze3D          for v in gazeWorldToAnal.values() for s in v])
+        gaze3DRight     = np.vstack([s.rGaze3D          for v in gazeWorldToAnal.values() for s in v])
+        gaze2DLeft      = np.vstack([s.lGaze2D          for v in gazeWorldToAnal.values() for s in v])
+        gaze2DRight     = np.vstack([s.rGaze2D          for v in gazeWorldToAnal.values() for s in v])
+        gaze3DRay       = np.vstack([s.gaze3DRay        for v in gazeWorldToAnal.values() for s in v])
+        gaze2DRay       = np.vstack([s.gaze2DRay        for v in gazeWorldToAnal.values() for s in v])
+        gaze3DHomography= np.vstack([s.gaze3DHomography for v in gazeWorldToAnal.values() for s in v])
+        gaze2DHomography= np.vstack([s.gaze2DHomography for v in gazeWorldToAnal.values() for s in v])
 
-        offset = np.empty((oriL.shape[0],2,len(targets),2))
+        offset = np.empty((oriLeft.shape[0],4,len(targets),2))
         offset[:] = np.nan
 
-        for s in range(oriL.shape[0]):
+        for s in range(oriLeft.shape[0]):
             if frameIdxs[s] not in rVec:
                 continue
             RBoard  = cv2.Rodrigues(rVec[frameIdxs[s]])[0]
             RtBoard = np.hstack((RBoard, tVec[frameIdxs[s]].reshape(3,1)))
 
-            for e in range(2):
+            for e in range(4):
                 if e==0:
-                    ori         = oriL[s,:]
-                    gaze        = gaze3L[s,:]
-                    gazeBoard   = gaze2L[s,:]
-                else:
-                    ori         = oriR[s,:]
-                    gaze        = gaze3R[s,:]
-                    gazeBoard   = gaze2R[s,:]
+                    ori         = oriLeft[s,:]
+                    gaze        = gaze3DLeft[s,:]
+                    gazeBoard   = gaze2DLeft[s,:]
+                elif e==1:
+                    ori         = oriRight[s,:]
+                    gaze        = gaze3DRight[s,:]
+                    gazeBoard   = gaze2DRight[s,:]
+                elif e==2:
+                    # from camera perspective, using 3D gaze point ray
+                    ori         = np.zeros(3)
+                    gaze        = gaze3DRay[s,:]
+                    gazeBoard   = gaze2DRay[s,:]
+                elif e==3:
+                    # from camera perspective, using homography
+                    ori         = np.zeros(3)
+                    gaze        = gaze3DHomography[s,:]
+                    gazeBoard   = gaze2DHomography[s,:]
 
                 for ti,t in enumerate(targets):
                     target  = np.matmul(RtBoard,np.array([targets[t][0], targets[t][1], 0., 1.]))
@@ -97,12 +111,13 @@ def process(inputDir,basePath):
         # organize for output and write to file
         # 1. create cartesian product of sample index, eye and target indices
         # order of inputs needed to get expected output is a mystery to me, but screw it, works
-        dat = cartesian_product(np.arange(2),np.arange(offset.shape[0]),[t for t in targets])
+        dat = cartesian_product(np.arange(4),np.arange(offset.shape[0]),[t for t in targets])
         # 2. put into data frame
         df = pd.DataFrame()
         df['timestamp'] = ts[dat[:,1],0]
         df['marker_interval'] = ival+1
-        df['eye'] = ['l' if e==0 else 'r' for e in dat[:,0]]
+        map = ['left','right','ray','homography']
+        df['eye'] = [map[e] for e in dat[:,0]]
         df['target'] = dat[:,2]
         df = pd.concat([df, pd.DataFrame(np.reshape(offset,(-1,2)),columns=['offset_x','offset_y'])],axis=1)
         # 3. write to file

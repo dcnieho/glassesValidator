@@ -60,14 +60,27 @@ def process(inputDir,basePath):
     opt['maxMergeTime']     = 81        # ms
     opt['minFixDur']        = 50        # ms
     # collect data
+    qHasLeft        = np.any(np.logical_not(np.isnan([s.lGaze2D          for v in gazeWorld.values() for s in v])))
+    qHasRight       = np.any(np.logical_not(np.isnan([s.rGaze2D          for v in gazeWorld.values() for s in v])))
+    qHasRay         = np.any(np.logical_not(np.isnan([s.gaze2DRay        for v in gazeWorld.values() for s in v])))
+    qHasHomography  = np.any(np.logical_not(np.isnan([s.gaze2DHomography for v in gazeWorld.values() for s in v])))
     for ival in range(0,len(analyzeFrames)//2):
         gazeWorldToAnal = {k:v for (k,v) in gazeWorld.items() if k>=analyzeFrames[ival*2] and k<=analyzeFrames[ival*2+1]}
         data = {}
         data['time'] = np.array([s.ts for v in gazeWorldToAnal.values() for s in v])
-        data['L_X']  = np.array([s.lGaze2D[0] for v in gazeWorldToAnal.values() for s in v])
-        data['L_Y']  = np.array([s.lGaze2D[1] for v in gazeWorldToAnal.values() for s in v])
-        data['R_X']  = np.array([s.rGaze2D[0] for v in gazeWorldToAnal.values() for s in v])
-        data['R_Y']  = np.array([s.rGaze2D[1] for v in gazeWorldToAnal.values() for s in v])
+        if qHasLeft and qHasRight:
+            data['L_X']  = np.array([s.lGaze2D[0] for v in gazeWorldToAnal.values() for s in v])
+            data['L_Y']  = np.array([s.lGaze2D[1] for v in gazeWorldToAnal.values() for s in v])
+            data['R_X']  = np.array([s.rGaze2D[0] for v in gazeWorldToAnal.values() for s in v])
+            data['R_Y']  = np.array([s.rGaze2D[1] for v in gazeWorldToAnal.values() for s in v])
+        elif qHasRay:
+            data['average_X']  = np.array([s.gaze2DRay[0] for v in gazeWorldToAnal.values() for s in v])
+            data['average_Y']  = np.array([s.gaze2DRay[1] for v in gazeWorldToAnal.values() for s in v])
+        elif qHasHomography:
+            data['average_X']  = np.array([s.gaze2DHomography[0] for v in gazeWorldToAnal.values() for s in v])
+            data['average_Y']  = np.array([s.gaze2DHomography[1] for v in gazeWorldToAnal.values() for s in v])
+        else:
+            raise RuntimeError('No data available to process')
         
         # run event classification to find fixations
         fix,dat,par = I2MC.I2MC(data,opt,False)
