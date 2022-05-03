@@ -608,7 +608,7 @@ def getCameraCalibrationInfo(fileName):
     # camera extrinsics for 3D gaze
     cameraRotation  = fs.getNode("rotation").mat()
     if cameraRotation is not None:
-        cameraRotation  = cv2.Rodrigues(rot)[0]     # need rotation vector, not rotation matrix
+        cameraRotation  = cv2.Rodrigues(cameraRotation)[0]  # need rotation vector, not rotation matrix
     cameraPosition  = fs.getNode("position").mat()
     fs.release()
 
