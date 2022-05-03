@@ -29,10 +29,12 @@ def process(inputDir,basePath):
         cv2.namedWindow("reference")
     
     # open input video file, query it for size
-    inVideo = str(inputDir / 'worldCamera.mp4')
-    vidIn  = cv2.VideoCapture( inVideo )
+    inVideo = inputDir / 'worldCamera.mp4'
+    if not inVideo.is_file():
+        inVideo = inputDir / 'worldCamera.avi'
+    vidIn  = cv2.VideoCapture( str(inVideo) )
     if not vidIn.isOpened():
-        raise RuntimeError('the file "{}" could not be opened'.format(inVideo))
+        raise RuntimeError('the file "{}" could not be opened'.format(str(inVideo)))
     width  = vidIn.get(cv2.CAP_PROP_FRAME_WIDTH)
     height = vidIn.get(cv2.CAP_PROP_FRAME_HEIGHT)
     fps    = vidIn.get(cv2.CAP_PROP_FPS)
@@ -50,6 +52,7 @@ def process(inputDir,basePath):
     # Aruco markers have numeric keys, gaze targets have keys starting with 't'
     aruco_dict   = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
     knownMarkers, markerBBox = utils.getKnownMarkers(configDir, validationSetup)
+    centerTarget = knownMarkers['t%d'%validationSetup['centerTarget']].center
     
     # turn into aruco board object to be used for pose estimation
     referenceBoard = utils.getReferenceBoard(knownMarkers, aruco_dict)
@@ -88,12 +91,32 @@ def process(inputDir,basePath):
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
                 # get camera pose
-                nMarkersUsed, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
+                if (cameraMatrix is not None) and (distCoeff is not None):
+                    nMarkersUsed, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
+                else:
+                    nMarkersUsed = 0
                        
                 # draw axis indicating board pose (origin and orientation)
                 if nMarkersUsed>0:
                     utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, rVec, tVec, armLength, 3, subPixelFac)
                     gotPose = True
+
+                # also get homography (direct image plane to plane in world transform). Use undistorted marker corners
+                if (cameraMatrix is not None) and (distCoeff is not None):
+                    cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
+                else:
+                    cornersU = corners
+                H, status = utils.estimateHomography(knownMarkers, cornersU, ids)
+
+                if status:
+                    # find where target is expected to be in the image
+                    iH = np.linalg.inv(H)
+                    target = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
+                    if (cameraMatrix is not None) and (distCoeff is not None):
+                        target = utils.distortPoint(*target, cameraMatrix, distCoeff)
+                    # draw target location on image
+                    if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
+                        utils.drawOpenCVCircle(frame, target, 3, (0,0,0), -1, subPixelFac)
 
             # if any markers were detected, draw where on the frame
             utils.drawArucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac)
@@ -106,8 +129,9 @@ def process(inputDir,basePath):
                 gaze.draw(frame, subPixelFac)
 
                 # draw 3D gaze point as well, should coincide with 2D gaze point
-                a = cv2.projectPoints(np.array(gaze.world3D).reshape(1,3),cameraRotation,cameraPosition,cameraMatrix,distCoeff)[0][0][0]
-                utils.drawOpenCVCircle(frame, a, 6, (0,0,0), -1, subPixelFac)
+                if gaze.world3D is not None:
+                    a = cv2.projectPoints(np.array(gaze.world3D).reshape(1,3),cameraRotation,cameraPosition,cameraMatrix,distCoeff)[0][0][0]
+                    utils.drawOpenCVCircle(frame, a, 6, (0,0,0), -1, subPixelFac)
                 
                 # if we have pose information, figure out where gaze vectors
                 # intersect with reference board. Do same for 3D gaze point
