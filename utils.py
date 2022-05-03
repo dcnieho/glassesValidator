@@ -379,10 +379,9 @@ def drawArucoDetectedMarkers(img,corners,ids,borderColor=(0,255,0), drawIDs = Tr
 
 
 class Gaze:
-    def __init__(self, ts, x, y, world3D=None, lGazeVec=None, lGazeOrigin=None, rGazeVec=None, rGazeOrigin=None):
+    def __init__(self, ts, vid2D, world3D=None, lGazeVec=None, lGazeOrigin=None, rGazeVec=None, rGazeOrigin=None):
         self.ts = ts
-        self.x = x
-        self.y = y
+        self.vid2D = vid2D
         self.world3D = world3D
         self.lGazeVec= lGazeVec
         self.lGazeOrigin = lGazeOrigin
@@ -398,15 +397,14 @@ class Gaze:
             for entry in reader:
                 frame_idx = float(entry['frame_idx'])
                 ts = float(entry['timestamp'])
-                gx = float(entry['vid_gaze_pos_x'])
-                gy = float(entry['vid_gaze_pos_y'])
-
+                
+                vid2D       = dataReaderHelper(entry,'vid_gaze_pos',2)
                 world3D     = dataReaderHelper(entry,'3d_gaze_pos')
                 lGazeVec    = dataReaderHelper(entry,'l_gaze_dir')
                 lGazeOrigin = dataReaderHelper(entry,'l_gaze_ori')
                 rGazeVec    = dataReaderHelper(entry,'r_gaze_dir')
                 rGazeOrigin = dataReaderHelper(entry,'r_gaze_ori')
-                gaze = Gaze(ts, gx, gy, world3D, lGazeVec, lGazeOrigin, rGazeVec, rGazeOrigin)
+                gaze = Gaze(ts, vid2D, world3D, lGazeVec, lGazeOrigin, rGazeVec, rGazeOrigin)
 
                 if frame_idx in gazes:
                     gazes[frame_idx].append(gaze)
@@ -418,7 +416,7 @@ class Gaze:
         return gazes,maxFrameIdx
 
     def draw(self, img, subPixelFac=1):
-        drawOpenCVCircle(img, (self.x, self.y), 8, (0,255,0), 2, subPixelFac)
+        drawOpenCVCircle(img, self.vid2D, 8, (0,255,0), 2, subPixelFac)
 
 
 class Reference:
@@ -677,10 +675,10 @@ def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition, cameraMatrix=None,
         gazeWorld.gaze3D    = g3Board
         gazeWorld.gaze2DRay = [x, y]
 
-    # unproject 2D gaze point on video to point on board (should yield the same as
-    # the method above)
+    # unproject 2D gaze point on video to point on board (should yield values very close to
+    # the above method of intersecting 3D gaze point ray with board)
     if homographyT is not None:
-        ux, uy   = (gaze.x, gaze.y)
+        ux, uy   = gaze.vid2D
         if (cameraMatrix is not None) and (distCoeffs is not None):
             ux, uy   = undistortPoint( ux, uy, cameraMatrix, distCoeffs)
         (xW, yW) = applyHomography(homographyT, ux, uy)
