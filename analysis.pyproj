@@ -19,7 +19,7 @@
     <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="a_preproc_SMI_ETG2.py" />
+    <Compile Include="a_preproc_SMI_ETG.py" />
     <Compile Include="a_preproc_tobiiG2.py" />
     <Compile Include="a_preproc_tobiiG3.py" />
     <Compile Include="b_detectMarkers.py" />

@@ -1,5 +1,5 @@
 """
-Cast raw Tobii data into common format.
+Cast raw SMI ETG data into common format.
 
 Tested with Python 3.8, open CV 4.0.1
 
