@@ -99,7 +99,7 @@ class Marker:
 
 def getValidationSetup(configDir):
     # read key=value pairs into dict
-    with open(str(configDir / "validationSetup.txt")) as f:
+    with open(configDir / "validationSetup.txt") as f:
         lexer = shlex(f)
         lexer.whitespace += '='
         lexer.wordchars += '.'  # don't split extensions of filenames in the input file
@@ -392,7 +392,7 @@ class Gaze:
     def readDataFromFile(fileName):
         gazes = {}
         maxFrameIdx = 0
-        with open( str(fileName), 'r' ) as f:
+        with open(fileName, 'r' ) as f:
             reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
                 frame_idx = float(entry['frame_idx'])
@@ -510,7 +510,7 @@ class GazeWorld:
     def readDataFromFile(fileName,start=None,end=None,stopOnceExceeded=False):
         gazes = {}
         readSubset = start is not None and end is not None
-        with open( str(fileName), 'r' ) as f:
+        with open(fileName, 'r' ) as f:
             reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
                 frame_idx = int(float(entry['frame_idx']))

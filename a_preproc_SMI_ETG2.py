@@ -98,7 +98,7 @@ def getCameraFromFile(inputDir):
     """
     Read camera calibration from information file
     """
-    with open(str(inputDir / 'caminfo.txt'), 'r') as file:
+    with open(inputDir / 'caminfo.txt', 'r') as file:
         camInfoStr = file.read().replace('## ', '')
 
     # file no longer needed, remove
@@ -188,7 +188,7 @@ def gazedata2df(textFile,sceneVideoDimensions):
     convert the gazedata file to a pandas dataframe
     """
     
-    with open(str(textFile), 'r') as file:
+    with open(textFile, 'r') as file:
         textData = file.read()
 
     df = pd.read_table(StringIO(textData),comment='#',index_col=False)

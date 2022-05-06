@@ -8,7 +8,7 @@ from matplotlib import colors
 import time
 import utils
 
-gVisualizeDetection = True      # if true, draw each frame and overlay info about detected markers and board
+gVisualizeDetection = False     # if true, draw each frame and overlay info about detected markers and board
 gShowRejectedMarkers= False     # if true, rejected marker candidates are also drawn on frame. Possibly useful for debug
 gFPSFac             = 1
 
@@ -138,7 +138,7 @@ def process(inputDir,basePath):
     cameraMatrix,distCoeff = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")[0:2]
 
     # prep output file
-    csv_file = open(str(inputDir / 'boardPose.tsv'), 'w', newline='')
+    csv_file = open(inputDir / 'boardPose.tsv', 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
     header = ['frame_idx']
     header.append('poseNMarker')

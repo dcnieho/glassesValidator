@@ -54,7 +54,7 @@ def copyTobiiRecording(inputDir, outputDir):
     """
     Copy the relevant files from the specified input dir to the specified output dir
     """
-    with open(str(inputDir / 'recording.g3'), 'rb') as j:
+    with open(inputDir / 'recording.g3', 'rb') as j:
         rInfo = json.load(j)
     recording = rInfo['name']
     with open(str(inputDir / rInfo['meta-folder'] / 'participant'), 'rb') as j:
@@ -75,7 +75,7 @@ def copyTobiiRecording(inputDir, outputDir):
     # Unzip the gaze data file
     for f in ['gazedata.gz']:
         with gzip.open(str(outputDir / f)) as zipFile:
-            with open(str(outputDir / Path(f).stem), 'wb') as unzippedFile:
+            with open(outputDir / Path(f).stem, 'wb') as unzippedFile:
                 for line in zipFile:
                     unzippedFile.write(line)
         (outputDir / f).unlink(missing_ok=True)
@@ -87,7 +87,7 @@ def getCameraFromJson(inputDir):
     """
     Read camera calibration from recording information file
     """
-    with open(str(inputDir / 'recording.g3'), 'rb') as f:
+    with open(inputDir / 'recording.g3', 'rb') as f:
         rInfo = json.load(f)
     
     camera = rInfo['scenecamera']['camera-calibration']
@@ -170,7 +170,7 @@ def json2df(jsonFile,sceneVideoDimensions):
     convert the livedata.json file to a pandas dataframe
     """
 
-    with open(str(jsonFile), 'r') as file:
+    with open(jsonFile, 'r') as file:
         entries = json.loads('[' + file.read().replace('\n', ',')[:-1] + ']')
 
     # json no longer needed, remove

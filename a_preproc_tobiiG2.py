@@ -55,10 +55,10 @@ def copyTobiiRecording(inputDir, outputDir):
     """
     Copy the relevant files from the specified input dir to the specified output dir
     """
-    with open(str(inputDir / 'participant.json'), 'rb') as j:
+    with open(inputDir / 'participant.json', 'rb') as j:
         pInfo = json.load(j)
     participant = pInfo['pa_info']['Name']
-    with open(str(inputDir / 'recording.json'), 'rb') as j:
+    with open(inputDir / 'recording.json', 'rb') as j:
         rInfo = json.load(j)
     recording = rInfo['rec_info']['Name']
 
@@ -77,7 +77,7 @@ def copyTobiiRecording(inputDir, outputDir):
     # Unzip the gaze data and tslv files
     for f in ['livedata.json.gz', 'et.tslv.gz']:
         with gzip.open(str(outputDir / f)) as zipFile:
-            with open(str(outputDir / Path(f).stem), 'wb') as unzippedFile:
+            with open(outputDir / Path(f).stem, 'wb') as unzippedFile:
                 for line in zipFile:
                     unzippedFile.write(line)
         (outputDir / f).unlink(missing_ok=True)
@@ -192,7 +192,7 @@ def json2df(jsonFile,sceneVideoDimensions):
     evtsSync = list()       # eye video timestamp sync (only if eye video was recorded)
     df = pd.DataFrame()     # empty dataframe to write data to
 
-    with open(str(jsonFile), 'rb') as j:
+    with open(jsonFile, 'rb') as j:
 
         # loop over all lines in json file, each line represents unique json object
         for line in j:

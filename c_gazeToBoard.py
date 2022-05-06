@@ -52,7 +52,7 @@ def process(inputDir,basePath):
     # Read pose of marker board
     rVec,tVec,homography = utils.getMarkerBoardPose(inputDir / 'boardPose.tsv')
 
-    csv_file = open(str(inputDir / 'gazeWorldPos.tsv'), 'w', newline='')
+    csv_file = open(inputDir / 'gazeWorldPos.tsv', 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
     header = ['frame_idx']
     header.extend(utils.GazeWorld.getWriteHeader())
