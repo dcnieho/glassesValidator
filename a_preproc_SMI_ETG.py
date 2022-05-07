@@ -202,8 +202,8 @@ def gazedata2df(textFile,sceneVideoDimensions):
 
     # prepare data frame
     # remove unneeded columns
-    df=df.drop(columns=['Type', 'Trial', 'Aux1'])
-    # if we have monocular point of regard data, check if its not identical
+    df=df.drop(columns=['Type', 'Trial', 'Aux1'],errors='ignore') # drop these columns if they exist
+    # if we have monocular point of regard data, check if its not identical to binocular
     if 'L POR X [px]' in df.columns:
         xEqual = np.all( np.logical_or(df['L POR X [px]'] == df['B POR X [px]'], np.isnan(df['L POR X [px]']) ))
         yEqual = np.all( np.logical_or(df['L POR Y [px]'] == df['B POR Y [px]'], np.isnan(df['L POR Y [px]']) ))
@@ -239,7 +239,7 @@ def gazedata2df(textFile,sceneVideoDimensions):
                'R Dia Y [px]':'r_pup_diam_y_px'}
     df=df.rename(columns=lookup)
     # reorder
-    idx = [lookup[k] for k in lookup]
+    idx = [lookup[k] for k in lookup if lookup[k] in df.columns]
     idx.extend([x for x in df.columns if x not in idx])   # append columns not in lookup
     df = df[idx]
 
