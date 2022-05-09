@@ -136,6 +136,8 @@ def process(inputDir,basePath):
 
     # get camera calibration info
     cameraMatrix,distCoeff = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")[0:2]
+    hasCameraMatrix = cameraMatrix is not None
+    hasDistCoeff    = distCoeff is not None
 
     # prep output file
     csv_file = open(inputDir / 'boardPose.tsv', 'w', newline='')
@@ -164,7 +166,7 @@ def process(inputDir,basePath):
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
                 # get camera pose
-                if (cameraMatrix is not None) and (distCoeff is not None):
+                if hasCameraMatrix and hasDistCoeff:
                     nMarkersUsed, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
                 else:
                     nMarkersUsed = 0
@@ -183,7 +185,7 @@ def process(inputDir,basePath):
                     writeDat.extend([math.nan for x in range(7)])
 
                 # also get homography (direct image plane to plane in world transform). Use undistorted marker corners
-                if (cameraMatrix is not None) and (distCoeff is not None):
+                if hasCameraMatrix and hasDistCoeff:
                     cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
                 else:
                     cornersU = corners
@@ -193,7 +195,7 @@ def process(inputDir,basePath):
                     # find where target is expected to be in the image
                     iH = np.linalg.inv(H)
                     target = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
-                    if (cameraMatrix is not None) and (distCoeff is not None):
+                    if hasCameraMatrix and hasDistCoeff:
                         target = utils.distortPoint(*target, cameraMatrix, distCoeff)
                     # draw target location on image
                     if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
@@ -228,8 +230,8 @@ def process(inputDir,basePath):
             if key == ord('s'):
                 # screenshot
                 cv2.imwrite(str(inputDir / ('detect_frame_%d.png' % frame_idx)), frame)
-        elif (frame_idx+1)%100==0:
-            print('  frame {}'.format(frame_idx+1))
+        elif (frame_idx)%100==0:
+            print('  frame {}'.format(frame_idx))
         
         frame_idx += 1
 
