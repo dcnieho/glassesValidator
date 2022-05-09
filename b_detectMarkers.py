@@ -139,6 +139,10 @@ def process(inputDir,basePath):
     hasCameraMatrix = cameraMatrix is not None
     hasDistCoeff    = distCoeff is not None
 
+    # get interval coded to be analyzed, if any
+    analyzeFrames   = utils.getMarkerIntervals(inputDir / "markerInterval.tsv")
+    hasAnalyzeFrames= analyzeFrames is not None
+
     # prep output file
     csv_file = open(inputDir / 'boardPose.tsv', 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
@@ -148,16 +152,33 @@ def process(inputDir,basePath):
     header.extend(['transformation[%d,%d]' % (r,c) for r in range(3) for c in range(3)])
     csv_writer.writerow( header )
 
-    frame_idx = 0
+    frame_idx = -1
     stopAllProcessing = False
     armLength = 2.*math.tan(math.radians(.5))*validationSetup['distance']*10*validationSetup['markerSide']/2 # arms of axis are half a marker long
     subPixelFac = 8   # for sub-pixel positioning
     while True:
         startTime = time.perf_counter()
+
         # process frame-by-frame
         ret, frame = cap.read()
-        if not ret:
+        frame_idx += 1
+        if (not ret) or (hasAnalyzeFrames and frame_idx > analyzeFrames[-1]):
+            # done
             break
+
+        if hasAnalyzeFrames:
+            # check we're in a current interval, else skip processing
+            # NB: have to spool through like this, setting specific frame to read
+            # with cap.get(cv2.CAP_PROP_POS_FRAMES) doesn't seem to work reliably
+            # for VFR video files
+            inIval = False
+            for f in range(0,len(analyzeFrames),2):
+                if frame_idx>=analyzeFrames[f] and frame_idx<=analyzeFrames[f+1]:
+                    inIval = True
+                    break
+            if not inIval:
+                # no need to process this frame
+                continue
 
         # detect markers, undistort
         corners, ids, rejectedImgPoints = \
@@ -232,8 +253,6 @@ def process(inputDir,basePath):
                 cv2.imwrite(str(inputDir / ('detect_frame_%d.png' % frame_idx)), frame)
         elif (frame_idx)%100==0:
             print('  frame {}'.format(frame_idx))
-        
-        frame_idx += 1
 
     csv_file.close()
     cap.release()
