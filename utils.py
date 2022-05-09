@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import csv
 import itertools
+import sys
 from shlex import shlex
 import bisect
 import mp4analyser.iso
