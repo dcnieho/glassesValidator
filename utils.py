@@ -447,7 +447,7 @@ class Reference:
             drawOpenCVCircle(img, xy, size, color, -1, subPixelFac)
 
 class GazeWorld:
-    def __init__(self, ts, planePoint, planeNormal, gaze3DRay=None, gaze3DHomography=None, lGazeOrigin=None, lGaze3D=None, rGazeOrigin=None, rGaze3D=None, gaze2DRay=None, gaze2DHomography=None, lGaze2D=None, rGaze2D=None):
+    def __init__(self, ts, planePoint=None, planeNormal=None, gaze3DRay=None, gaze3DHomography=None, lGazeOrigin=None, lGaze3D=None, rGazeOrigin=None, rGaze3D=None, gaze2DRay=None, gaze2DHomography=None, lGaze2D=None, rGaze2D=None):
         # 3D gaze (and plane info) is in world space, w.r.t. scene camera
         # 2D gaze is on the reference board
         self.ts = ts
@@ -494,8 +494,8 @@ class GazeWorld:
     def getWriteData(self):
         writeData = [self.ts]
         # in camera space
-        writeData.extend(self.planePoint)
-        writeData.extend(self.planeNormal)
+        writeData.extend(self._getWriteDataImpl(self.planePoint,3))
+        writeData.extend(self._getWriteDataImpl(self.planeNormal,3))
         writeData.extend(self._getWriteDataImpl(self.gaze3DRay,3))
         writeData.extend(self._getWriteDataImpl(self.gaze3DHomography,3))
         writeData.extend(self._getWriteDataImpl(self.lGazeOrigin,3))
@@ -658,29 +658,38 @@ def getMarkerBoardPose(fileName,start=None,end=None,stopOnceExceeded=False):
     return rVec,tVec,H
 
 def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition, cameraMatrix=None, distCoeffs=None, homographyT=None):
-    # get board normal
-    RBoard      = cv2.Rodrigues(rVec)[0]
-    boardNormal = np.matmul(RBoard, np.array([0,0,1.]))
-    # get point on board (just use origin)
-    RtBoard     = np.hstack((RBoard  ,                    tVec.reshape(3,1)))
-    RtBoardInv  = np.hstack((RBoard.T,np.matmul(-RBoard.T,tVec.reshape(3,1))))
-    boardPoint  = np.matmul(RtBoard,np.array([0, 0, 0., 1.]))
-    gazeWorld   = GazeWorld(gaze.ts,boardPoint,boardNormal)
 
-    # get transform from ET data's coordinate frame to camera's coordinate frame
-    RCam        = cv2.Rodrigues(cameraRotation)[0]
-    RtCam       = np.hstack((RCam, cameraPosition))
+    hasCameraPose = (rVec is not None) and (tVec is not None)
+    gazeWorld   = GazeWorld(gaze.ts)
+    if hasCameraPose:
+        # get board normal
+        RBoard      = cv2.Rodrigues(rVec)[0]
+        boardNormal = np.matmul(RBoard, np.array([0,0,1.]))
+        # get point on board (just use origin)
+        RtBoard     = np.hstack((RBoard  ,                    tVec.reshape(3,1)))
+        RtBoardInv  = np.hstack((RBoard.T,np.matmul(-RBoard.T,tVec.reshape(3,1))))
+        boardPoint  = np.matmul(RtBoard,np.array([0, 0, 0., 1.]))
+        gazeWorld.boardPoint  = boardPoint
+        gazeWorld.boardNormal = boardNormal
 
-    # project 3D gaze to reference board
-    if gaze.world3D is not None:
-        # turn 3D gaze point into ray from camera
-        g3D = np.matmul(RCam,np.array(gaze.world3D).reshape(3,1))
-        g3D /= np.sqrt((g3D**2).sum()) # normalize
-        # find intersection of 3D gaze with board, draw
-        g3Board  = intersect_plane_ray(boardNormal, boardPoint, g3D.flatten(), np.array([0.,0.,0.]))  # vec origin (0,0,0) because we use g3D from camera's view point to be able to recreate Tobii 2D gaze pos data
-        (x,y,z)  = np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
-        gazeWorld.gaze3DRay = g3Board
-        gazeWorld.gaze2DRay = [x, y]
+        # get transform from ET data's coordinate frame to camera's coordinate frame
+        if cameraRotation is None:
+            cameraRotation = np.zeros((3,1))
+        RCam        = cv2.Rodrigues(cameraRotation)[0]
+        if cameraPosition is None:
+            cameraPosition = np.zeros((3,1))
+        RtCam       = np.hstack((RCam, cameraPosition))
+
+        # project 3D gaze to reference board
+        if gaze.world3D is not None:
+            # turn 3D gaze point into ray from camera
+            g3D = np.matmul(RCam,np.array(gaze.world3D).reshape(3,1))
+            g3D /= np.sqrt((g3D**2).sum()) # normalize
+            # find intersection of 3D gaze with board, draw
+            g3Board  = intersect_plane_ray(boardNormal, boardPoint, g3D.flatten(), np.array([0.,0.,0.]))  # vec origin (0,0,0) because we use g3D from camera's view point to be able to recreate Tobii 2D gaze pos data
+            (x,y,z)  = np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
+            gazeWorld.gaze3DRay = g3Board
+            gazeWorld.gaze2DRay = [x, y]
 
     # unproject 2D gaze point on video to point on board (should yield values very close to
     # the above method of intersecting 3D gaze point ray with board)
@@ -692,15 +701,22 @@ def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition, cameraMatrix=None,
         gazeWorld.gaze2DHomography = [xW, yW]
 
         # get this point in board space
-        gazeWorld.gaze3DHomography = np.matmul(RtBoard,np.array([xW,yW,0.,1.]).reshape((4,1))).flatten()
+        if hasCameraPose:
+            gazeWorld.gaze3DHomography = np.matmul(RtBoard,np.array([xW,yW,0.,1.]).reshape((4,1))).flatten()
 
     # project gaze vectors to reference board (and draw on video)
+    if not hasCameraPose:
+        # nothing to do anymore
+        return gazeWorld
+
     gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]
     gazeOrigins = [gaze.lGazeOrigin, gaze.rGazeOrigin]
     clrs        = [(0,0,255)       , (255,0,0)]
     eyes        = ['left'          , 'right']
     attrs       = [['lGazeOrigin','lGaze3D','lGaze2D'],['rGazeOrigin','rGaze3D','rGaze2D']]
     for gVec,gOri,clr,eye,attr in zip(gazeVecs,gazeOrigins,clrs,eyes,attrs):
+        if gVec is None or gOri is None:
+            continue
         # get gaze vector and point on vector (pupil center) ->
         # transform from ET data coordinate frame into camera coordinate frame
         gVec    = np.matmul(RCam ,          gVec    )

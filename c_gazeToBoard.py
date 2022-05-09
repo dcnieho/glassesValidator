@@ -11,7 +11,7 @@ import time
 
 import utils
 
-gShowVisualization  = False      # if true, draw each frame and overlay info about detected markers and board
+gShowVisualization  = False     # if true, draw each frame and overlay info about detected markers and board
 gShowReference      = True
 qShowOnlyIntervals  = True      # if true, shows only frames in the marker intervals (if available)
 gFPSFac             = 1
@@ -35,9 +35,15 @@ def process(inputDir,basePath):
 
         reference = utils.Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
         i2t = utils.Idx2Timestamp(str(inputDir / 'frameTimestamps.tsv'))
+
+        # get info about markers on our board
+        knownMarkers, markerBBox = utils.getKnownMarkers(configDir, validationSetup)
+        centerTarget = knownMarkers['t%d'%validationSetup['centerTarget']].center
     
     # get camera calibration info
     cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")
+    hasCameraMatrix = cameraMatrix is not None
+    hasDistCoeff    = distCoeff is not None
 
     # get interval coded to be analyzed, if any
     analyzeFrames   = utils.getMarkerIntervals(inputDir / "markerInterval.tsv")
@@ -104,8 +110,11 @@ def process(inputDir,basePath):
                 # store positions on marker board plane in camera coordinate frame to
                 # file, along with gaze vector origins in same coordinate frame
                 writeData = [frame_idx]
-                if frame_idx in rVec:
-                    gazeWorld = utils.gazeToPlane(gaze,rVec[frame_idx],tVec[frame_idx],cameraRotation,cameraPosition, cameraMatrix, distCoeff, homography[frame_idx])
+                if frame_idx in rVec or frame_idx in homography:
+                    R = rVec[frame_idx] if frame_idx in rVec else None
+                    T = tVec[frame_idx] if frame_idx in tVec else None
+                    H = homography[frame_idx] if frame_idx in homography else None
+                    gazeWorld = utils.gazeToPlane(gaze,R,T,cameraRotation,cameraPosition, cameraMatrix, distCoeff, H)
                     
                     # draw gazes on video and reference image
                     if gShowVisualization:
@@ -122,8 +131,14 @@ def process(inputDir,basePath):
                 cv2.imshow("reference", refImg)
 
             # if we have board pose, draw board origin on video
-            if frame_idx in rVec:
-                a = cv2.projectPoints(np.zeros((1,3)),rVec[frame_idx],tVec[frame_idx],cameraMatrix,distCoeff)[0][0][0]
+            if frame_idx in rVec or frame_idx in homography:
+                if frame_idx in rVec and hasCameraMatrix and hasDistCoeff:
+                    a = cv2.projectPoints(np.zeros((1,3)),rVec[frame_idx],tVec[frame_idx],cameraMatrix,distCoeff)[0][0][0]
+                else:
+                    iH = np.linalg.inv(homography[frame_idx])
+                    a = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
+                    if hasCameraMatrix and hasDistCoeff:
+                        a = utils.distortPoint(*a, cameraMatrix, distCoeff)
                 utils.drawOpenCVCircle(frame, a, 3, (0,255,0), -1, subPixelFac)
                 utils.drawOpenCVLine(frame, (a[0],0), (a[0],height), (0,255,0), 1, subPixelFac)
                 utils.drawOpenCVLine(frame, (0,a[1]), (width,a[1]) , (0,255,0), 1, subPixelFac)
@@ -143,8 +158,8 @@ def process(inputDir,basePath):
             if key == ord('s'):
                 # screenshot
                 cv2.imwrite(str(inputDir / ('calc_frame_%d.png' % frame_idx)), frame)
-        elif (frame_idx+1)%100==0:
-            print('  frame {}'.format(frame_idx+1))
+        elif (frame_idx)%100==0:
+            print('  frame {}'.format(frame_idx))
 
     csv_file.close()
     if gShowVisualization:
