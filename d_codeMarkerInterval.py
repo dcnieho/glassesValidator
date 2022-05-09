@@ -171,27 +171,35 @@ def process(inputDir,basePath):
                 del analyzeFrames[analysisIntervalIdx:analysisIntervalIdx+2]
                 shouldRedraw = True
 
-        elif key == ord('s'):
-            if analysisIntervalIdx is not None:
+        elif key in [ord('s'), ord('S')]:
+            if (analysisIntervalIdx is not None) and (frame_idx!=analyzeFrames[analysisIntervalIdx]):
                 # seek to start of current interval
-                ts = i2t.get(analyzeFrames[analysisIntervalIdx]-1)
+                ts = i2t.get(analyzeFrames[analysisIntervalIdx])
                 player.seek(ts/1000, relative=False)
             else:
-                # seek to start of preceding analysis interval, if any
-                idx = next((x for x in analyzeFrames[(len(analyzeFrames)//2)*2-2::-2] if x<frame_idx), None) # slice gets starts of all whole intervals in reverse order
+                # seek to start of next or previous analysis interval, if any
+                forward = key==ord('s')
+                if forward:
+                    idx = next((x for x in analyzeFrames[0:(len(analyzeFrames)//2)*2:2] if x>frame_idx), None) # slice gets starts of all whole intervals
+                else:
+                    idx = next((x for x in analyzeFrames[(len(analyzeFrames)//2)*2-2::-2] if x<frame_idx), None) # slice gets starts of all whole intervals in reverse order
                 if idx is not None:
-                    ts = i2t.get(idx-1)
+                    ts = i2t.get(idx)
                     player.seek(ts/1000, relative=False)
-        elif key == ord('e'):
-            if analysisIntervalIdx is not None:
+        elif key in [ord('e'), ord('E')]:
+            if (analysisIntervalIdx is not None) and (frame_idx!=analyzeFrames[analysisIntervalIdx+1]):
                 # seek to end of current interval
-                ts = i2t.get(analyzeFrames[analysisIntervalIdx+1]-1)
+                ts = i2t.get(analyzeFrames[analysisIntervalIdx+1])
                 player.seek(ts/1000, relative=False)
             else:
-                # seek to end of next analysis interval, if any
-                idx = next((x for x in analyzeFrames[1:(len(analyzeFrames)//2)*2:2] if x>frame_idx), None) # slice gets ends of all whole intervals
+                # seek to end of next or previous analysis interval, if any
+                forward = key==ord('e')
+                if forward:
+                    idx = next((x for x in analyzeFrames[1:(len(analyzeFrames)//2)*2:2] if x>frame_idx), None) # slice gets ends of all whole intervals
+                else:
+                    idx = next((x for x in analyzeFrames[(len(analyzeFrames)//2)*2::-2] if x<frame_idx), None) # slice gets ends of all whole intervals in reverse order
                 if idx is not None:
-                    ts = i2t.get(idx-1)
+                    ts = i2t.get(idx)
                     player.seek(ts/1000, relative=False)
 
         elif key == ord('q'):
