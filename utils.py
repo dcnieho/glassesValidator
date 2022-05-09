@@ -86,6 +86,32 @@ def getVidFrameTimestamps(vid_file):
     
     return frameTsDf
 
+def tssToFrameNumber(ts,frameTimestamps,mode='nearest'):
+    df = pd.DataFrame(index=ts)
+    df.insert(0,'frame_idx',np.int64(0))
+    
+    # get index where this ts would be inserted into the frame_timestamp array
+    idxs = np.searchsorted(frameTimestamps, ts)
+    if mode=='after':
+        idxs = idxs.astype('float32')
+        # out of range, set to nan
+        idxs[idxs==0] = np.nan
+        # -1: since idx points to frame timestamp for frame after the one during which the ts ocurred, correct
+        idxs -= 1
+    elif mode=='nearest':
+        # implementation from https://stackoverflow.com/questions/8914491/finding-the-nearest-value-and-return-the-index-of-array-in-python/8929827#8929827
+        # same logic as used by pupil labs
+        idxs = np.clip(idxs, 1, len(frameTimestamps)-1)
+        left = frameTimestamps[idxs-1]
+        right = frameTimestamps[idxs]
+        idxs -= ts - left < right - ts
+
+    df=df.assign(frame_idx=idxs)
+    if mode=='after':
+        df=df.convert_dtypes() # turn into int64 again
+
+    return df
+
 class Marker:
     def __init__(self, key, center, corners=None, color=None, rot=0):
         self.key = key

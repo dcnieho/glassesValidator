@@ -158,23 +158,10 @@ def formatGazeData(inputDir, sceneVideoDimensions):
     # read video file, create array of frame timestamps
     frameTimestamps = utils.getVidFrameTimestamps(inputDir / 'worldCamera.mp4')
     frameTimestamps['timestamp'] += scene_video_ts_offset
-
+    
     # use the frame timestamps to assign a frame number to each data point
-    df.insert(0,'frame_idx',np.int64(0))
-    for ts in df.index:
-
-        # get index where this ts would be inserted into the frame_timestamp array
-        idx = np.searchsorted(frameTimestamps['timestamp'], ts)
-        if idx == 0:
-            df.loc[ts, 'frame_idx'] = math.nan
-            continue
-
-        # since idx points to frame timestamp for frame after the one during
-        # which the ts ocurred, correct
-        idx -= 1
-
-        # set the frame index based on this index value
-        df.loc[ts, 'frame_idx'] = frameTimestamps.index[idx]
+    frameIdx = utils.tssToFrameNumber(df.index,frameTimestamps['timestamp'].to_numpy())
+    df.insert(0,'frame_idx',frameIdx['frame_idx'])
 
     # build the formatted dataframe
     df.index.name = 'timestamp'
