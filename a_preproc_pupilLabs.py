@@ -140,24 +140,7 @@ def formatGazeData(inputDir, sceneVideoDimensions):
     
     # set timestamps as index for gaze
     df = df.set_index('timestamp')
-
-    # use the frame timestamps to assign a frame number to each data point
-    df.insert(0,'frame_idx2',np.int64(0))
-    for ts in df.index:
-
-        # get index where this ts would be inserted into the frame_timestamp array
-        idx = np.searchsorted(frameTimestamps['timestamp'], ts)
-        if idx == 0:
-            df.loc[ts, 'frame_idx2'] = math.nan
-            continue
-
-        # since idx points to frame timestamp for frame after the one during
-        # which the ts ocurred, correct
-        idx -= 1
-
-        # set the frame index based on this index value
-        df.loc[ts, 'frame_idx2'] = frameTimestamps.index[idx]
-
+    
     # return the gaze data df and frame time stamps array
     return df, frameTimestamps
 
