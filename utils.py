@@ -678,9 +678,15 @@ def getMarkerBoardPose(fileName,start=None,end=None,stopOnceExceeded=False):
             else:
                 continue
 
-        rVec[frame_idx] = row[rvecCols].values
-        tVec[frame_idx] = row[tvecCols].values
-        H   [frame_idx] = row[hCols].values.reshape(3,3)
+        vals = row[rvecCols].values
+        if not np.any(np.isnan(vals)):
+            rVec[frame_idx] = vals
+        vals = row[tvecCols].values
+        if not np.any(np.isnan(vals)):
+            tVec[frame_idx] = vals
+        vals = row[hCols].values.reshape(3,3)
+        if not np.any(np.isnan(vals)):
+            H   [frame_idx] = vals
 
     return rVec,tVec,H
 
