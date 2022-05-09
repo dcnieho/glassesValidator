@@ -13,6 +13,7 @@ import utils
 
 gShowVisualization  = False      # if true, draw each frame and overlay info about detected markers and board
 gShowReference      = True
+qShowOnlyIntervals  = True      # if true, shows only frames in the marker intervals (if available)
 gFPSFac             = 1
 
 
@@ -37,6 +38,10 @@ def process(inputDir,basePath):
     
     # get camera calibration info
     cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")
+
+    # get interval coded to be analyzed, if any
+    analyzeFrames   = utils.getMarkerIntervals(inputDir / "markerInterval.tsv")
+    hasAnalyzeFrames= qShowOnlyIntervals and analyzeFrames is not None
 
     # open video, if wanted
     if gShowVisualization:
@@ -64,8 +69,23 @@ def process(inputDir,basePath):
         startTime = time.perf_counter()
         if gShowVisualization:
             ret, frame = cap.read()
-            if not ret: # we reached the end; done
+            if (not ret) or (hasAnalyzeFrames and frame_idx > analyzeFrames[-1]):
+                # done
                 break
+
+            if hasAnalyzeFrames:
+                # check we're in a current interval, else skip processing
+                # NB: have to spool through like this, setting specific frame to read
+                # with cap.get(cv2.CAP_PROP_POS_FRAMES) doesn't seem to work reliably
+                # for VFR video files
+                inIval = False
+                for f in range(0,len(analyzeFrames),2):
+                    if frame_idx>=analyzeFrames[f] and frame_idx<=analyzeFrames[f+1]:
+                        inIval = True
+                        break
+                if not inIval:
+                    # no need to show this frame
+                    continue
 
             refImg = reference.getImgCopy()
             
