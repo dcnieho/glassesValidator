@@ -75,13 +75,7 @@ def process(inputDir,basePath):
 
                 # draw 2D gaze point
                 if gShowVisualization:
-                    gaze.draw(frame, subPixelFac)
-
-                # draw 3D gaze point as well, should coincide with 2D gaze point
-                if gShowVisualization and gaze.world3D is not None:
-                    a = cv2.projectPoints(np.array(gaze.world3D).reshape(1,3),cameraRotation,cameraPosition,cameraMatrix,distCoeff)[0][0][0]
-                    utils.drawOpenCVCircle(frame, a, 6, (0,0,0), -1, subPixelFac)
-
+                    gaze.draw(frame, subPixelFac=subPixelFac, camRot=cameraRotation, camPos=cameraPosition, cameraMatrix=cameraMatrix, distCoeff=distCoeff)
                 
                 # if we have pose information, figure out where gaze vectors
                 # intersect with reference board. Do same for 3D gaze point

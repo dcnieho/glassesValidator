@@ -415,8 +415,12 @@ class Gaze:
 
         return gazes,maxFrameIdx
 
-    def draw(self, img, subPixelFac=1):
+    def draw(self, img, subPixelFac=1, camRot=None, camPos=None, cameraMatrix=None, distCoeff=None):
         drawOpenCVCircle(img, self.vid2D, 8, (0,255,0), 2, subPixelFac)
+        # draw 3D gaze point as well, should coincide with 2D gaze point
+        if self.world3D is not None and camRot is not None and camPos is not None and cameraMatrix is not None and distCoeff is not None:
+            a = cv2.projectPoints(np.array(self.world3D).reshape(1,3),camRot,camPos,cameraMatrix,distCoeff)[0][0][0]
+            drawOpenCVCircle(img, a, 5, (0,0,0), -1, subPixelFac)
 
 
 class Reference:
