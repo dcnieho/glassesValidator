@@ -313,7 +313,7 @@ def undistortPoint(x, y, cameraMatrix, distCoeff):
         return [math.nan, math.nan]
 
     points_2d = np.asarray([x, y], dtype='float32').reshape((1, -1, 2))
-    points_2d = cv2.undistortPoints(points_2d, cameraMatrix, distCoeff, P=cameraMatrix)
+    points_2d = cv2.undistortPoints(points_2d, cameraMatrix, distCoeff, P=cameraMatrix) # P=cameraMatrix to reproject to camera
     return points_2d.flatten()
 
 
