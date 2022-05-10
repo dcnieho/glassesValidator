@@ -687,8 +687,8 @@ def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition, cameraMatrix=None,
         RtBoard     = np.hstack((RBoard  ,                    tVec.reshape(3,1)))
         RtBoardInv  = np.hstack((RBoard.T,np.matmul(-RBoard.T,tVec.reshape(3,1))))
         boardPoint  = np.matmul(RtBoard,np.array([0, 0, 0., 1.]))
-        gazeWorld.boardPoint  = boardPoint
-        gazeWorld.boardNormal = boardNormal
+        gazeWorld.planePoint  = boardPoint
+        gazeWorld.planeNormal = boardNormal
 
         # get transform from ET data's coordinate frame to camera's coordinate frame
         if cameraRotation is None:
