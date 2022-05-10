@@ -70,7 +70,8 @@ def process(inputDir,basePath):
     height  = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     frate   = cap.get(cv2.CAP_PROP_FPS)
     # 2. if wanted and available, second OpenCV window for reference board with gaze on that plane
-    if gShowReference and hasWorldGaze:
+    gShowReference &= hasWorldGaze  # no reference board if we don't have world gaze, it'd be empty and pointless
+    if gShowReference:
         cv2.namedWindow("reference")
         reference = utils.Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
     # 3. timestamp info for relating audio to video frames
@@ -106,7 +107,7 @@ def process(inputDir,basePath):
         if lastIdx is None or lastIdx!=frame_idx or shouldRedraw:
             shouldRedraw = False
             ret, frame = cap.read()
-            if gShowReference and hasWorldGaze:
+            if gShowReference:
                 refImg = reference.getImgCopy()
 
             # if we have board pose, draw board origin on video
@@ -149,7 +150,7 @@ def process(inputDir,basePath):
             cv2.imshow("frame", frame)
             if width>1280:
                 cv2.resizeWindow('frame', 1280,720)
-            if gShowReference and hasWorldGaze:
+            if gShowReference:
                 cv2.imshow("reference", refImg)
             lastIdx = frame_idx
 
