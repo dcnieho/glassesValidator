@@ -30,13 +30,13 @@ def process(inputDir,basePath):
     validationSetup = utils.getValidationSetup(configDir)
 
     # get interval coded to be analyzed
-    analyzeFrames = utils.getMarkerIntervals(inputDir / "markerInterval.tsv")
+    analyzeFrames = utils.readMarkerIntervalsFile(inputDir / "markerInterval.tsv")
     if analyzeFrames is None:
         print('  no marker intervals defined for this recording, skipping')
         return
 
     # Read pose of marker board
-    rVec,tVec,homography = utils.getMarkerBoardPose(inputDir / 'boardPose.tsv',analyzeFrames[0],analyzeFrames[-1],True)
+    rVec,tVec = utils.readBoardPoseFile(inputDir / 'boardPose.tsv',analyzeFrames[0],analyzeFrames[-1],True)[0:2]
 
     # Read gaze on board data
     gazeWorld = utils.GazeWorld.readDataFromFile(inputDir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)

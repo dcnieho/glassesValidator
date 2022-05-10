@@ -41,7 +41,7 @@ def process(inputDir,basePath):
     # Read pose of marker board, if available
     hasBoardPose = False
     if (inputDir / 'boardPose.tsv').is_file():
-        rVec,tVec,homography = utils.getMarkerBoardPose(inputDir / 'boardPose.tsv')
+        rVec,tVec,homography = utils.readBoardPoseFile(inputDir / 'boardPose.tsv')
         hasBoardPose = True
 
     # Read gaze on board data, if available
@@ -51,11 +51,11 @@ def process(inputDir,basePath):
         hasWorldGaze = True
 
     # get camera calibration info
-    cameraMatrix,distCoeff = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")[0:2]
+    cameraMatrix,distCoeff = utils.readCameraCalibrationFile(inputDir / "calibration.xml")[0:2]
     hasCamCal = (cameraMatrix is not None) and (distCoeff is not None)
 
     # get interval coded to be analyzed, if available
-    analyzeFrames = utils.getMarkerIntervals(inputDir / "markerInterval.tsv")
+    analyzeFrames = utils.readMarkerIntervalsFile(inputDir / "markerInterval.tsv")
     if analyzeFrames is None:
         analyzeFrames = []
 

@@ -165,9 +165,9 @@ def formatGazeData(inputDir, sceneVideoDimensions):
 
     # read video file, create array of frame timestamps
     if (inputDir / 'worldCamera.mp4').is_file():
-        frameTimestamps = utils.getVidFrameTimestamps(inputDir / 'worldCamera.mp4')
+        frameTimestamps = utils.getFrameTimestampsFromVideo(inputDir / 'worldCamera.mp4')
     else:
-        frameTimestamps = utils.getVidFrameTimestamps(inputDir / 'worldCamera.avi')
+        frameTimestamps = utils.getFrameTimestampsFromVideo(inputDir / 'worldCamera.avi')
 
     # SMI frame counter seems to be of the format HH:MM:SS:FR, where HH:MM:SS is a normal
     # hour, minute, second timecode, and FR is a frame number for within that second. The

@@ -25,7 +25,7 @@ def process(inputDir,basePath):
     validationSetup = utils.getValidationSetup(configDir)
 
     # get interval coded to be analyzed
-    analyzeFrames = utils.getMarkerIntervals(inputDir / "markerInterval.tsv")
+    analyzeFrames = utils.readMarkerIntervalsFile(inputDir / "markerInterval.tsv")
     if analyzeFrames is None:
         print('  no marker intervals defined for this recording, skipping')
         return

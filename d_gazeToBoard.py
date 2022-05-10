@@ -41,12 +41,12 @@ def process(inputDir,basePath):
         centerTarget = knownMarkers['t%d'%validationSetup['centerTarget']].center
     
     # get camera calibration info
-    cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")
+    cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(inputDir / "calibration.xml")
     hasCameraMatrix = cameraMatrix is not None
     hasDistCoeff    = distCoeff is not None
 
     # get interval coded to be analyzed, if any
-    analyzeFrames   = utils.getMarkerIntervals(inputDir / "markerInterval.tsv")
+    analyzeFrames   = utils.readMarkerIntervalsFile(inputDir / "markerInterval.tsv")
     hasAnalyzeFrames= qShowOnlyIntervals and analyzeFrames is not None
 
     # open video, if wanted
@@ -61,7 +61,7 @@ def process(inputDir,basePath):
     gazes,maxFrameIdx = utils.Gaze.readDataFromFile(inputDir / 'gazeData.tsv')
 
     # Read pose of marker board
-    rVec,tVec,homography = utils.getMarkerBoardPose(inputDir / 'boardPose.tsv')
+    rVec,tVec,homography = utils.readBoardPoseFile(inputDir / 'boardPose.tsv')
 
     csv_file = open(inputDir / 'gazeWorldPos.tsv', 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')

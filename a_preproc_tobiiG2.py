@@ -156,7 +156,7 @@ def formatGazeData(inputDir, sceneVideoDimensions):
     df,scene_video_ts_offset = json2df(inputDir / 'livedata.json', sceneVideoDimensions)
 
     # read video file, create array of frame timestamps
-    frameTimestamps = utils.getVidFrameTimestamps(inputDir / 'worldCamera.mp4')
+    frameTimestamps = utils.getFrameTimestampsFromVideo(inputDir / 'worldCamera.mp4')
     frameTimestamps['timestamp'] += scene_video_ts_offset
     
     # use the frame timestamps to assign a frame number to each data point

@@ -22,7 +22,7 @@ def dataReaderHelper(entry,lbl,N=3,type='float32'):
     else:
         return None
 
-def getVidFrameTimestamps(vid_file):
+def getFrameTimestampsFromVideo(vid_file):
     """
     Parse the supplied video, return an array of frame timestamps
     """
@@ -622,7 +622,7 @@ class Timestamp2Index:
         idx = min(bisect.bisect(self.timestamps, ts), len(self.indexes)-1)
         return self.indexes[idx]
 
-def getCameraCalibrationInfo(fileName):
+def readCameraCalibrationFile(fileName):
     fs = cv2.FileStorage(str(fileName), cv2.FILE_STORAGE_READ)
     cameraMatrix    = fs.getNode("cameraMatrix").mat()
     distCoeff       = fs.getNode("distCoeff").mat()
@@ -635,7 +635,7 @@ def getCameraCalibrationInfo(fileName):
 
     return (cameraMatrix,distCoeff,cameraRotation,cameraPosition)
 
-def getMarkerIntervals(fileName):
+def readMarkerIntervalsFile(fileName):
     analyzeFrames = []
     if fileName.is_file():
         with open(fileName, 'r' ) as f:
@@ -646,7 +646,7 @@ def getMarkerIntervals(fileName):
 
     return None if len(analyzeFrames)==0 else analyzeFrames
 
-def getMarkerBoardPose(fileName,start=None,end=None,stopOnceExceeded=False):
+def readBoardPoseFile(fileName,start=None,end=None,stopOnceExceeded=False):
     rVec = {}
     tVec = {}
     H = {}

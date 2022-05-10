@@ -66,7 +66,7 @@ def process(inputDir,basePath):
     i2t = utils.Idx2Timestamp(str(inputDir / 'frameTimestamps.tsv'))
 
     # get camera calibration info
-    cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")
+    cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(inputDir / "calibration.xml")
 
     # Read gaze data
     gazes,maxFrameIdx = utils.Gaze.readDataFromFile(inputDir / 'gazeData.tsv')

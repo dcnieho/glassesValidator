@@ -135,12 +135,12 @@ def process(inputDir,basePath):
     parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX;
 
     # get camera calibration info
-    cameraMatrix,distCoeff = utils.getCameraCalibrationInfo(inputDir / "calibration.xml")[0:2]
+    cameraMatrix,distCoeff = utils.readCameraCalibrationFile(inputDir / "calibration.xml")[0:2]
     hasCameraMatrix = cameraMatrix is not None
     hasDistCoeff    = distCoeff is not None
 
     # get interval coded to be analyzed, if any
-    analyzeFrames   = utils.getMarkerIntervals(inputDir / "markerInterval.tsv")
+    analyzeFrames   = utils.readMarkerIntervalsFile(inputDir / "markerInterval.tsv")
     hasAnalyzeFrames= analyzeFrames is not None
 
     # prep output file
