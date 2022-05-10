@@ -99,11 +99,15 @@ def process(inputDir,basePath):
         audio_pts = player.get_pts()    # this is audio_pts because we're in default audio sync mode
 
         # the audio is my shepherd and nothing shall I lack :-)
-        # From experience, PROP_POS_MSEC is utterly broken; let's use indexes instead
         frame_idx = t2i.find(audio_pts*1000)  # audio_pts is in seconds, our frame timestamps are in ms
         idxOffset = cap.get(cv2.CAP_PROP_POS_FRAMES) - frame_idx
         if abs(idxOffset) > 0:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+            if 'pupil' in inputDir.stem:
+                # this seems to work better for the pupil core and invisible's world videos
+                cap.set(cv2.CAP_PROP_POS_MSEC, audio_pts*1000)
+            else:
+                # for SMI and Tobii G2/G3, this appears more accurate
+                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
         if lastIdx is None or lastIdx!=frame_idx or shouldRedraw:
             shouldRedraw = False
             ret, frame = cap.read()
