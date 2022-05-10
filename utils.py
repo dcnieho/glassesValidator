@@ -242,19 +242,20 @@ def corners_intersection(corners):
     return np.array( [x,y] ).astype('float32')
 
 def toNormPos(x,y,bbox):
-    # transforms input (x,y) which is in image units (e.g. mm on an aruco board)
-    # to a normalized position in the image, given the image's bounding box in
-    # image units
-    # (0,0) in bottom left
+    # transforms input (x,y) which is on a plane in world units
+    # (e.g. mm on an aruco board) to a normalized position
+    # in an image of the plane, given the image's bounding box in
+    # world units
+    # (0,0) is bottom left
 
     extents = [bbox[2]-bbox[0], math.fabs(bbox[3]-bbox[1])]             # math.fabs to deal with bboxes where (-,-) is bottom left
     pos     = [(x-bbox[0])/extents[0], math.fabs(y-bbox[1])/extents[1]] # math.fabs to deal with bboxes where (-,-) is bottom left
     return pos
 
 def toImagePos(x,y,bbox,imSize,margin=[0,0]):
-    # transforms input (x,y) which is in image units (e.g. mm on an aruco board)
-    # to a pixel position in the image, given the image's bounding box in
-    # image units
+    # transforms input (x,y) which is on a plane in world units
+    # (e.g. mm on an aruco board) to a pixel position in the
+    # image, given the image's bounding box in world units
     # imSize should be active image area in pixels, excluding margin
 
     # fractional position between bounding box edges, (0,0) in bottom left
