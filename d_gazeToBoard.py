@@ -61,7 +61,7 @@ def process(inputDir,basePath):
     gazes,maxFrameIdx = utils.Gaze.readDataFromFile(inputDir / 'gazeData.tsv')
 
     # Read pose of marker board
-    rVec,tVec,homography = utils.readBoardPoseFile(inputDir / 'boardPose.tsv')
+    poses = utils.BoardPose.readDataFromFile(inputDir / 'boardPose.tsv')
 
     csv_file = open(inputDir / 'gazeWorldPos.tsv', 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
@@ -110,11 +110,8 @@ def process(inputDir,basePath):
                 # store positions on marker board plane in camera coordinate frame to
                 # file, along with gaze vector origins in same coordinate frame
                 writeData = [frame_idx]
-                if frame_idx in rVec or frame_idx in homography:
-                    R = rVec[frame_idx] if frame_idx in rVec else None
-                    T = tVec[frame_idx] if frame_idx in tVec else None
-                    H = homography[frame_idx] if frame_idx in homography else None
-                    gazeWorld = utils.gazeToPlane(gaze,R,T,cameraRotation,cameraPosition, cameraMatrix, distCoeff, H)
+                if frame_idx in poses:
+                    gazeWorld = utils.gazeToPlane(gaze,poses[frame_idx],cameraRotation,cameraPosition, cameraMatrix, distCoeff)
                     
                     # draw gazes on video and reference image
                     if gShowVisualization:
@@ -131,11 +128,11 @@ def process(inputDir,basePath):
                 cv2.imshow("reference", refImg)
 
             # if we have board pose, draw board origin on video
-            if frame_idx in rVec or frame_idx in homography:
-                if frame_idx in rVec and hasCameraMatrix and hasDistCoeff:
-                    a = cv2.projectPoints(np.zeros((1,3)),rVec[frame_idx],tVec[frame_idx],cameraMatrix,distCoeff)[0].flatten()
+            if frame_idx in poses:
+                if poses[frame_idx] is not None and hasCameraMatrix and hasDistCoeff:
+                    a = cv2.projectPoints(np.zeros((1,3)),poses[frame_idx].rVec,poses[frame_idx].tVec,cameraMatrix,distCoeff)[0].flatten()
                 else:
-                    iH = np.linalg.inv(homography[frame_idx])
+                    iH = np.linalg.inv(poses[frame_idx].hMat)
                     a = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
                     if hasCameraMatrix and hasDistCoeff:
                         a = utils.distortPoint(*a, cameraMatrix, distCoeff)

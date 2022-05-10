@@ -146,11 +146,8 @@ def process(inputDir,basePath):
     # prep output file
     csv_file = open(inputDir / 'boardPose.tsv', 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
-    header = ['frame_idx']
-    header.append('poseNMarker')
-    header.extend(utils.getXYZLabels(['poseRvec','poseTvec']))
-    header.extend(['transformation[%d,%d]' % (r,c) for r in range(3) for c in range(3)])
-    csv_writer.writerow( header )
+    header = utils.BoardPose.getWriteHeader()
+    csv_writer.writerow(header)
 
     frame_idx = -1
     stopAllProcessing = False
@@ -186,24 +183,17 @@ def process(inputDir,basePath):
         
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
+                pose = utils.BoardPose(frame_idx)
                 # get camera pose
                 if hasCameraMatrix and hasDistCoeff:
-                    nMarkersUsed, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
-                else:
-                    nMarkersUsed = 0
+                    pose.nMarkers, pose.rVec, pose.tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
                 
-                writeDat = [frame_idx]
-                if nMarkersUsed>0:
-                    # draw axis indicating board pose (origin and orientation)
-                    if gVisualizeDetection and nMarkersUsed>0:
-                        utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, rVec, tVec, armLength, 3, subPixelFac)
-
-                    # store pose to file
-                    writeDat.append( nMarkersUsed )
-                    writeDat.extend( rVec.flatten() )
-                    writeDat.extend( tVec.flatten() )
-                else:
-                    writeDat.extend([math.nan for x in range(7)])
+                if pose.nMarkers>0:
+                    # get other info about plane
+                    pose.determinePlanePointNormal()
+                    if gVisualizeDetection:
+                        # draw axis indicating board pose (origin and orientation)
+                        utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, pose.rVec, pose.tVec, armLength, 3, subPixelFac)
 
                 # also get homography (direct image plane to plane in world transform). Use undistorted marker corners
                 if hasCameraMatrix and hasDistCoeff:
@@ -213,8 +203,9 @@ def process(inputDir,basePath):
                 H, status = utils.estimateHomography(knownMarkers, cornersU, ids)
 
                 if status:
+                    pose.hMat = H
                     # find where target is expected to be in the image
-                    iH = np.linalg.inv(H)
+                    iH = np.linalg.inv(pose.hMat)
                     target = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
                     if hasCameraMatrix and hasDistCoeff:
                         target = utils.distortPoint(*target, cameraMatrix, distCoeff)
@@ -222,13 +213,8 @@ def process(inputDir,basePath):
                     if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
                         utils.drawOpenCVCircle(frame, target, 3, (0,0,0), -1, subPixelFac)
 
-                    # write transform to file
-                    writeDat.extend( H.flatten() )
-                else:
-                    writeDat.extend([math.nan for x in range(9)])
-
-                if nMarkersUsed>0 or status:
-                    csv_writer.writerow( writeDat )
+                if pose.nMarkers>0 or status:
+                    csv_writer.writerow( pose.getWriteData() )
 
             # if any markers were detected, draw where on the frame
             if gVisualizeDetection:

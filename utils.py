@@ -15,12 +15,24 @@ def getXYZLabels(stringList,N=3):
         stringList = [stringList]
     return list(itertools.chain(*[[s+'_%s' % (chr(c)) for c in range(ord('x'), ord('x')+N)] for s in stringList]))
 
+def noneIfAnyNan(vals):
+    if not np.any(np.isnan(vals)):
+        return vals
+    else:
+        return None
+
 def dataReaderHelper(entry,lbl,N=3,type='float32'):
     columns = getXYZLabels(lbl,N)
     if np.all([x in entry for x in columns]):
         return np.array([entry[x] for x in columns]).astype(type)
     else:
         return None
+
+def allNanIfNone(vals,numel):
+    if vals is None:
+        return [math.nan for x in range(numel)]
+    else:
+        return vals
 
 def getFrameTimestampsFromVideo(vid_file):
     """
@@ -459,14 +471,12 @@ class Reference:
             drawOpenCVCircle(img, xy, size, color, -1, subPixelFac)
 
 class GazeWorld:
-    def __init__(self, ts, planePoint=None, planeNormal=None, gaze3DRay=None, gaze3DHomography=None, lGazeOrigin=None, lGaze3D=None, rGazeOrigin=None, rGaze3D=None, gaze2DRay=None, gaze2DHomography=None, lGaze2D=None, rGaze2D=None):
+    def __init__(self, ts, gaze3DRay=None, gaze3DHomography=None, lGazeOrigin=None, lGaze3D=None, rGazeOrigin=None, rGaze3D=None, gaze2DRay=None, gaze2DHomography=None, lGaze2D=None, rGaze2D=None):
         # 3D gaze (and plane info) is in world space, w.r.t. scene camera
         # 2D gaze is on the reference board
         self.ts = ts
 
         # in camera space
-        self.planePoint       = planePoint
-        self.planeNormal      = planeNormal
         self.gaze3DRay        = gaze3DRay           # 3D gaze point on plane (3D gaze point <-> camera ray intersected with plane)
         self.gaze3DHomography = gaze3DHomography    # gaze2DHomography in camera space
         self.lGazeOrigin      = lGazeOrigin
@@ -480,16 +490,9 @@ class GazeWorld:
         self.lGaze2D          = lGaze2D             # lGaze3D in board space
         self.rGaze2D          = rGaze2D             # rGaze3D in board space
 
-    def _getWriteDataImpl(self,dat,numel):
-        if dat is None:
-            return [math.nan for x in range(numel)]
-        else:
-            return dat
-
     @staticmethod
     def getWriteHeader():
         header = ['gaze_timestamp']
-        header.extend(getXYZLabels(['planePoint','planeNormal']))
         header.extend(getXYZLabels(['gazePosCam_vidPos_ray','gazePosCam_vidPos_homography']))
         header.extend(getXYZLabels(['gazeOriCamLeft','gazePosCamLeft']))
         header.extend(getXYZLabels(['gazeOriCamRight','gazePosCamRight']))
@@ -501,24 +504,22 @@ class GazeWorld:
 
     @staticmethod
     def getMissingWriteData():
-        return [math.nan for x in range(30)]
+        return [math.nan for x in range(24)]
 
     def getWriteData(self):
         writeData = [self.ts]
         # in camera space
-        writeData.extend(self._getWriteDataImpl(self.planePoint,3))
-        writeData.extend(self._getWriteDataImpl(self.planeNormal,3))
-        writeData.extend(self._getWriteDataImpl(self.gaze3DRay,3))
-        writeData.extend(self._getWriteDataImpl(self.gaze3DHomography,3))
-        writeData.extend(self._getWriteDataImpl(self.lGazeOrigin,3))
-        writeData.extend(self._getWriteDataImpl(self.lGaze3D,3))
-        writeData.extend(self._getWriteDataImpl(self.rGazeOrigin,3))
-        writeData.extend(self._getWriteDataImpl(self.rGaze3D,3))
+        writeData.extend(allNanIfNone(self.gaze3DRay,3))
+        writeData.extend(allNanIfNone(self.gaze3DHomography,3))
+        writeData.extend(allNanIfNone(self.lGazeOrigin,3))
+        writeData.extend(allNanIfNone(self.lGaze3D,3))
+        writeData.extend(allNanIfNone(self.rGazeOrigin,3))
+        writeData.extend(allNanIfNone(self.rGaze3D,3))
         # in board space
-        writeData.extend(self._getWriteDataImpl(self.gaze2DRay,2))
-        writeData.extend(self._getWriteDataImpl(self.gaze2DHomography,2))
-        writeData.extend(self._getWriteDataImpl(self.lGaze2D,2))
-        writeData.extend(self._getWriteDataImpl(self.rGaze2D,2))
+        writeData.extend(allNanIfNone(self.gaze2DRay,2))
+        writeData.extend(allNanIfNone(self.gaze2DHomography,2))
+        writeData.extend(allNanIfNone(self.lGaze2D,2))
+        writeData.extend(allNanIfNone(self.rGaze2D,2))
 
         return writeData
     
@@ -537,8 +538,6 @@ class GazeWorld:
                         continue
             
                 ts = float(entry['gaze_timestamp'])
-                planePoint      = dataReaderHelper(entry,'planePoint')
-                planeNormal     = dataReaderHelper(entry,'planeNormal')
                 gaze3DRay       = dataReaderHelper(entry,'gazePosCam_vidPos_ray')
                 gaze3DHomography= dataReaderHelper(entry,'gazePosCam_vidPos_homography')
                 lGazeOrigin     = dataReaderHelper(entry,'gazeOriCamLeft')
@@ -549,7 +548,7 @@ class GazeWorld:
                 gaze2DHomography= dataReaderHelper(entry,'gazePosBoard2D_vidPos_homography',2)
                 lGaze2D         = dataReaderHelper(entry,'gazePosBoard2DLeft',2)
                 rGaze2D         = dataReaderHelper(entry,'gazePosBoard2DRight',2)
-                gaze = GazeWorld(ts, planePoint, planeNormal, gaze3DRay, gaze3DHomography, lGazeOrigin, lGaze3D, rGazeOrigin, rGaze3D, gaze2DRay, gaze2DHomography, lGaze2D, rGaze2D)
+                gaze = GazeWorld(ts, gaze3DRay, gaze3DHomography, lGazeOrigin, lGaze3D, rGazeOrigin, rGaze3D, gaze2DRay, gaze2DHomography, lGaze2D, rGaze2D)
 
                 if frame_idx in gazes:
                     gazes[frame_idx].append(gaze)
@@ -592,6 +591,83 @@ class GazeWorld:
             reference.draw(img, self.gaze2DHomography[0],self.gaze2DHomography[1], subPixelFac, (0,255,0), 5)
         if self.gaze2DRay is not None:
             reference.draw(img, self.gaze2DRay[0],self.gaze2DRay[1], subPixelFac, (0,0,0), 3)
+
+class BoardPose:
+    def __init__(self, frameIdx, nMarkers=0, rVec=None, tVec=None, hMat=None, planePoint=None, planeNormal=None):
+        self.frameIdx       = frameIdx
+        
+        # pose
+        self.nMarkers       = nMarkers  # number of Aruco markers this pose estimate is based on
+        self.rVec           = rVec
+        self.tVec           = tVec
+
+        # homography
+        self.hMat           = hMat.reshape(3,3) if hMat is not None else hMat
+    
+        # derived values
+        self.planePoint     = planePoint
+        self.planeNormal    = planeNormal
+
+    @staticmethod
+    def getWriteHeader():
+        header = ['frame_idx','poseNMarker']
+        header.extend(getXYZLabels(['poseRvec','poseTvec']))
+        header.extend(['homography[%d,%d]' % (r,c) for r in range(3) for c in range(3)])
+        header.extend(getXYZLabels(['planePoint','planeNormal']))
+        return header
+
+    @staticmethod
+    def getMissingWriteData():
+        dat = [0]
+        return dat.extend([math.nan for x in range(21)])
+
+    def getWriteData(self):
+        writeData = [self.frameIdx, self.nMarkers]
+        # in camera space
+        writeData.extend(allNanIfNone(self.rVec.flatten(),3))
+        writeData.extend(allNanIfNone(self.tVec.flatten(),3))
+        writeData.extend(allNanIfNone(self.hMat.flatten(),9))
+        writeData.extend(allNanIfNone(self.planePoint.flatten(),3))
+        writeData.extend(allNanIfNone(self.planeNormal.flatten(),3))
+
+        return writeData
+    
+    @staticmethod
+    def readDataFromFile(fileName,start=None,end=None,stopOnceExceeded=False):
+        poses       = {}
+        readSubset  = start is not None and end is not None
+        data        = pd.read_csv(str(fileName), delimiter='\t',index_col=False)
+        rCols       = [col for col in data.columns if 'poseRvec' in col]
+        tCols       = [col for col in data.columns if 'poseTvec' in col]
+        hCols       = [col for col in data.columns if 'homography' in col]
+        ppCols      = [col for col in data.columns if 'planePoint' in col]
+        pnCols      = [col for col in data.columns if 'planeNormal' in col]
+        # run through all columns
+        for idx, row in data.iterrows():
+            frame_idx = int(row['frame_idx'])
+            if readSubset and (frame_idx<start or frame_idx>end):
+                if stopOnceExceeded and frame_idx>end:
+                    break
+                else:
+                    continue
+
+            # get all values (None if all nan)
+            args = tuple(noneIfAnyNan(row[c].to_numpy()) for c in (rCols,tCols,hCols,ppCols,pnCols))
+            
+            # insert if any non-None
+            if not np.all(np.isnan([x is None for x in args])):
+                poses[frame_idx] = BoardPose(frame_idx,int(row['poseNMarker']),*args)
+
+        return poses
+
+    def determinePlanePointNormal(self):
+        if (self.rVec is not None) and (self.tVec is not None):
+            # get board normal
+            RBoard           = cv2.Rodrigues(self.rVec)[0]
+            self.planeNormal = np.matmul(RBoard, np.array([0,0,1.]))
+            # get point on board (just use origin)
+            RtBoard          = np.hstack((RBoard, self.tVec.reshape(3,1)))
+            self.planePoint  = np.matmul(RtBoard, np.array([0, 0, 0., 1.]))
 
 class Idx2Timestamp:
     def __init__(self, fileName):
@@ -646,57 +722,23 @@ def readMarkerIntervalsFile(fileName):
 
     return None if len(analyzeFrames)==0 else analyzeFrames
 
-def readBoardPoseFile(fileName,start=None,end=None,stopOnceExceeded=False):
-    rVec = {}
-    tVec = {}
-    H = {}
-    readSubset = start is not None and end is not None
-    temp = pd.read_csv(str(fileName), delimiter='\t')
-    rvecCols = [col for col in temp.columns if 'poseRvec' in col]
-    tvecCols = [col for col in temp.columns if 'poseTvec' in col]
-    hCols    = [col for col in temp.columns if 'transformation' in col]
-    for idx, row in temp.iterrows():
-        frame_idx = int(row['frame_idx'])
-        if readSubset and (frame_idx<start or frame_idx>end):
-            if stopOnceExceeded and frame_idx>end:
-                break
-            else:
-                continue
+def gazeToPlane(gaze,boardPose,cameraRotation,cameraPosition, cameraMatrix=None, distCoeffs=None):
 
-        vals = row[rvecCols].values
-        if not np.any(np.isnan(vals)):
-            rVec[frame_idx] = vals
-        vals = row[tvecCols].values
-        if not np.any(np.isnan(vals)):
-            tVec[frame_idx] = vals
-        vals = row[hCols].values.reshape(3,3)
-        if not np.any(np.isnan(vals)):
-            H   [frame_idx] = vals
-
-    return rVec,tVec,H
-
-def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition, cameraMatrix=None, distCoeffs=None, homographyT=None):
-
-    hasCameraPose = (rVec is not None) and (tVec is not None)
+    hasCameraPose = (boardPose.rVec is not None) and (boardPose.tVec is not None)
     gazeWorld   = GazeWorld(gaze.ts)
     if hasCameraPose:
-        # get board normal
-        RBoard      = cv2.Rodrigues(rVec)[0]
-        boardNormal = np.matmul(RBoard, np.array([0,0,1.]))
-        # get point on board (just use origin)
-        RtBoard     = np.hstack((RBoard  ,                    tVec.reshape(3,1)))
-        RtBoardInv  = np.hstack((RBoard.T,np.matmul(-RBoard.T,tVec.reshape(3,1))))
-        boardPoint  = np.matmul(RtBoard,np.array([0, 0, 0., 1.]))
-        gazeWorld.planePoint  = boardPoint
-        gazeWorld.planeNormal = boardNormal
+        # set up camera to world and back matrices
+        RBoard      = cv2.Rodrigues(boardPose.rVec)[0]
+        RtBoard     = np.hstack((RBoard  ,                    boardPose.tVec.reshape(3,1)))
+        RtBoardInv  = np.hstack((RBoard.T,np.matmul(-RBoard.T,boardPose.tVec.reshape(3,1))))
 
         # get transform from ET data's coordinate frame to camera's coordinate frame
         if cameraRotation is None:
             cameraRotation = np.zeros((3,1))
-        RCam        = cv2.Rodrigues(cameraRotation)[0]
+        RCam  = cv2.Rodrigues(cameraRotation)[0]
         if cameraPosition is None:
             cameraPosition = np.zeros((3,1))
-        RtCam       = np.hstack((RCam, cameraPosition))
+        RtCam = np.hstack((RCam, cameraPosition))
 
         # project 3D gaze to reference board
         if gaze.world3D is not None:
@@ -704,18 +746,18 @@ def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition, cameraMatrix=None,
             g3D = np.matmul(RCam,np.array(gaze.world3D).reshape(3,1))
             g3D /= np.sqrt((g3D**2).sum()) # normalize
             # find intersection of 3D gaze with board, draw
-            g3Board  = intersect_plane_ray(boardNormal, boardPoint, g3D.flatten(), np.array([0.,0.,0.]))  # vec origin (0,0,0) because we use g3D from camera's view point to be able to recreate Tobii 2D gaze pos data
+            g3Board  = intersect_plane_ray(boardPose.planeNormal, boardPose.planePoint, g3D.flatten(), np.array([0.,0.,0.]))  # vec origin (0,0,0) because we use g3D from camera's view point to be able to recreate Tobii 2D gaze pos data
             (x,y,z)  = np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
             gazeWorld.gaze3DRay = g3Board
             gazeWorld.gaze2DRay = [x, y]
 
     # unproject 2D gaze point on video to point on board (should yield values very close to
     # the above method of intersecting 3D gaze point ray with board)
-    if homographyT is not None:
+    if boardPose.hMat is not None:
         ux, uy   = gaze.vid2D
         if (cameraMatrix is not None) and (distCoeffs is not None):
             ux, uy   = undistortPoint( ux, uy, cameraMatrix, distCoeffs)
-        (xW, yW) = applyHomography(homographyT, ux, uy)
+        (xW, yW) = applyHomography(boardPose.hMat, ux, uy)
         gazeWorld.gaze2DHomography = [xW, yW]
 
         # get this point in board space
@@ -742,7 +784,7 @@ def gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition, cameraMatrix=None,
         setattr(gazeWorld,attr[0],gOri)
 
         # intersect with board -> yield point on board in camera reference frame
-        gBoard  = intersect_plane_ray(boardNormal, boardPoint, gVec, gOri)
+        gBoard  = intersect_plane_ray(boardPose.planeNormal, boardPose.planePoint, gVec, gOri)
         setattr(gazeWorld,attr[1],gBoard)
                         
         # transform intersection with board from camera space to board space

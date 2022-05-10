@@ -41,7 +41,7 @@ def process(inputDir,basePath):
     # Read pose of marker board, if available
     hasBoardPose = False
     if (inputDir / 'boardPose.tsv').is_file():
-        rVec,tVec,homography = utils.readBoardPoseFile(inputDir / 'boardPose.tsv')
+        poses = utils.BoardPose.readDataFromFile(inputDir / 'boardPose.tsv')
         hasBoardPose = True
 
     # Read gaze on board data, if available
@@ -115,9 +115,8 @@ def process(inputDir,basePath):
                 refImg = reference.getImgCopy()
 
             # if we have board pose, draw board origin on video
-            if hasBoardPose and frame_idx in rVec and hasCamCal and\
-                not np.any(np.isnan(rVec[frame_idx])) and not np.any(np.isnan(tVec[frame_idx])):
-                utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, rVec[frame_idx], tVec[frame_idx], armLength, 3, subPixelFac)
+            if hasBoardPose and frame_idx in poses and hasCamCal:
+                utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, poses[frame_idx].rVec, poses[frame_idx].tVec, armLength, 3, subPixelFac)
 
             # if have gaze for this frame, draw it
             # NB: usually have multiple gaze samples for a video frame, draw one

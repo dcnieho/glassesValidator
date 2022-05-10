@@ -36,7 +36,7 @@ def process(inputDir,basePath):
         return
 
     # Read pose of marker board
-    rVec,tVec = utils.readBoardPoseFile(inputDir / 'boardPose.tsv',analyzeFrames[0],analyzeFrames[-1],True)[0:2]
+    rVec,tVec = utils.BoardPose.readDataFromFile(inputDir / 'boardPose.tsv',analyzeFrames[0],analyzeFrames[-1],True)[0:2]
 
     # Read gaze on board data
     gazeWorld = utils.GazeWorld.readDataFromFile(inputDir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
