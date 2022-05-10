@@ -288,49 +288,33 @@ def applyHomography(h, x, y):
     if math.isnan(x):
         return [math.nan, math.nan]
 
-    src = np.float32([[ [x,y] ]])
+    src = np.asarray([x, y], dtype='float32').reshape((1, -1, 2))
     dst = cv2.perspectiveTransform(src,h)
-    return dst[0][0]
+    return dst.flatten()
 
 
 def distortPoint(x, y, cameraMatrix, distCoeff):
     if math.isnan(x):
         return [math.nan, math.nan]
+    
+    # unproject, ignoring distortion as this is an undistored point
+    points_2d = np.asarray([x, y], dtype='float32').reshape((1, -1, 2))
+    points_2d = cv2.undistortPoints(points_2d, cameraMatrix, np.asarray([[0.0, 0.0, 0.0, 0.0, 0.0]]))
+    points_3d = cv2.convertPointsToHomogeneous(points_2d)
+    points_3d.shape = -1, 3
 
-    fx = cameraMatrix[0][0]
-    fy = cameraMatrix[1][1]
-    cx = cameraMatrix[0][2]
-    cy = cameraMatrix[1][2]
+    # reproject, applying distortion
+    points_2d, _ = cv2.projectPoints(points_3d, np.zeros((1, 1, 3)), np.zeros((1, 1, 3)), cameraMatrix, distCoeff)
 
-    k1 = distCoeff[0]
-    k2 = distCoeff[1]
-    k3 = distCoeff[4]
-    p1 = distCoeff[2]
-    p2 = distCoeff[3]
-
-    x = (x - cx) / fx
-    y = (y - cy) / fy
-
-    r2 = x*x + y*y
-
-    dx = x * (1 + k1 * r2 + k2 * r2 * r2 + k3 * r2 * r2 * r2)
-    dy = y * (1 + k1 * r2 + k2 * r2 * r2 + k3 * r2 * r2 * r2)
-
-    dx = dx + (2 * p1 * x * y + p2 * (r2 + 2 * x * x))
-    dy = dy + (p1 * (r2 + 2 * y * y) + 2 * p2 * x * y)
-
-    x = dx * fx + cx;
-    y = dy * fy + cy;
-
-    return np.float32([x, y]).flatten()
+    return points_2d.flatten()
 
 def undistortPoint(x, y, cameraMatrix, distCoeff):
     if math.isnan(x):
         return [math.nan, math.nan]
 
-    p = np.float32([[[x, y]]])
-    dst = cv2.undistortPoints(p, cameraMatrix, distCoeff, P=cameraMatrix)
-    return dst[0][0]
+    points_2d = np.asarray([x, y], dtype='float32').reshape((1, -1, 2))
+    points_2d = cv2.undistortPoints(points_2d, cameraMatrix, distCoeff, P=cameraMatrix)
+    return points_2d.flatten()
 
 
 def angle_between(v1, v2): 
