@@ -1,4 +1,4 @@
-distance = 60                   % in cm
+distance = 60                   % viewing distance, in cm
 
 markerBorderBits = 1
 gridCols = 34                   % in deg
