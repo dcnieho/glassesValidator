@@ -133,7 +133,7 @@ def process(inputDir,basePath):
             # if we have board pose, draw board origin on video
             if frame_idx in rVec or frame_idx in homography:
                 if frame_idx in rVec and hasCameraMatrix and hasDistCoeff:
-                    a = cv2.projectPoints(np.zeros((1,3)),rVec[frame_idx],tVec[frame_idx],cameraMatrix,distCoeff)[0][0][0]
+                    a = cv2.projectPoints(np.zeros((1,3)),rVec[frame_idx],tVec[frame_idx],cameraMatrix,distCoeff)[0].flatten()
                 else:
                     iH = np.linalg.inv(homography[frame_idx])
                     a = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
