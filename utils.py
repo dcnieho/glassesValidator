@@ -762,7 +762,7 @@ class BoardPose:
             args = tuple(noneIfAnyNan(row[c].to_numpy()) for c in (rCols,tCols,hCols,ppCols,pnCols))
             
             # insert if any non-None
-            if not np.all(np.isnan([x is None for x in args])):
+            if not np.all([x is None for x in args]):   # check for not all isNone
                 poses[frame_idx] = BoardPose(frame_idx,int(row['poseNMarker']),*args)
 
         return poses
