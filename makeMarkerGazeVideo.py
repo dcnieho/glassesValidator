@@ -39,23 +39,19 @@ def process(inputDir,basePath):
     height = vidIn.get(cv2.CAP_PROP_FRAME_HEIGHT)
     fps    = vidIn.get(cv2.CAP_PROP_FPS)
 
+    # get info about markers on our board
+    reference       = utils.Reference(configDir, validationSetup)
+    centerTarget    = reference.getTargets()[validationSetup['centerTarget']].center
+    # turn into aruco board object to be used for pose estimation
+    referenceBoard  = reference.getArucoBoard()
+
     # open output scene video file
     fourcc = cv2.VideoWriter_fourcc(*'avc1')
     vidOutScene = cv2.VideoWriter(str(inputDir / 'detectOutput_scene.mp4'), fourcc, fps, (int(width), int(height)))
 
     # open output reference board video file
-    reference = utils.Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
     fourcc = cv2.VideoWriter_fourcc(*'avc1')
     vidOutBoard = cv2.VideoWriter(str(inputDir / 'detectOutput_board.mp4'), fourcc, fps, (reference.width, reference.height))
-    
-    # get info about markers on our board
-    # Aruco markers have numeric keys, gaze targets have keys starting with 't'
-    aruco_dict   = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
-    knownMarkers, markerBBox = utils.getKnownMarkers(configDir, validationSetup)
-    centerTarget = knownMarkers['t%d'%validationSetup['centerTarget']].center
-    
-    # turn into aruco board object to be used for pose estimation
-    referenceBoard = utils.getReferenceBoard(knownMarkers, aruco_dict)
 
     # setup aruco marker detection
     parameters = cv2.aruco.DetectorParameters_create()
@@ -72,7 +68,7 @@ def process(inputDir,basePath):
     gazes,maxFrameIdx = utils.Gaze.readDataFromFile(inputDir / 'gazeData.tsv')
     
     frame_idx = 0
-    armLength = 2.*math.tan(math.radians(.5))*validationSetup['distance']*10*validationSetup['markerSide']/2 # arms of axis are half a marker long
+    armLength = reference.markerSize/2 # arms of axis are half a marker long
     subPixelFac = 8   # for sub-pixel positioning
     stopAllProcessing = False
     while True:
@@ -84,21 +80,20 @@ def process(inputDir,basePath):
 
         # detect markers, undistort
         corners, ids, rejectedImgPoints = \
-            cv2.aruco.detectMarkers(frame, aruco_dict, parameters=parameters)
+            cv2.aruco.detectMarkers(frame, reference.aruco_dict, parameters=parameters)
 
         # get board pose, draw marker and board pose
         gotPose = False
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
+                pose = utils.BoardPose(frame_idx)
                 # get camera pose
                 if (cameraMatrix is not None) and (distCoeff is not None):
-                    nMarkersUsed, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
-                else:
-                    nMarkersUsed = 0
+                    pose.nMarkers, pose.rVec, pose.tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
                        
                 # draw axis indicating board pose (origin and orientation)
-                if nMarkersUsed>0:
-                    utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, rVec, tVec, armLength, 3, subPixelFac)
+                if pose.nMarkers>0:
+                    utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, pose.rVec, pose.tVec, armLength, 3, subPixelFac)
                     gotPose = True
 
                 # also get homography (direct image plane to plane in world transform). Use undistorted marker corners
@@ -106,11 +101,12 @@ def process(inputDir,basePath):
                     cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
                 else:
                     cornersU = corners
-                H, status = utils.estimateHomography(knownMarkers, cornersU, ids)
+                H, status = utils.estimateHomography(reference.knownMarkers, cornersU, ids)
 
                 if status:
+                    pose.hMat = H
                     # find where target is expected to be in the image
-                    iH = np.linalg.inv(H)
+                    iH = np.linalg.inv(pose.hMat)
                     target = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
                     if (cameraMatrix is not None) and (distCoeff is not None):
                         target = utils.distortPoint(*target, cameraMatrix, distCoeff)
@@ -138,7 +134,7 @@ def process(inputDir,basePath):
                 # (the projection of which coincides with 2D gaze provided by
                 # the eye tracker)
                 if gotPose:
-                    gazeWorld = utils.gazeToPlane(gaze,rVec,tVec,cameraRotation,cameraPosition)
+                    gazeWorld = utils.gazeToPlane(gaze,pose,cameraRotation,cameraPosition)
 
                     # draw gazes on video and reference image
                     gazeWorld.drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
