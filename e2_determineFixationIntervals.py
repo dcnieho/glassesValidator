@@ -34,7 +34,7 @@ def process(inputDir,basePath):
     gazeWorld = utils.GazeWorld.readDataFromFile(inputDir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
     # get info about markers on our board
-    reference = utils.Reference(configDir, validationSetup)
+    reference = utils.Reference(configDir, validationSetup, imHeight=-1)
     targets = reference.getTargets()
     targets = {ID : targets[ID].center for ID in targets}   # get centers of targets
     markerHalfSizeMm = reference.markerSize/2.

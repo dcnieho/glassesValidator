@@ -387,7 +387,7 @@ class Reference:
     boardImageFilename = 'referenceBoard.png'
     aruco_dict         = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
 
-    def __init__(self, configDir, validationSetup):
+    def __init__(self, configDir, validationSetup, imHeight = 400):
         # get marker width
         if validationSetup['mode'] == 'deg':
             self.cellSizeMm = 2.*math.tan(math.radians(.5))*validationSetup['distance']*10
@@ -405,8 +405,11 @@ class Reference:
             self._storeReferenceBoard(configDir, validationSetup)
         # 2. read image
         self.img = cv2.imread(str(boardImage), cv2.IMREAD_COLOR)
-        self.scale = 400./self.img.shape[0]
-        self.img = cv2.resize(self.img, None, fx=self.scale, fy=self.scale, interpolation = cv2.INTER_AREA)
+        if imHeight==-1:
+            self.scale = 1
+        else:
+            self.scale = float(imHeight)/self.img.shape[0]
+            self.img = cv2.resize(self.img, None, fx=self.scale, fy=self.scale, interpolation = cv2.INTER_AREA)
         self.height, self.width, self.channels = self.img.shape
 
     def getImgCopy(self, asRGB=False):
