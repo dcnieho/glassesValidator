@@ -36,11 +36,23 @@
 \def\convertto#1#2{\strip@pt\dimexpr #2*65536/\number\dimexpr 1#1}
 \makeatother
 
-% 2*tan(angle/2)*distance
-\pgfmathparse{(2*tan(.5)*\distance)}
-\edef\gridFac{\pgfmathresult}
 \newlength{\step}
-\setlength{\step}{\gridFac cm}
+\ifthenelse{\equal{\mode}{deg}}{%
+	% convert 1 deg at viewing distance to cm
+	% 2*tan(angle/2)*distance
+	\pgfmathparse{(2*tan(.5)*\distance)}
+	\edef\gridFac{\pgfmathresult}
+	\setlength{\step}{\gridFac cm}
+}
+{ % else
+	% cm mode, hopefully. emit warning if not
+	\ifthenelse{\equal{\mode}{cm}}{}
+	{ % else, mode is not cm
+		\GenericError{}{mode is not set to deg or cm, but \mode. Unsupported}
+	}
+    % all user-provides measures are in cm, so step is simply 1cm
+	\setlength{\step}{1cm}
+}
 
 % setup gaze targets
 \tikzset{invclip/.style={clip,insert path={{[reset cm]
@@ -130,9 +142,11 @@
 			Cell: \SI{\convertto{cm}{\step}}{\centi\meter} x
 			      \SI{\convertto{cm}{\step}}{\centi\meter}
 		};
-		\node[right] at (0,-0.5\step-3cm) {
-			1 cell = \SI{1}{\degree} at \SI{\distance}{\centi\meter}
-		};
+		\ifthenelse{\equal{\mode}{deg}}{%
+			\node[right] at (0,-0.5\step-3cm) {
+				1 cell = \SI{1}{\degree} at \SI{\distance}{\centi\meter}
+			};
+		}
 	\fi
 
 
