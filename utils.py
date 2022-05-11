@@ -8,6 +8,7 @@ import sys
 from shlex import shlex
 import bisect
 import mp4analyser.iso
+from matplotlib import colors
 
 
 def getXYZLabels(stringList,N=3):
@@ -155,85 +156,6 @@ def getValidationSetup(configDir):
             except:
                 pass # just keep value as a string
     return validationSetup
-
-def getKnownMarkers(configDir, validationSetup):
-    """ board space: (0,0) is at center target, (-,-) bottom left """
-    cellSizeMm = 2.*math.tan(math.radians(.5))*validationSetup['distance']*10
-    markerHalfSizeMm = cellSizeMm*validationSetup['markerSide']/2.
-            
-    # read in target positions
-    markers = {}
-    targets = pd.read_csv(str(configDir / validationSetup['targetPosFile']),index_col=0,names=['x','y','clr'])
-    center  = targets.loc[validationSetup['centerTarget'],['x','y']]
-    targets.x = cellSizeMm * (targets.x.astype('float32') - center.x)
-    targets.y = cellSizeMm * (targets.y.astype('float32') - center.y)
-    for idx, row in targets.iterrows():
-        key = 't%d' % idx
-        markers[key] = Marker(key, row[['x','y']].values, color=row.clr)
-    
-    # read in aruco marker positions
-    markerPos = pd.read_csv(str(configDir / validationSetup['markerPosFile']),index_col=0,names=['x','y','rot'])
-    markerPos.x = cellSizeMm * (markerPos.x.astype('float32') - center.x)
-    markerPos.y = cellSizeMm * (markerPos.y.astype('float32') - center.y)
-    for idx, row in markerPos.iterrows():
-        key = '%d' % idx
-        c   = row[['x','y']].values
-        # rotate markers (negative because poster coordinate system)
-        rot = row[['rot']].values[0]
-        if rot%90 != 0:
-            raise ValueError("Rotation of a marker must be a multiple of 90 degrees")
-        rotr= -math.radians(rot)
-        R   = np.array([[math.cos(rotr), math.sin(rotr)], [-math.sin(rotr), math.cos(rotr)]])
-        # top left first, and clockwise: same order as detected aruco marker corners
-        tl = c + np.matmul(R,np.array( [ -markerHalfSizeMm ,  markerHalfSizeMm ] ))
-        tr = c + np.matmul(R,np.array( [  markerHalfSizeMm ,  markerHalfSizeMm ] ))
-        br = c + np.matmul(R,np.array( [  markerHalfSizeMm , -markerHalfSizeMm ] ))
-        bl = c + np.matmul(R,np.array( [ -markerHalfSizeMm , -markerHalfSizeMm ] ))
-        
-        markers[key] = Marker(key, c, corners=[ tl, tr, br, bl ], rot=rot)
-    
-    # determine bounding box of markers ([left, top, right, bottom])
-    # NB: this assumes that board has an outer edge of markers, i.e.,
-    # that it does not have targets at its edges. Also assumes markers
-    # are rotated by multiples of 90 degrees
-    bbox = []
-    bbox.append(markerPos.x.min()-markerHalfSizeMm)
-    bbox.append(markerPos.y.max()+markerHalfSizeMm) # top is at positive
-    bbox.append(markerPos.x.max()+markerHalfSizeMm)
-    bbox.append(markerPos.y.min()-markerHalfSizeMm) # bottom is at negative
-
-    return markers, bbox
-
-def getMarkerUnrotated(cornerPoints, rot):
-    # markers are rotated in multiples of 90 only, so can easily unrotate
-    if rot == -90:
-        # -90 deg
-        cornerPoints = np.vstack((cornerPoints[-1,:], cornerPoints[0:3,:]))
-    elif rot == 90:
-        # 90 deg
-        cornerPoints = np.vstack((cornerPoints[1:,:], cornerPoints[0,:]))
-    elif rot == 180:
-        # 180 deg
-        cornerPoints = np.vstack((cornerPoints[2:,:], cornerPoints[0:2,:]))
-
-    return cornerPoints
-
-def getReferenceBoard(knownMarkers, aruco_dict, unRotateMarkers=False):
-    boardCornerPoints = []
-    ids = []
-    for key in knownMarkers:
-        if not key.startswith('t'):
-            ids.append(int(key))
-            cornerPoints = np.vstack(knownMarkers[key].corners).astype('float32')
-            if unRotateMarkers:
-                cornerPoints = getMarkerUnrotated(cornerPoints,knownMarkers[key].rot)
-
-            boardCornerPoints.append(cornerPoints)
-
-    boardCornerPoints = np.dstack(boardCornerPoints)        # list of 2D arrays -> 3D array
-    boardCornerPoints = np.rollaxis(boardCornerPoints,-1)   # 4x2xN -> Nx4x2
-    boardCornerPoints = np.pad(boardCornerPoints,((0,0),(0,0),(0,1)),'constant', constant_values=(0.,0.)) # Nx4x2 -> Nx4x3
-    return cv2.aruco.Board_create(boardCornerPoints, aruco_dict, np.array(ids))
 
 def corners_intersection(corners):
     line1 = ( corners[0], corners[2] )
@@ -445,16 +367,47 @@ class Gaze:
         if self.world3D is not None and camRot is not None and camPos is not None and cameraMatrix is not None and distCoeff is not None:
             a = cv2.projectPoints(np.array(self.world3D).reshape(1,3),camRot,camPos,cameraMatrix,distCoeff)[0][0][0]
             drawOpenCVCircle(img, a, 5, (0,0,0), -1, subPixelFac)
+            
 
+def getMarkerUnrotated(cornerPoints, rot):
+    # markers are rotated in multiples of 90 only, so can easily unrotate
+    if rot == -90:
+        # -90 deg
+        cornerPoints = np.vstack((cornerPoints[-1,:], cornerPoints[0:3,:]))
+    elif rot == 90:
+        # 90 deg
+        cornerPoints = np.vstack((cornerPoints[1:,:], cornerPoints[0,:]))
+    elif rot == 180:
+        # 180 deg
+        cornerPoints = np.vstack((cornerPoints[2:,:], cornerPoints[0:2,:]))
+
+    return cornerPoints
 
 class Reference:
-    def __init__(self, fileName, markerDir, validationSetup):
-        self.img = cv2.imread(fileName, cv2.IMREAD_COLOR)
+    boardImageFilename = 'referenceBoard.png'
+    aruco_dict         = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
+
+    def __init__(self, configDir, validationSetup):
+        # get marker width
+        if validationSetup['mode'] == 'deg':
+            self.cellSizeMm = 2.*math.tan(math.radians(.5))*validationSetup['distance']*10
+        else:
+            self.cellSizeMm = 10 # 1cm
+        self.markerSize = self.cellSizeMm*validationSetup['markerSide']
+
+        # get information about marker board
+        self.knownMarkers, self.bbox = self._getKnownMarkers(configDir, validationSetup)
+
+        # get image of markerboard
+        boardImage = configDir / self.boardImageFilename
+        # 1 if doesn't exist, create
+        if not boardImage.is_file():
+            self._storeReferenceBoard(configDir, validationSetup)
+        # 2. read image
+        self.img = cv2.imread(str(boardImage), cv2.IMREAD_COLOR)
         self.scale = 400./self.img.shape[0]
         self.img = cv2.resize(self.img, None, fx=self.scale, fy=self.scale, interpolation = cv2.INTER_AREA)
         self.height, self.width, self.channels = self.img.shape
-        # get marker info
-        _, self.bbox = getKnownMarkers(markerDir, validationSetup)
 
     def getImgCopy(self, asRGB=False):
         if asRGB:
@@ -469,6 +422,160 @@ class Reference:
                 drawOpenCVCircle(img, xy, 8, (0,255,0), -1, subPixelFac)
                 color = (0,0,0)
             drawOpenCVCircle(img, xy, size, color, -1, subPixelFac)
+
+    def _getKnownMarkers(self, configDir, validationSetup):
+        """ board space: (0,0) is at center target, (-,-) bottom left """
+        markerHalfSizeMm = self.markerSize/2.
+            
+        # read in target positions
+        markers = {}
+        targets = pd.read_csv(str(configDir / validationSetup['targetPosFile']),index_col=0,names=['x','y','clr'])
+        center  = targets.loc[validationSetup['centerTarget'],['x','y']]
+        targets.x = self.cellSizeMm * (targets.x.astype('float32') - center.x)
+        targets.y = self.cellSizeMm * (targets.y.astype('float32') - center.y)
+        for idx, row in targets.iterrows():
+            key = 't%d' % idx
+            markers[key] = Marker(key, row[['x','y']].values, color=row.clr)
+    
+        # read in aruco marker positions
+        markerPos = pd.read_csv(str(configDir / validationSetup['markerPosFile']),index_col=0,names=['x','y','rot'])
+        markerPos.x = self.cellSizeMm * (markerPos.x.astype('float32') - center.x)
+        markerPos.y = self.cellSizeMm * (markerPos.y.astype('float32') - center.y)
+        for idx, row in markerPos.iterrows():
+            key = '%d' % idx
+            c   = row[['x','y']].values
+            # rotate markers (negative because poster coordinate system)
+            rot = row[['rot']].values[0]
+            if rot%90 != 0:
+                raise ValueError("Rotation of a marker must be a multiple of 90 degrees")
+            rotr= -math.radians(rot)
+            R   = np.array([[math.cos(rotr), math.sin(rotr)], [-math.sin(rotr), math.cos(rotr)]])
+            # top left first, and clockwise: same order as detected aruco marker corners
+            tl = c + np.matmul(R,np.array( [ -markerHalfSizeMm ,  markerHalfSizeMm ] ))
+            tr = c + np.matmul(R,np.array( [  markerHalfSizeMm ,  markerHalfSizeMm ] ))
+            br = c + np.matmul(R,np.array( [  markerHalfSizeMm , -markerHalfSizeMm ] ))
+            bl = c + np.matmul(R,np.array( [ -markerHalfSizeMm , -markerHalfSizeMm ] ))
+        
+            markers[key] = Marker(key, c, corners=[ tl, tr, br, bl ], rot=rot)
+    
+        # determine bounding box of markers ([left, top, right, bottom])
+        # NB: this assumes that board has an outer edge of markers, i.e.,
+        # that it does not have targets at its edges. Also assumes markers
+        # are rotated by multiples of 90 degrees
+        bbox = []
+        bbox.append(markerPos.x.min()-markerHalfSizeMm)
+        bbox.append(markerPos.y.max()+markerHalfSizeMm) # top is at positive
+        bbox.append(markerPos.x.max()+markerHalfSizeMm)
+        bbox.append(markerPos.y.min()-markerHalfSizeMm) # bottom is at negative
+
+        return markers, bbox
+
+    def getTargets(self):
+        # Aruco markers have numeric keys, gaze targets have keys starting with 't'
+        targets = {}
+        for key in self.knownMarkers:
+            if key.startswith('t'):
+                targets[int(key[1:])] = self.knownMarkers[key]
+        return targets
+    
+    def getArucoBoard(self, unRotateMarkers=False):
+        boardCornerPoints = []
+        ids = []
+        for key in self.knownMarkers:
+            if not key.startswith('t'):
+                ids.append(int(key))
+                cornerPoints = np.vstack(self.knownMarkers[key].corners).astype('float32')
+                if unRotateMarkers:
+                    cornerPoints = getMarkerUnrotated(cornerPoints,self.knownMarkers[key].rot)
+
+                boardCornerPoints.append(cornerPoints)
+
+        boardCornerPoints = np.dstack(boardCornerPoints)        # list of 2D arrays -> 3D array
+        boardCornerPoints = np.rollaxis(boardCornerPoints,-1)   # 4x2xN -> Nx4x2
+        boardCornerPoints = np.pad(boardCornerPoints,((0,0),(0,0),(0,1)),'constant', constant_values=(0.,0.)) # Nx4x2 -> Nx4x3
+        return cv2.aruco.Board_create(boardCornerPoints, self.aruco_dict, np.array(ids))
+            
+    def _storeReferenceBoard(self, configDir, validationSetup):
+        referenceBoard = self.getArucoBoard(unRotateMarkers = True)
+        # get image with markers
+        bboxExtents    = [self.bbox[2]-self.bbox[0], math.fabs(self.bbox[3]-self.bbox[1])]  # math.fabs to deal with bboxes where (-,-) is bottom left
+        aspectRatio    = bboxExtents[0]/bboxExtents[1]
+        refBoardWidth  = validationSetup['referenceBoardWidth']
+        refBoardHeight = math.ceil(refBoardWidth/aspectRatio)
+        margin         = 1  # always 1 pixel, anything else behaves strangely (markers are drawn over margin as well)
+        refBoardImage  = cv2.cvtColor(
+            cv2.aruco.drawPlanarBoard(
+                referenceBoard,(refBoardWidth+2*margin,refBoardHeight+2*margin),margin,validationSetup['markerBorderBits']),
+            cv2.COLOR_GRAY2RGB
+        )
+        # cut off this 1-pix margin
+        assert refBoardImage.shape[0]==refBoardHeight+2*margin,"Output image height is not as expected"
+        assert refBoardImage.shape[1]==refBoardWidth +2*margin,"Output image width is not as expected"
+        refBoardImage  = refBoardImage[1:-1,1:-1,:]
+        # walk through all markers, if any are supposed to be rotated, do so
+        minX =  np.inf
+        maxX = -np.inf
+        minY =  np.inf
+        maxY = -np.inf
+        rots = []
+        cornerPointsU = []
+        for key in self.knownMarkers:
+            if not key.startswith('t'):
+                cornerPoints = np.vstack(self.knownMarkers[key].corners).astype('float32')
+                cornerPointsU.append(getMarkerUnrotated(cornerPoints, self.knownMarkers[key].rot))
+                rots.append(self.knownMarkers[key].rot)
+                minX = np.min(np.hstack((minX,cornerPoints[:,0])))
+                maxX = np.max(np.hstack((maxX,cornerPoints[:,0])))
+                minY = np.min(np.hstack((minY,cornerPoints[:,1])))
+                maxY = np.max(np.hstack((maxY,cornerPoints[:,1])))
+        if np.any(np.array(rots)!=0):
+            # determine where the markers are placed
+            sizeX = maxX - minX
+            sizeY = maxY - minY
+            xReduction = sizeX / float(refBoardImage.shape[1])
+            yReduction = sizeY / float(refBoardImage.shape[0])
+            if xReduction > yReduction:
+                nRows = int(sizeY / xReduction);
+                yMargin = (refBoardImage.shape[0] - nRows) / 2;
+                xMargin = 0
+            else:
+                nCols = int(sizeX / yReduction);
+                xMargin = (refBoardImage.shape[1] - nCols) / 2;
+                yMargin = 0
+        
+            for r,cpu in zip(rots,cornerPointsU):
+                if r != 0:
+                    # figure out where marker is
+                    cpu -= np.array([[minX,minY]])
+                    cpu[:,0] =       cpu[:,0] / sizeX  * float(refBoardImage.shape[1]) + xMargin
+                    cpu[:,1] = (1. - cpu[:,1] / sizeY) * float(refBoardImage.shape[0]) + yMargin
+                    sz = np.min(cpu[2,:]-cpu[0,:])
+                    # get marker
+                    cpu = np.floor(cpu)
+                    idxs = np.floor([cpu[0,1], cpu[0,1]+sz, cpu[0,0], cpu[0,0]+sz]).astype('int')
+                    marker = refBoardImage[idxs[0]:idxs[1], idxs[2]:idxs[3]]
+                    # rotate (opposite because coordinate system) and put back
+                    if r==-90:
+                        marker = cv2.rotate(marker, cv2.ROTATE_90_CLOCKWISE)
+                    elif r==90:
+                        marker = cv2.rotate(marker, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                    elif r==180:
+                        marker = cv2.rotate(marker, cv2.ROTATE_180)
+
+                    refBoardImage[idxs[0]:idxs[1], idxs[2]:idxs[3]] = marker
+
+        # add targets
+        subPixelFac = 8   # for sub-pixel positioning
+        for key in self.knownMarkers:
+            if key.startswith('t'):
+                # 1. determine position on image
+                circlePos = toImagePos(*self.knownMarkers[key].center, self.bbox,[refBoardWidth,refBoardHeight])
+
+                # 2. draw
+                clr = tuple([int(i*255) for i in colors.to_rgb(self.knownMarkers[key].color)[::-1]])  # need BGR color ordering
+                drawOpenCVCircle(refBoardImage, circlePos, 15, clr, -1, subPixelFac)
+
+        cv2.imwrite(str(configDir / 'referenceBoard.png'), refBoardImage)
 
 class GazeWorld:
     def __init__(self, ts, gaze3DRay=None, gaze3DHomography=None, lGazeOrigin=None, lGaze3D=None, rGazeOrigin=None, rGaze3D=None, gaze2DRay=None, gaze2DHomography=None, lGaze2D=None, rGaze2D=None):

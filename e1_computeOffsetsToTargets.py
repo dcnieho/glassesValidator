@@ -42,12 +42,9 @@ def process(inputDir,basePath):
     gazeWorld = utils.GazeWorld.readDataFromFile(inputDir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
     # get info about markers on our board
-    # Aruco markers have numeric keys, gaze targets have keys starting with 't'
-    knownMarkers, markerBBox = utils.getKnownMarkers(configDir, validationSetup)
-    targets = {}
-    for key in knownMarkers:
-        if key.startswith('t'):
-            targets[int(key[1:])] = knownMarkers[key].center
+    reference = utils.Reference(configDir, validationSetup)
+    targets = reference.getTargets()
+    targets = {ID : targets[ID].center for ID in targets}   # get centers of targets
     
     # for each frame during analysis interval, determine offset
     # (angle) of gaze (each eye) to each of the targets

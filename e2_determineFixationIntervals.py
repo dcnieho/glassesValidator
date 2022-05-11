@@ -37,14 +37,10 @@ def process(inputDir,basePath):
     gazeWorld = utils.GazeWorld.readDataFromFile(inputDir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
     # get info about markers on our board
-    # Aruco markers have numeric keys, gaze targets have keys starting with 't'
-    knownMarkers, markerBBox = utils.getKnownMarkers(configDir, validationSetup)
-    targets = {}
-    for key in knownMarkers:
-        if key.startswith('t'):
-            targets[int(key[1:])] = knownMarkers[key].center
-    cellSizeMm       = 2.*math.tan(math.radians(.5))*validationSetup['distance']*10
-    markerHalfSizeMm = cellSizeMm*validationSetup['markerSide']/2.
+    reference = utils.Reference(configDir, validationSetup)
+    targets = reference.getTargets()
+    targets = {ID : targets[ID].center for ID in targets}   # get centers of targets
+    markerHalfSizeMm = reference.markerSize/2.
     
     # run I2MC on data in board space
     # set I2MC options
@@ -104,11 +100,11 @@ def process(inputDir,basePath):
         # make plot of data overlaid on board, and show for each target which fixation
         # was selected
         f       = plt.figure(dpi=300)
-        imgplot = plt.imshow(reference.getImgCopy(asRGB=True),extent=(np.array(markerBBox)[[0,2,3,1]]),alpha=.5)
+        imgplot = plt.imshow(reference.getImgCopy(asRGB=True),extent=(np.array(reference.bbox)[[0,2,3,1]]),alpha=.5)
         plt.plot(fix['xpos'],fix['ypos'],'b-')
         plt.plot(fix['xpos'],fix['ypos'],'go')
-        plt.xlim([markerBBox[0]-markerHalfSizeMm, markerBBox[2]+markerHalfSizeMm])
-        plt.ylim([markerBBox[3]-markerHalfSizeMm, markerBBox[1]+markerHalfSizeMm])
+        plt.xlim([reference.bbox[0]-markerHalfSizeMm, reference.bbox[2]+markerHalfSizeMm])
+        plt.ylim([reference.bbox[3]-markerHalfSizeMm, reference.bbox[1]+markerHalfSizeMm])
         for i,t in zip(range(len(selected)),targets):
             plt.plot([fix['xpos'][selected[i]], targets[t][0]], [fix['ypos'][selected[i]], targets[t][1]],'r-')
        

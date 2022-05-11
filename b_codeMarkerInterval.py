@@ -1,8 +1,6 @@
 #!/usr/bin/python
 
-import sys
 from pathlib import Path
-import math
 import numpy as np
 
 import cv2
@@ -34,6 +32,7 @@ def process(inputDir,basePath):
     configDir = basePath / "config"
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = utils.getValidationSetup(configDir)
+    reference = utils.Reference(configDir, validationSetup)
 
     # Read gaze data
     gazes,maxFrameIdx = utils.Gaze.readDataFromFile(inputDir / 'gazeData.tsv')
@@ -73,7 +72,6 @@ def process(inputDir,basePath):
     gShowReference &= hasWorldGaze  # no reference board if we don't have world gaze, it'd be empty and pointless
     if gShowReference:
         cv2.namedWindow("reference")
-        reference = utils.Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
     # 3. timestamp info for relating audio to video frames
     t2i = utils.Timestamp2Index( str(inputDir / 'frameTimestamps.tsv') )
     i2t = utils.Idx2Timestamp( str(inputDir / 'frameTimestamps.tsv') )
@@ -88,7 +86,7 @@ def process(inputDir,basePath):
     # show
     lastIdx = None
     subPixelFac = 8   # for sub-pixel positioning
-    armLength = 2.*math.tan(math.radians(.5))*validationSetup['distance']*10*validationSetup['markerSide']/2 # arms of axis are half a marker long
+    armLength = reference.markerSize/2 # arms of axis are half a marker long
     stopAllProcessing = False
     shouldRedraw = False
     while True:
