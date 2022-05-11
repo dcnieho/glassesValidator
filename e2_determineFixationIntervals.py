@@ -30,9 +30,6 @@ def process(inputDir,basePath):
         print('  no marker intervals defined for this recording, skipping')
         return
 
-    # Read pose of marker board
-    reference = utils.Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
-
     # Read gaze on board data
     gazeWorld = utils.GazeWorld.readDataFromFile(inputDir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
