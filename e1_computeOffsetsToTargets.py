@@ -79,6 +79,8 @@ def process(inputDir,basePath):
                     gazeBoard   = gaze2DRay[s,:]
                 elif e in [3, 4]:
                     # from camera perspective, using homography
+                    # 3: using pose info
+                    # 4: using assumed viewing distance
                     ori         = np.zeros(3)
                     gaze        = gaze3DHomography[s,:]
                     gazeBoard   = gaze2DHomography[s,:]
@@ -90,7 +92,7 @@ def process(inputDir,basePath):
                         vGaze   = np.array([gazeBoard[0] , gazeBoard[1] , distMm])
                         vTarget = np.array([targets[t][0], targets[t][1], distMm])
                     else:
-                        # use known 3D vectors
+                        # use 3D vectors known given pose information
                         target  = np.matmul(RtBoard,np.array([targets[t][0], targets[t][1], 0., 1.]))
             
                         # get vectors from origin to target and to gaze point
@@ -108,14 +110,14 @@ def process(inputDir,basePath):
         # order of inputs needed to get expected output is a mystery to me, but screw it, works
         dat = utils.cartesian_product(np.arange(5),np.arange(offset.shape[0]),[t for t in targets])
         # 2. put into data frame
-        df = pd.DataFrame()
-        df['timestamp'] = ts[dat[:,1],0]
-        df['marker_interval'] = ival+1
-        map = ['pose_left_eye','pose_right_eye','pose_vidpos_ray','pose_vidpos_homography','viewDist_vidpos_homography']
-        df['type'] = [map[e] for e in dat[:,0]]
-        df['target'] = dat[:,2]
-        df = pd.concat([df, pd.DataFrame(np.reshape(offset,(-1,2)),columns=['offset_x','offset_y'])],axis=1)
-        df = df.dropna(axis=0, subset=['offset_x','offset_y'])  # drop any missing data
+        df                      = pd.DataFrame()
+        df['timestamp']         = ts[dat[:,1],0]
+        df['marker_interval']   = ival+1
+        map                     = ['pose_left_eye','pose_right_eye','pose_vidpos_ray','pose_vidpos_homography','viewDist_vidpos_homography']
+        df['type']              = [map[e] for e in dat[:,0]]
+        df['target']            = dat[:,2]
+        df                      = pd.concat([df, pd.DataFrame(np.reshape(offset,(-1,2)),columns=['offset_x','offset_y'])],axis=1)
+        df                      = df.dropna(axis=0, subset=['offset_x','offset_y'])  # drop any missing data
         # 3. write to file
         df.to_csv(str(inputDir / 'gazeTargetOffset.tsv'), mode='w' if ival==0 else 'a', header=ival==0, index=False, sep='\t', na_rep='nan', float_format="%.3f")
 

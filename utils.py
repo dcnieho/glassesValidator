@@ -346,8 +346,8 @@ class Gaze:
         with open(fileName, 'r' ) as f:
             reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
-                frame_idx = float(entry['frame_idx'])
-                ts = float(entry['timestamp'])
+                frame_idx   = float(entry['frame_idx'])
+                ts          = float(entry['timestamp'])
                 
                 vid2D       = dataReaderHelper(entry,'vid_gaze_pos',2)
                 world3D     = dataReaderHelper(entry,'3d_gaze_pos')
