@@ -11,11 +11,6 @@ import warnings
 
 import utils
 
-def dstack_product(arrays):
-    return np.dstack(
-        np.meshgrid(*arrays, indexing='ij')
-        ).reshape(-1, len(arrays))
-
 def cartesian_product(*arrays):
     ndim = len(arrays)
     return (np.stack(np.meshgrid(*arrays), axis=-1)
