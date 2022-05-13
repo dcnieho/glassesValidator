@@ -32,59 +32,54 @@ def process(inputDir,basePath):
     if not fileName.is_file():
         print('  no gaze offsets precomputed defined for this recording, skipping')
         return
-    offset = pd.read_csv(str(fileName), delimiter='\t',index_col=['marker_interval','timestamp','eye','target'])
+    offset = pd.read_csv(str(fileName), delimiter='\t',index_col=['marker_interval','timestamp','type','target'])
 
+    # check what we have to process
+    typeIdx = np.argwhere([x=='type' for x in offset.index.names]).flatten()
+    todo = []
+    [todo.append(x) for x in ('pose_vidpos_homography','viewDist_vidpos_homography','pose_vidpos_ray','pose_left_eye','pose_right_eye') if x in offset.index.levels[typeIdx[0]]]
+    if ('pose_left_eye' in todo) and ('pose_right_eye' in todo):
+        todo.append('pose_left_right_avg')
+        
     # prep output data frame
-    df  = pd.DataFrame().reindex(index=analysisIntervals.index)
+    idx = pd.DataFrame(utils.cartesian_product(analysisIntervals.index.levels[0],todo,analysisIntervals.index.levels[1]),columns=[analysisIntervals.index.names[0],'type',analysisIntervals.index.names[1]])
+    df  = pd.DataFrame(index=pd.MultiIndex.from_frame(idx.astype({analysisIntervals.index.names[0]: 'int64','type': 'string', analysisIntervals.index.names[1]: 'int64'})))
     idx = pd.IndexSlice
     ts  = offset.index.get_level_values('timestamp')
-    qHasLeft        = ('left'  in offset.index.levels[2]) and np.any(np.logical_not(np.isnan(offset.loc[idx[:,:,'left'      ,:],:].to_numpy())))
-    qHasRight       = ('right' in offset.index.levels[2]) and np.any(np.logical_not(np.isnan(offset.loc[idx[:,:,'right'     ,:],:].to_numpy())))
-    qHasRay         = ('ray'   in offset.index.levels[2]) and np.any(np.logical_not(np.isnan(offset.loc[idx[:,:,'ray'       ,:],:].to_numpy())))
-    qHasHomography  = ('ray'   in offset.index.levels[2]) and np.any(np.logical_not(np.isnan(offset.loc[idx[:,:,'homography',:],:].to_numpy())))
-    todo = []
-    if qHasHomography:
-        todo.append('homography')
-    if qHasRay:
-        todo.append('ray')
-    if qHasLeft:
-        todo.append('left')
-    if qHasRight:
-        todo.append('right')
-    if qHasLeft and qHasRight:
-        todo.append('avg')
     with warnings.catch_warnings():
         warnings.simplefilter("ignore") # ignore warnings from np.nanmean and np.nanstd
         for i in analysisIntervals.index.levels[0]:
             # determine order in which targets were looked at
-            df.loc[i,'order'] = np.argsort(analysisIntervals.loc(axis=0)[1,:]['start_timestamp'])+1
-        
+            for e in todo:
+                df.loc[idx[i,e,:],'order'] = np.argsort(analysisIntervals.loc(axis=0)[i,:]['start_timestamp']).to_numpy()+1
+
+            # compute data quality for each eye
             for t in analysisIntervals.index.levels[1]:
                 st = analysisIntervals.loc[(i,t),'start_timestamp']
                 et = analysisIntervals.loc[(i,t),  'end_timestamp']
                 qData= np.logical_and(ts>=st, ts<=et)
 
-                # per eye
+                # per type (e.g. eye, using pose or viewing distance)
                 for e in todo:
-                    if e in ('left','right','ray','homography'):
-                        data = offset.loc[idx[i,qData,        e       ,t],:]
-                    else:
+                    if e=='pose_left_right_avg':
                         # binocular average
-                        data = offset.loc[idx[i,qData,['left','right'],t],:].mean(level=['marker_interval','timestamp','target'],skipna=True)
+                        data = offset.loc[idx[i,qData,['pose_left_eye','pose_right_eye'],t],:].mean(level=['marker_interval','timestamp','target'],skipna=True)
+                    else:
+                        data = offset.loc[idx[i,qData,                e                 ,t],:]
                     
-                    df.loc[(i,t),'acc_'+e+'_x'] = np.nanmean(data['offset_x'])
-                    df.loc[(i,t),'acc_'+e+'_y'] = np.nanmean(data['offset_y'])
-                    df.loc[(i,t),'acc_'+e     ] = np.nanmean(np.hypot(data['offset_x'],data['offset_y']))
+                    df.loc[(i,e,t),'acc_x'] = np.nanmean(data['offset_x'])
+                    df.loc[(i,e,t),'acc_y'] = np.nanmean(data['offset_y'])
+                    df.loc[(i,e,t),'acc'  ] = np.nanmean(np.hypot(data['offset_x'],data['offset_y']))
                     
-                    df.loc[(i,t),'rms_'+e+'_x'] = np.sqrt(np.nanmean(np.diff(data['offset_x'])**2))
-                    df.loc[(i,t),'rms_'+e+'_y'] = np.sqrt(np.nanmean(np.diff(data['offset_y'])**2))
-                    df.loc[(i,t),'rms_'+e     ] = np.hypot(df.loc[(i,t),'rms_'+e+'_x'], df.loc[(i,t),'rms_'+e+'_y'])
+                    df.loc[(i,e,t),'rms_x'] = np.sqrt(np.nanmean(np.diff(data['offset_x'])**2))
+                    df.loc[(i,e,t),'rms_y'] = np.sqrt(np.nanmean(np.diff(data['offset_y'])**2))
+                    df.loc[(i,e,t),'rms'  ] = np.hypot(df.loc[(i,e,t),'rms_x'], df.loc[(i,e,t),'rms_y'])
                     
-                    df.loc[(i,t),'std_'+e+'_x'] = np.nanstd(data['offset_x'],ddof=1)
-                    df.loc[(i,t),'std_'+e+'_y'] = np.nanstd(data['offset_y'],ddof=1)
-                    df.loc[(i,t),'std_'+e     ] = np.hypot(df.loc[(i,t),'std_'+e+'_x'], df.loc[(i,t),'std_'+e+'_y'])
+                    df.loc[(i,e,t),'std_x'] = np.nanstd(data['offset_x'],ddof=1)
+                    df.loc[(i,e,t),'std_y'] = np.nanstd(data['offset_y'],ddof=1)
+                    df.loc[(i,e,t),'std'  ] = np.hypot(df.loc[(i,e,t),'std_x'], df.loc[(i,e,t),'std_y'])
 
-                    df.loc[(i,t),'dataLoss_'+e] = np.sum(np.isnan(data['offset_x']))/len(data)
+                    df.loc[(i,e,t),'dataLoss'] = np.sum(np.isnan(data['offset_x']))/len(data)
     
 
     df.to_csv(str(inputDir / 'dataQuality.tsv'), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.3f")
