@@ -44,15 +44,31 @@ def process(inputDir,basePath):
     opt = {'xres': None, 'yres': None}  # dummy values for required options
     opt['missingx']         = math.nan
     opt['missingy']         = math.nan
-    ts                      = np.array([s.ts for v in gazeWorld.values() for s in v])
-    opt['freq']             = np.round(np.mean(1000./np.diff(ts)))    # Hz
-    opt['downsamples']      = [2, 5]
-    opt['downsampFilter']   = False
     opt['maxdisp']          = 50        # mm
     opt['windowtimeInterp'] = .25       # s
     opt['maxMergeDist']     = 20        # mm
     opt['maxMergeTime']     = 81        # ms
     opt['minFixDur']        = 50        # ms
+    # decide what sampling frequency to tell I2MC about. It doesn't work with varying sampling frequency, nor
+    # any random sampling frequency. For our purposes, getting it right is not important (internally I2MC only
+    # uses sampling frequency for converting some of the time units to samples, other things are taken directly
+    # from the time signal. So, we have working I2MC settings for a few sampling frequencies, and just choose
+    # the nearest based on empirically determined sampling frequency.
+    ts          = np.array([s.ts for v in gazeWorld.values() for s in v])
+    recFreq     = np.round(np.mean(1000./np.diff(ts)))    # Hz
+    knownFreqs  = [30., 50., 60., 90., 120.]
+    opt['freq'] = knownFreqs[np.abs(knownFreqs - recFreq).argmin()]
+    if opt['freq']==120.:
+        opt['downsamples']      = [2, 3, 5]
+        opt['chebyOrder']       = 7
+    elif opt['freq'] in [50., 60.]:
+        opt['downsamples']      = [2, 5]
+        opt['downsampFilter']   = False
+    else:
+        # 90 Hz, 30 Hz
+        opt['downsamples']      = [2, 3]
+        opt['downsampFilter']   = False
+
     # collect data
     qHasLeft        = np.any(np.logical_not(np.isnan([s.lGaze2D          for v in gazeWorld.values() for s in v])))
     qHasRight       = np.any(np.logical_not(np.isnan([s.rGaze2D          for v in gazeWorld.values() for s in v])))
