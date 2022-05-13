@@ -35,6 +35,11 @@ def allNanIfNone(vals,numel):
     else:
         return vals
 
+def cartesian_product(*arrays):
+    ndim = len(arrays)
+    return (np.stack(np.meshgrid(*arrays), axis=-1)
+              .reshape(-1, ndim))
+
 def getFrameTimestampsFromVideo(vid_file):
     """
     Parse the supplied video, return an array of frame timestamps

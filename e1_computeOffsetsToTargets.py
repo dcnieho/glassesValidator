@@ -11,11 +11,6 @@ import warnings
 
 import utils
 
-def cartesian_product(*arrays):
-    ndim = len(arrays)
-    return (np.stack(np.meshgrid(*arrays), axis=-1)
-              .reshape(-1, ndim))
-
 
 def process(inputDir,basePath):
     print('processing: {}'.format(inputDir.name))
@@ -111,7 +106,7 @@ def process(inputDir,basePath):
         # organize for output and write to file
         # 1. create cartesian product of sample index, eye and target indices
         # order of inputs needed to get expected output is a mystery to me, but screw it, works
-        dat = cartesian_product(np.arange(5),np.arange(offset.shape[0]),[t for t in targets])
+        dat = utils.cartesian_product(np.arange(5),np.arange(offset.shape[0]),[t for t in targets])
         # 2. put into data frame
         df = pd.DataFrame()
         df['timestamp'] = ts[dat[:,1],0]
