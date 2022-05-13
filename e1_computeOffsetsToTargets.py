@@ -111,8 +111,8 @@ def process(inputDir,basePath):
         df = pd.DataFrame()
         df['timestamp'] = ts[dat[:,1],0]
         df['marker_interval'] = ival+1
-        map = ['left','right','fromRay','homography_and_pose','homography_and_viewDist']
-        df['eye'] = [map[e] for e in dat[:,0]]
+        map = ['pose_left_eye','pose_right_eye','pose_vidpos_ray','pose_vidpos_homography','viewDist_vidpos_homography']
+        df['type'] = [map[e] for e in dat[:,0]]
         df['target'] = dat[:,2]
         df = pd.concat([df, pd.DataFrame(np.reshape(offset,(-1,2)),columns=['offset_x','offset_y'])],axis=1)
         df = df.dropna(axis=0, subset=['offset_x','offset_y'])  # drop any missing data
