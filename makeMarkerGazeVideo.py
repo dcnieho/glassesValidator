@@ -93,6 +93,9 @@ def process(inputDir,basePath):
                        
                 # draw axis indicating board pose (origin and orientation)
                 if pose.nMarkers>0:
+                    # get other info about plane
+                    pose.determinePlanePointNormal()
+                    # and draw
                     utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, pose.rVec, pose.tVec, armLength, 3, subPixelFac)
                     gotPose = True
 
