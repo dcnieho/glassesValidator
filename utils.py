@@ -708,33 +708,29 @@ class GazeWorld:
             reference.draw(img, self.gaze2DRay[0],self.gaze2DRay[1], subPixelFac, (0,0,0), 3)
 
 class BoardPose:
-    def __init__(self, frameIdx, nMarkers=0, rVec=None, tVec=None, hMat=None, planePoint=None, planeNormal=None):
-        self.frameIdx       = frameIdx
+    def __init__(self, frameIdx, nMarkers=0, rVec=None, tVec=None, hMat=None):
+        self.frameIdx   = frameIdx
         
         # pose
-        self.nMarkers       = nMarkers  # number of Aruco markers this pose estimate is based on
-        self.rVec           = rVec
-        self.tVec           = tVec
+        self.nMarkers   = nMarkers  # number of Aruco markers this pose estimate is based on
+        self.rVec       = rVec
+        self.tVec       = tVec
+        self.determinePlanePointNormal()
 
         # homography
-        self.hMat           = hMat.reshape(3,3) if hMat is not None else hMat
-    
-        # derived values
-        self.planePoint     = planePoint
-        self.planeNormal    = planeNormal
+        self.hMat       = hMat.reshape(3,3) if hMat is not None else hMat
 
     @staticmethod
     def getWriteHeader():
         header = ['frame_idx','poseNMarker']
         header.extend(getXYZLabels(['poseRvec','poseTvec']))
         header.extend(['homography[%d,%d]' % (r,c) for r in range(3) for c in range(3)])
-        header.extend(getXYZLabels(['planePoint','planeNormal']))
         return header
 
     @staticmethod
     def getMissingWriteData():
         dat = [0]
-        return dat.extend([math.nan for x in range(21)])
+        return dat.extend([math.nan for x in range(15)])
 
     def getWriteData(self):
         writeData = [self.frameIdx, self.nMarkers]
@@ -742,8 +738,6 @@ class BoardPose:
         writeData.extend(allNanIfNone(self.rVec.flatten(),3))
         writeData.extend(allNanIfNone(self.tVec.flatten(),3))
         writeData.extend(allNanIfNone(self.hMat.flatten(),9))
-        writeData.extend(allNanIfNone(self.planePoint.flatten(),3))
-        writeData.extend(allNanIfNone(self.planeNormal.flatten(),3))
 
         return writeData
     
@@ -755,8 +749,6 @@ class BoardPose:
         rCols       = [col for col in data.columns if 'poseRvec' in col]
         tCols       = [col for col in data.columns if 'poseTvec' in col]
         hCols       = [col for col in data.columns if 'homography' in col]
-        ppCols      = [col for col in data.columns if 'planePoint' in col]
-        pnCols      = [col for col in data.columns if 'planeNormal' in col]
         # run through all columns
         for idx, row in data.iterrows():
             frame_idx = int(row['frame_idx'])
@@ -767,13 +759,18 @@ class BoardPose:
                     continue
 
             # get all values (None if all nan)
-            args = tuple(noneIfAnyNan(row[c].to_numpy()) for c in (rCols,tCols,hCols,ppCols,pnCols))
+            args = tuple(noneIfAnyNan(row[c].to_numpy()) for c in (rCols,tCols,hCols))
             
             # insert if any non-None
             if not np.all([x is None for x in args]):   # check for not all isNone
                 poses[frame_idx] = BoardPose(frame_idx,int(row['poseNMarker']),*args)
 
         return poses
+
+    def setPose(self,rVec,tVec):
+        self.rVec = rVec
+        self.tVec = tVec
+        self.determinePlanePointNormal()
 
     def determinePlanePointNormal(self):
         if (self.rVec is not None) and (self.tVec is not None):
@@ -783,6 +780,9 @@ class BoardPose:
             # get point on board (just use origin)
             RtBoard          = np.hstack((RBoard, self.tVec.reshape(3,1)))
             self.planePoint  = np.matmul(RtBoard, np.array([0, 0, 0., 1.]))
+        else:
+            self.planeNormal = None
+            self.planePoint  = None
 
 class Idx2Timestamp:
     def __init__(self, fileName):

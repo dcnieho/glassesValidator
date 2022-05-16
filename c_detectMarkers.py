@@ -95,16 +95,18 @@ def process(inputDir,basePath):
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
                 pose = utils.BoardPose(frame_idx)
+                
                 # get camera pose
                 if hasCameraMatrix and hasDistCoeff:
-                    pose.nMarkers, pose.rVec, pose.tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
+                    pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
                 
-                if pose.nMarkers>0:
-                    # get other info about plane
-                    pose.determinePlanePointNormal()
-                    if gVisualizeDetection:
-                        # draw axis indicating board pose (origin and orientation)
-                        utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, pose.rVec, pose.tVec, armLength, 3, subPixelFac)
+                    if pose.nMarkers>0:
+                        # set pose
+                        pose.setPose(rVec,tVec)
+                        # and draw if wanted
+                        if gVisualizeDetection:
+                            # draw axis indicating board pose (origin and orientation)
+                            utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, pose.rVec, pose.tVec, armLength, 3, subPixelFac)
 
                 # also get homography (direct image plane to plane in world transform). Use undistorted marker corners
                 if hasCameraMatrix and hasDistCoeff:
