@@ -76,22 +76,14 @@ def copySMIRecordings(inputDir, outputDir):
             outputDirs[-1].mkdir()
 
         # Copy relevent files to new directory
-        for f in [('codec1.bin','caminfo.txt'), (r.name,'gazedata.txt'), (r.stem+'.avi','worldCamera.avi'), (r.stem+'.wav','worldCamera.wav')]:
+        if not (inputDir / (r.stem+'.mp4')).is_file():
+            raise RuntimeError("file {} cannot be found in the folder {}, make sure you export the scene video using BeGaze as described in the glassesValidator manual".format(r.stem+'.mp4',inputDir))
+
+        for f in [('codec1.bin','caminfo.txt'), (r.name,'gazedata.txt'), (r.stem+'.mp4','worldCamera.mp4')]:
             outFileName = f[0]
             if f[1] is not None:
                 outFileName = f[1]
             shutil.copyfile(str(inputDir / f[0]), str(outputDirs[-1] / outFileName))
-
-        # if ffmpeg is on path, combine video and audio into one file
-        # video is h264 and we can copy it, audio is uncompressed wav, compress
-        if shutil.which('ffmpeg') is not None:
-            # make mp4
-            cmd_str = ' '.join(['ffmpeg', '-y', '-i', '"'+str(outputDirs[-1] / 'worldCamera.avi')+'"', '-i', '"'+str(outputDirs[-1] / 'worldCamera.wav')+'"', '-vcodec', 'copy', '"'+str(outputDirs[-1] / 'worldCamera.mp4')+'"'])
-            os.system(cmd_str)
-            # clean up
-            if (outputDirs[-1] / 'worldCamera.mp4').is_file():
-                (outputDirs[-1] / 'worldCamera.avi').unlink(missing_ok=True)
-                (outputDirs[-1] / 'worldCamera.wav').unlink(missing_ok=True)
 
     # return the full path to the output dir
     return outputDirs
@@ -155,7 +147,8 @@ def getCameraFromFile(inputDir):
 def formatGazeData(inputDir, sceneVideoDimensions):
     """
     load gazedata file
-    format to get the gaze coordinates w/r/t world camera, and timestamps for every frame of video
+    format to get the gaze coordinates w.r.t. world camera, and timestamps for
+    every frame of video
 
     Returns:
         - formatted dataframe with cols for timestamp, frame_idx, and gaze data
@@ -180,6 +173,10 @@ def formatGazeData(inputDir, sceneVideoDimensions):
     df.insert(0,'frame_idx',(((df_fr.hour*60 + df_fr.minute)*60 + df_fr.second)*frameRate + df_fr.frame).to_numpy())
     # NB: seems we can get frame numbers in the data which are beyond the length of the video. so be it
     df=df.drop(columns=['Frame'])
+    # NB: it seems the SMI export doesn't strictly follow their own timecode. Subtracting min and
+    # adding 1 so that the frame_idx starts at 1 for the data empirically seems to line up with the
+    # SMI export
+    df.frame_idx = df.frame_idx-df.frame_idx.min()+1
 
     # return the gaze data df and frame time stamps array
     return df, frameTimestamps
