@@ -9,6 +9,7 @@ The output directory will contain:
     - gazeData.tsv: gaze data, where all 2D gaze coordinates are represented w/r/t the world camera,
                     and 3D coordinates in the coordinate frame of the glasses (may need rotation/translation
                     to represent in world camera's coordinate frame)
+    - calibration.xml: info about the camera intrinsics
 """
 
 import shutil
