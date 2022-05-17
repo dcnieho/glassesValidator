@@ -146,7 +146,7 @@ def process(inputDir,basePath):
         # annotate frame
         frame_ts  = i2t.get(frame_idx)
         cv2.rectangle(frame,(0,int(height)),(int(0.25*width),int(height)-30),(0,0,0),-1)
-        cv2.putText(frame, '%8.2f [%6d]' % (frame_ts,frame_idx), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255))
+        cv2.putText(frame, '%6.3f [%6d]' % (frame_ts/1000.,frame_idx), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255))
 
         # store to file
         vidOutScene.write(frame)
