@@ -198,7 +198,7 @@ def process(inputDir,basePath):
             shutil.move(str(f),str(tempName))
 
             # add audio
-            cmd_str = ' '.join(['ffmpeg', '-y', '-i', '"'+str(tempName)+'"', '-i', '"'+str(inVideo)+'"', '-vcodec', 'copy', '-acodec', 'copy', '-map', '0:v:0', '-map', '1:a:0', '"'+str(f)+'"'])
+            cmd_str = ' '.join(['ffmpeg', '-y', '-i', '"'+str(tempName)+'"', '-i', '"'+str(inVideo)+'"', '-vcodec', 'copy', '-acodec', 'copy', '-map', '0:v:0', '-map', '1:a:0?', '"'+str(f)+'"'])
             os.system(cmd_str)
             # clean up
             tempName.unlink(missing_ok=True)
