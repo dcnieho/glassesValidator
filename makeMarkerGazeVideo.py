@@ -2,10 +2,9 @@
 # NB: this is a combination of the b_ and c_ steps, not actively maintained.
 # Not guaranteed to provide the same output as b_ and c_ steps, or to work at all
 
-import sys
+import shutil
+import os
 from pathlib import Path
-import math
-import csv
 
 import cv2
 import numpy as np
@@ -17,11 +16,13 @@ from ffpyplayer.pic import Image
 import ffpyplayer.tools
 from fractions import Fraction
 
-gShowVisualization  = False     # if true, draw each frame and overlay info about detected markers and board
+gShowVisualization      = False     # if true, draw each frame and overlay info about detected markers and board
+gAddAudioToBoardVideo   = False     # if true, audio will be added to reference board video, not only to the scene video
 
 
 def process(inputDir,basePath):
     global gShowVisualization
+    global gAddAudioToBoardVideo
 
     print('processing: {}'.format(inputDir.name))
     
@@ -184,6 +185,23 @@ def process(inputDir,basePath):
     vidOutScene.close()
     vidOutBoard.close()
     cv2.destroyAllWindows()
+
+    # if ffmpeg is on path, add audio to scene and optionally board video
+    if shutil.which('ffmpeg') is not None:
+        todo = [inputDir / 'detectOutput_scene.mp4']
+        if gAddAudioToBoardVideo:
+            todo.append(inputDir / 'detectOutput_board.mp4')
+
+        for f in todo:
+            # move file to temp name
+            tempName = f.parent / (f.stem + '_temp' + f.suffix)
+            shutil.move(str(f),str(tempName))
+
+            # add audio
+            cmd_str = ' '.join(['ffmpeg', '-y', '-i', '"'+str(tempName)+'"', '-i', '"'+str(inVideo)+'"', '-vcodec', 'copy', '-acodec', 'copy', '-map', '0:v:0', '-map', '1:a:0', '"'+str(f)+'"'])
+            os.system(cmd_str)
+            # clean up
+            tempName.unlink(missing_ok=True)
 
     return stopAllProcessing
 
