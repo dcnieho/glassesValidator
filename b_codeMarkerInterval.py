@@ -80,6 +80,8 @@ def process(inputDir,basePath):
     inAudio = inputDir / 'worldCamera.wav'
     if not inAudio.is_file():
         inAudio = inputDir / 'worldCamera.mp4'
+    if not inAudio.is_file():
+        inAudio = inputDir / 'worldCamera.avi'
     player = MediaPlayer(str(inAudio), ff_opts=ff_opts)
     time.sleep(0.1)
 
