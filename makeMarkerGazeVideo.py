@@ -12,6 +12,11 @@ import numpy as np
 
 import utils
 
+from ffpyplayer.writer import MediaWriter
+from ffpyplayer.pic import Image
+import ffpyplayer.tools
+from fractions import Fraction
+
 gShowVisualization  = False     # if true, draw each frame and overlay info about detected markers and board
 
 
@@ -44,14 +49,18 @@ def process(inputDir,basePath):
     centerTarget    = reference.getTargets()[validationSetup['centerTarget']].center
     # turn into aruco board object to be used for pose estimation
     referenceBoard  = reference.getArucoBoard()
-
-    # open output scene video file
-    fourcc = cv2.VideoWriter_fourcc(*'avc1')
-    vidOutScene = cv2.VideoWriter(str(inputDir / 'detectOutput_scene.mp4'), fourcc, fps, (int(width), int(height)))
-
-    # open output reference board video file
-    fourcc = cv2.VideoWriter_fourcc(*'avc1')
-    vidOutBoard = cv2.VideoWriter(str(inputDir / 'detectOutput_board.mp4'), fourcc, fps, (reference.width, reference.height))
+    
+    # prep output video files
+    # get which pixel format
+    codec    = ffpyplayer.tools.get_format_codec(fmt='mp4')
+    pix_fmt  = ffpyplayer.tools.get_best_pix_fmt('bgr24',ffpyplayer.tools.get_supported_pixfmts(codec))
+    fpsFrac  = Fraction(fps).limit_denominator(10000).as_integer_ratio()
+    # scene video
+    out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(      width    ), 'height_in':int(      height    ),'frame_rate':fpsFrac}
+    vidOutScene = MediaWriter(str(inputDir / 'detectOutput_scene.mp4'), [out_opts], overwrite=True)
+    # reference board video
+    out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(reference.width), 'height_in':int(reference.height),'frame_rate':fpsFrac}
+    vidOutBoard = MediaWriter(str(inputDir / 'detectOutput_board.mp4'), [out_opts], overwrite=True)
 
     # setup aruco marker detection
     parameters = cv2.aruco.DetectorParameters_create()
@@ -149,8 +158,10 @@ def process(inputDir,basePath):
         cv2.putText(frame, '%6.3f [%6d]' % (frame_ts/1000.,frame_idx), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255))
 
         # store to file
-        vidOutScene.write(frame)
-        vidOutBoard.write(refImg)
+        img = Image(plane_buffers=[frame.flatten().tobytes()], pix_fmt='bgr24', size=(int(width), int(height)))
+        vidOutScene.write_frame(img=img, pts=frame_idx/fps)
+        img = Image(plane_buffers=[refImg.flatten().tobytes()], pix_fmt='bgr24', size=(reference.width, reference.height))
+        vidOutBoard.write_frame(img=img, pts=frame_idx/fps)
 
 
         if gShowVisualization:
@@ -170,7 +181,8 @@ def process(inputDir,basePath):
         frame_idx += 1
         
     vidIn.release()
-    vidOutScene.release()
+    vidOutScene.close()
+    vidOutBoard.close()
     cv2.destroyAllWindows()
 
     return stopAllProcessing
