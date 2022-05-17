@@ -150,9 +150,10 @@ def process(inputDir,basePath):
             cv2.putText(frame, (analysisLbl), (0, 25), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
 
             
-            cv2.imshow("frame", frame)
-            if width>1280:
-                cv2.resizeWindow('frame', 1280,720)
+            if frame is not None:
+                cv2.imshow("frame", frame)
+                if width>1280:
+                    cv2.resizeWindow('frame', 1280,720)
             if gShowReference:
                 cv2.imshow("reference", refImg)
             lastIdx = frame_idx
