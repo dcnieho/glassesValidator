@@ -144,7 +144,7 @@ def process(inputDir,basePath):
             # annotate what frame we're on
             frameClr = (0,0,255) if analysisIntervalIdx is not None else (0,0,0)
             cv2.rectangle(frame,(0,int(height)),(int(0.25*width),int(height)-30), frameClr, -1)
-            cv2.putText(frame, ("%8.2f [%6d]" % (audio_pts, frame_idx) ), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
+            cv2.putText(frame, ("%8.3f [%6d]" % (audio_pts, frame_idx) ), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
             # annotate analysis intervals
             cv2.rectangle(frame,(0,30),(int(width),0), frameClr, -1)
             cv2.putText(frame, (analysisLbl), (0, 25), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
