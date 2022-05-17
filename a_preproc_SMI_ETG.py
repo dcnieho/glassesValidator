@@ -76,14 +76,25 @@ def copySMIRecordings(inputDir, outputDir):
             outputDirs[-1].mkdir()
 
         # Copy relevent files to new directory
-        if not (inputDir / (r.stem+'.mp4')).is_file():
-            raise RuntimeError("file {} cannot be found in the folder {}, make sure you export the scene video using BeGaze as described in the glassesValidator manual".format(r.stem+'.mp4',inputDir))
+        exportName = r.stem.split('-')
+        exportName = '-'.join([exportName[0],exportName[1],'export'])
+        if not (inputDir / (exportName+'.avi')).is_file():
+            raise RuntimeError("file {} cannot be found in the folder {}, make sure you export the scene video using BeGaze as described in the glassesValidator manual".format(exportName+'.avi',inputDir))
 
-        for f in [('codec1.bin','caminfo.txt'), (r.name,'gazedata.txt'), (r.stem+'.mp4','worldCamera.mp4')]:
+        for f in [('codec1.bin','caminfo.txt'), (r.name,'gazedata.txt'), (exportName+'.avi','worldCamera.avi')]:
             outFileName = f[0]
             if f[1] is not None:
                 outFileName = f[1]
             shutil.copyfile(str(inputDir / f[0]), str(outputDirs[-1] / outFileName))
+
+        # if ffmpeg is on path, remux avi to mp4 (reencode audio from flac to aac as flac is not supported in mp4)
+        if shutil.which('ffmpeg') is not None:
+            # make mp4
+            cmd_str = ' '.join(['ffmpeg', '-y', '-i', '"'+str(outputDirs[-1] / 'worldCamera.avi')+'"', '-vcodec', 'copy', '-acodec', 'aac', '"'+str(outputDirs[-1] / 'worldCamera.mp4')+'"'])
+            os.system(cmd_str)
+            # clean up
+            if (outputDirs[-1] / 'worldCamera.mp4').is_file():
+                (outputDirs[-1] / 'worldCamera.avi').unlink(missing_ok=True)
 
     # return the full path to the output dir
     return outputDirs
