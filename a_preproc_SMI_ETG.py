@@ -184,10 +184,11 @@ def formatGazeData(inputDir, sceneVideoDimensions):
     df.insert(0,'frame_idx',(((df_fr.hour*60 + df_fr.minute)*60 + df_fr.second)*frameRate + df_fr.frame).to_numpy())
     # NB: seems we can get frame numbers in the data which are beyond the length of the video. so be it
     df=df.drop(columns=['Frame'])
-    # NB: it seems the SMI export doesn't strictly follow their own timecode. Subtracting min and
-    # adding 1 so that the frame_idx starts at 1 for the data empirically seems to line up with the
-    # SMI export
-    df.frame_idx = df.frame_idx-df.frame_idx.min()+1
+    # NB: it seems the SMI export doesn't strictly follow their own timecode, but uses the first
+    # gaze data point for the first frame of the video, which is then also timestamped with the timecode
+    # of that first frame. Subtracting min so that the frame_idx starts at 0 for the data also empirically
+    # seems to line up with the SMI export (most of the time, sadly seems to vary a little between videos)
+    df.frame_idx = df.frame_idx-df.frame_idx.min()
 
     # return the gaze data df and frame time stamps array
     return df, frameTimestamps
