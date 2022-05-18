@@ -49,7 +49,7 @@ def preprocessData(inputDir, outputDir, device):
     frameTimestamps.to_csv(str(newDataDir / 'frameTimestamps.tsv'), sep='\t')
 
     ### cleanup
-    for f in ['world.intrinsics', 'world_timestamps.npy']:
+    for f in ['world.intrinsics', 'world_lookup.npy', 'world_timestamps.npy']:
         (newDataDir / f).unlink(missing_ok=True)
 
 
@@ -75,11 +75,13 @@ def copyPupilRecording(inputDir, outputDir, device):
         outputDir.mkdir()
 
     # Copy relevent files to new directory
-    for f in [(inputExpDir / 'gaze_positions.csv',None), (inputDir / 'world_timestamps.npy',None), (inputDir / 'world.intrinsics',None), (inputDir / 'world.mp4','worldCamera.mp4')]:
+    gpFile = list(inputExpDir.glob('*gaze_positions*.csv'))[0]
+    for f in [(gpFile,'gaze_positions.csv'), (inputDir / 'world_lookup.npy',None), (inputDir / 'world_timestamps.npy',None), (inputDir / 'world.intrinsics',None), (inputDir / 'world.mp4','worldCamera.mp4')]:
         outFileName = f[0].name
         if f[1] is not None:
             outFileName = f[1]
-        shutil.copyfile(str(f[0]), str(outputDir / outFileName))
+        if f[0].is_file():
+            shutil.copyfile(str(f[0]), str(outputDir / outFileName))
 
     # return the full path to the output dir
     return outputDir
@@ -110,9 +112,6 @@ def getCameraFromMsgPack(inputDir):
         fs.write(name=key,val=value)
     fs.release()
 
-    # json no longer needed, remove
-    (inputDir / 'recording.g3').unlink(missing_ok=True)
-
     return camera['resolution']
 
 
@@ -130,9 +129,34 @@ def formatGazeData(inputDir, sceneVideoDimensions):
     df = readGazeData(inputDir / 'gaze_positions.csv', sceneVideoDimensions)
 
     # read video file, create array of frame timestamps
-    frameTimestamps = pd.DataFrame()#utils.getVidFrameTimestamps(inputDir / 'worldCamera.mp4')
-    frameTimestamps['timestamp'] = np.load(str(inputDir / 'world_timestamps.npy'))*1000.0
-    frameTimestamps.index.name = 'frame_idx'
+    if (inputDir / 'world_lookup.npy').is_file():
+        frameTimestamps = pd.DataFrame(np.load(str(inputDir / 'world_lookup.npy')))
+        frameTimestamps['timestamp'] *= 1000.0
+        frameTimestamps['frame_idx'] = frameTimestamps.index
+        needsAdjust = not frameTimestamps['frame_idx'].equals(frameTimestamps['container_frame_idx'])
+        # prep for later clean up
+        toDrop = [x for x in frameTimestamps.columns if x not in ['frame_idx','timestamp']]
+        # do further adjustment that may be needed
+        if needsAdjust:
+            # not all video frames were encoded into the video file. Need to adjust
+            # frame_idx in the gaze data to match actual video file
+            temp = pd.merge(df,frameTimestamps,on='frame_idx')
+            temp.loc[temp['container_idx']==-1,'container_frame_idx'] = -1
+            temp['frame_idx'] = temp['container_frame_idx']
+            temp = temp.rename(columns={'timestamp_x':'timestamp'})
+            toDrop.append('timestamp_y')
+            df   = temp.drop(columns=toDrop)
+
+        # final setup for output to file
+        frameTimestamps = frameTimestamps.drop(columns=toDrop,errors='ignore')
+        frameTimestamps = frameTimestamps.set_index('frame_idx')
+    else:
+        frameTimestamps = pd.DataFrame()
+        frameTimestamps['timestamp'] = np.load(str(inputDir / 'world_timestamps.npy'))*1000.0
+        frameTimestamps.index.name = 'frame_idx'
+        # check there are no gaps in the video file
+        if df['frame_idx'].max() > frameTimestamps.index.max():
+            raise RuntimeError('It appears there are frames missing in the scene video, but the file world_lookup.npy that would be needed to deal with that is missing. You can generate it by opening the recording in pupil player.')
 
     # set t=0 to video start time
     t0 = frameTimestamps.iloc[0].to_numpy()
