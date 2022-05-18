@@ -178,6 +178,8 @@ def json2df(jsonFile,sceneVideoDimensions):
     expander = lambda a,n: [[math.nan]*n if not isinstance(x,list) else x for x in a]
     # monocular gaze data
     for eye in ('left','right'):
+        if 'data.eye'+eye+'.gazeorigin' not in dfR.columns:
+            continue    # no data at all for this eye
         which_eye = eye[:1]
         df[[which_eye + '_gaze_ori_x', which_eye + '_gaze_ori_y', which_eye + '_gaze_ori_z']] = \
             pd.DataFrame(expander(dfR['data.eye'+eye+'.gazeorigin'].tolist(),3), index=dfR.index)
