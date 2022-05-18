@@ -99,7 +99,7 @@ def process(inputDir,basePath):
         if frame_idx in gazes:
             for gaze in gazes[frame_idx]:
 
-                # draw 2D gaze point
+                # draw gaze point on scene video
                 if gShowVisualization:
                     gaze.draw(frame, subPixelFac=subPixelFac, camRot=cameraRotation, camPos=cameraPosition, cameraMatrix=cameraMatrix, distCoeff=distCoeff)
                 

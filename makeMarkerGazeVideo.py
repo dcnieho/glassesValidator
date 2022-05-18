@@ -1,6 +1,6 @@
 #!/usr/bin/python3
-# NB: this is a combination of the b_ and c_ steps, not actively maintained.
-# Not guaranteed to provide the same output as b_ and c_ steps, or to work at all
+# NB: this is a combination of the c_ and d_ steps, not actively maintained.
+# Not guaranteed to provide the same output as c_ and d_ steps, or to work at all
 
 import shutil
 import os
@@ -134,13 +134,8 @@ def process(inputDir,basePath):
         if frame_idx in gazes:
             for gaze in gazes[frame_idx]:
 
-                # draw 2D gaze point
-                gaze.draw(frame, subPixelFac)
-
-                # draw 3D gaze point as well, should coincide with 2D gaze point
-                if gaze.world3D is not None:
-                    a = cv2.projectPoints(np.array(gaze.world3D).reshape(1,3),cameraRotation,cameraPosition,cameraMatrix,distCoeff)[0][0][0]
-                    utils.drawOpenCVCircle(frame, a, 6, (0,0,0), -1, subPixelFac)
+                # draw gaze point on scene video
+                gaze.draw(frame, subPixelFac=subPixelFac, camRot=cameraRotation, camPos=cameraPosition, cameraMatrix=cameraMatrix, distCoeff=distCoeff)
                 
                 # if we have pose information, figure out where gaze vectors
                 # intersect with reference board. Do same for 3D gaze point
