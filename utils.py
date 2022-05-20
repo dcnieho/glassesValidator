@@ -5,6 +5,7 @@ import pandas as pd
 import csv
 import itertools
 import sys
+import warnings
 from shlex import shlex
 import bisect
 import mp4analyser.iso
@@ -786,18 +787,20 @@ class BoardPose:
 
 class Idx2Timestamp:
     def __init__(self, fileName):
-        self.timestamps = []
+        self.timestamps = {}
         with open(fileName, 'r' ) as f:
             reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
-                self.timestamps.append(float(entry['timestamp']))
+                frame_idx = int(float(entry['frame_idx']))
+                if frame_idx!=-1:
+                    self.timestamps[frame_idx] = float(entry['timestamp'])
 
     def get(self, idx):
-        if idx < len(self.timestamps):
+        if idx in self.timestamps:
             return self.timestamps[int(idx)]
         else:
-            sys.stderr.write("[WARNING] %d requested (from %d)\n" % ( idx, len(self.timestamps) ) )
-            return self.timestamps[-1]
+            warnings.warn('frame_idx %d is not in set\n' % ( idx ), RuntimeWarning )
+            return -1.
 
 class Timestamp2Index:
     def __init__(self, fileName):
