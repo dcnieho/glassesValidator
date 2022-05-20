@@ -59,15 +59,8 @@ def process(inputDir,basePath):
         analyzeFrames = []
 
     # set up video playback
-    # 1. OpenCV for showing the frame
+    # 1. OpenCV window for scene video
     cv2.namedWindow("frame",cv2.WINDOW_NORMAL)
-    inVideo = inputDir / 'worldCamera.mp4'
-    if not inVideo.is_file():
-        inVideo = inputDir / 'worldCamera.avi'
-    cap    = cv2.VideoCapture(str(inVideo))
-    width   = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height  = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    frate   = cap.get(cv2.CAP_PROP_FPS)
     # 2. if wanted and available, second OpenCV window for reference board with gaze on that plane
     gShowReference &= hasWorldGaze  # no reference board if we don't have world gaze, it'd be empty and pointless
     if gShowReference:
@@ -75,15 +68,12 @@ def process(inputDir,basePath):
     # 3. timestamp info for relating audio to video frames
     t2i = utils.Timestamp2Index( str(inputDir / 'frameTimestamps.tsv') )
     i2t = utils.Idx2Timestamp( str(inputDir / 'frameTimestamps.tsv') )
-    # 4. mediaplayer for sound playback, brief wait or get_pts() below crashes
-    ff_opts = {'vn' : False, 'volume': 1. }#{'sync':'video', 'framedrop':True}
-    inAudio = inputDir / 'worldCamera.wav'
-    if not inAudio.is_file():
-        inAudio = inputDir / 'worldCamera.mp4'
-    if not inAudio.is_file():
-        inAudio = inputDir / 'worldCamera.avi'
-    player = MediaPlayer(str(inAudio), ff_opts=ff_opts)
-    time.sleep(0.1)
+    # 4. mediaplayer for the actual video playback, with sound if available
+    inVideo = inputDir / 'worldCamera.mp4'
+    if not inVideo.is_file():
+        inVideo = inputDir / 'worldCamera.avi'
+    ff_opts = {'volume': 1., 'sync':'audio', 'framedrop':True}
+    player = MediaPlayer(str(inVideo), ff_opts=ff_opts)
 
     # show
     lastIdx = None
@@ -91,85 +81,100 @@ def process(inputDir,basePath):
     armLength = reference.markerSize/2 # arms of axis are half a marker long
     stopAllProcessing = False
     shouldRedraw = False
+    hasResized = False
     while True:
-        frame, val = player.get_frame(force_refresh=True,show=False)
+        frame, val = player.get_frame(force_refresh=True)
         if val == 'eof':
             player.toggle_pause()
-
-        audio_pts = player.get_pts()    # this is audio_pts because we're in default audio sync mode
+        if frame is not None:
+            image, pts = frame
+            width, height = image.get_size()
+            frame = cv2.cvtColor(np.asarray(image.to_memoryview()[0]).reshape((height,width,3)), cv2.COLOR_RGB2BGR)
+            del image
 
         # the audio is my shepherd and nothing shall I lack :-)
-        frame_idx = t2i.find(audio_pts*1000)  # audio_pts is in seconds, our frame timestamps are in ms
-        idxOffset = cap.get(cv2.CAP_PROP_POS_FRAMES) - frame_idx
-        if abs(idxOffset) > 0:
-            if 'pupil' in inputDir.stem:
-                # this seems to work better for the pupil core and invisible's world videos
-                cap.set(cv2.CAP_PROP_POS_MSEC, audio_pts*1000)
-            else:
-                # for SMI and Tobii G2/G3, this appears more accurate
-                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-        if lastIdx is None or lastIdx!=frame_idx or shouldRedraw:
-            shouldRedraw = False
-            ret, frame = cap.read()
-            if gShowReference:
-                refImg = reference.getImgCopy()
-
-            # if we have board pose, draw board origin on video
-            if hasBoardPose and frame_idx in poses and hasCamCal:
-                utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, poses[frame_idx].rVec, poses[frame_idx].tVec, armLength, 3, subPixelFac)
-
-            # if have gaze for this frame, draw it
-            # NB: usually have multiple gaze samples for a video frame, draw one
-            if frame_idx in gazes:
-                gazes[frame_idx][0].draw(frame, subPixelFac)
-               
-            # if have gaze in world info, draw it too (also only first)
-            if hasWorldGaze and frame_idx in gazesWorld:
-                if hasCamCal:
-                    gazesWorld[frame_idx][0].drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
+        if frame is not None:
+            frame_idx = t2i.find(pts*1000)  # pts is in seconds, our frame timestamps are in ms
+            if lastIdx is None or lastIdx!=frame_idx or shouldRedraw:
+                shouldRedraw = False
                 if gShowReference:
-                    gazesWorld[frame_idx][0].drawOnReferencePlane(refImg, reference, subPixelFac)
+                    refImg = reference.getImgCopy()
 
-            analysisIntervalIdx = None
-            analysisLbl = ''
-            for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't try incomplete intervals
-                if frame_idx>=analyzeFrames[f] and frame_idx<=analyzeFrames[f+1]:
-                    analysisIntervalIdx = f
-                if len(analysisLbl)>0:
-                    analysisLbl += ', '
-                analysisLbl += '{} -- {}'.format(*analyzeFrames[f:f+2])
-            if len(analyzeFrames)%2:
-                analysisLbl += ', {} -- xx'.format(analyzeFrames[-1])
+                # if we have board pose, draw board origin on video
+                if hasBoardPose and frame_idx in poses and hasCamCal:
+                    utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, poses[frame_idx].rVec, poses[frame_idx].tVec, armLength, 3, subPixelFac)
+
+                # if have gaze for this frame, draw it
+                # NB: usually have multiple gaze samples for a video frame, draw one
+                if frame_idx in gazes:
+                    gazes[frame_idx][0].draw(frame, subPixelFac)
+               
+                # if have gaze in world info, draw it too (also only first)
+                if hasWorldGaze and frame_idx in gazesWorld:
+                    if hasCamCal:
+                        gazesWorld[frame_idx][0].drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
+                    if gShowReference:
+                        gazesWorld[frame_idx][0].drawOnReferencePlane(refImg, reference, subPixelFac)
+
+                analysisIntervalIdx = None
+                analysisLbl = ''
+                for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't try incomplete intervals
+                    if frame_idx>=analyzeFrames[f] and frame_idx<=analyzeFrames[f+1]:
+                        analysisIntervalIdx = f
+                    if len(analysisLbl)>0:
+                        analysisLbl += ', '
+                    analysisLbl += '{} -- {}'.format(*analyzeFrames[f:f+2])
+                if len(analyzeFrames)%2:
+                    if len(analyzeFrames)==1:
+                        analysisLbl += '{} -- xx'.format(analyzeFrames[-1])
+                    else:
+                        analysisLbl += ', {} -- xx'.format(analyzeFrames[-1])
             
-            # annotate what frame we're on
-            frameClr = (0,0,255) if analysisIntervalIdx is not None else (0,0,0)
-            cv2.rectangle(frame,(0,int(height)),(int(0.25*width),int(height)-30), frameClr, -1)
-            cv2.putText(frame, ("%8.3f [%6d]" % (audio_pts, frame_idx) ), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
-            # annotate analysis intervals
-            cv2.rectangle(frame,(0,30),(int(width),0), frameClr, -1)
-            cv2.putText(frame, (analysisLbl), (0, 25), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
+                # annotate what frame we're on
+                frameClr = (0,0,255) if analysisIntervalIdx is not None else (0,0,0)
+                cv2.rectangle(frame,(0,int(height)),(int(0.35*width),int(height)-30), frameClr, -1)
+                cv2.putText(frame, ("%8.3f [%6d]" % (pts, frame_idx) ), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
+                # annotate analysis intervals
+                cv2.rectangle(frame,(0,30),(int(width),0), frameClr, -1)
+                cv2.putText(frame, (analysisLbl), (0, 25), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
 
             
-            if frame is not None:
-                cv2.imshow("frame", frame)
-                if width>1280:
-                    cv2.resizeWindow('frame', 1280,720)
-            if gShowReference:
-                cv2.imshow("reference", refImg)
-            lastIdx = frame_idx
+                if frame is not None:
+                    cv2.imshow("frame", frame)
+                    if not hasResized:
+                        if width>1280 or height>800:
+                            sFac = max([width/1280., height/800.])
+                            cv2.resizeWindow('frame', round(width/sFac), round(height/sFac))
+                        else:
+                            cv2.resizeWindow('frame', width, height)
+                        hasResized = True
+                        
+                if gShowReference:
+                    cv2.imshow("reference", refImg)
+                lastIdx = frame_idx
 
         key = cv2.waitKey(1) & 0xFF
+        # seek: don't ask me why, but relative seeking works best for backward,
+        # and seeking to absolute pts best for forward seeking.
         if key == ord('j'):
-            player.seek(max(0,audio_pts-1/frate), relative=False)   # back one frame
+            step = (i2t.get(frame_idx)-i2t.get(max(0,frame_idx-1)))/1000
+            player.seek(-step)                              # back one frame
         elif key == ord('k'):
-            player.seek(max(0,audio_pts+1/frate), relative=False)   # forward one frame
-        elif key == ord('h'):
-            player.seek(max(0,audio_pts-1), relative=False)         # back one second
-        elif key == ord('l'):
-            player.seek(audio_pts+1, relative=False)                # forward one second
+            nextTs = i2t.get(frame_idx+1)
+            if nextTs != -1.:
+                step = (nextTs-i2t.get(max(0,frame_idx)))/1000
+                player.seek(pts+step, relative=False)       # forward one frame
+        elif key in [ord('h'), ord('H')]:
+            step = 1 if key==ord('h') else 10
+            player.seek(-step)                              # back one or ten seconds
+        elif key in [ord('l'), ord('L')]:
+            step = 1 if key==ord('l') else 10
+            player.seek(pts+step, relative=False)           # forward one or ten seconds
 
         elif key == ord('p'):
             player.toggle_pause()
+            if not player.get_pause():
+                player.seek(0)  # needed to get frames rolling in again, apparently, after seeking occurred while paused
 
         elif key == ord('f'):
             if not frame_idx in analyzeFrames:
@@ -195,7 +200,7 @@ def process(inputDir,basePath):
                 # seek to start of next or previous analysis interval, if any
                 forward = key==ord('s')
                 if forward:
-                    idx = next((x for x in analyzeFrames[0:(len(analyzeFrames)//2)*2:2] if x>frame_idx), None) # slice gets starts of all whole intervals
+                    idx = next((x for x in analyzeFrames[ 0:(len(analyzeFrames)//2)*2:2 ] if x>frame_idx), None) # slice gets starts of all whole intervals
                 else:
                     idx = next((x for x in analyzeFrames[(len(analyzeFrames)//2)*2-2::-2] if x<frame_idx), None) # slice gets starts of all whole intervals in reverse order
                 if idx is not None:
@@ -224,8 +229,8 @@ def process(inputDir,basePath):
         elif key == ord('n'):
             # goto next
             break
-
-    cap.release()
+        
+    player.close_player()
     cv2.destroyAllWindows()
 
     # store coded interval to file, if available
