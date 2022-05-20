@@ -99,9 +99,12 @@ def process(inputDir,basePath):
         minDur      = 150       # ms
         used        = np.zeros((fix['start'].size),dtype='bool')
         selected    = np.empty((len(targets),),dtype='int')
-        selected[:] = -1
+        selected[:] = -999
 
         for i,t in zip(range(len(targets)),targets):
+            if np.all(used):
+                # all fixations used up, can't assign anything to remaining targets
+                continue
             # select fixation
             dist                    = np.hypot(fix['xpos']-targets[t][0], fix['ypos']-targets[t][1])
             dist[used]              = math.inf  # make sure fixations already bound to a target are not used again
@@ -118,19 +121,23 @@ def process(inputDir,basePath):
         plt.plot(fix['xpos'],fix['ypos'],'go')
         plt.xlim([reference.bbox[0]-markerHalfSizeMm, reference.bbox[2]+markerHalfSizeMm])
         plt.ylim([reference.bbox[3]-markerHalfSizeMm, reference.bbox[1]+markerHalfSizeMm])
-        for i,t in zip(range(len(selected)),targets):
+        for i,t in zip(range(len(targets)),targets):
+            if selected[i]==-999:
+                continue
             plt.plot([fix['xpos'][selected[i]], targets[t][0]], [fix['ypos'][selected[i]], targets[t][1]],'r-')
        
         plt.xlabel('mm')
         plt.ylabel('mm')
 
-        f.savefig(str(inputDir / 'targetSelection_I2MC.png'))
+        f.savefig(str(inputDir / 'targetSelection_I2MC_interval_{}.png'.format(ival)))
         plt.close(f)
 
         # store selected intervals
         df = pd.DataFrame()
         df.index.name = 'target'
         for i,t in zip(range(len(targets)),targets):
+            if selected[i]==-999:
+                continue
             df.loc[t,'marker_interval'] = ival+1
             df.loc[t,'start_timestamp'] = fix['startT'][selected[i]]
             df.loc[t,  'end_timestamp'] = fix[  'endT'][selected[i]]
