@@ -804,17 +804,19 @@ class Idx2Timestamp:
 
 class Timestamp2Index:
     def __init__(self, fileName):
-        self.indexes = []
+        self.indices = []
         self.timestamps = []
         with open(fileName, 'r' ) as f:
             reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
-                self.indexes   .append(int(float(entry['frame_idx'])))
-                self.timestamps.append(    float(entry['timestamp']))
+                frame_idx = int(float(entry['frame_idx']))
+                if frame_idx!=-1:
+                    self.indices   .append(int(float(entry['frame_idx'])))
+                    self.timestamps.append(    float(entry['timestamp']))
 
     def find(self, ts):
-        idx = min(bisect.bisect(self.timestamps, ts), len(self.indexes)-1)
-        return self.indexes[idx]
+        idx = bisect.bisect(self.timestamps, ts)
+        return self.indices[max(0,idx-1)]
 
 def readCameraCalibrationFile(fileName):
     fs = cv2.FileStorage(str(fileName), cv2.FILE_STORAGE_READ)
