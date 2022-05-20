@@ -133,6 +133,7 @@ def formatGazeData(inputDir, sceneVideoDimensions):
         frameTimestamps = pd.DataFrame(np.load(str(inputDir / 'world_lookup.npy')))
         frameTimestamps['timestamp'] *= 1000.0
         frameTimestamps['frame_idx'] = frameTimestamps.index
+        frameTimestamps.loc[frameTimestamps['container_idx']==-1,'container_frame_idx'] = -1
         needsAdjust = not frameTimestamps['frame_idx'].equals(frameTimestamps['container_frame_idx'])
         # prep for later clean up
         toDrop = [x for x in frameTimestamps.columns if x not in ['frame_idx','timestamp']]
@@ -141,14 +142,15 @@ def formatGazeData(inputDir, sceneVideoDimensions):
             # not all video frames were encoded into the video file. Need to adjust
             # frame_idx in the gaze data to match actual video file
             temp = pd.merge(df,frameTimestamps,on='frame_idx')
-            temp.loc[temp['container_idx']==-1,'container_frame_idx'] = -1
             temp['frame_idx'] = temp['container_frame_idx']
             temp = temp.rename(columns={'timestamp_x':'timestamp'})
             toDrop.append('timestamp_y')
             df   = temp.drop(columns=toDrop)
 
         # final setup for output to file
+        frameTimestamps['frame_idx'] = frameTimestamps['container_frame_idx']
         frameTimestamps = frameTimestamps.drop(columns=toDrop,errors='ignore')
+        frameTimestamps = frameTimestamps[frameTimestamps['frame_idx']!=-1]
         frameTimestamps = frameTimestamps.set_index('frame_idx')
     else:
         frameTimestamps = pd.DataFrame()
