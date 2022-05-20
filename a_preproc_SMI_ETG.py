@@ -71,7 +71,7 @@ def copySMIRecordings(inputDir, outputDir):
 
         recording = str(r.name)[:-len('-recording.txt')]
 
-        outputDirs.append(outputDir / ('SMI_ETG2_%s_%s' % (participant,recording)))
+        outputDirs.append(outputDir / ('SMI_ETG_%s_%s' % (participant,recording)))
         if not outputDirs[-1].is_dir():
             outputDirs[-1].mkdir()
 
