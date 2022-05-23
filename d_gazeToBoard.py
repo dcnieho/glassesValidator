@@ -33,12 +33,9 @@ def process(inputDir,basePath):
         if gShowReference:
             cv2.namedWindow("reference")
 
-        reference = utils.Reference(str(inputDir / 'referenceBoard.png'), configDir, validationSetup)
-        i2t = utils.Idx2Timestamp(str(inputDir / 'frameTimestamps.tsv'))
-
-        # get info about markers on our board
-        knownMarkers, markerBBox = utils.getKnownMarkers(configDir, validationSetup)
-        centerTarget = knownMarkers['t%d'%validationSetup['centerTarget']].center
+        reference   = utils.Reference(configDir, validationSetup)
+        centerTarget= reference.getTargets()[validationSetup['centerTarget']].center
+        i2t         = utils.Idx2Timestamp(str(inputDir / 'frameTimestamps.tsv'))
     
     # get camera calibration info
     cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(inputDir / "calibration.xml")
