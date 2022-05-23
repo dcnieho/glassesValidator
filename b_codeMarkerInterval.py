@@ -92,8 +92,8 @@ def process(inputDir,basePath):
             frame = cv2.cvtColor(np.asarray(image.to_memoryview()[0]).reshape((height,width,3)), cv2.COLOR_RGB2BGR)
             del image
 
-        # the audio is my shepherd and nothing shall I lack :-)
         if frame is not None:
+            # the audio is my shepherd and nothing shall I lack :-)
             frame_idx = t2i.find(pts*1000)  # pts is in seconds, our frame timestamps are in ms
             if lastIdx is None or lastIdx!=frame_idx or shouldRedraw:
                 shouldRedraw = False
@@ -126,7 +126,7 @@ def process(inputDir,basePath):
                     analysisLbl += '{} -- {}'.format(*analyzeFrames[f:f+2])
                 if len(analyzeFrames)%2:
                     if len(analyzeFrames)==1:
-                        analysisLbl += '{} -- xx'.format(analyzeFrames[-1])
+                        analysisLbl +=   '{} -- xx'.format(analyzeFrames[-1])
                     else:
                         analysisLbl += ', {} -- xx'.format(analyzeFrames[-1])
             
