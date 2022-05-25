@@ -33,8 +33,7 @@ def process(inputDir,basePath):
 
     # get info about markers on our board
     reference = utils.Reference(configDir, validationSetup)
-    targets = reference.getTargets()
-    targets = {ID : targets[ID].center for ID in targets}   # get centers of targets
+    targets = {ID: reference.targets[ID].center for ID in reference.targets}   # get centers of targets
     
     # for each frame during analysis interval, determine offset
     # (angle) of gaze (each eye) to each of the targets

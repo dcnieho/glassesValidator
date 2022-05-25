@@ -36,7 +36,7 @@ def process(inputDir,basePath):
     
     # get info about markers on our board
     reference       = utils.Reference(configDir, validationSetup)
-    centerTarget    = reference.getTargets()[validationSetup['centerTarget']].center
+    centerTarget    = reference.targets[validationSetup['centerTarget']].center
     # turn into aruco board object to be used for pose estimation
     referenceBoard  = reference.getArucoBoard()
     

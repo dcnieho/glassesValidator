@@ -140,7 +140,7 @@ class Marker:
         self.rot = rot
 
     def __str__(self):
-        ret = '[%s]: center @ (%.2f, %.2f), rot %.0f deg' % (self.key, self.center[0], self.center[1], self.rot)
+        ret = '[%d]: center @ (%.2f, %.2f), rot %.0f deg' % (self.key, self.center[0], self.center[1], self.rot)
         return ret
 
 def getValidationSetup(configDir):
@@ -208,11 +208,13 @@ def estimateHomography(known, detectedCorners, detectedIDs):
     # collect matching corners in image and in world
     pts_src = []
     pts_dst = []
+    detectedIDs = detectedIDs.flatten()
+    if len(detectedIDs) != len(detectedCorners):
+        raise ValueError('unexpected number of IDs (%d) given number of corner arrays (%d)' % (len(detectedIDs),len(detectedCorners)))
     for i in range(0, len(detectedIDs)):
-        key = '%d' % detectedIDs[i]
-        if key in known:
+        if detectedIDs[i] in known:
             pts_src.extend( detectedCorners[i][0] )
-            pts_dst.extend(    known[key].corners )
+            pts_dst.extend( known[detectedIDs[i]].corners )
 
     if len(pts_src) < 4:
         return None, False
@@ -402,7 +404,7 @@ class Reference:
         self.markerSize = self.cellSizeMm*validationSetup['markerSide']
 
         # get information about marker board
-        self.knownMarkers, self.bbox = self._getKnownMarkers(configDir, validationSetup)
+        self._getKnownMarkers(configDir, validationSetup)
 
         # get image of markerboard
         boardImage = configDir / self.boardImageFilename
@@ -434,70 +436,62 @@ class Reference:
 
     def _getKnownMarkers(self, configDir, validationSetup):
         """ board space: (0,0) is at center target, (-,-) bottom left """
-        markerHalfSizeMm = self.markerSize/2.
-            
+
         # read in target positions
-        markers = {}
-        targets = pd.read_csv(str(configDir / validationSetup['targetPosFile']),index_col=0,names=['x','y','clr'])
-        center  = targets.loc[validationSetup['centerTarget'],['x','y']]
-        targets.x = self.cellSizeMm * (targets.x.astype('float32') - center.x)
-        targets.y = self.cellSizeMm * (targets.y.astype('float32') - center.y)
-        for idx, row in targets.iterrows():
-            key = 't%d' % idx
-            markers[key] = Marker(key, row[['x','y']].values, color=row.clr)
+        self.targets = {}
+        if (configDir / validationSetup['targetPosFile']).is_file():
+            targets = pd.read_csv(str(configDir / validationSetup['targetPosFile']),index_col=0,names=['x','y','clr'])
+            center  = targets.loc[validationSetup['centerTarget'],['x','y']]
+            targets.x = self.cellSizeMm * (targets.x.astype('float32') - center.x)
+            targets.y = self.cellSizeMm * (targets.y.astype('float32') - center.y)
+            for idx, row in targets.iterrows():
+                self.targets[idx] = Marker(idx, row[['x','y']].values, color=row.clr)
+        else:
+            center = pd.Series(data=[0.,0.],index=['x','y'])
     
         # read in aruco marker positions
-        markerPos = pd.read_csv(str(configDir / validationSetup['markerPosFile']),index_col=0,names=['x','y','rot'])
-        markerPos.x = self.cellSizeMm * (markerPos.x.astype('float32') - center.x)
-        markerPos.y = self.cellSizeMm * (markerPos.y.astype('float32') - center.y)
-        for idx, row in markerPos.iterrows():
-            key = '%d' % idx
-            c   = row[['x','y']].values
-            # rotate markers (negative because poster coordinate system)
-            rot = row[['rot']].values[0]
-            if rot%90 != 0:
-                raise ValueError("Rotation of a marker must be a multiple of 90 degrees")
-            rotr= -math.radians(rot)
-            R   = np.array([[math.cos(rotr), math.sin(rotr)], [-math.sin(rotr), math.cos(rotr)]])
-            # top left first, and clockwise: same order as detected aruco marker corners
-            tl = c + np.matmul(R,np.array( [ -markerHalfSizeMm ,  markerHalfSizeMm ] ))
-            tr = c + np.matmul(R,np.array( [  markerHalfSizeMm ,  markerHalfSizeMm ] ))
-            br = c + np.matmul(R,np.array( [  markerHalfSizeMm , -markerHalfSizeMm ] ))
-            bl = c + np.matmul(R,np.array( [ -markerHalfSizeMm , -markerHalfSizeMm ] ))
+        markerHalfSizeMm  = self.markerSize/2.
+        self.knownMarkers = {}
+        self.bbox         = []
+        if (configDir / validationSetup['markerPosFile']).is_file():
+            markerPos = pd.read_csv(str(configDir / validationSetup['markerPosFile']),index_col=0,names=['x','y','rot'])
+            markerPos.x = self.cellSizeMm * (markerPos.x.astype('float32') - center.x)
+            markerPos.y = self.cellSizeMm * (markerPos.y.astype('float32') - center.y)
+            for idx, row in markerPos.iterrows():
+                c   = row[['x','y']].values
+                # rotate markers (negative because poster coordinate system)
+                rot = row[['rot']].values[0]
+                if rot%90 != 0:
+                    raise ValueError("Rotation of a marker must be a multiple of 90 degrees")
+                rotr= -math.radians(rot)
+                R   = np.array([[math.cos(rotr), math.sin(rotr)], [-math.sin(rotr), math.cos(rotr)]])
+                # top left first, and clockwise: same order as detected aruco marker corners
+                tl = c + np.matmul(R,np.array( [ -markerHalfSizeMm ,  markerHalfSizeMm ] ))
+                tr = c + np.matmul(R,np.array( [  markerHalfSizeMm ,  markerHalfSizeMm ] ))
+                br = c + np.matmul(R,np.array( [  markerHalfSizeMm , -markerHalfSizeMm ] ))
+                bl = c + np.matmul(R,np.array( [ -markerHalfSizeMm , -markerHalfSizeMm ] ))
         
-            markers[key] = Marker(key, c, corners=[ tl, tr, br, bl ], rot=rot)
+                self.knownMarkers[idx] = Marker(idx, c, corners=[ tl, tr, br, bl ], rot=rot)
     
-        # determine bounding box of markers ([left, top, right, bottom])
-        # NB: this assumes that board has an outer edge of markers, i.e.,
-        # that it does not have targets at its edges. Also assumes markers
-        # are rotated by multiples of 90 degrees
-        bbox = []
-        bbox.append(markerPos.x.min()-markerHalfSizeMm)
-        bbox.append(markerPos.y.max()+markerHalfSizeMm) # top is at positive
-        bbox.append(markerPos.x.max()+markerHalfSizeMm)
-        bbox.append(markerPos.y.min()-markerHalfSizeMm) # bottom is at negative
-
-        return markers, bbox
-
-    def getTargets(self):
-        # Aruco markers have numeric keys, gaze targets have keys starting with 't'
-        targets = {}
-        for key in self.knownMarkers:
-            if key.startswith('t'):
-                targets[int(key[1:])] = self.knownMarkers[key]
-        return targets
+            # determine bounding box of markers ([left, top, right, bottom])
+            # NB: this assumes that board has an outer edge of markers, i.e.,
+            # that it does not have targets at its edges. Also assumes markers
+            # are rotated by multiples of 90 degrees
+            self.bbox.append(markerPos.x.min()-markerHalfSizeMm)
+            self.bbox.append(markerPos.y.max()+markerHalfSizeMm) # top is at positive
+            self.bbox.append(markerPos.x.max()+markerHalfSizeMm)
+            self.bbox.append(markerPos.y.min()-markerHalfSizeMm) # bottom is at negative
     
     def getArucoBoard(self, unRotateMarkers=False):
         boardCornerPoints = []
         ids = []
         for key in self.knownMarkers:
-            if not key.startswith('t'):
-                ids.append(int(key))
-                cornerPoints = np.vstack(self.knownMarkers[key].corners).astype('float32')
-                if unRotateMarkers:
-                    cornerPoints = getMarkerUnrotated(cornerPoints,self.knownMarkers[key].rot)
+            ids.append(key)
+            cornerPoints = np.vstack(self.knownMarkers[key].corners).astype('float32')
+            if unRotateMarkers:
+                cornerPoints = getMarkerUnrotated(cornerPoints,self.knownMarkers[key].rot)
 
-                boardCornerPoints.append(cornerPoints)
+            boardCornerPoints.append(cornerPoints)
 
         boardCornerPoints = np.dstack(boardCornerPoints)        # list of 2D arrays -> 3D array
         boardCornerPoints = np.rollaxis(boardCornerPoints,-1)   # 4x2xN -> Nx4x2
@@ -529,14 +523,13 @@ class Reference:
         rots = []
         cornerPointsU = []
         for key in self.knownMarkers:
-            if not key.startswith('t'):
-                cornerPoints = np.vstack(self.knownMarkers[key].corners).astype('float32')
-                cornerPointsU.append(getMarkerUnrotated(cornerPoints, self.knownMarkers[key].rot))
-                rots.append(self.knownMarkers[key].rot)
-                minX = np.min(np.hstack((minX,cornerPoints[:,0])))
-                maxX = np.max(np.hstack((maxX,cornerPoints[:,0])))
-                minY = np.min(np.hstack((minY,cornerPoints[:,1])))
-                maxY = np.max(np.hstack((maxY,cornerPoints[:,1])))
+            cornerPoints = np.vstack(self.knownMarkers[key].corners).astype('float32')
+            cornerPointsU.append(getMarkerUnrotated(cornerPoints, self.knownMarkers[key].rot))
+            rots.append(self.knownMarkers[key].rot)
+            minX = np.min(np.hstack((minX,cornerPoints[:,0])))
+            maxX = np.max(np.hstack((maxX,cornerPoints[:,0])))
+            minY = np.min(np.hstack((minY,cornerPoints[:,1])))
+            maxY = np.max(np.hstack((maxY,cornerPoints[:,1])))
         if np.any(np.array(rots)!=0):
             # determine where the markers are placed
             sizeX = maxX - minX
@@ -575,14 +568,13 @@ class Reference:
 
         # add targets
         subPixelFac = 8   # for sub-pixel positioning
-        for key in self.knownMarkers:
-            if key.startswith('t'):
-                # 1. determine position on image
-                circlePos = toImagePos(*self.knownMarkers[key].center, self.bbox,[refBoardWidth,refBoardHeight])
+        for key in self.targets:
+            # 1. determine position on image
+            circlePos = toImagePos(*self.targets[key].center, self.bbox,[refBoardWidth,refBoardHeight])
 
-                # 2. draw
-                clr = tuple([int(i*255) for i in colors.to_rgb(self.knownMarkers[key].color)[::-1]])  # need BGR color ordering
-                drawOpenCVCircle(refBoardImage, circlePos, 15, clr, -1, subPixelFac)
+            # 2. draw
+            clr = tuple([int(i*255) for i in colors.to_rgb(self.targets[key].color)[::-1]])  # need BGR color ordering
+            drawOpenCVCircle(refBoardImage, circlePos, 15, clr, -1, subPixelFac)
 
         cv2.imwrite(str(configDir / 'referenceBoard.png'), refBoardImage)
 

@@ -35,8 +35,7 @@ def process(inputDir,basePath):
 
     # get info about markers on our board
     reference = utils.Reference(configDir, validationSetup, imHeight=-1)
-    targets = reference.getTargets()
-    targets = {ID : targets[ID].center for ID in targets}   # get centers of targets
+    targets   = {ID: reference.targets[ID].center for ID in reference.targets}   # get centers of targets
     markerHalfSizeMm = reference.markerSize/2.
     
     # run I2MC on data in board space

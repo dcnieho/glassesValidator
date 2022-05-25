@@ -34,7 +34,7 @@ def process(inputDir,basePath):
             cv2.namedWindow("reference")
 
         reference   = utils.Reference(configDir, validationSetup)
-        centerTarget= reference.getTargets()[validationSetup['centerTarget']].center
+        centerTarget= reference.targets[validationSetup['centerTarget']].center
         i2t         = utils.Idx2Timestamp(str(inputDir / 'frameTimestamps.tsv'))
     
     # get camera calibration info

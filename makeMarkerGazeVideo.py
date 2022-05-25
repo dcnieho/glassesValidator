@@ -47,7 +47,7 @@ def process(inputDir,basePath):
 
     # get info about markers on our board
     reference       = utils.Reference(configDir, validationSetup)
-    centerTarget    = reference.getTargets()[validationSetup['centerTarget']].center
+    centerTarget    = reference.targets[validationSetup['centerTarget']].center
     # turn into aruco board object to be used for pose estimation
     referenceBoard  = reference.getArucoBoard()
     
@@ -66,7 +66,7 @@ def process(inputDir,basePath):
     # setup aruco marker detection
     parameters = cv2.aruco.DetectorParameters_create()
     parameters.markerBorderBits       = validationSetup['markerBorderBits']
-    parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX;
+    parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
 
     # get frame timestamps lookup file
     i2t = utils.Idx2Timestamp(str(inputDir / 'frameTimestamps.tsv'))
