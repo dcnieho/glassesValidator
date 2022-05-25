@@ -42,7 +42,11 @@ def process(inputDir,basePath):
         todo.append('pose_left_right_avg')
         
     # prep output data frame
-    idx = pd.DataFrame(utils.cartesian_product(analysisIntervals.index.levels[0],todo,analysisIntervals.index.levels[1]),columns=[analysisIntervals.index.names[0],'type',analysisIntervals.index.names[1]])
+    idx  = []
+    idxs = analysisIntervals.index.to_frame().to_numpy()
+    for e in todo:
+        idx.append(np.vstack((idxs[:,0],idxs.shape[0]*[e],idxs[:,1])).T)
+    idx = pd.DataFrame(np.vstack(tuple(idx)),columns=[analysisIntervals.index.names[0],'type',analysisIntervals.index.names[1]])
     df  = pd.DataFrame(index=pd.MultiIndex.from_frame(idx.astype({analysisIntervals.index.names[0]: 'int64','type': 'string', analysisIntervals.index.names[1]: 'int64'})))
     idx = pd.IndexSlice
     ts  = offset.index.get_level_values('timestamp')
@@ -55,6 +59,8 @@ def process(inputDir,basePath):
 
             # compute data quality for each eye
             for t in analysisIntervals.index.levels[1]:
+                if (i,t) not in analysisIntervals.index:
+                    continue
                 st = analysisIntervals.loc[(i,t),'start_timestamp']
                 et = analysisIntervals.loc[(i,t),  'end_timestamp']
                 qData= np.logical_and(ts>=st, ts<=et)
