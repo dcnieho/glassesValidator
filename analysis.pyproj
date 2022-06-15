@@ -20,6 +20,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="a_preproc_pupilLabs.py" />
+    <Compile Include="a_preproc_SeeTrue.py" />
     <Compile Include="a_preproc_SMI_ETG.py" />
     <Compile Include="a_preproc_tobiiG2.py" />
     <Compile Include="a_preproc_tobiiG3.py" />
