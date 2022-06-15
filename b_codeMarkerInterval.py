@@ -76,11 +76,9 @@ def process(inputDir,basePath):
     player = MediaPlayer(str(inVideo), ff_opts=ff_opts)
 
     # show
-    lastIdx = None
     subPixelFac = 8   # for sub-pixel positioning
     armLength = reference.markerSize/2 # arms of axis are half a marker long
     stopAllProcessing = False
-    shouldRedraw = False
     hasResized = False
     while True:
         frame, val = player.get_frame(force_refresh=True)
@@ -95,63 +93,60 @@ def process(inputDir,basePath):
         if frame is not None:
             # the audio is my shepherd and nothing shall I lack :-)
             frame_idx = t2i.find(pts*1000)  # pts is in seconds, our frame timestamps are in ms
-            if lastIdx is None or lastIdx!=frame_idx or shouldRedraw:
-                shouldRedraw = False
-                if gShowReference:
-                    refImg = reference.getImgCopy()
+            if gShowReference:
+                refImg = reference.getImgCopy()
 
-                # if we have board pose, draw board origin on video
-                if hasBoardPose and frame_idx in poses and hasCamCal:
-                    utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, poses[frame_idx].rVec, poses[frame_idx].tVec, armLength, 3, subPixelFac)
+            # if we have board pose, draw board origin on video
+            if hasBoardPose and frame_idx in poses and hasCamCal:
+                utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, poses[frame_idx].rVec, poses[frame_idx].tVec, armLength, 3, subPixelFac)
 
-                # if have gaze for this frame, draw it
-                # NB: usually have multiple gaze samples for a video frame, draw one
-                if frame_idx in gazes:
-                    gazes[frame_idx][0].draw(frame, subPixelFac)
+            # if have gaze for this frame, draw it
+            # NB: usually have multiple gaze samples for a video frame, draw one
+            if frame_idx in gazes:
+                gazes[frame_idx][0].draw(frame, subPixelFac)
                
-                # if have gaze in world info, draw it too (also only first)
-                if hasWorldGaze and frame_idx in gazesWorld:
-                    if hasCamCal:
-                        gazesWorld[frame_idx][0].drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
-                    if gShowReference:
-                        gazesWorld[frame_idx][0].drawOnReferencePlane(refImg, reference, subPixelFac)
-
-                analysisIntervalIdx = None
-                analysisLbl = ''
-                for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't try incomplete intervals
-                    if frame_idx>=analyzeFrames[f] and frame_idx<=analyzeFrames[f+1]:
-                        analysisIntervalIdx = f
-                    if len(analysisLbl)>0:
-                        analysisLbl += ', '
-                    analysisLbl += '{} -- {}'.format(*analyzeFrames[f:f+2])
-                if len(analyzeFrames)%2:
-                    if len(analyzeFrames)==1:
-                        analysisLbl +=   '{} -- xx'.format(analyzeFrames[-1])
-                    else:
-                        analysisLbl += ', {} -- xx'.format(analyzeFrames[-1])
-            
-                # annotate what frame we're on
-                frameClr = (0,0,255) if analysisIntervalIdx is not None else (0,0,0)
-                cv2.rectangle(frame,(0,int(height)),(int(0.35*width),int(height)-30), frameClr, -1)
-                cv2.putText(frame, ("%8.3f [%6d]" % (pts, frame_idx) ), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
-                # annotate analysis intervals
-                cv2.rectangle(frame,(0,30),(int(width),0), frameClr, -1)
-                cv2.putText(frame, (analysisLbl), (0, 25), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
-
-            
-                if frame is not None:
-                    cv2.imshow("frame", frame)
-                    if not hasResized:
-                        if width>1280 or height>800:
-                            sFac = max([width/1280., height/800.])
-                            cv2.resizeWindow('frame', round(width/sFac), round(height/sFac))
-                        else:
-                            cv2.resizeWindow('frame', width, height)
-                        hasResized = True
-                        
+            # if have gaze in world info, draw it too (also only first)
+            if hasWorldGaze and frame_idx in gazesWorld:
+                if hasCamCal:
+                    gazesWorld[frame_idx][0].drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
                 if gShowReference:
-                    cv2.imshow("reference", refImg)
-                lastIdx = frame_idx
+                    gazesWorld[frame_idx][0].drawOnReferencePlane(refImg, reference, subPixelFac)
+
+            analysisIntervalIdx = None
+            analysisLbl = ''
+            for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't try incomplete intervals
+                if frame_idx>=analyzeFrames[f] and frame_idx<=analyzeFrames[f+1]:
+                    analysisIntervalIdx = f
+                if len(analysisLbl)>0:
+                    analysisLbl += ', '
+                analysisLbl += '{} -- {}'.format(*analyzeFrames[f:f+2])
+            if len(analyzeFrames)%2:
+                if len(analyzeFrames)==1:
+                    analysisLbl +=   '{} -- xx'.format(analyzeFrames[-1])
+                else:
+                    analysisLbl += ', {} -- xx'.format(analyzeFrames[-1])
+            
+            # annotate what frame we're on
+            frameClr = (0,0,255) if analysisIntervalIdx is not None else (0,0,0)
+            cv2.rectangle(frame,(0,int(height)),(int(0.35*width),int(height)-30), frameClr, -1)
+            cv2.putText(frame, ("%8.3f [%6d]" % (pts, frame_idx) ), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
+            # annotate analysis intervals
+            cv2.rectangle(frame,(0,30),(int(width),0), frameClr, -1)
+            cv2.putText(frame, (analysisLbl), (0, 25), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
+
+            
+            if frame is not None:
+                cv2.imshow("frame", frame)
+                if not hasResized:
+                    if width>1280 or height>800:
+                        sFac = max([width/1280., height/800.])
+                        cv2.resizeWindow('frame', round(width/sFac), round(height/sFac))
+                    else:
+                        cv2.resizeWindow('frame', width, height)
+                    hasResized = True
+                        
+            if gShowReference:
+                cv2.imshow("reference", refImg)
 
         key = cv2.waitKey(1) & 0xFF
         # seek: don't ask me why, but relative seeking works best for backward,
@@ -180,16 +175,13 @@ def process(inputDir,basePath):
             if not frame_idx in analyzeFrames:
                 analyzeFrames.append(frame_idx)
                 analyzeFrames.sort()
-                shouldRedraw = True
         elif key == ord('d'):
             if frame_idx in analyzeFrames:
                 # delete this one marker from analysis frames
                 analyzeFrames.remove(frame_idx)
-                shouldRedraw = True
             elif analysisIntervalIdx is not None:
                 # delete current interval from analysis frames
                 del analyzeFrames[analysisIntervalIdx:analysisIntervalIdx+2]
-                shouldRedraw = True
 
         elif key in [ord('s'), ord('S')]:
             if (analysisIntervalIdx is not None) and (frame_idx!=analyzeFrames[analysisIntervalIdx]):
