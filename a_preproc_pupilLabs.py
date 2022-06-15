@@ -174,8 +174,11 @@ def formatGazeData(inputDir, sceneVideoDimensions):
 
 def readGazeData(file,sceneVideoDimensions):
     """
-    convert the livedata.json file to a pandas dataframe
+    convert the gaze_positions.csv file to a pandas dataframe
     """
+
+    isCore      = 'pupilCore'      in file.parent.name
+    isInvisible = 'pupilInvisible' in file.parent.name
 
     df = pd.read_csv(file)
 
@@ -211,6 +214,16 @@ def readGazeData(file,sceneVideoDimensions):
     idx = [lookup[k] for k in lookup if lookup[k] in df.columns]
     idx.extend([x for x in df.columns if x not in idx])   # append columns not in lookup
     df = df[idx]
+
+    # mark data with insufficient confidence as missing.
+    # for pupil core, pupil labs recommends a threshold of 0.6,
+    # for the pupil invisible its a binary signal, and
+    # confidence 0 should be excluded
+    confThresh = 0.6 if isCore else 0
+    todo = [x for x in idx if x in lookup.values()]
+    toRemove = df.confidence <= confThresh
+    for c in todo[2:]:
+        df.loc[toRemove,c] = np.nan
 
     # convert timestamps from s to ms
     df.loc[:,'timestamp'] *= 1000.0
