@@ -49,7 +49,6 @@ def process(inputDir,basePath):
         cap         = cv2.VideoCapture(str(inputDir / 'worldCamera.mp4'))
         width       = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height      = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
         ifi         = 1000./cap.get(cv2.CAP_PROP_FPS)/gFPSFac
 
     # Read gaze data
@@ -87,8 +86,8 @@ def process(inputDir,basePath):
                 if not inIval:
                     # no need to show this frame
                     continue
-
-            refImg = reference.getImgCopy()
+            if gShowReference:
+                refImg = reference.getImgCopy()
             
 
         if frame_idx in gazes:
