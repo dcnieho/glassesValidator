@@ -722,10 +722,17 @@ class BoardPose:
         self.nMarkers   = nMarkers  # number of Aruco markers this pose estimate is based on
         self.rVec       = rVec
         self.tVec       = tVec
-        self.determinePlanePointNormal()
 
         # homography
         self.hMat       = hMat.reshape(3,3) if hMat is not None else hMat
+        
+        # internals
+        self._RMat        = None
+        self._RtMat       = None
+        self._planeNormal = None
+        self._planePoint  = None
+        self._RMatInv     = None
+        self._RtMatInv    = None
 
     @staticmethod
     def getWriteHeader():
@@ -777,19 +784,60 @@ class BoardPose:
     def setPose(self,rVec,tVec):
         self.rVec = rVec
         self.tVec = tVec
-        self.determinePlanePointNormal()
+        
+        # clear internal variables
+        self._RMat        = None
+        self._RtMat       = None
+        self._planeNormal = None
+        self._planePoint  = None
+        self._RMatInv     = None
+        self._RtMatInv    = None
 
-    def determinePlanePointNormal(self):
-        if (self.rVec is not None) and (self.tVec is not None):
+    def camToWorld(self, point):
+        if (self.rVec is None) or (self.tVec is None) or np.any(np.isnan(point)):
+            return np.array([np.nan, np.nan, np.nan])
+
+        if self._RtMatInv is None:
+            if self._RMatInv is None:
+                if self._RMat is None:
+                    self._RMat = cv2.Rodrigues(self.rVec)[0]
+                self._RMatInv = self._RMat.T
+            self._RtMatInv = np.hstack((self._RMatInv,np.matmul(-self._RMatInv,self.tVec.reshape(3,1))))
+
+        return np.matmul(self._RtMatInv,np.append(np.array(point),1.).reshape((4,1))).flatten()
+
+    def worldToCam(self, point):
+        if (self.rVec is None) or (self.tVec is None) or np.any(np.isnan(point)):
+            return np.array([np.nan, np.nan, np.nan])
+
+        if self._RtMat is None:
+            if self._RMat is None:
+                self._RMat = cv2.Rodrigues(self.rVec)[0]
+            self._RtMat = np.hstack((self._RMat, self.tVec.reshape(3,1)))
+
+        return np.matmul(self._RtMat,np.append(np.array(point),1.).reshape((4,1))).flatten()
+
+    def vectorIntersect(self, vector, origin = np.array([0.,0.,0.])):
+        if (self.rVec is None) or (self.tVec is None) or np.any(np.isnan(vector)):
+            return np.array([np.nan, np.nan, np.nan])
+
+        if self._planeNormal is None:
+            if self._RtMat is None:
+                if self._RMat is None:
+                    self._RMat = cv2.Rodrigues(self.rVec)[0]
+                self._RtMat = np.hstack((self._RMat, self.tVec.reshape(3,1)))
+                
             # get board normal
-            RBoard           = cv2.Rodrigues(self.rVec)[0]
-            self.planeNormal = np.matmul(RBoard, np.array([0,0,1.]))
+            self._planeNormal = np.matmul(self._RMat, np.array([0., 0., 1.]))
             # get point on board (just use origin)
-            RtBoard          = np.hstack((RBoard, self.tVec.reshape(3,1)))
-            self.planePoint  = np.matmul(RtBoard, np.array([0, 0, 0., 1.]))
-        else:
-            self.planeNormal = None
-            self.planePoint  = None
+            self._planePoint  = np.matmul(self._RtMat, np.array([0., 0., 0., 1.]))
+
+
+        # normalize vector
+        vector /= np.sqrt((vector**2).sum())
+
+        # find intersection of 3D gaze with board
+        return intersect_plane_ray(self._planeNormal, self._planePoint, vector.flatten(), origin.flatten())
 
 class Idx2Timestamp:
     def __init__(self, fileName):
@@ -853,11 +901,6 @@ def gazeToPlane(gaze,boardPose,cameraRotation,cameraPosition, cameraMatrix=None,
     hasCameraPose = (boardPose.rVec is not None) and (boardPose.tVec is not None)
     gazeWorld   = GazeWorld(gaze.ts)
     if hasCameraPose:
-        # set up camera to world and back matrices
-        RBoard      = cv2.Rodrigues(boardPose.rVec)[0]
-        RtBoard     = np.hstack((RBoard  ,                    boardPose.tVec.reshape(3,1)))
-        RtBoardInv  = np.hstack((RBoard.T,np.matmul(-RBoard.T,boardPose.tVec.reshape(3,1))))
-
         # get transform from ET data's coordinate frame to camera's coordinate frame
         if cameraRotation is None:
             cameraRotation = np.zeros((3,1))
@@ -866,15 +909,16 @@ def gazeToPlane(gaze,boardPose,cameraRotation,cameraPosition, cameraMatrix=None,
             cameraPosition = np.zeros((3,1))
         RtCam = np.hstack((RCam, cameraPosition))
 
-        # project 3D gaze to reference board
+        # project gaze to reference board using camera pose
         if gaze.world3D is not None:
             # turn 3D gaze point into ray from camera
             g3D = np.matmul(RCam,np.array(gaze.world3D).reshape(3,1))
             g3D /= np.sqrt((g3D**2).sum()) # normalize
             # find intersection of 3D gaze with board, draw
-            g3Board  = intersect_plane_ray(boardPose.planeNormal, boardPose.planePoint, g3D.flatten(), np.array([0.,0.,0.]))  # vec origin (0,0,0) because we use g3D from camera's view point to be able to recreate Tobii 2D gaze pos data
-            (x,y,z)  = np.matmul(RtBoardInv,np.append(g3Board,1.).reshape((4,1))).flatten() # z should be very close to zero
-            gazeWorld.gaze3DRay = g3Board
+            gazeWorld.gaze3DRay = boardPose.vectorIntersect(g3D)   # default vec origin (0,0,0) because we use g3D from camera's view point
+        
+            # above intersection is in camera space, turn into board space to get position on board
+            (x,y,z)   = boardPose.camToWorld(gazeWorld.gaze3DRay)  # z should be very close to zero
             gazeWorld.gaze2DRay = [x, y]
 
     # unproject 2D gaze point on video to point on board (should yield values very close to
@@ -910,7 +954,7 @@ def gazeToPlane(gaze,boardPose,cameraRotation,cameraPosition, cameraMatrix=None,
         setattr(gazeWorld,attr[0],gOri)
 
         # intersect with board -> yield point on board in camera reference frame
-        gBoard  = intersect_plane_ray(boardPose.planeNormal, boardPose.planePoint, gVec, gOri)
+        gBoard  = boardPose.vectorIntersect(gVec, gOri)
         setattr(gazeWorld,attr[1],gBoard)
                         
         # transform intersection with board from camera space to board space
