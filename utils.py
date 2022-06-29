@@ -911,15 +911,18 @@ def gazeToPlane(gaze,boardPose,cameraRotation,cameraPosition, cameraMatrix=None,
 
         # project gaze to reference board using camera pose
         if gaze.world3D is not None:
-            # turn 3D gaze point into ray from camera
+            # turn 3D gaze point provided by eye tracker into ray from camera
             g3D = np.matmul(RCam,np.array(gaze.world3D).reshape(3,1))
-            g3D /= np.sqrt((g3D**2).sum()) # normalize
-            # find intersection of 3D gaze with board, draw
-            gazeWorld.gaze3DRay = boardPose.vectorIntersect(g3D)   # default vec origin (0,0,0) because we use g3D from camera's view point
+        else:
+            # turn observed gaze position on video into position on tangent plane
+            g3D = unprojectPoint(gaze.vid2D[0],gaze.vid2D[1],cameraMatrix,distCoeffs)
         
-            # above intersection is in camera space, turn into board space to get position on board
-            (x,y,z)   = boardPose.camToWorld(gazeWorld.gaze3DRay)  # z should be very close to zero
-            gazeWorld.gaze2DRay = [x, y]
+        # find intersection of 3D gaze with board, draw
+        gazeWorld.gaze3DRay = boardPose.vectorIntersect(g3D)   # default vec origin (0,0,0) because we use g3D from camera's view point
+        
+        # above intersection is in camera space, turn into board space to get position on board
+        (x,y,z)   = boardPose.camToWorld(gazeWorld.gaze3DRay)  # z should be very close to zero
+        gazeWorld.gaze2DRay = [x, y]
 
     # unproject 2D gaze point on video to point on board (should yield values very close to
     # the above method of intersecting 3D gaze point ray with board)
