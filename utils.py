@@ -590,7 +590,7 @@ class Reference:
 
 class GazeWorld:
     def __init__(self, ts, gaze3DRay=None, gaze3DHomography=None, lGazeOrigin=None, lGaze3D=None, rGazeOrigin=None, rGaze3D=None, gaze2DRay=None, gaze2DHomography=None, lGaze2D=None, rGaze2D=None):
-        # 3D gaze (and plane info) is in world space, w.r.t. scene camera
+        # 3D gaze is in world space, w.r.t. scene camera
         # 2D gaze is on the reference board
         self.ts = ts
 
@@ -677,6 +677,10 @@ class GazeWorld:
 
     def drawOnWorldVideo(self, img, cameraMatrix, distCoeff, subPixelFac=1):
         # project to camera, display
+        # gaze ray
+        if self.gaze3DRay is not None:
+            pPointCam = cv2.projectPoints(self.gaze3DRay.reshape(1,3),np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
+            drawOpenCVCircle(img, pPointCam, 3, (255,0,255), -1, subPixelFac)
         # left eye
         if self.lGaze3D is not None:
             pPointCam = cv2.projectPoints(self.lGaze3D.reshape(1,3),np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
