@@ -42,7 +42,7 @@ def process(inputDir,basePath):
     # setup aruco marker detection
     parameters = cv2.aruco.DetectorParameters_create()
     parameters.markerBorderBits       = validationSetup['markerBorderBits']
-    parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX;
+    parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
 
     # get camera calibration info
     cameraMatrix,distCoeff = utils.readCameraCalibrationFile(inputDir / "calibration.xml")[0:2]
