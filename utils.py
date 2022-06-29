@@ -933,9 +933,9 @@ def gazeToPlane(gaze,boardPose,cameraRotation,cameraPosition, cameraMatrix=None,
         (xW, yW) = applyHomography(boardPose.hMat, ux, uy)
         gazeWorld.gaze2DHomography = [xW, yW]
 
-        # get this point in board space
+        # get this point in camera space
         if hasCameraPose:
-            gazeWorld.gaze3DHomography = np.matmul(RtBoard,np.array([xW,yW,0.,1.]).reshape((4,1))).flatten()
+            gazeWorld.gaze3DHomography = boardPose.worldToCam(np.array([xW,yW,0.]))
 
     # project gaze vectors to reference board (and draw on video)
     if not hasCameraPose:
@@ -944,10 +944,8 @@ def gazeToPlane(gaze,boardPose,cameraRotation,cameraPosition, cameraMatrix=None,
 
     gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]
     gazeOrigins = [gaze.lGazeOrigin, gaze.rGazeOrigin]
-    clrs        = [(0,0,255)       , (255,0,0)]
-    eyes        = ['left'          , 'right']
     attrs       = [['lGazeOrigin','lGaze3D','lGaze2D'],['rGazeOrigin','rGaze3D','rGaze2D']]
-    for gVec,gOri,clr,eye,attr in zip(gazeVecs,gazeOrigins,clrs,eyes,attrs):
+    for gVec,gOri,attr in zip(gazeVecs,gazeOrigins,attrs):
         if gVec is None or gOri is None:
             continue
         # get gaze vector and point on vector (pupil center) ->
@@ -962,10 +960,10 @@ def gazeToPlane(gaze,boardPose,cameraRotation,cameraPosition, cameraMatrix=None,
                         
         # transform intersection with board from camera space to board space
         if not math.isnan(gBoard[0]):
-            (x,y,z) = np.matmul(RtBoardInv,np.append(gBoard,1.).reshape((4,1))).flatten() # z should be very close to zero
-            pgBoard = [x,y]
+            (x,y,z)   = boardPose.camToWorld(gBoard)  # z should be very close to zero
+            pgBoard = [x, y]
         else:
-            pgBoard = [np.nan,np.nan]
+            pgBoard = [np.nan, np.nan]
         setattr(gazeWorld,attr[2],pgBoard)
 
     return gazeWorld
