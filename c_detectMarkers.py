@@ -116,14 +116,15 @@ def process(inputDir,basePath):
 
                 if status:
                     pose.hMat = H
-                    # find where target is expected to be in the image
-                    iH = np.linalg.inv(pose.hMat)
-                    target = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
-                    if hasCameraMatrix and hasDistCoeff:
-                        target = utils.distortPoint(*target, cameraMatrix, distCoeff)
-                    # draw target location on image
-                    if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
-                        utils.drawOpenCVCircle(frame, target, 3, (0,0,0), -1, subPixelFac)
+                    if gVisualizeDetection:
+                        # find where target is expected to be in the image
+                        iH = np.linalg.inv(pose.hMat)
+                        target = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
+                        if hasCameraMatrix and hasDistCoeff:
+                            target = utils.distortPoint(*target, cameraMatrix, distCoeff)
+                        # draw target location on image
+                        if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
+                            utils.drawOpenCVCircle(frame, target, 3, (0,0,0), -1, subPixelFac)
 
                 if pose.nMarkers>0 or status:
                     csv_writer.writerow( pose.getWriteData() )
