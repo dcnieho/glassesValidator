@@ -227,8 +227,8 @@ def estimateHomography(known, detectedCorners, detectedIDs):
     return h, True
 
 def applyHomography(h, x, y):
-    if math.isnan(x):
-        return [math.nan, math.nan]
+    if math.isnan(x) or math.isnan(y):
+        return np.array([np.nan, np.nan])
 
     src = np.asarray([x, y], dtype='float32').reshape((1, -1, 2))
     dst = cv2.perspectiveTransform(src,h)
@@ -236,8 +236,8 @@ def applyHomography(h, x, y):
 
 
 def distortPoint(x, y, cameraMatrix, distCoeff):
-    if math.isnan(x):
-        return [math.nan, math.nan]
+    if math.isnan(x) or math.isnan(y):
+        return np.array([np.nan, np.nan])
     
     # unproject, ignoring distortion as this is an undistored point
     points_2d = np.asarray([x, y], dtype='float32').reshape((1, -1, 2))
@@ -251,12 +251,22 @@ def distortPoint(x, y, cameraMatrix, distCoeff):
     return points_2d.flatten()
 
 def undistortPoint(x, y, cameraMatrix, distCoeff):
-    if math.isnan(x):
-        return [math.nan, math.nan]
+    if math.isnan(x) or math.isnan(y):
+        return np.array([np.nan, np.nan])
 
     points_2d = np.asarray([x, y], dtype='float32').reshape((1, -1, 2))
     points_2d = cv2.undistortPoints(points_2d, cameraMatrix, distCoeff, P=cameraMatrix) # P=cameraMatrix to reproject to camera
     return points_2d.flatten()
+
+def unprojectPoint(x, y, cameraMatrix, distCoeff):
+    if math.isnan(x) or math.isnan(y):
+        return np.array([np.nan, np.nan, np.nan])
+
+    points_2d = np.asarray([x, y], dtype='float32').reshape((1, -1, 2))
+    points_2d = cv2.undistortPoints(points_2d, cameraMatrix, distCoeff)
+    points_3d = cv2.convertPointsToHomogeneous(points_2d)
+    points_3d.shape = -1, 3
+    return points_3d.flatten()
 
 
 def angle_between(v1, v2): 
