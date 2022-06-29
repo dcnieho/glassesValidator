@@ -7,7 +7,6 @@ import math
 import cv2
 import numpy as np
 import pandas as pd
-import warnings
 
 import utils
 

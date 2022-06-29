@@ -1,19 +1,15 @@
 #!/usr/bin/python
 
-import sys
 from pathlib import Path
 import math
 
-import cv2
 import numpy as np
 import pandas as pd
-import warnings
 
 import utils
 import I2MC
 
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 
 
 
