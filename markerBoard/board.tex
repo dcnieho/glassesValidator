@@ -43,6 +43,7 @@
 	\pgfmathparse{(2*tan(.5)*\distance)}
 	\edef\gridFac{\pgfmathresult}
 	\setlength{\step}{\gridFac cm}
+	\def\gridAnnot{Grid: \SI{\gridCols}{\degree} x \SI{\gridRows}{\degree}}
 }
 { % else
 	% cm mode, hopefully. emit warning if not
@@ -52,6 +53,7 @@
 	}
     % all user-provides measures are in cm, so step is simply 1cm
 	\setlength{\step}{1cm}
+	\def\gridAnnot{Grid: \SI{\gridCols}{\centi\meter} x \SI{\gridRows}{\centi\meter}}
 }
 
 % setup gaze targets
@@ -136,7 +138,7 @@
 		\node[] at (\gridCols\step-0.5\step,-0.5\step) { \gridCols };
 	
 		\node[right] at (0,-0.5\step-1cm) {
-			Grid: \SI{\gridCols}{\degree} x \SI{\gridRows}{\degree}
+			\gridAnnot
 		};
 		\node[right] at (0,-0.5\step-2cm) {
 			Cell: \SI{\convertto{cm}{\step}}{\centi\meter} x
