@@ -52,9 +52,11 @@ def process(inputDir,basePath):
         ifi         = 1000./cap.get(cv2.CAP_PROP_FPS)/gFPSFac
 
     # Read gaze data
+    print('  gazeData')
     gazes,maxFrameIdx = utils.Gaze.readDataFromFile(inputDir / 'gazeData.tsv')
 
     # Read pose of marker board
+    print('  boardPose')
     poses = utils.BoardPose.readDataFromFile(inputDir / 'boardPose.tsv')
 
     csv_file = open(inputDir / 'gazeWorldPos.tsv', 'w', newline='')
