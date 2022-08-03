@@ -69,7 +69,7 @@ def process(inputDir,basePath):
     parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
 
     # get frame timestamps lookup file
-    i2t = utils.Idx2Timestamp(str(inputDir / 'frameTimestamps.tsv'))
+    i2t = utils.Idx2Timestamp(inputDir / 'frameTimestamps.tsv')
 
     # get camera calibration info
     cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(inputDir / "calibration.xml")
@@ -91,6 +91,7 @@ def process(inputDir,basePath):
         # detect markers, undistort
         corners, ids, rejectedImgPoints = \
             cv2.aruco.detectMarkers(frame, reference.aruco_dict, parameters=parameters)
+        recoveredIds = None
 
         # get board pose, draw marker and board pose
         gotPose = False
@@ -99,6 +100,12 @@ def process(inputDir,basePath):
                 pose = utils.BoardPose(frame_idx)
                 # get camera pose
                 if (cameraMatrix is not None) and (distCoeff is not None):
+                    # Refine detected markers (eliminates markers not part of our board, adds missing markers to the board)
+                    corners, ids, rejectedImgPoints, recoveredIds = utils.arucoRefineDetectedMarkers(
+                            image = frame, board = referenceBoard,
+                            detectedCorners = corners, detectedIds = ids, rejectedCorners = rejectedImgPoints,
+                            cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
+
                     pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
                     
                     # draw axis indicating board pose (origin and orientation)
@@ -128,7 +135,7 @@ def process(inputDir,basePath):
                         utils.drawOpenCVCircle(frame, target, 3, (0,0,0), -1, subPixelFac)
 
             # if any markers were detected, draw where on the frame
-            utils.drawArucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac)
+            utils.drawArucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac, specialHighlight=[recoveredIds,(255,255,0)])
         
         # process gaze
         if frame_idx in gazes:

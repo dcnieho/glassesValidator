@@ -90,6 +90,7 @@ def process(inputDir,basePath):
         # detect markers, undistort
         corners, ids, rejectedImgPoints = \
             cv2.aruco.detectMarkers(frame, reference.aruco_dict, parameters=parameters)
+        recoveredIds = None
         
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
@@ -97,6 +98,12 @@ def process(inputDir,basePath):
                 
                 # get camera pose
                 if hasCameraMatrix and hasDistCoeff:
+                    # Refine detected markers (eliminates markers not part of our board, adds missing markers to the board)
+                    corners, ids, rejectedImgPoints, recoveredIds = utils.arucoRefineDetectedMarkers(
+                            image = frame, board = referenceBoard,
+                            detectedCorners = corners, detectedIds = ids, rejectedCorners = rejectedImgPoints,
+                            cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
+
                     pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
                 
                     if pose.nMarkers>0:
@@ -131,7 +138,7 @@ def process(inputDir,basePath):
 
             # if any markers were detected, draw where on the frame
             if gVisualizeDetection:
-                utils.drawArucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac)
+                utils.drawArucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac, specialHighlight=[recoveredIds,(255,255,0)])
 
         # for debug, can draw rejected markers on frame
         if gVisualizeDetection and gShowRejectedMarkers:

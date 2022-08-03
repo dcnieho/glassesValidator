@@ -65,8 +65,8 @@ def process(inputDir,basePath):
     if gShowReference:
         cv2.namedWindow("reference")
     # 3. timestamp info for relating audio to video frames
-    t2i = utils.Timestamp2Index( str(inputDir / 'frameTimestamps.tsv') )
-    i2t = utils.Idx2Timestamp( str(inputDir / 'frameTimestamps.tsv') )
+    t2i = utils.Timestamp2Index( inputDir / 'frameTimestamps.tsv' )
+    i2t = utils.Idx2Timestamp( inputDir / 'frameTimestamps.tsv' )
     # 4. mediaplayer for the actual video playback, with sound if available
     inVideo = inputDir / 'worldCamera.mp4'
     if not inVideo.is_file():

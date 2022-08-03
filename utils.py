@@ -148,7 +148,7 @@ def getValidationSetup(configDir):
     with open(configDir / "validationSetup.txt") as f:
         lexer = shlex(f)
         lexer.whitespace += '='
-        lexer.wordchars += '.'  # don't split extensions of filenames in the input file
+        lexer.wordchars += '.[],'   # don't split extensions of filenames in the input file, and accept stuff from python list syntax
         lexer.commenters = '%'
         validationSetup = dict(zip(lexer, lexer))
 
@@ -203,6 +203,21 @@ def toImagePos(x,y,bbox,imSize,margin=[0,0]):
     # turn into int, add margin
     pos = [p*s+m for p,s,m in zip(pos,imSize,margin)]
     return pos
+
+def arucoRefineDetectedMarkers(image, board, detectedCorners, detectedIds, rejectedCorners, cameraMatrix = None, distCoeffs= None):
+    corners, ids, rejectedImgPoints, recoveredIds = cv2.aruco.refineDetectedMarkers(
+                            image = image, board = board,
+                            detectedCorners = detectedCorners, detectedIds = detectedIds, rejectedCorners = rejectedCorners,
+                            cameraMatrix = cameraMatrix, distCoeffs = distCoeffs)
+    if corners:
+        # there are versions out there where there is a bug in output shape of each set of corners, fix up
+        if corners[0].shape[0]==4:
+            corners = [np.reshape(c,(1,4,2)) for c in corners]
+        if rejectedImgPoints[0].shape[0]==4:
+            rejectedImgPoints = [np.reshape(c,(1,4,2)) for c in rejectedImgPoints]
+    
+    return corners, ids, rejectedImgPoints, recoveredIds
+
 
 def estimateHomography(known, detectedCorners, detectedIDs):
     # collect matching corners in image and in world
@@ -277,7 +292,8 @@ def intersect_plane_ray(planeNormal, planePoint, rayDirection, rayPoint, epsilon
 
     ndotu = planeNormal.dot(rayDirection)
     if abs(ndotu) < epsilon:
-        raise RuntimeError("no intersection or line is within plane")
+        # raise RuntimeError("no intersection or line is within plane")
+        np.array([np.nan, np.nan, np.nan])
  
     w = rayPoint - planePoint
     si = -planeNormal.dot(w) / ndotu
@@ -306,30 +322,34 @@ def drawOpenCVRectangle(img, p1, p2, color, thickness, subPixelFac):
         p2 = tuple([int(x) for x in p2])
         cv2.rectangle(img, p1, p2, color, thickness, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
 
-def drawOpenCVFrameAxis(img, cameraMatrix, distCoeffs, rvec,  tvec,  armLength, thickness, subPixelFac):
+def drawOpenCVFrameAxis(img, cameraMatrix, distCoeffs, rvec,  tvec,  armLength, thickness, subPixelFac, position = [0.,0.,0.]):
     # same as the openCV function, but with anti-aliasing for a nicer image if subPixelFac>1
-    points = np.vstack((np.zeros((1,3)), armLength*np.eye(3)))
+    points = np.vstack((np.zeros((1,3)), armLength*np.eye(3)))+np.vstack(4*[np.asarray(position)])
     points = cv2.projectPoints(points, rvec, tvec, cameraMatrix, distCoeffs)[0]
     drawOpenCVLine(img, points[0].flatten(), points[1].flatten(), (0, 0, 255), thickness, subPixelFac)
     drawOpenCVLine(img, points[0].flatten(), points[2].flatten(), (0, 255, 0), thickness, subPixelFac)
     drawOpenCVLine(img, points[0].flatten(), points[3].flatten(), (255, 0, 0), thickness, subPixelFac)
 
-def drawArucoDetectedMarkers(img,corners,ids,borderColor=(0,255,0), drawIDs = True, subPixelFac=1):
+def drawArucoDetectedMarkers(img,corners,ids,borderColor=(0,255,0), drawIDs = True, subPixelFac=1, specialHighlight = []):
     # same as the openCV function, but with anti-aliasing for a (much) nicer image if subPixelFac>1
     textColor   = [x for x in borderColor]
     cornerColor = [x for x in borderColor]
-    textColor[0]  , textColor[1]   = textColor[1]  , textColor[0]       #   text color just swap G and R
-    cornerColor[1], cornerColor[2] = cornerColor[2], cornerColor[1]     # corner color just swap G and B
+    textColor[0]  , textColor[1]   = textColor[1]  , textColor[0]       #   text color just swap B and R
+    cornerColor[1], cornerColor[2] = cornerColor[2], cornerColor[1]     # corner color just swap G and R
 
     drawIDs = drawIDs and (ids is not None) and len(ids)>0
 
     for i in range(0, len(corners)):
         corner = corners[i][0]
         # draw marker sides
+        sideColor = borderColor
+        for s,c in zip(specialHighlight[::2],specialHighlight[1::2]):
+            if s is not None and ids[i][0] in s:
+                sideColor = c
         for j in range(4):
             p0 = corner[j,:]
             p1 = corner[(j + 1) % 4,:]
-            drawOpenCVLine(img, p0, p1, borderColor, 1, subPixelFac)
+            drawOpenCVLine(img, p0, p1, sideColor, 1, subPixelFac)
         
         # draw first corner mark
         p1 = corner[0]
@@ -648,7 +668,7 @@ class GazeWorld:
         with open(fileName, 'r' ) as f:
             reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
-                frame_idx = int(float(entry['frame_idx']))
+                frame_idx = int(entry['frame_idx'])
                 if readSubset and (frame_idx<start or frame_idx>end):
                     if stopOnceExceeded and frame_idx>end:
                         break
@@ -842,7 +862,7 @@ class BoardPose:
 class Idx2Timestamp:
     def __init__(self, fileName):
         self.timestamps = {}
-        with open(fileName, 'r' ) as f:
+        with open(str(fileName), 'r' ) as f:
             reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
                 frame_idx = int(float(entry['frame_idx']))
@@ -860,7 +880,7 @@ class Timestamp2Index:
     def __init__(self, fileName):
         self.indices = []
         self.timestamps = []
-        with open(fileName, 'r' ) as f:
+        with open(str(fileName), 'r' ) as f:
             reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
                 frame_idx = int(float(entry['frame_idx']))
@@ -870,7 +890,19 @@ class Timestamp2Index:
 
     def find(self, ts):
         idx = bisect.bisect(self.timestamps, ts)
-        return self.indices[max(0,idx-1)]
+        # return nearest
+        if idx>=len(self.timestamps):
+            return self.indices[-1]
+        elif idx>0 and abs(self.timestamps[idx-1]-ts)<abs(self.timestamps[idx]-ts):
+            return self.indices[idx-1]
+        else:
+            return self.indices[idx]
+
+    def getLast(self):
+        return self.indices[-1], self.timestamps[-1]
+
+    def getIFI(self):
+        return np.mean(np.diff(self.timestamps))
 
 def readCameraCalibrationFile(fileName):
     fs = cv2.FileStorage(str(fileName), cv2.FILE_STORAGE_READ)

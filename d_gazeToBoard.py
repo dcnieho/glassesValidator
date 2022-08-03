@@ -33,7 +33,7 @@ def process(inputDir,basePath):
 
         reference   = utils.Reference(configDir, validationSetup)
         centerTarget= reference.targets[validationSetup['centerTarget']].center
-        i2t         = utils.Idx2Timestamp(str(inputDir / 'frameTimestamps.tsv'))
+        i2t         = utils.Idx2Timestamp(inputDir / 'frameTimestamps.tsv')
     
     # get camera calibration info
     cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(inputDir / "calibration.xml")
