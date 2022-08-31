@@ -470,12 +470,12 @@ class Reference:
         # read in target positions
         self.targets = {}
         if (configDir / validationSetup['targetPosFile']).is_file():
-            targets = pd.read_csv(str(configDir / validationSetup['targetPosFile']),index_col=0,names=['x','y','clr'])
+            targets = pd.read_csv(str(configDir / validationSetup['targetPosFile']),index_col=0)
             center  = targets.loc[validationSetup['centerTarget'],['x','y']]
             targets.x = self.cellSizeMm * (targets.x.astype('float32') - center.x)
             targets.y = self.cellSizeMm * (targets.y.astype('float32') - center.y)
             for idx, row in targets.iterrows():
-                self.targets[idx] = Marker(idx, row[['x','y']].values, color=row.clr)
+                self.targets[idx] = Marker(idx, row[['x','y']].values, color=row.color)
         else:
             center = pd.Series(data=[0.,0.],index=['x','y'])
     
@@ -484,13 +484,13 @@ class Reference:
         self.knownMarkers = {}
         self.bbox         = []
         if (configDir / validationSetup['markerPosFile']).is_file():
-            markerPos = pd.read_csv(str(configDir / validationSetup['markerPosFile']),index_col=0,names=['x','y','rot'])
+            markerPos = pd.read_csv(str(configDir / validationSetup['markerPosFile']),index_col=0)
             markerPos.x = self.cellSizeMm * (markerPos.x.astype('float32') - center.x)
             markerPos.y = self.cellSizeMm * (markerPos.y.astype('float32') - center.y)
             for idx, row in markerPos.iterrows():
                 c   = row[['x','y']].values
                 # rotate markers (negative because poster coordinate system)
-                rot = row[['rot']].values[0]
+                rot = row[['rotation_angle']].values[0]
                 if rot%90 != 0:
                     raise ValueError("Rotation of a marker must be a multiple of 90 degrees")
                 rotr= -math.radians(rot)
