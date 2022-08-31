@@ -13,12 +13,11 @@
 
 % much of the poster setup is read from the file validationSetup.txt.
 % read setup
-% NB: distance in there is in cm, gridCols, gridRows and markerSide are in degrees visual angle
 \readarraysepchar{=}
 \readdef{../config/validationSetup.txt}{\fileData}
 \readarray*\fileData\setupInfo[-,2]
 % turn each key into its own command
-%NB: this provides \distance, \markerPosFile and \targetPosFile,
+% NB: this provides \distance, \markerPosFile and \targetPosFile,
 % amongst others
 \newcounter{keyCount}
 \setcounter{keyCount}{0}%
