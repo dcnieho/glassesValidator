@@ -5,7 +5,7 @@
 \usepackage{readarray}	% for key=value settings file
 
 \usepackage{siunitx}
-\sisetup{detect-all}
+\sisetup{detect-all,group-digits=integer}
 
 \usepackage{ifthen}
 
@@ -13,12 +13,11 @@
 
 % much of the poster setup is read from the file validationSetup.txt.
 % read setup
-% NB: distance in there is in cm, gridCols, gridRows and markerSide are in degrees visual angle
 \readarraysepchar{=}
 \readdef{../config/validationSetup.txt}{\fileData}
 \readarray*\fileData\setupInfo[-,2]
 % turn each key into its own command
-%NB: this provides \distance, \markerPosFile and \targetPosFile,
+% NB: this provides \distance, \markerPosFile and \targetPosFile,
 % amongst others
 \newcounter{keyCount}
 \setcounter{keyCount}{0}%
@@ -30,7 +29,7 @@
 }
 \def\markerSideCm{\markerSide\step}
 \def\markerFilename#1{all-markers/#1.png}
-\def\thalerRadCm{.5*\thalerDiameter\step}
+\def\targetRadCm{.5*\targetDiameter\step}
 
 \makeatletter
 \def\convertto#1#2{\strip@pt\dimexpr #2*65536/\number\dimexpr 1#1}
@@ -72,31 +71,31 @@
 		}
 		{ % else
 			% instead, something defined in visual angle that looks good
-			\fill[white] (#1-.8\step,#2-.8\step) rectangle (#1+.8\step,#2+.8\step);
-			\fill[#3]    (#1,#2) circle (.8\step);
-			\fill[white] (#1,#2) circle (.43\step);
-			\fill[#3]    (#1,#2) circle (.055\step);
+			\fill[white] (#1-\targetRadCm,#2-\targetRadCm) rectangle (#1+\targetRadCm,#2+\targetRadCm);
+			\fill[#3]    (#1,#2) circle (\targetRadCm);
+			\fill[white] (#1,#2) circle (.535*\targetRadCm);
+			\fill[#3]    (#1,#2) circle (.0698*\targetRadCm);
 		}
 	}{}
 	\ifthenelse{\equal{\targetType}{Thaler}}{%
-		\fill[white]    (#1,#2) circle (\thalerRadCm);
+		\fill[white]    (#1,#2) circle (\targetRadCm);
 		\begin{scope}
 			% draw circle, clipping away a cross from it
 			\begin{pgfinterruptboundingbox}
 				\path[invclip]
-				(#1-1.1*\thalerRadCm,#2-.25*\thalerRadCm) --
-				(#1+1.1*\thalerRadCm,#2-.25*\thalerRadCm) --
-				(#1+1.1*\thalerRadCm,#2+.25*\thalerRadCm) --
-				(#1-1.1*\thalerRadCm,#2+.25*\thalerRadCm);
+				(#1-1.1*\targetRadCm,#2-.25*\targetRadCm) --
+				(#1+1.1*\targetRadCm,#2-.25*\targetRadCm) --
+				(#1+1.1*\targetRadCm,#2+.25*\targetRadCm) --
+				(#1-1.1*\targetRadCm,#2+.25*\targetRadCm);
 				\path[invclip]
-				(#1-.25*\thalerRadCm,#2-1.1*\thalerRadCm) --
-				(#1+.25*\thalerRadCm,#2-1.1*\thalerRadCm) --
-				(#1+.25*\thalerRadCm,#2+1.1*\thalerRadCm) --
-				(#1-.25*\thalerRadCm,#2+1.1*\thalerRadCm);
+				(#1-.25*\targetRadCm,#2-1.1*\targetRadCm) --
+				(#1+.25*\targetRadCm,#2-1.1*\targetRadCm) --
+				(#1+.25*\targetRadCm,#2+1.1*\targetRadCm) --
+				(#1-.25*\targetRadCm,#2+1.1*\targetRadCm);
 			\end{pgfinterruptboundingbox} 
-			\fill[#3] (#1,#2) circle (\thalerRadCm);
+			\fill[#3] (#1,#2) circle (\targetRadCm);
 		\end{scope}
-		\fill[#3]    (#1,#2) circle (.25*\thalerRadCm);
+		\fill[#3]    (#1,#2) circle (.25*\targetRadCm);
 	}{}
 }
 
@@ -111,7 +110,7 @@
 		\draw[step=\step, line width=3pt] (0cm,0cm) grid (\step*\gridCols,\step*\gridRows);
 	\fi
 	
-\csvreader[no head]{../config/\markerPosFile}{1=\ID, 2=\x, 3=\y, 4=\rotang}%
+\csvreader{../config/\markerPosFile}{ID=\ID, x=\x, y=\y, rotation_angle=\rotang}%
 {
 	\coordinate (m) at (
 	\x*\step,
@@ -122,7 +121,7 @@
 };
 
 
-\csvreader[no head]{../config/\targetPosFile}{1=\ID, 2=\x, 3=\y, 4=\tColor}%
+\csvreader{../config/\targetPosFile}{ID=\ID, x=\x, y=\y, color=\tColor}%
 {
 	\gazeTarget{\x*\step}{\y*\step}{\tColor};
 };
@@ -131,24 +130,51 @@
 	
 	% annotations
 	\if\showAnnotations1
-		\node[left] at (-0\step, 1\step-0.5\step)     { 1 };
-		\node[left] at (-0\step, \gridRows\step-0.5\step) { \gridRows };
-	
-		\node[] at (1\step-0.5\step    ,-0.5\step) { 1 };
-		\node[] at (\gridCols\step-0.5\step,-0.5\step) { \gridCols };
-	
-		\node[right] at (0,-0.5\step-1cm) {
-			\gridAnnot
-		};
-		\node[right] at (0,-0.5\step-2cm) {
-			Cell: \SI{\convertto{cm}{\step}}{\centi\meter} x
-			      \SI{\convertto{cm}{\step}}{\centi\meter}
-		};
-		\ifthenelse{\equal{\mode}{deg}}{%
-			\node[right] at (0,-0.5\step-3cm) {
-				1 cell = \SI{1}{\degree} at \SI{\distance}{\centi\meter}
+		\newcounter{mycounter}
+		\newlength{\mycounterl}
+		\if\showGrid1
+			\node[left] at (-0\step, 1\step-0.5\step)     { 1 };
+			\node[left] at (-0\step, \gridRows\step-0.5\step) { \gridRows };
+		
+			\node[] at (1\step-0.5\step    ,-0.5\step) { 1 };
+			\node[] at (\gridCols\step-0.5\step,-0.5\step) { \gridCols };
+		
+			\setcounter{mycounter}{1}
+			\setlength{\mycounterl}{\value{mycounter}cm}
+			\node[right] at (0,-0.5\step-\mycounterl) {
+				\gridAnnot
 			};
-		}
+			\stepcounter{mycounter}
+			\setlength{\mycounterl}{\value{mycounter}cm}
+		
+			\node[right] at (0,-0.5\step-\mycounterl) {
+				Cell: \SI{\convertto{cm}{\step}}{\centi\meter} x
+				      \SI{\convertto{cm}{\step}}{\centi\meter}
+			};
+			\stepcounter{mycounter}
+			\setlength{\mycounterl}{\value{mycounter}cm}
+			
+			\ifthenelse{\equal{\mode}{deg}}{%
+				\node[right] at (0,-0.5\step-\mycounterl) {
+					1 cell = \SI{1}{\degree} at \SI{\distance}{\centi\meter}
+				};
+			\stepcounter{mycounter}
+			\setlength{\mycounterl}{\value{mycounter}cm}
+			}
+			
+				\node[right] at (0,-0.5\step-\mycounterl) {
+					Markers are \markerSide x\markerSide~cells, which is
+					\convertto{cm}{\markerSideCm}x\SI{\convertto{cm}{\markerSideCm}}{\centi\meter}
+				};
+		\else
+			\setcounter{mycounter}{0}
+			\setlength{\mycounterl}{\value{mycounter}cm}
+			
+			\node[right] at (0,-0.5\step-\mycounterl) {
+				Markers are 
+				\convertto{cm}{\markerSideCm}x\SI{\convertto{cm}{\markerSideCm}}{\centi\meter}
+			};
+		\fi
 	\fi
 
 
