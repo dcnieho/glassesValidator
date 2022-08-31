@@ -111,7 +111,7 @@
 		\draw[step=\step, line width=3pt] (0cm,0cm) grid (\step*\gridCols,\step*\gridRows);
 	\fi
 	
-\csvreader[no head]{../config/\markerPosFile}{1=\ID, 2=\x, 3=\y, 4=\rotang}%
+\csvreader{../config/\markerPosFile}{ID=\ID, x=\x, y=\y, rotation_angle=\rotang}%
 {
 	\coordinate (m) at (
 	\x*\step,
@@ -122,7 +122,7 @@
 };
 
 
-\csvreader[no head]{../config/\targetPosFile}{1=\ID, 2=\x, 3=\y, 4=\tColor}%
+\csvreader{../config/\targetPosFile}{ID=\ID, x=\x, y=\y, color=\tColor}%
 {
 	\gazeTarget{\x*\step}{\y*\step}{\tColor};
 };
