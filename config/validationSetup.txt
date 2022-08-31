@@ -2,8 +2,6 @@ distance = 60                   % viewing distance, in cm
 mode = deg                      % cm or deg, sets unit for gridCols, gridRows, markerSide and thalerDiameter below
 
 markerBorderBits = 1
-gridCols = 34                   % in cm or deg, see mode
-gridRows = 29                   % in cm or deg, see mode
 markerSide = 4                  % in cm or deg, see mode
 
 % files containing marker and gaze target positions
@@ -15,6 +13,8 @@ targetDiameter = 1              % in cm or deg, see mode
 useExactTobiiSize = 0           % only used if targetType is Tobii
 
 showGrid = 0
+gridCols = 34                   % in cm or deg, see mode
+gridRows = 29                   % in cm or deg, see mode
 showAnnotations = 0
 
 

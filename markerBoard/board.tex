@@ -5,7 +5,7 @@
 \usepackage{readarray}	% for key=value settings file
 
 \usepackage{siunitx}
-\sisetup{detect-all}
+\sisetup{detect-all,group-digits=integer}
 
 \usepackage{ifthen}
 
@@ -130,24 +130,51 @@
 	
 	% annotations
 	\if\showAnnotations1
-		\node[left] at (-0\step, 1\step-0.5\step)     { 1 };
-		\node[left] at (-0\step, \gridRows\step-0.5\step) { \gridRows };
-	
-		\node[] at (1\step-0.5\step    ,-0.5\step) { 1 };
-		\node[] at (\gridCols\step-0.5\step,-0.5\step) { \gridCols };
-	
-		\node[right] at (0,-0.5\step-1cm) {
-			\gridAnnot
-		};
-		\node[right] at (0,-0.5\step-2cm) {
-			Cell: \SI{\convertto{cm}{\step}}{\centi\meter} x
-			      \SI{\convertto{cm}{\step}}{\centi\meter}
-		};
-		\ifthenelse{\equal{\mode}{deg}}{%
-			\node[right] at (0,-0.5\step-3cm) {
-				1 cell = \SI{1}{\degree} at \SI{\distance}{\centi\meter}
+		\newcounter{mycounter}
+		\newlength{\mycounterl}
+		\if\showGrid1
+			\node[left] at (-0\step, 1\step-0.5\step)     { 1 };
+			\node[left] at (-0\step, \gridRows\step-0.5\step) { \gridRows };
+		
+			\node[] at (1\step-0.5\step    ,-0.5\step) { 1 };
+			\node[] at (\gridCols\step-0.5\step,-0.5\step) { \gridCols };
+		
+			\setcounter{mycounter}{1}
+			\setlength{\mycounterl}{\value{mycounter}cm}
+			\node[right] at (0,-0.5\step-\mycounterl) {
+				\gridAnnot
 			};
-		}
+			\stepcounter{mycounter}
+			\setlength{\mycounterl}{\value{mycounter}cm}
+		
+			\node[right] at (0,-0.5\step-\mycounterl) {
+				Cell: \SI{\convertto{cm}{\step}}{\centi\meter} x
+				      \SI{\convertto{cm}{\step}}{\centi\meter}
+			};
+			\stepcounter{mycounter}
+			\setlength{\mycounterl}{\value{mycounter}cm}
+			
+			\ifthenelse{\equal{\mode}{deg}}{%
+				\node[right] at (0,-0.5\step-\mycounterl) {
+					1 cell = \SI{1}{\degree} at \SI{\distance}{\centi\meter}
+				};
+			\stepcounter{mycounter}
+			\setlength{\mycounterl}{\value{mycounter}cm}
+			}
+			
+				\node[right] at (0,-0.5\step-\mycounterl) {
+					Markers are \markerSide x\markerSide~cells, which is
+					\convertto{cm}{\markerSideCm}x\SI{\convertto{cm}{\markerSideCm}}{\centi\meter}
+				};
+		\else
+			\setcounter{mycounter}{0}
+			\setlength{\mycounterl}{\value{mycounter}cm}
+			
+			\node[right] at (0,-0.5\step-\mycounterl) {
+				Markers are 
+				\convertto{cm}{\markerSideCm}x\SI{\convertto{cm}{\markerSideCm}}{\centi\meter}
+			};
+		\fi
 	\fi
 
 
