@@ -1,0 +1,157 @@
+\documentclass[a2,landscape]{sciposter}
+\setmargins[1cm]
+
+\usepackage{csvsimple}	% for marker and target positions
+\usepackage{readarray}	% for key=value settings file
+
+\usepackage{siunitx}
+\sisetup{detect-all}
+
+\usepackage{ifthen}
+
+\usepackage{tikz}
+
+% much of the poster setup is read from the file validationSetup.txt.
+% read setup
+% NB: distance in there is in cm, gridCols, gridRows and markerSide are in degrees visual angle
+\readarraysepchar{=}
+\readdef{../config/validationSetup.txt}{\fileData}
+\readarray*\fileData\setupInfo[-,2]
+% turn each key into its own command
+%NB: this provides \distance, \markerPosFile and \targetPosFile,
+% amongst others
+\newcounter{keyCount}
+\setcounter{keyCount}{0}%
+\whiledo{\value{keyCount} < \setupInfoROWS}{%
+	\stepcounter{keyCount}%
+	\typeout{\arabic{keyCount}: \setupInfo[\arabic{keyCount},1] -> \setupInfo[\arabic{keyCount},2]}
+	\expandafter\xdef\csname \setupInfo[\arabic{keyCount},1]\endcsname{%
+		\setupInfo[\arabic{keyCount},2]}%
+}
+\def\markerSideCm{\markerSide\step}
+\def\markerFilename#1{all-markers/#1.png}
+\def\thalerRadCm{.5*\thalerDiameter\step}
+
+\makeatletter
+\def\convertto#1#2{\strip@pt\dimexpr #2*65536/\number\dimexpr 1#1}
+\makeatother
+
+\newlength{\step}
+\ifthenelse{\equal{\mode}{deg}}{%
+	% convert 1 deg at viewing distance to cm
+	% 2*tan(angle/2)*distance
+	\pgfmathparse{(2*tan(.5)*\distance)}
+	\edef\gridFac{\pgfmathresult}
+	\setlength{\step}{\gridFac cm}
+	\def\gridAnnot{Grid: \SI{\gridCols}{\degree} x \SI{\gridRows}{\degree}}
+}
+{ % else
+	% cm mode, hopefully. emit warning if not
+	\ifthenelse{\equal{\mode}{cm}}{}
+	{ % else, mode is not cm
+		\GenericError{}{mode is not set to deg or cm, but \mode. Unsupported}
+	}
+    % all user-provides measures are in cm, so step is simply 1cm
+	\setlength{\step}{1cm}
+	\def\gridAnnot{Grid: \SI{\gridCols}{\centi\meter} x \SI{\gridRows}{\centi\meter}}
+}
+
+% setup gaze targets
+\tikzset{invclip/.style={clip,insert path={{[reset cm]
+				(-16383.99999pt,-16383.99999pt) rectangle (16383.99999pt,16383.99999pt)
+}}}}
+\newcommand{\gazeTarget}[3]
+{
+	\ifthenelse{\equal{\targetType}{Tobii}}{%
+		\ifthenelse{\equal{\useExactTobiiSize}{1}}{%
+		% exact size specifications of Tobii calibration target
+			\fill[white] (#1-27.25mm,#2-27.25mm) rectangle (#1+27.25mm,#2+27.25mm);
+			\fill[#3]    (#1,#2) circle (21.5mm);
+			\fill[white] (#1,#2) circle (11.5mm);
+			\fill[#3]    (#1,#2) circle (1.5mm);
+		}
+		{ % else
+			% instead, something defined in visual angle that looks good
+			\fill[white] (#1-.8\step,#2-.8\step) rectangle (#1+.8\step,#2+.8\step);
+			\fill[#3]    (#1,#2) circle (.8\step);
+			\fill[white] (#1,#2) circle (.43\step);
+			\fill[#3]    (#1,#2) circle (.055\step);
+		}
+	}{}
+	\ifthenelse{\equal{\targetType}{Thaler}}{%
+		\fill[white]    (#1,#2) circle (\thalerRadCm);
+		\begin{scope}
+			% draw circle, clipping away a cross from it
+			\begin{pgfinterruptboundingbox}
+				\path[invclip]
+				(#1-1.1*\thalerRadCm,#2-.25*\thalerRadCm) --
+				(#1+1.1*\thalerRadCm,#2-.25*\thalerRadCm) --
+				(#1+1.1*\thalerRadCm,#2+.25*\thalerRadCm) --
+				(#1-1.1*\thalerRadCm,#2+.25*\thalerRadCm);
+				\path[invclip]
+				(#1-.25*\thalerRadCm,#2-1.1*\thalerRadCm) --
+				(#1+.25*\thalerRadCm,#2-1.1*\thalerRadCm) --
+				(#1+.25*\thalerRadCm,#2+1.1*\thalerRadCm) --
+				(#1-.25*\thalerRadCm,#2+1.1*\thalerRadCm);
+			\end{pgfinterruptboundingbox} 
+			\fill[#3] (#1,#2) circle (\thalerRadCm);
+		\end{scope}
+		\fill[#3]    (#1,#2) circle (.25*\thalerRadCm);
+	}{}
+}
+
+
+\begin{document}
+
+\centering
+\begin{tikzpicture}[
+		draw,color=black!30
+	]
+	\if\showGrid1
+		\draw[step=\step, line width=3pt] (0cm,0cm) grid (\step*\gridCols,\step*\gridRows);
+	\fi
+	
+\csvreader[no head]{../config/\markerPosFile}{1=\ID, 2=\x, 3=\y, 4=\rotang}%
+{
+	\coordinate (m) at (
+	\x*\step,
+	\y*\step
+	);
+	
+	\node[inner sep=0pt] (m2) at (m)			{\includegraphics[width=\markerSideCm,angle=\rotang,origin=c]{\markerFilename{\ID}}};
+};
+
+
+\csvreader[no head]{../config/\targetPosFile}{1=\ID, 2=\x, 3=\y, 4=\tColor}%
+{
+	\gazeTarget{\x*\step}{\y*\step}{\tColor};
+};
+
+
+	
+	% annotations
+	\if\showAnnotations1
+		\node[left] at (-0\step, 1\step-0.5\step)     { 1 };
+		\node[left] at (-0\step, \gridRows\step-0.5\step) { \gridRows };
+	
+		\node[] at (1\step-0.5\step    ,-0.5\step) { 1 };
+		\node[] at (\gridCols\step-0.5\step,-0.5\step) { \gridCols };
+	
+		\node[right] at (0,-0.5\step-1cm) {
+			\gridAnnot
+		};
+		\node[right] at (0,-0.5\step-2cm) {
+			Cell: \SI{\convertto{cm}{\step}}{\centi\meter} x
+			      \SI{\convertto{cm}{\step}}{\centi\meter}
+		};
+		\ifthenelse{\equal{\mode}{deg}}{%
+			\node[right] at (0,-0.5\step-3cm) {
+				1 cell = \SI{1}{\degree} at \SI{\distance}{\centi\meter}
+			};
+		}
+	\fi
+
+
+\end{tikzpicture}
+
+\end{document}

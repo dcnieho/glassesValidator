@@ -1,0 +1,25 @@
+distance = 60                   % viewing distance, in cm
+mode = deg                      % cm or deg, sets unit for gridCols, gridRows, markerSide and thalerDiameter below
+
+markerBorderBits = 1
+gridCols = 34                   % in cm or deg, see mode
+gridRows = 29                   % in cm or deg, see mode
+markerSide = 4                  % in cm or deg, see mode
+
+% files containing marker and gaze target positions
+markerPosFile = markerPositions.csv
+targetPosFile = targetPositions.csv
+
+% targetType can be Tobii or Thaler
+targetType = Thaler
+useExactTobiiSize = 0           % only used if targetType is Tobii
+thalerDiameter = 1   	        % in cm or deg, see mode (only used if targetType is Thaler)
+
+showGrid = 0
+showAnnotations = 0
+
+
+% options only used for Python code
+minNumMarkers = 3
+centerTarget = 5                % ID of marker in targetPosFile that is origin of board
+referenceBoardWidth = 1920      % pixels
