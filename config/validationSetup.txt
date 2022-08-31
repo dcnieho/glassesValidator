@@ -10,10 +10,9 @@ markerSide = 4                  % in cm or deg, see mode
 markerPosFile = markerPositions.csv
 targetPosFile = targetPositions.csv
 
-% targetType can be Tobii or Thaler
-targetType = Thaler
+targetType = Thaler             % targetType can be Tobii or Thaler
+targetDiameter = 1              % in cm or deg, see mode
 useExactTobiiSize = 0           % only used if targetType is Tobii
-thalerDiameter = 1   	        % in cm or deg, see mode (only used if targetType is Thaler)
 
 showGrid = 0
 showAnnotations = 0

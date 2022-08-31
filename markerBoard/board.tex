@@ -29,7 +29,7 @@
 }
 \def\markerSideCm{\markerSide\step}
 \def\markerFilename#1{all-markers/#1.png}
-\def\thalerRadCm{.5*\thalerDiameter\step}
+\def\targetRadCm{.5*\targetDiameter\step}
 
 \makeatletter
 \def\convertto#1#2{\strip@pt\dimexpr #2*65536/\number\dimexpr 1#1}
@@ -71,31 +71,31 @@
 		}
 		{ % else
 			% instead, something defined in visual angle that looks good
-			\fill[white] (#1-.8\step,#2-.8\step) rectangle (#1+.8\step,#2+.8\step);
-			\fill[#3]    (#1,#2) circle (.8\step);
-			\fill[white] (#1,#2) circle (.43\step);
-			\fill[#3]    (#1,#2) circle (.055\step);
+			\fill[white] (#1-\targetRadCm,#2-\targetRadCm) rectangle (#1+\targetRadCm,#2+\targetRadCm);
+			\fill[#3]    (#1,#2) circle (\targetRadCm);
+			\fill[white] (#1,#2) circle (.535*\targetRadCm);
+			\fill[#3]    (#1,#2) circle (.0698*\targetRadCm);
 		}
 	}{}
 	\ifthenelse{\equal{\targetType}{Thaler}}{%
-		\fill[white]    (#1,#2) circle (\thalerRadCm);
+		\fill[white]    (#1,#2) circle (\targetRadCm);
 		\begin{scope}
 			% draw circle, clipping away a cross from it
 			\begin{pgfinterruptboundingbox}
 				\path[invclip]
-				(#1-1.1*\thalerRadCm,#2-.25*\thalerRadCm) --
-				(#1+1.1*\thalerRadCm,#2-.25*\thalerRadCm) --
-				(#1+1.1*\thalerRadCm,#2+.25*\thalerRadCm) --
-				(#1-1.1*\thalerRadCm,#2+.25*\thalerRadCm);
+				(#1-1.1*\targetRadCm,#2-.25*\targetRadCm) --
+				(#1+1.1*\targetRadCm,#2-.25*\targetRadCm) --
+				(#1+1.1*\targetRadCm,#2+.25*\targetRadCm) --
+				(#1-1.1*\targetRadCm,#2+.25*\targetRadCm);
 				\path[invclip]
-				(#1-.25*\thalerRadCm,#2-1.1*\thalerRadCm) --
-				(#1+.25*\thalerRadCm,#2-1.1*\thalerRadCm) --
-				(#1+.25*\thalerRadCm,#2+1.1*\thalerRadCm) --
-				(#1-.25*\thalerRadCm,#2+1.1*\thalerRadCm);
+				(#1-.25*\targetRadCm,#2-1.1*\targetRadCm) --
+				(#1+.25*\targetRadCm,#2-1.1*\targetRadCm) --
+				(#1+.25*\targetRadCm,#2+1.1*\targetRadCm) --
+				(#1-.25*\targetRadCm,#2+1.1*\targetRadCm);
 			\end{pgfinterruptboundingbox} 
-			\fill[#3] (#1,#2) circle (\thalerRadCm);
+			\fill[#3] (#1,#2) circle (\targetRadCm);
 		\end{scope}
-		\fill[#3]    (#1,#2) circle (.25*\thalerRadCm);
+		\fill[#3]    (#1,#2) circle (.25*\targetRadCm);
 	}{}
 }
 
