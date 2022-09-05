@@ -7,28 +7,25 @@ import numpy as np
 import csv
 import time
 
-import utils
-
-gShowVisualization  = False     # if true, draw each frame and overlay info about detected markers and board
-gShowReference      = True
-qShowOnlyIntervals  = True      # if true, shows only frames in the marker intervals (if available)
-gFPSFac             = 1
+from .. import utils
 
 
-def process(inputDir,basePath):
-    global gShowVisualization
-    global gShowReference
-    global gFPSFac
+def process(inputDir,configDir=None,showVisualization=False,showReference=True,showOnlyIntervals=True,FPSFac=1):
+    # if showVisualization, draw each frame + gaze and overlay info about detected markers and board
+    # if showReference, gaze in board space is also drawn in a separate window
+    # if showOnlyIntervals, shows only frames in the marker intervals (if available)
+    inputDir  = Path(inputDir)
+    if configDir is not None:
+        configDir = pathlib.Path(configDir)
 
     print('processing: {}'.format(inputDir.name))
     
-    configDir = basePath / "config"
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = utils.getValidationSetup(configDir)
 
-    if gShowVisualization:
+    if showVisualization:
         cv2.namedWindow("frame")
-        if gShowReference:
+        if showReference:
             cv2.namedWindow("reference")
 
         reference   = utils.Reference(configDir, validationSetup)
@@ -42,14 +39,14 @@ def process(inputDir,basePath):
 
     # get interval coded to be analyzed, if any
     analyzeFrames   = utils.readMarkerIntervalsFile(inputDir / "markerInterval.tsv")
-    hasAnalyzeFrames= qShowOnlyIntervals and analyzeFrames is not None
+    hasAnalyzeFrames= showOnlyIntervals and analyzeFrames is not None
 
     # open video, if wanted
-    if gShowVisualization:
+    if showVisualization:
         cap         = cv2.VideoCapture(str(inputDir / 'worldCamera.mp4'))
         width       = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height      = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        ifi         = 1000./cap.get(cv2.CAP_PROP_FPS)/gFPSFac
+        ifi         = 1000./cap.get(cv2.CAP_PROP_FPS)/FPSFac
 
     # Read gaze data
     print('  gazeData')
@@ -69,7 +66,7 @@ def process(inputDir,basePath):
     stopAllProcessing = False
     for frame_idx in range(maxFrameIdx+1):
         startTime = time.perf_counter()
-        if gShowVisualization:
+        if showVisualization:
             ret, frame = cap.read()
             if (not ret) or (hasAnalyzeFrames and frame_idx > analyzeFrames[-1]):
                 # done
@@ -88,7 +85,7 @@ def process(inputDir,basePath):
                 if not inIval:
                     # no need to show this frame
                     continue
-            if gShowReference:
+            if showReference:
                 refImg = reference.getImgCopy()
             
 
@@ -96,7 +93,7 @@ def process(inputDir,basePath):
             for gaze in gazes[frame_idx]:
 
                 # draw gaze point on scene video
-                if gShowVisualization:
+                if showVisualization:
                     gaze.draw(frame, subPixelFac=subPixelFac, camRot=cameraRotation, camPos=cameraPosition, cameraMatrix=cameraMatrix, distCoeff=distCoeff)
                 
                 # if we have pose information, figure out where gaze vectors
@@ -110,17 +107,17 @@ def process(inputDir,basePath):
                     gazeWorld = utils.gazeToPlane(gaze,poses[frame_idx],cameraRotation,cameraPosition, cameraMatrix, distCoeff)
                     
                     # draw gazes on video and reference image
-                    if gShowVisualization:
+                    if showVisualization:
                         gazeWorld.drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
-                        if gShowReference:
+                        if showReference:
                             gazeWorld.drawOnReferencePlane(refImg, reference, subPixelFac)
 
                     # store gaze-on-plane to csv
                     writeData.extend(gazeWorld.getWriteData())
                     csv_writer.writerow( writeData )
 
-        if gShowVisualization:
-            if gShowReference:
+        if showVisualization:
+            if showReference:
                 cv2.imshow("reference", refImg)
 
             # if we have board pose, draw board origin on video
@@ -155,7 +152,7 @@ def process(inputDir,basePath):
             print('  frame {}'.format(frame_idx))
 
     csv_file.close()
-    if gShowVisualization:
+    if showVisualization:
         cap.release()
         cv2.destroyAllWindows()
 

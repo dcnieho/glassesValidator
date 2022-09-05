@@ -1,0 +1,10 @@
+git+https://github.com/pyimgui/pyimgui.git@dev/version-2.0#egg=imgui
+numpy
+glfw
+opencv-contrib-python>=4.6.0
+pandas
+matplotlib
+ffpyplayer
+I2MC
+scipy
+msgpack

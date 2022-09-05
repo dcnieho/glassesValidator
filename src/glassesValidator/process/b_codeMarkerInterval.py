@@ -6,7 +6,7 @@ import numpy as np
 import cv2
 import csv
 
-import utils
+from .. import utils
 
 from ffpyplayer.player import MediaPlayer
 
@@ -20,15 +20,15 @@ from ffpyplayer.player import MediaPlayer
 # (which can be run before this script, they will just process the whole video)
 # will also be shown if available.
 
-gShowReference      = True      # if true, also draw reference board with gaze overlaid on it (if available)
 
-
-def process(inputDir,basePath):
-    global gShowReference
+def process(inputDir,configDir=None, showReference=False):
+    # if showReference, also draw reference board with gaze overlaid on it (if available)
+    inputDir  = Path(inputDir)
+    if configDir is not None:
+        configDir = pathlib.Path(configDir)
 
     print('processing: {}'.format(inputDir.name))
     
-    configDir = basePath / "config"
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = utils.getValidationSetup(configDir)
     reference = utils.Reference(configDir, validationSetup)
@@ -61,8 +61,8 @@ def process(inputDir,basePath):
     # 1. OpenCV window for scene video
     cv2.namedWindow("frame",cv2.WINDOW_NORMAL)
     # 2. if wanted and available, second OpenCV window for reference board with gaze on that plane
-    gShowReference &= hasWorldGaze  # no reference board if we don't have world gaze, it'd be empty and pointless
-    if gShowReference:
+    showReference &= hasWorldGaze  # no reference board if we don't have world gaze, it'd be empty and pointless
+    if showReference:
         cv2.namedWindow("reference")
     # 3. timestamp info for relating audio to video frames
     t2i = utils.Timestamp2Index( inputDir / 'frameTimestamps.tsv' )
@@ -92,7 +92,7 @@ def process(inputDir,basePath):
         if frame is not None:
             # the audio is my shepherd and nothing shall I lack :-)
             frame_idx = t2i.find(pts*1000)  # pts is in seconds, our frame timestamps are in ms
-            if gShowReference:
+            if showReference:
                 refImg = reference.getImgCopy()
 
             # if we have board pose, draw board origin on video
@@ -108,7 +108,7 @@ def process(inputDir,basePath):
             if hasWorldGaze and frame_idx in gazesWorld:
                 if hasCamCal:
                     gazesWorld[frame_idx][0].drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
-                if gShowReference:
+                if showReference:
                     gazesWorld[frame_idx][0].drawOnReferencePlane(refImg, reference, subPixelFac)
 
             analysisIntervalIdx = None
@@ -144,7 +144,7 @@ def process(inputDir,basePath):
                         cv2.resizeWindow('frame', width, height)
                     hasResized = True
                         
-            if gShowReference:
+            if showReference:
                 cv2.imshow("reference", refImg)
 
         key = cv2.waitKey(1) & 0xFF

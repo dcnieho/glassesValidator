@@ -16,23 +16,26 @@ import cv2
 import pandas as pd
 import numpy as np
 
-import utils
+from .. import utils
 
 
-def preprocessData(inputDir, outputDir):
+def preprocessData(inputDir, outputDir, camCalFile=None):
     if shutil.which('ffmpeg') is None:
         RuntimeError('ffmpeg must be on path to prep SeeTrue recording for processing with GlassesValidator')
 
     """
     Run all preprocessing steps on SeeTrue data
     """
+    inputDir  = Path(inputDir)
+    outputDir = Path(outputDir)
+
     print('processing: {}'.format(inputDir.name))
     ### copy the raw data to the output directory
     print('Copying raw data...')
-    copySeeTrueRecordings(inputDir, outputDir)
+    copySeeTrueRecordings(inputDir, outputDir, camCalFile)
 
 
-def copySeeTrueRecordings(inputDir, outputDir):
+def copySeeTrueRecordings(inputDir, baseOutputDir, camCalFile):
     """
     Copy the relevant files from the specified input dir to the specified output dirs
     NB: a SeeTrue directory may contain multiple recordings
@@ -58,14 +61,18 @@ def copySeeTrueRecordings(inputDir, outputDir):
         frame = next(sceneVidDir.glob('*.jpeg'))
         h,w,_ = cv2.imread(str(frame)).shape
 
-        outputDir = outputDir / ('SeeTrue_%s_%s' % (participant,recording))
+        outputDir = baseOutputDir / ('SeeTrue_%s_%s' % (participant,recording))
         if not outputDir.is_dir():
             outputDir.mkdir()
         print('Input data will be copied to: {}'.format(outputDir))
 
+        # copy scene camera calibration file, if any
+        if camCalFile is not None:
+            shutil.copyfile(str(camCalFile), str(outputDir / 'calibration.xml'))
+
         # prep gaze data and get video frame timestamps from it
         print('  Prepping gaze data...')
-        gazeDf, frameTimestamps = formatGazeData(outputDir, r, [w,h])
+        gazeDf, frameTimestamps = formatGazeData(r, [w,h])
 
         # make scene video
         print('  Prepping scene video...')
@@ -176,7 +183,7 @@ def copySeeTrueRecordings(inputDir, outputDir):
 
 
 
-def formatGazeData(outputDir, inputFile, sceneVideoDimensions):
+def formatGazeData(inputFile, sceneVideoDimensions):
     """
     load gazedata file
     format to get the gaze coordinates w.r.t. world camera, and timestamps for

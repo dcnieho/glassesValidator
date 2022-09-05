@@ -24,13 +24,16 @@ import configparser
 from io import StringIO
 from scipy.spatial.transform import Rotation
 
-import utils
+from .. import utils
 
 
 def preprocessData(inputDir, outputDir):
     """
     Run all preprocessing steps on tobii data
     """
+    inputDir  = Path(inputDir)
+    outputDir = Path(outputDir)
+
     print('processing: {}'.format(inputDir.name))
     ### copy the raw data to the output directory
     print('Copying raw data...')
@@ -58,6 +61,8 @@ def copySMIRecordings(inputDir, outputDir):
     Copy the relevant files from the specified input dir to the specified output dirs
     NB: an SMI directory may contain multiple recordings
     """
+    if not inputDir.is_dir():
+        raise RuntimeError('The directory "%s" was not found' % inputDir)
     participant = inputDir.name
     
     # get recordings. We expect the user to rename their exports to have the same format

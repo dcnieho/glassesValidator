@@ -8,10 +8,10 @@ https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFCha
 """
 import binascii
 
-import mp4analyser.iso
-import mp4analyser.mpeglookups
-from mp4analyser.util import *
-from mp4analyser.core import *
+from . import iso
+from . import mpeglookups
+from .util import *
+from .core import *
 
 
 def box_factory_non_iso(fp, header, parent):
@@ -59,7 +59,7 @@ class Avc1Box(Mp4FullBox):
             bytes_left = self.start_of_box + self.size - fp.tell()
             while bytes_left > 7:
                 current_header = Header(fp)
-                current_box = mp4analyser.iso.box_factory(fp, current_header, self)
+                current_box = iso.box_factory(fp, current_header, self)
                 self.child_boxes.append(current_box)
                 bytes_left -= current_box.size
         finally:
@@ -251,7 +251,7 @@ class Mp4aBox(Mp4Box):
             bytes_left = self.start_of_box + self.size - fp.tell()
             while bytes_left > 7:
                 current_header = Header(fp)
-                current_box = mp4analyser.iso.box_factory(fp, current_header, self)
+                current_box = iso.box_factory(fp, current_header, self)
                 self.child_boxes.append(current_box)
                 bytes_left -= current_box.size
         finally:
@@ -294,12 +294,12 @@ class EsdsBox(Mp4FullBox):
                 if this_descriptor_dict['tag_id'] == 4:
                     # it is the elementary stream descriptor
                     mp4ra_type = int.from_bytes(payload[0:1], byteorder='big')
-                    this_descriptor_dict['mp4ra_registered_type'] = mp4analyser.mpeglookups.mp4ra_table[mp4ra_type] \
-                        if mp4ra_type in mp4analyser.mpeglookups.mp4ra_table else mp4ra_type
+                    this_descriptor_dict['mp4ra_registered_type'] = mpeglookups.mp4ra_table[mp4ra_type] \
+                        if mp4ra_type in mpeglookups.mp4ra_table else mp4ra_type
                     type_byte = int.from_bytes(payload[1:2], byteorder='big')
                     es_type = type_byte >> 2
-                    this_descriptor_dict['es_type'] = mp4analyser.mpeglookups.es_table[es_type] \
-                        if es_type in mp4analyser.mpeglookups.es_table else es_type
+                    this_descriptor_dict['es_type'] = mpeglookups.es_table[es_type] \
+                        if es_type in mpeglookups.es_table else es_type
                     this_descriptor_dict['upstream_flag'] = type_byte & 2
                     this_descriptor_dict['specific_info_flag'] = type_byte & 1
                     this_descriptor_dict['buffer_size'] = int.from_bytes(payload[2:5], byteorder='big')
@@ -324,9 +324,9 @@ class EsdsBox(Mp4FullBox):
                                 field_size = 6
                                 sound_codec = ((two_bytes >> (16 - bits_read - field_size)) & 63) + 32
                                 bits_read += field_size
-                            decoder_specific_dict['sound_codec'] = mp4analyser.mpeglookups.sound_codec_table[sound_codec]
+                            decoder_specific_dict['sound_codec'] = mpeglookups.sound_codec_table[sound_codec]
                             field_size = 4
-                            decoder_specific_dict['freq_id'] = mp4analyser.mpeglookups.freq_table[
+                            decoder_specific_dict['freq_id'] = mpeglookups.freq_table[
                                 (two_bytes >> (16 - bits_read - field_size)) & 15]
                             bits_read += field_size
                             if decoder_specific_dict['freq_id'] == 15:
@@ -341,8 +341,8 @@ class EsdsBox(Mp4FullBox):
                                 two_bytes = int.from_bytes(payload[b+4:b+6], byteorder='big')
                             field_size = 4
                             sound_chan = (two_bytes >> (16 - bits_read - field_size)) & 15
-                            decoder_specific_dict['channels'] = mp4analyser.mpeglookups.sound_channel_table[sound_chan] \
-                                if sound_chan in mp4analyser.mpeglookups.sound_channel_table else sound_chan
+                            decoder_specific_dict['channels'] = mpeglookups.sound_channel_table[sound_chan] \
+                                if sound_chan in mpeglookups.sound_channel_table else sound_chan
                         else:
                             decoder_specific_dict['payload'] = binascii.b2a_hex(payload[b+1:]).decode('utf-8')
                         this_descriptor_dict['decoder_specific_descriptor'] = decoder_specific_dict
@@ -518,7 +518,7 @@ class ItemBox(Mp4Box):
             bytes_left = self.size - self.header.header_size
             while bytes_left > 7:
                 current_header = Header(fp)
-                current_box = mp4analyser.iso.box_factory(fp, current_header, self)
+                current_box = iso.box_factory(fp, current_header, self)
                 self.child_boxes.append(current_box)
                 bytes_left -= current_box.size
         finally:

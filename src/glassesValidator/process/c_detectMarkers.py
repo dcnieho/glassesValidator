@@ -4,21 +4,18 @@ import cv2
 import numpy as np
 import csv
 import time
-import utils
-
-gVisualizeDetection = False     # if true, draw each frame and overlay info about detected markers and board
-gShowRejectedMarkers= False     # if true, rejected marker candidates are also drawn on frame. Possibly useful for debug
-gFPSFac             = 1
+from .. import utils
 
 
-def process(inputDir,basePath):
-    global gVisualizeDetection
-    global gShowRejectedMarkers
-    global gFPSFac
+def process(inputDir,configDir=None,visualizeDetection=False,showRejectedMarkers=False,FPSFac=1):
+    # if visualizeDetection, draw each frame and overlay info about detected markers and board
+    # if showRejectedMarkers, rejected marker candidates are also drawn on frame. Possibly useful for debug
+    inputDir  = Path(inputDir)
+    if configDir is not None:
+        configDir = pathlib.Path(configDir)
 
     print('processing: {}'.format(inputDir.name))
 
-    configDir = basePath / "config"
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = utils.getValidationSetup(configDir)
     
@@ -31,7 +28,7 @@ def process(inputDir,basePath):
         raise RuntimeError('the file "{}" could not be opened'.format(str(inVideo)))
     width  = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    ifi    = 1000./cap.get(cv2.CAP_PROP_FPS)/gFPSFac
+    ifi    = 1000./cap.get(cv2.CAP_PROP_FPS)/FPSFac
     
     # get info about markers on our board
     reference       = utils.Reference(configDir, validationSetup)
@@ -104,13 +101,13 @@ def process(inputDir,basePath):
                             detectedCorners = corners, detectedIds = ids, rejectedCorners = rejectedImgPoints,
                             cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
 
-                    pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
+                    pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
                 
                     if pose.nMarkers>0:
                         # set pose
                         pose.setPose(rVec,tVec)
                         # and draw if wanted
-                        if gVisualizeDetection:
+                        if visualizeDetection:
                             # draw axis indicating board pose (origin and orientation)
                             utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, pose.rVec, pose.tVec, armLength, 3, subPixelFac)
 
@@ -123,7 +120,7 @@ def process(inputDir,basePath):
 
                 if status:
                     pose.hMat = H
-                    if gVisualizeDetection:
+                    if visualizeDetection:
                         # find where target is expected to be in the image
                         iH = np.linalg.inv(pose.hMat)
                         target = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
@@ -137,14 +134,14 @@ def process(inputDir,basePath):
                     csv_writer.writerow( pose.getWriteData() )
 
             # if any markers were detected, draw where on the frame
-            if gVisualizeDetection:
+            if visualizeDetection:
                 utils.drawArucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac, specialHighlight=[recoveredIds,(255,255,0)])
 
         # for debug, can draw rejected markers on frame
-        if gVisualizeDetection and gShowRejectedMarkers:
+        if visualizeDetection and showRejectedMarkers:
             cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
                 
-        if gVisualizeDetection:
+        if visualizeDetection:
             cv2.imshow(inputDir.name,frame)
             key = cv2.waitKey(max(1,int(round(ifi-(time.perf_counter()-startTime)*1000)))) & 0xFF
             if key == ord('q'):

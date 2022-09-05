@@ -23,13 +23,16 @@ import numpy as np
 import struct
 import math
 
-import utils
+from .. import utils
 
 
 def preprocessData(inputDir, outputDir):
     """
     Run all preprocessing steps on tobii data
     """
+    inputDir  = Path(inputDir)
+    outputDir = Path(outputDir)
+
     print('processing: {}'.format(inputDir.name))
     ### copy the raw data to the output directory
     print('Copying raw data...')

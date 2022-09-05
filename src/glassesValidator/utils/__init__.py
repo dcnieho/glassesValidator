@@ -4,12 +4,17 @@ import numpy as np
 import pandas as pd
 import csv
 import itertools
-import sys
 import warnings
+import pathlib
+import shutil
 from shlex import shlex
 import bisect
-import mp4analyser.iso
 from matplotlib import colors
+import importlib.resources
+import tempfile
+
+from .mp4analyser import iso
+from .. import config as gv_config
 
 
 def getXYZLabels(stringList,N=3):
@@ -143,14 +148,22 @@ class Marker:
         ret = '[%d]: center @ (%.2f, %.2f), rot %.0f deg' % (self.key, self.center[0], self.center[1], self.rot)
         return ret
 
-def getValidationSetup(configDir):
+def _readValidationSetupFile(file):
     # read key=value pairs into dict
-    with open(configDir / "validationSetup.txt") as f:
-        lexer = shlex(f)
-        lexer.whitespace += '='
-        lexer.wordchars += '.[],'   # don't split extensions of filenames in the input file, and accept stuff from python list syntax
-        lexer.commenters = '%'
-        validationSetup = dict(zip(lexer, lexer))
+    lexer = shlex(file)
+    lexer.whitespace += '='
+    lexer.wordchars += '.[],'   # don't split extensions of filenames in the input file, and accept stuff from python list syntax
+    lexer.commenters = '%'
+    return dict(zip(lexer, lexer))
+
+def getValidationSetup(configDir=None, setupFile='validationSetup.txt'):
+    if configDir is not None:
+        with (pathlib.Path(configDir) / setupFile).open() as f:
+            validationSetup = _readValidationSetupFile(f)
+    else:
+        # fall back on default config included with package
+        with importlib.resources.open_text(gv_config, setupFile) as f:
+            validationSetup = _readValidationSetupFile(f)
 
     # parse numerics into int or float
     for key,val in validationSetup.items():
@@ -162,6 +175,16 @@ def getValidationSetup(configDir):
             except:
                 pass # just keep value as a string
     return validationSetup
+
+def deployValidationConfig(outDir):
+    outDir = pathlib.Path(outDir)
+    if not outDir.is_dir():
+        raise RuntimeError('the requested directory "%s" does not exist'%outDir)
+
+    # copy over all config files
+    for r in ['markerPositions.csv', 'targetPositions.csv', 'validationSetup.txt']:
+        with importlib.resources.path(gv_config,r) as p:
+            shutil.copyfile(p,str(outDir/r))
 
 def corners_intersection(corners):
     line1 = ( corners[0], corners[2] )
@@ -186,10 +209,11 @@ def toNormPos(x,y,bbox):
     # (e.g. mm on an aruco board) to a normalized position
     # in an image of the plane, given the image's bounding box in
     # world units
-    # (0,0) is bottom left
+    # for input (0,0) is bottom left, for output (0,0) is top left
+    # bbox is [left, top, right, bottom]
 
-    extents = [bbox[2]-bbox[0], math.fabs(bbox[3]-bbox[1])]             # math.fabs to deal with bboxes where (-,-) is bottom left
-    pos     = [(x-bbox[0])/extents[0], math.fabs(y-bbox[1])/extents[1]] # math.fabs to deal with bboxes where (-,-) is bottom left
+    extents = [bbox[2]-bbox[0], bbox[1]-bbox[3]]
+    pos     = [(x-bbox[0])/extents[0], (bbox[1]-y)/extents[1]]    # bbox[1]-y instead of y-bbox[3] to flip y
     return pos
 
 def toImagePos(x,y,bbox,imSize,margin=[0,0]):
@@ -209,12 +233,12 @@ def arucoRefineDetectedMarkers(image, board, detectedCorners, detectedIds, rejec
                             image = image, board = board,
                             detectedCorners = detectedCorners, detectedIds = detectedIds, rejectedCorners = rejectedCorners,
                             cameraMatrix = cameraMatrix, distCoeffs = distCoeffs)
-    if corners:
+    if corners and corners[0].shape[0]==4:
         # there are versions out there where there is a bug in output shape of each set of corners, fix up
-        if corners[0].shape[0]==4:
-            corners = [np.reshape(c,(1,4,2)) for c in corners]
-        if rejectedImgPoints[0].shape[0]==4:
-            rejectedImgPoints = [np.reshape(c,(1,4,2)) for c in rejectedImgPoints]
+        corners = [np.reshape(c,(1,4,2)) for c in corners]
+    if rejectedImgPoints and rejectedImgPoints[0].shape[0]==4:
+        # same as for corners
+        rejectedImgPoints = [np.reshape(c,(1,4,2)) for c in rejectedImgPoints]
     
     return corners, ids, rejectedImgPoints, recoveredIds
 
@@ -228,7 +252,7 @@ def estimateHomography(known, detectedCorners, detectedIDs):
         raise ValueError('unexpected number of IDs (%d) given number of corner arrays (%d)' % (len(detectedIDs),len(detectedCorners)))
     for i in range(0, len(detectedIDs)):
         if detectedIDs[i] in known:
-            pts_src.extend( detectedCorners[i][0] )
+            pts_src.extend( [x.flatten() for x in detectedCorners[i]] )
             pts_dst.extend( known[detectedIDs[i]].corners )
 
     if len(pts_src) < 4:
@@ -358,7 +382,7 @@ def drawArucoDetectedMarkers(img,corners,ids,borderColor=(0,255,0), drawIDs = Tr
         # draw IDs if wanted
         if drawIDs:
             c = corners_intersection(corner)
-            cv2.putText(img, str(ids[i][0]), tuple(c), cv2.FONT_HERSHEY_SIMPLEX, 0.6, textColor, 2, lineType=cv2.LINE_AA)
+            cv2.putText(img, str(ids[i][0]), tuple(c.astype('int')), cv2.FONT_HERSHEY_SIMPLEX, 0.6, textColor, 2, lineType=cv2.LINE_AA)
 
 
 
@@ -376,7 +400,7 @@ class Gaze:
     def readDataFromFile(fileName):
         gazes = {}
         maxFrameIdx = 0
-        with open(fileName, 'r' ) as f:
+        with open(str(fileName), 'r' ) as f:
             reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
                 frame_idx   = float(entry['frame_idx'])
@@ -426,6 +450,9 @@ class Reference:
     aruco_dict         = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
 
     def __init__(self, configDir, validationSetup, imHeight = 400):
+        if configDir is not None:
+            configDir = pathlib.Path(configDir)
+
         # get marker width
         if validationSetup['mode'] == 'deg':
             self.cellSizeMm = 2.*math.tan(math.radians(.5))*validationSetup['distance']*10
@@ -437,12 +464,21 @@ class Reference:
         self._getKnownMarkers(configDir, validationSetup)
 
         # get image of markerboard
+        useTempDir = configDir is None
+        if useTempDir:
+            tempDir = tempfile.TemporaryDirectory()
+            configDir = pathlib.Path(tempDir.name)
+
         boardImage = configDir / self.boardImageFilename
         # 1 if doesn't exist, create
         if not boardImage.is_file():
-            self._storeReferenceBoard(configDir, validationSetup)
+            self._storeReferenceBoard(boardImage, validationSetup)
         # 2. read image
         self.img = cv2.imread(str(boardImage), cv2.IMREAD_COLOR)
+        
+        if useTempDir:
+            tempDir.cleanup()
+
         if imHeight==-1:
             self.scale = 1
         else:
@@ -469,8 +505,16 @@ class Reference:
 
         # read in target positions
         self.targets = {}
-        if (configDir / validationSetup['targetPosFile']).is_file():
+        hasTargets = False
+        if configDir is not None and (configDir / validationSetup['targetPosFile']).is_file():
             targets = pd.read_csv(str(configDir / validationSetup['targetPosFile']),index_col=0)
+            hasTargets = True
+        else:
+            with importlib.resources.path(gv_config,'targetPositions.csv') as p:
+                targets = pd.read_csv(str(p),index_col=0)
+                hasTargets = True
+
+        if hasTargets:
             center  = targets.loc[validationSetup['centerTarget'],['x','y']]
             targets.x = self.cellSizeMm * (targets.x.astype('float32') - center.x)
             targets.y = self.cellSizeMm * (targets.y.astype('float32') - center.y)
@@ -479,12 +523,21 @@ class Reference:
         else:
             center = pd.Series(data=[0.,0.],index=['x','y'])
     
+
         # read in aruco marker positions
         markerHalfSizeMm  = self.markerSize/2.
         self.knownMarkers = {}
         self.bbox         = []
-        if (configDir / validationSetup['markerPosFile']).is_file():
+        hasMarkers = False
+        if configDir is not None and (configDir / validationSetup['markerPosFile']).is_file():
             markerPos = pd.read_csv(str(configDir / validationSetup['markerPosFile']),index_col=0)
+            hasMarkers = True
+        else:
+            with importlib.resources.path(gv_config,'markerPositions.csv') as p:
+                markerPos = pd.read_csv(str(p),index_col=0)
+                hasMarkers = True
+
+        if hasMarkers:
             markerPos.x = self.cellSizeMm * (markerPos.x.astype('float32') - center.x)
             markerPos.y = self.cellSizeMm * (markerPos.y.astype('float32') - center.y)
             for idx, row in markerPos.iterrows():
@@ -496,10 +549,10 @@ class Reference:
                 rotr= -math.radians(rot)
                 R   = np.array([[math.cos(rotr), math.sin(rotr)], [-math.sin(rotr), math.cos(rotr)]])
                 # top left first, and clockwise: same order as detected aruco marker corners
-                tl = c + np.matmul(R,np.array( [ -markerHalfSizeMm ,  markerHalfSizeMm ] ))
-                tr = c + np.matmul(R,np.array( [  markerHalfSizeMm ,  markerHalfSizeMm ] ))
-                br = c + np.matmul(R,np.array( [  markerHalfSizeMm , -markerHalfSizeMm ] ))
-                bl = c + np.matmul(R,np.array( [ -markerHalfSizeMm , -markerHalfSizeMm ] ))
+                tl = c + np.matmul(R,np.array( [ -markerHalfSizeMm , -markerHalfSizeMm ] ))
+                tr = c + np.matmul(R,np.array( [  markerHalfSizeMm , -markerHalfSizeMm ] ))
+                br = c + np.matmul(R,np.array( [  markerHalfSizeMm ,  markerHalfSizeMm ] ))
+                bl = c + np.matmul(R,np.array( [ -markerHalfSizeMm ,  markerHalfSizeMm ] ))
         
                 self.knownMarkers[idx] = Marker(idx, c, corners=[ tl, tr, br, bl ], rot=rot)
     
@@ -508,9 +561,9 @@ class Reference:
             # that it does not have targets at its edges. Also assumes markers
             # are rotated by multiples of 90 degrees
             self.bbox.append(markerPos.x.min()-markerHalfSizeMm)
-            self.bbox.append(markerPos.y.max()+markerHalfSizeMm) # top is at positive
+            self.bbox.append(markerPos.y.min()-markerHalfSizeMm)
             self.bbox.append(markerPos.x.max()+markerHalfSizeMm)
-            self.bbox.append(markerPos.y.min()-markerHalfSizeMm) # bottom is at negative
+            self.bbox.append(markerPos.y.max()+markerHalfSizeMm)
     
     def getArucoBoard(self, unRotateMarkers=False):
         boardCornerPoints = []
@@ -528,7 +581,7 @@ class Reference:
         boardCornerPoints = np.pad(boardCornerPoints,((0,0),(0,0),(0,1)),'constant', constant_values=(0.,0.)) # Nx4x2 -> Nx4x3
         return cv2.aruco.Board_create(boardCornerPoints, self.aruco_dict, np.array(ids))
             
-    def _storeReferenceBoard(self, configDir, validationSetup):
+    def _storeReferenceBoard(self, boardImage, validationSetup):
         referenceBoard = self.getArucoBoard(unRotateMarkers = True)
         # get image with markers
         bboxExtents    = [self.bbox[2]-self.bbox[0], math.fabs(self.bbox[3]-self.bbox[1])]  # math.fabs to deal with bboxes where (-,-) is bottom left
@@ -606,7 +659,7 @@ class Reference:
             clr = tuple([int(i*255) for i in colors.to_rgb(self.targets[key].color)[::-1]])  # need BGR color ordering
             drawOpenCVCircle(refBoardImage, circlePos, 15, clr, -1, subPixelFac)
 
-        cv2.imwrite(str(configDir / 'referenceBoard.png'), refBoardImage)
+        cv2.imwrite(str(boardImage), refBoardImage)
 
 class GazeWorld:
     def __init__(self, ts, gaze3DRay=None, gaze3DHomography=None, lGazeOrigin=None, lGaze3D=None, rGazeOrigin=None, rGaze3D=None, gaze2DRay=None, gaze2DHomography=None, lGaze2D=None, rGaze2D=None):
@@ -665,7 +718,7 @@ class GazeWorld:
     def readDataFromFile(fileName,start=None,end=None,stopOnceExceeded=False):
         gazes = {}
         readSubset = start is not None and end is not None
-        with open(fileName, 'r' ) as f:
+        with open(str(fileName), 'r' ) as f:
             reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
                 frame_idx = int(entry['frame_idx'])
@@ -919,8 +972,8 @@ def readCameraCalibrationFile(fileName):
 
 def readMarkerIntervalsFile(fileName):
     analyzeFrames = []
-    if fileName.is_file():
-        with open(fileName, 'r' ) as f:
+    if pathlib.Path(fileName).is_file():
+        with open(str(fileName), 'r' ) as f:
             reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
                 analyzeFrames.append(int(float(entry['start_frame'])))

@@ -8,13 +8,16 @@ import cv2
 import numpy as np
 import pandas as pd
 
-import utils
+from .. import utils
 
 
-def process(inputDir,basePath):
+def process(inputDir,configDir=None):
+    inputDir  = Path(inputDir)
+    if configDir is not None:
+        configDir = pathlib.Path(configDir)
+
     print('processing: {}'.format(inputDir.name))
     
-    configDir = basePath / "config"
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = utils.getValidationSetup(configDir)
 
