@@ -25,6 +25,7 @@
     <Compile Include="src\glassesValidator\__init__.py" />
     <Compile Include="src\glassesValidator\version.py" />
     <Compile Include="src\glassesValidator\config\__init__.py" />
+    <Compile Include="src\glassesValidator\config\markerBoard\__init__.py" />
     <Compile Include="src\glassesValidator\GUI\__init__.py" />
     <Compile Include="src\glassesValidator\preprocess\SMI_ETG.py" />
     <Compile Include="src\glassesValidator\preprocess\SeeTrue.py" />
@@ -49,7 +50,6 @@
     <Compile Include="src\glassesValidator\utils\mp4analyser\summary.py" />
     <Compile Include="src\glassesValidator\utils\mp4analyser\util.py" />
     <Compile Include="utils\cameraCalibration\getCalibrationBoard.py" />
-    <Compile Include="utils\markerBoard\getMarkerImages.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="MANIFEST.in" />
@@ -58,11 +58,14 @@
     <Content Include="src\glassesValidator\config\markerPositions.csv" />
     <Content Include="src\glassesValidator\config\targetPositions.csv" />
     <Content Include="src\glassesValidator\config\validationSetup.txt" />
+    <Content Include="src\glassesValidator\config\markerBoard\board.tex" />
+    <Content Include="src\glassesValidator\config\markerBoard\board.pdf" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="src\" />
     <Folder Include="src\glassesValidator\" />
     <Folder Include="src\glassesValidator\config" />
+    <Folder Include="src\glassesValidator\config\markerBoard" />
     <Folder Include="src\glassesValidator\GUI" />
     <Folder Include="src\glassesValidator\preprocess" />
     <Folder Include="src\glassesValidator\process" />
@@ -70,7 +73,6 @@
     <Folder Include="src\glassesValidator\utils\mp4analyser" />
     <Folder Include="utils\" />
     <Folder Include="utils\cameraCalibration\" />
-    <Folder Include="utils\markerBoard" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|ContinuumAnalytics|Anaconda38-64" />

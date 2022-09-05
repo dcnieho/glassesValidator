@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
+from .. import config
 from .. import utils
 
 
@@ -19,7 +20,7 @@ def process(inputDir,configDir=None):
     print('processing: {}'.format(inputDir.name))
     
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = utils.getValidationSetup(configDir)
+    validationSetup = config.getValidationSetup(configDir)
 
     # get interval coded to be analyzed
     analyzeFrames = utils.readMarkerIntervalsFile(inputDir / "markerInterval.tsv")

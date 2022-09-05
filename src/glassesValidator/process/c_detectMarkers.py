@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 import csv
 import time
+
+from .. import config
 from .. import utils
 
 
@@ -17,7 +19,7 @@ def process(inputDir,configDir=None,visualizeDetection=False,showRejectedMarkers
     print('processing: {}'.format(inputDir.name))
 
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = utils.getValidationSetup(configDir)
+    validationSetup = config.getValidationSetup(configDir)
     
     # open video file, query it for size
     inVideo = inputDir / 'worldCamera.mp4'

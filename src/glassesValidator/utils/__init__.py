@@ -6,11 +6,8 @@ import csv
 import itertools
 import warnings
 import pathlib
-import shutil
-from shlex import shlex
 import bisect
 from matplotlib import colors
-import importlib.resources
 import tempfile
 
 from .mp4analyser import iso
@@ -147,44 +144,6 @@ class Marker:
     def __str__(self):
         ret = '[%d]: center @ (%.2f, %.2f), rot %.0f deg' % (self.key, self.center[0], self.center[1], self.rot)
         return ret
-
-def _readValidationSetupFile(file):
-    # read key=value pairs into dict
-    lexer = shlex(file)
-    lexer.whitespace += '='
-    lexer.wordchars += '.[],'   # don't split extensions of filenames in the input file, and accept stuff from python list syntax
-    lexer.commenters = '%'
-    return dict(zip(lexer, lexer))
-
-def getValidationSetup(configDir=None, setupFile='validationSetup.txt'):
-    if configDir is not None:
-        with (pathlib.Path(configDir) / setupFile).open() as f:
-            validationSetup = _readValidationSetupFile(f)
-    else:
-        # fall back on default config included with package
-        with importlib.resources.open_text(gv_config, setupFile) as f:
-            validationSetup = _readValidationSetupFile(f)
-
-    # parse numerics into int or float
-    for key,val in validationSetup.items():
-        if np.all([c.isdigit() for c in val]):
-            validationSetup[key] = int(val)
-        else:
-            try:
-                validationSetup[key] = float(val)
-            except:
-                pass # just keep value as a string
-    return validationSetup
-
-def deployValidationConfig(outDir):
-    outDir = pathlib.Path(outDir)
-    if not outDir.is_dir():
-        raise RuntimeError('the requested directory "%s" does not exist'%outDir)
-
-    # copy over all config files
-    for r in ['markerPositions.csv', 'targetPositions.csv', 'validationSetup.txt']:
-        with importlib.resources.path(gv_config,r) as p:
-            shutil.copyfile(p,str(outDir/r))
 
 def corners_intersection(corners):
     line1 = ( corners[0], corners[2] )
@@ -461,7 +420,7 @@ class Reference:
         self.markerSize = self.cellSizeMm*validationSetup['markerSide']
 
         # get information about marker board
-        self._getKnownMarkers(configDir, validationSetup)
+        self._getTargetsAndKnownMarkers(configDir, validationSetup)
 
         # get image of markerboard
         useTempDir = configDir is None
@@ -500,21 +459,13 @@ class Reference:
                 color = (0,0,0)
             drawOpenCVCircle(img, xy, size, color, -1, subPixelFac)
 
-    def _getKnownMarkers(self, configDir, validationSetup):
+    def _getTargetsAndKnownMarkers(self, configDir, validationSetup):
         """ board space: (0,0) is at center target, (-,-) bottom left """
 
-        # read in target positions
+        # read in target positions   
         self.targets = {}
-        hasTargets = False
-        if configDir is not None and (configDir / validationSetup['targetPosFile']).is_file():
-            targets = pd.read_csv(str(configDir / validationSetup['targetPosFile']),index_col=0)
-            hasTargets = True
-        else:
-            with importlib.resources.path(gv_config,'targetPositions.csv') as p:
-                targets = pd.read_csv(str(p),index_col=0)
-                hasTargets = True
-
-        if hasTargets:
+        targets = gv_config.getTargets()
+        if targets is not None:
             center  = targets.loc[validationSetup['centerTarget'],['x','y']]
             targets.x = self.cellSizeMm * (targets.x.astype('float32') - center.x)
             targets.y = self.cellSizeMm * (targets.y.astype('float32') - center.y)
@@ -528,16 +479,8 @@ class Reference:
         markerHalfSizeMm  = self.markerSize/2.
         self.knownMarkers = {}
         self.bbox         = []
-        hasMarkers = False
-        if configDir is not None and (configDir / validationSetup['markerPosFile']).is_file():
-            markerPos = pd.read_csv(str(configDir / validationSetup['markerPosFile']),index_col=0)
-            hasMarkers = True
-        else:
-            with importlib.resources.path(gv_config,'markerPositions.csv') as p:
-                markerPos = pd.read_csv(str(p),index_col=0)
-                hasMarkers = True
-
-        if hasMarkers:
+        markerPos = gv_config.getMarkers()
+        if markerPos is not None:
             markerPos.x = self.cellSizeMm * (markerPos.x.astype('float32') - center.x)
             markerPos.y = self.cellSizeMm * (markerPos.y.astype('float32') - center.y)
             for idx, row in markerPos.iterrows():

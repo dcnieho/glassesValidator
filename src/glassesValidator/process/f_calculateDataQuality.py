@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import warnings
 
-from .. import utils
+from .. import config
 
 
 def process(inputDir,configDir=None):
@@ -17,7 +17,7 @@ def process(inputDir,configDir=None):
     print('processing: {}'.format(inputDir.name))
     
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = utils.getValidationSetup(configDir)
+    validationSetup = config.getValidationSetup(configDir)
 
     # get time intervals to use for each target
     fileName = inputDir / "analysisInterval.tsv"

@@ -6,9 +6,10 @@ import numpy as np
 import cv2
 import csv
 
-from .. import utils
-
 from ffpyplayer.player import MediaPlayer
+
+from .. import config
+from .. import utils
 
 # This script shows a video player that is used to indicate the interval(s)
 # during which the marker board should be found in the video and in later
@@ -30,7 +31,7 @@ def process(inputDir,configDir=None, showReference=False):
     print('processing: {}'.format(inputDir.name))
     
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = utils.getValidationSetup(configDir)
+    validationSetup = config.getValidationSetup(configDir)
     reference = utils.Reference(configDir, validationSetup)
 
     # Read gaze data
