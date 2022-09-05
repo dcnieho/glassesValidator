@@ -56,9 +56,16 @@
 }
 
 % setup gaze targets
-\tikzset{invclip/.style={clip,insert path={{[reset cm]
-				(-16383.99999pt,-16383.99999pt) rectangle (16383.99999pt,16383.99999pt)
-}}}}
+\tikzset{
+	% https://tex.stackexchange.com/a/290508
+	clip even odd rule/.code={\pgfseteorule},
+	invclip/.style={
+		clip,insert path=
+		[clip even odd rule]{
+			[reset cm](-\maxdimen,-\maxdimen)rectangle(\maxdimen,\maxdimen)
+		}
+	}
+}
 \newcommand{\gazeTarget}[3]
 {
 	\ifthenelse{\equal{\targetType}{Tobii}}{%
@@ -104,7 +111,7 @@
 
 \centering
 \begin{tikzpicture}[
-		draw,color=black!30
+		draw,color=black!30,yscale=-1
 	]
 	\if\showGrid1
 		\draw[step=\step, line width=3pt] (0cm,0cm) grid (\step*\gridCols,\step*\gridRows);
