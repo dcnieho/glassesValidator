@@ -1,8 +1,6 @@
 """
 Cast raw SMI ETG data into common format.
 
-Tested with Python 3.8, open CV 4.0.1
-
 The output directory will contain:
     - frameTimestamps.tsv: frame number and corresponding timestamps for each frame in video
     - worldCamera.mp4: the video from the point-of-view scene camera on the glasses

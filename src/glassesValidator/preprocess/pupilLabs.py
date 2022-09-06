@@ -1,7 +1,9 @@
 """
 Cast raw pupil labs (core and invisible) data into common format.
 
-Tested with Python 3.8, open CV 4.0.1
+You should first open the recording (whether directly from device or downloaded
+from pupil cloud) in Pupil Player, and do an export there (disable the scene video
+export, its unneeded and takes lots of space)
 
 The output directory will contain:
     - frameTimestamps.tsv: frame number and corresponding timestamps for each frame in video
