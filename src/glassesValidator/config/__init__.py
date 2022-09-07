@@ -22,7 +22,7 @@ def getValidationSetup(configDir=None, setupFile='validationSetup.txt'):
             validationSetup = _readValidationSetupFile(f)
     else:
         # fall back on default config included with package
-        with importlib.resources.open_text('glassesValidator.config', setupFile) as f:
+        with importlib.resources.open_text(__package__, setupFile) as f:
             validationSetup = _readValidationSetupFile(f)
 
     # parse numerics into int or float
@@ -46,7 +46,7 @@ def _getCoordFile(configDir, file):
         else:
             return None
     else:
-        with importlib.resources.path('glassesValidator.config', file) as p:
+        with importlib.resources.path(__package__, file) as p:
             return _readCoordFile(p)
 
 def getTargets(configDir=None, file='targetPositions.csv'):
@@ -64,7 +64,7 @@ def deployValidationConfig(outDir):
 
     # copy over all config files
     for r in ['markerPositions.csv', 'targetPositions.csv', 'validationSetup.txt']:
-        with importlib.resources.path('glassesValidator.config', r) as p:
+        with importlib.resources.path(__package__, r) as p:
             shutil.copyfile(p, str(outDir/r))
 
     # copy over markerBoard text file

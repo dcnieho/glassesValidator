@@ -12,7 +12,7 @@ def deployMaker(outDir):
 
     # copy over all config files
     for r in ['board.tex']:
-        with importlib.resources.path('glassesValidator.config.markerBoard', r) as p:
+        with importlib.resources.path(__package__, r) as p:
             shutil.copyfile(p, str(outDir/r))
 
     deployMarkerImages(outDir)
@@ -43,5 +43,5 @@ def deployPdf(outFile):
     if outFile.is_dir():
         outFile = outFile / 'board.pdf'
 
-    with importlib.resources.path('glassesValidator.config.markerBoard','board.pdf') as p:
+    with importlib.resources.path(__package__,'board.pdf') as p:
         shutil.copyfile(p, str(outFile))

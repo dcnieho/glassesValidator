@@ -60,6 +60,7 @@
     <Content Include="src\glassesValidator\config\validationSetup.txt" />
     <Content Include="src\glassesValidator\config\markerBoard\board.tex" />
     <Content Include="src\glassesValidator\config\markerBoard\board.pdf" />
+    <Content Include="src\glassesValidator\resources\fonts\materialdesignicons-webfont.ttf" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="src\" />
@@ -69,6 +70,8 @@
     <Folder Include="src\glassesValidator\GUI" />
     <Folder Include="src\glassesValidator\preprocess" />
     <Folder Include="src\glassesValidator\process" />
+    <Folder Include="src\glassesValidator\resources\" />
+    <Folder Include="src\glassesValidator\resources\fonts\" />
     <Folder Include="src\glassesValidator\utils\" />
     <Folder Include="src\glassesValidator\utils\mp4analyser" />
     <Folder Include="utils\" />
