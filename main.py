@@ -11,4 +11,4 @@ else:
 
 import glassesValidator
 
-glassesValidator.process.calculateDataQuality(r"C:\Users\huml-dkn\Desktop\test\pupilCore_001")
+glassesValidator.GUI.run()

@@ -1,10 +1,14 @@
+git+https://github.com/mcfletch/pyopengl.git@227f9c66976d9f5dadf62b9a97e6beaec84831ca#subdirectory=accelerate
 git+https://github.com/pyimgui/pyimgui.git@dev/version-2.0#egg=imgui
-numpy
 glfw
-opencv-contrib-python>=4.6.0
+PyOpenGL==3.1.6
+numpy
+scipy
 pandas
 matplotlib
+opencv-contrib-python>=4.6.0
 ffpyplayer
 I2MC
-scipy
 msgpack
+aiosqlite
+uvloop ; sys_platform != "win32"

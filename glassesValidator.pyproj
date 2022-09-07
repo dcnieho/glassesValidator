@@ -27,6 +27,7 @@
     <Compile Include="src\glassesValidator\config\__init__.py" />
     <Compile Include="src\glassesValidator\config\markerBoard\__init__.py" />
     <Compile Include="src\glassesValidator\GUI\__init__.py" />
+    <Compile Include="src\glassesValidator\GUI\_impl\__init__.py" />
     <Compile Include="src\glassesValidator\preprocess\SMI_ETG.py" />
     <Compile Include="src\glassesValidator\preprocess\SeeTrue.py" />
     <Compile Include="src\glassesValidator\preprocess\__init__.py" />
@@ -60,7 +61,10 @@
     <Content Include="src\glassesValidator\config\validationSetup.txt" />
     <Content Include="src\glassesValidator\config\markerBoard\board.tex" />
     <Content Include="src\glassesValidator\config\markerBoard\board.pdf" />
+    <Content Include="src\glassesValidator\resources\fonts\Karla-Regular.ttf" />
     <Content Include="src\glassesValidator\resources\fonts\materialdesignicons-webfont.ttf" />
+    <Content Include="src\glassesValidator\resources\fonts\NotoSans-Regular.ttf" />
+    <Content Include="src\glassesValidator\resources\icons\icon.png" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="src\" />
@@ -68,10 +72,12 @@
     <Folder Include="src\glassesValidator\config" />
     <Folder Include="src\glassesValidator\config\markerBoard" />
     <Folder Include="src\glassesValidator\GUI" />
+    <Folder Include="src\glassesValidator\GUI\_impl" />
     <Folder Include="src\glassesValidator\preprocess" />
     <Folder Include="src\glassesValidator\process" />
     <Folder Include="src\glassesValidator\resources\" />
     <Folder Include="src\glassesValidator\resources\fonts\" />
+    <Folder Include="src\glassesValidator\resources\icons\" />
     <Folder Include="src\glassesValidator\utils\" />
     <Folder Include="src\glassesValidator\utils\mp4analyser" />
     <Folder Include="utils\" />
