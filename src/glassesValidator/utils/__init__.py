@@ -60,7 +60,8 @@ class Status(AutoName):
 @dataclasses.dataclass
 class Recording:
     name                        : str       = ""
-    fs_directory                : str       = ""
+    source_directory            : str       = ""
+    proc_directory              : str       = ""
     start_time                  : Timestamp = 0
     duration                    : int       = 0
     eye_tracker                 : Type      = Type.Unknown
@@ -78,6 +79,8 @@ class Recording:
             def default(self, obj):
                 if type(obj) in [Type, Status]:
                     return {"__enum__": str(obj)}
+                elif isinstance(obj,pathlib.Path):
+                    return {"__pathlib.Path__": str(obj)}
                 return json.JSONEncoder.default(self, obj)
 
         with open(path, 'w') as f:
@@ -85,7 +88,7 @@ class Recording:
 
     @staticmethod
     def load_from_json(path):
-        def as_enum(d):
+        def reconstitute(d):
             if "__enum__" in d:
                 name, member = d["__enum__"].split(".")
                 match name:
@@ -93,12 +96,15 @@ class Recording:
                         return getattr(Type, member)
                     case 'Status':
                         return getattr(Status, member)
-                    case _:
-                        raise ValueError(f'unknown enum "{_}"')
+                    case other:
+                        raise ValueError(f'unknown enum "{other}"')
+            elif "__pathlib.Path__" in d:
+                return pathlib.Path(d["__pathlib.Path__"])
             else:
                 return d
+
         with open(path, 'r') as f:
-            return json.load(f, object_hook=as_enum)
+            return json.load(f, object_hook=reconstitute)
 
 
 def make_fs_dirname(rec: Recording):

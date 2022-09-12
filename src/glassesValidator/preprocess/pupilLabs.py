@@ -44,7 +44,7 @@ def preprocessData(inputDir, outputDir, device):
     recInfo = getRecordingInfo(inputDir, device)
 
     # make output dir
-    newDataDir = outputDir / recInfo.fs_directory
+    newDataDir = outputDir / recInfo.proc_directory
     if not newDataDir.is_dir():
         newDataDir.mkdir()
 
@@ -95,7 +95,7 @@ def checkPupilRecording(inputDir):
 
 
 def getRecordingInfo(inputDir, device):
-    recInfo = utils.Recording()
+    recInfo = utils.Recording(source_directory=inputDir)
 
     match device:
         case 'pupilCore':
@@ -137,7 +137,7 @@ def getRecordingInfo(inputDir, device):
         case _:
             print(f"Device {device} unknown")
 
-    recInfo.fs_directory = utils.make_fs_dirname(recInfo)
+    recInfo.proc_directory = utils.make_fs_dirname(recInfo)
 
     return recInfo
 
