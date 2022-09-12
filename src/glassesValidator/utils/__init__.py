@@ -9,9 +9,107 @@ import pathlib
 import bisect
 from matplotlib import colors
 import tempfile
+import dataclasses
+from enum import Enum, auto
+import datetime
+import json
+import pathvalidate
 
 from .mp4analyser import iso
 from .. import config as gv_config
+        
+
+class Timestamp:
+    def __init__(self, unix_time: int | float, format="%Y-%m-%d %H:%M:%S"):
+        self.format = format
+        self.display = ""
+        self.value = 0
+        self.update(unix_time)
+
+    def update(self, unix_time: int | float):
+        self.value = int(unix_time)
+        if self.value == 0:
+            self.display = ""
+        else:
+            self.display = datetime.date.fromtimestamp(unix_time).strftime(self.format)
+
+
+class AutoName(Enum):
+    def _generate_next_value_(name, start, count, last_values):
+        return name.strip("_").replace("__", "-").replace("_", " ")
+    
+
+class Type(AutoName):
+    Pupil_Core      = auto()
+    Pupil_Invisible = auto()
+    SMI_ETG         = auto()
+    SeeTrue         = auto()
+    Tobii_Glasses_2 = auto()
+    Tobii_Glasses_3 = auto()
+    Unknown         = auto()
+
+
+class Status(AutoName):
+    Normal          = auto()
+    Completed       = auto()
+    OnHold          = auto()
+    Abandoned       = auto()
+    Unknown         = auto()
+
+
+@dataclasses.dataclass
+class Recording:
+    name                        : str       = ""
+    fs_directory                : str       = ""
+    start_time                  : Timestamp = 0
+    duration                    : int       = 0
+    eye_tracker                 : Type      = Type.Unknown
+    project                     : str       = ""
+    participant                 : str       = ""
+    firmware_version            : str       = ""
+    glasses_serial              : str       = ""
+    recording_unit_serial       : str       = ""
+    recording_software_version  : str       = ""
+    scene_camera_serial         : str       = ""
+    status                      : Status    = Status.Unknown
+
+    def store_as_json(self,path):
+        class EnumEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if type(obj) in [Type, Status]:
+                    return {"__enum__": str(obj)}
+                return json.JSONEncoder.default(self, obj)
+
+        with open(path, 'w') as f:
+            json.dump(dataclasses.asdict(self), f, cls=EnumEncoder)
+
+    @staticmethod
+    def load_from_json(path):
+        def as_enum(d):
+            if "__enum__" in d:
+                name, member = d["__enum__"].split(".")
+                match name:
+                    case 'Type':
+                        return getattr(Type, member)
+                    case 'Status':
+                        return getattr(Status, member)
+                    case _:
+                        raise ValueError(f'unknown enum "{_}"')
+            else:
+                return d
+        with open(path, 'r') as f:
+            return json.load(f, object_hook=as_enum)
+
+
+def make_fs_dirname(rec: Recording):
+    
+    if rec.participant:
+        filename = f"{rec.eye_tracker.value}_{rec.participant}_{rec.name}"
+    else:
+        filename = f"{rec.eye_tracker.value}_{rec.name}"
+
+    return pathvalidate.sanitize_filename(filename)
+
 
 
 def getXYZLabels(stringList,N=3):
@@ -49,7 +147,7 @@ def getFrameTimestampsFromVideo(vid_file):
     """
     if vid_file.suffix in ['.mp4', '.mov']:
         # parse mp4 file
-        boxes   = mp4analyser.iso.Mp4File(str(vid_file))
+        boxes   = iso.Mp4File(str(vid_file))
         # 1. find mdat box
         moov    = boxes.child_boxes[[i for i,x in enumerate(boxes.child_boxes) if x.type=='moov'][0]]
         # 2. find track boxes

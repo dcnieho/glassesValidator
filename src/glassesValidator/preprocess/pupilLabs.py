@@ -34,22 +34,40 @@ def preprocessData(inputDir, outputDir, device):
     """
     inputDir  = Path(inputDir)
     outputDir = Path(outputDir)
-
     print('processing: {}'.format(inputDir.name))
-    ### copy the raw data to the output directory
-    print('Copying raw data...')
-    newDataDir = copyPupilRecording(inputDir, outputDir, device)
+
+
+    ### check copy needed files to the output directory
+    print('Check and copy raw data...')
+     ### check pupil recording and get export directory
+    exportFile = checkPupilRecording(inputDir)
+    recInfo = getRecordingInfo(inputDir, device)
+
+    # make output dir
+    newDataDir = outputDir / recInfo.fs_directory
+    if not newDataDir.is_dir():
+        newDataDir.mkdir()
+
+    # store rec info
+    recInfo.store_as_json(newDataDir / 'recording.json')
+    
+    # copy world video
+    shutil.copyfile(str(inputDir / 'world.mp4'), str(newDataDir / 'worldCamera.mp4'))
     print('Input data copied to: {}'.format(newDataDir))
 
-    #### prep the copied data...
-    print('Getting camera calibration...')
-    if device=='pupilCore':
-        sceneVideoDimensions = getCameraFromMsgPack(newDataDir)
-    elif device=='pupilInvisible':
-        sceneVideoDimensions = getCameraCalFromOnline(newDataDir)
 
+    ### get camera cal
+    print('Getting camera calibration...')
+    match recInfo.eye_tracker:
+        case utils.Type.Pupil_Core:
+            sceneVideoDimensions = getCameraFromMsgPack(inputDir, newDataDir)
+        case utils.Type.Pupil_Invisible:
+            sceneVideoDimensions = getCameraCalFromOnline(inputDir, newDataDir, recInfo)
+
+
+    ### get gaze data and video frame timestamps
     print('Prepping gaze data...')
-    gazeDf, frameTimestamps = formatGazeData(newDataDir, device, sceneVideoDimensions)
+    gazeDf, frameTimestamps = formatGazeData(inputDir, exportFile, sceneVideoDimensions, recInfo)
 
     # write the gaze data to a csv file
     gazeDf.to_csv(str(newDataDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")
@@ -57,58 +75,78 @@ def preprocessData(inputDir, outputDir, device):
     # also store frame timestamps
     frameTimestamps.to_csv(str(newDataDir / 'frameTimestamps.tsv'), sep='\t')
 
-    ### cleanup
-    for f in ['world.intrinsics', 'world_lookup.npy', 'world_timestamps.npy', 'info.invisible.json']:
-        (newDataDir / f).unlink(missing_ok=True)
+        
+def checkPupilRecording(inputDir):
+    # check we have an info.player.json file
+    if not (inputDir / 'info.player.json').is_file():
+        raise RuntimeError('info.player.json file not found for {}. Open the recording in Pupil Player before importing into glassesValidator.'.format(inputDir))
 
-
-def copyPupilRecording(inputDir, outputDir, device):
-    """
-    Copy the relevant files from the specified input dir (highest number export) to the specified output dir
-    """
-    
     # check we have an export in the input dir
     inputExpDir = inputDir / 'exports'
     if not inputExpDir.is_dir():
-        raise RuntimeError('no exports folder for {}'.format(inputDir))
+        raise RuntimeError('no exports folder for {}. Perform a recording export in Pupil Player before importing into glassesValidator.'.format(inputDir))
 
-    # get latest export in that folder
-    folds = sorted([f for f in inputExpDir.glob('*') if f.is_dir()])
-    if not folds:
-        raise RuntimeError('there are no exports in the folder {}'.format(inputExpDir))
-    inputExpDir = folds[-1]
+    # get latest export in that folder that contain a gaze position file
+    gpFiles = sorted(list(inputExpDir.rglob('*gaze_positions*.csv')))
+    if not gpFiles:
+        raise RuntimeError('There are no exports in the folder {}. Perform a recording export in Pupil Player before importing into glassesValidator.'.format(inputExpDir))
+    
+    return gpFiles[-1]
 
-    # make output dir
-    outputDir = outputDir / ('%s_%s' % (device, inputDir.stem))
-    if not outputDir.is_dir():
-        outputDir.mkdir()
 
-    # Copy relevent files to new directory
-    gpFile = list(inputExpDir.glob('*gaze_positions*.csv'))[0]
-    for f in [(gpFile,'gaze_positions.csv'), (inputDir / 'world_lookup.npy',None), (inputDir / 'world_timestamps.npy',None), (inputDir / 'world.intrinsics',None), (inputDir / 'info.invisible.json',None),  (inputDir / 'world.mp4','worldCamera.mp4')]:
-        outFileName = f[0].name
-        if f[1] is not None:
-            outFileName = f[1]
-        if f[0].is_file():
-            shutil.copyfile(str(f[0]), str(outputDir / outFileName))
+def getRecordingInfo(inputDir, device):
+    recInfo = utils.Recording()
 
-    # return the full path to the output dir
-    return outputDir
+    match device:
+        case 'pupilCore':
+            recInfo.eye_tracker = utils.Type['Pupil_Core']
+            with open(inputDir / 'info.player.json', 'r') as j:
+                iInfo = json.load(j)
+            recInfo.name = iInfo['recording_name']
+            recInfo.start_time = int(iInfo['start_time_system_s'])      # UTC in seconds, keep second part
+            recInfo.duration   = int(iInfo['duration_s']*1000)          # in seconds, convert to ms
+            recInfo.recording_software_version = iInfo['recording_software_version']
 
-def getCameraFromMsgPack(inputDir):
+            # get user name, if any
+            user_info_file = inputDir / 'user_info.csv'
+            if user_info_file.is_file():
+                df = pd.read_csv(user_info_file)
+                nameRow = df['key'].str.contains('name')
+                if any(nameRow):
+                    if not pd.isnull(df[nameRow].value).to_numpy()[0]:
+                        recInfo.participant = df.loc[nameRow,'value'].to_numpy()[0]
+
+        case 'pupilInvisible':
+            recInfo.eye_tracker = utils.Type['Pupil_Invisible']
+            with open(inputDir / 'info.invisible.json', 'r') as j:
+                iInfo = json.load(j)
+            recInfo.name = iInfo['template_data']['recording_name']
+            recInfo.recording_software_version = iInfo['app_version']
+            recInfo.start_time = int(iInfo['start_time']//1000000000)   # UTC in nanoseconds, keep second part
+            recInfo.duration   = int(iInfo['duration']//1000000)        # in nanoseconds, convert to ms
+            recInfo.glasses_serial = iInfo['glasses_serial_number']
+            recInfo.recording_unit_serial = iInfo['android_device_id']
+            recInfo.scene_camera_serial = iInfo['scene_camera_serial_number']
+            # get participant name
+            wearer_id = iInfo['wearer_id']
+            with open(inputDir / 'wearer.json', 'r') as j:
+                iInfo = json.load(j)
+            if wearer_id==iInfo['uuid']:
+                recInfo.participant = iInfo['name']
+
+        case _:
+            print(f"Device {device} unknown")
+
+    recInfo.fs_directory = utils.make_fs_dirname(recInfo)
+
+    return recInfo
+
+
+def getCameraFromMsgPack(inputDir, outputDir):
     """
     Read camera calibration from recording information file
     """
-    with open(inputDir / 'world.intrinsics', 'rb') as f:
-        camInfo = msgpack.unpack(f)
-    
-    # get keys which denote a camera resolution
-    rex = re.compile('^\(\d+, \d+\)$')
-
-    keys = [k for k in camInfo if rex.match(k)]
-    if len(keys)!=1:
-        raise RuntimeError('No camera intrinsics or intrinsics for more than one camera found')
-    camera = camInfo[keys[0]]
+    camera = getCamInfo(inputDir / 'world.intrinsics')
 
     # rename some fields, ensure they are numpy arrays
     camera['cameraMatrix'] = np.array(camera.pop('camera_matrix'))
@@ -116,21 +154,19 @@ def getCameraFromMsgPack(inputDir):
     camera['resolution']   = np.array(camera['resolution'])
 
     # store to file
-    fs = cv2.FileStorage(str(inputDir / 'calibration.xml'), cv2.FILE_STORAGE_WRITE)
+    fs = cv2.FileStorage(str(outputDir / 'calibration.xml'), cv2.FILE_STORAGE_WRITE)
     for key,value in camera.items():
         fs.write(name=key,val=value)
     fs.release()
 
     return camera['resolution']
 
-def getCameraCalFromOnline(inputDir):
+
+def getCameraCalFromOnline(inputDir, outputDir, recInfo):
     """
     Get camera calibration from pupil labs
     """
-    with open(inputDir / 'info.invisible.json', 'rb') as j:
-        iInfo = json.load(j)
-
-    url = 'https://api.cloud.pupil-labs.com/v2/hardware/' + iInfo['scene_camera_serial_number'] + '/calibration.v1?json'
+    url = 'https://api.cloud.pupil-labs.com/v2/hardware/' + recInfo.scene_camera_serial + '/calibration.v1?json'
 
     camInfo = json.loads(urlopen(url).read())
     if camInfo['status'] != 'success':
@@ -143,25 +179,11 @@ def getCameraCalFromOnline(inputDir):
     camInfo['distCoeff']    = np.array(camInfo.pop('dist_coefs')).flatten()
     camInfo['rotation']     = np.reshape(np.array(camInfo.pop('rotation_matrix')),(3,3))
 
-    # read the local intrinsics file to get resolution
-    with open(inputDir / 'world.intrinsics', 'rb') as f:
-        camera = msgpack.unpack(f)
-    
-    # get keys which denote a camera resolution
-    rex = re.compile('^\(\d+, \d+\)$')
-
-    keys = [k for k in camera if rex.match(k)]
-    if len(keys)!=1:
-        raise RuntimeError('No camera intrinsics or intrinsics for more than one camera found')
-    camInfo['resolution']   = np.array(camera[keys[0]]['resolution'])
+    # get resolution from the local intrinsics file
+    camInfo['resolution']   = np.array(getCamInfo(inputDir / 'world.intrinsics')['resolution'])
 
     # store to xml file
-    fs = cv2.FileStorage(str(inputDir / 'calibration.xml'), cv2.FILE_STORAGE_WRITE)
-    for key,value in camInfo.items():
-        fs.write(name=key,val=value)
-    fs.release()
-    # also store to yml file
-    fs = cv2.FileStorage(str(inputDir / 'calibration.yml'), cv2.FILE_STORAGE_WRITE)
+    fs = cv2.FileStorage(str(outputDir / 'calibration.xml'), cv2.FILE_STORAGE_WRITE)
     for key,value in camInfo.items():
         fs.write(name=key,val=value)
     fs.release()
@@ -169,7 +191,20 @@ def getCameraCalFromOnline(inputDir):
     return camInfo['resolution']
 
 
-def formatGazeData(inputDir, device, sceneVideoDimensions):
+def getCamInfo(camInfoFile):
+    with open(camInfoFile, 'rb') as f:
+        camInfo = msgpack.unpack(f)
+
+    # get keys which denote a camera resolution
+    rex = re.compile('^\(\d+, \d+\)$')
+
+    keys = [k for k in camInfo if rex.match(k)]
+    if len(keys)!=1:
+        raise RuntimeError('No camera intrinsics or intrinsics for more than one camera found')
+    return camInfo[keys[0]]
+
+
+def formatGazeData(inputDir, exportFile, sceneVideoDimensions, recInfo):
     """
     load gazedata json file
     format to get the gaze coordinates w/r/t world camera, and timestamps for every frame of video
@@ -180,7 +215,7 @@ def formatGazeData(inputDir, device, sceneVideoDimensions):
     """
 
     # convert the json file to pandas dataframe
-    df = readGazeData(inputDir / 'gaze_positions.csv', device, sceneVideoDimensions)
+    df = readGazeData(exportFile, sceneVideoDimensions, recInfo)
 
     # read video file, create array of frame timestamps
     if (inputDir / 'world_lookup.npy').is_file():
@@ -226,18 +261,14 @@ def formatGazeData(inputDir, device, sceneVideoDimensions):
     return df, frameTimestamps
 
 
-def readGazeData(file,device,sceneVideoDimensions):
+def readGazeData(file,sceneVideoDimensions, recInfo):
     """
     convert the gaze_positions.csv file to a pandas dataframe
     """
 
-    isCore      = device=='pupilCore'
-    isInvisible = device=='pupilInvisible'
+    isCore      = recInfo.eye_tracker is utils.Type.Pupil_Core
 
     df = pd.read_csv(file)
-
-    # json no longer needed, remove
-    file.unlink(missing_ok=True)
 
     # drop columns with nothing in them
     df = df.dropna(how='all', axis=1)
