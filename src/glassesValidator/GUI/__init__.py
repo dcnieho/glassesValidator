@@ -22,9 +22,8 @@ def run():
             pass
 
         
-    from ._impl import async_thread, sync_thread
+    from ._impl import async_thread
     async_thread.setup()
-    sync_thread.setup()
     
     from ._impl import db
     from ._impl import gui
