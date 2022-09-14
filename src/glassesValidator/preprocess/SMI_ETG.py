@@ -13,7 +13,7 @@ The output directory will contain:
 
 import shutil
 import os
-from pathlib import Path
+import pathlib
 import cv2
 import pandas as pd
 import numpy as np
@@ -27,104 +27,135 @@ from .. import utils
 
 def preprocessData(inputDir, outputDir):
     """
-    Run all preprocessing steps on tobii data
+    Run all preprocessing steps on SMI data
     """
-    inputDir  = Path(inputDir)
-    outputDir = Path(outputDir)
+    inputDir  = pathlib.Path(inputDir)
+    outputDir = pathlib.Path(outputDir)
+    print(f'processing: {inputDir.name}')
 
-    print('processing: {}'.format(inputDir.name))
+
+    ### check and copy needed files to the output directory
+    print('Check and copy raw data...')
+    recInfos = getRecordingInfo(inputDir)
+    if recInfos is None:
+        raise RuntimeError(f"The folder {inputDir} does not contain SMI ETG recordings prepared for glassesValidator. If this is an SMI recording folder, you may not have run the required gaze data and scene video exports yet. See the glassesValidator manual for which exports you should perform with BeGaze first as well as the file naming scheme.")
+
+    # make output dirs
+    for i in range(len(recInfos)):
+        recInfos[i].proc_directory_name = utils.make_fs_dirname(recInfos[i], outputDir)
+        newDataDir = outputDir / recInfos[i].proc_directory_name
+        if not newDataDir.is_dir():
+            newDataDir.mkdir()
+
+        # store rec info
+        recInfos[i].store_as_json(newDataDir / 'recording.json')
+
+    
     ### copy the raw data to the output directory
-    print('Copying raw data...')
-    newDataDir = copySMIRecordings(inputDir, outputDir)
-    for r in newDataDir:
-        print('Input data copied to: {}'.format(r))
+    for recInfo in recInfos:
+        newDataDir = outputDir / recInfo.proc_directory_name
+        checkRecording(inputDir, recInfo)
+        copySMIRecordings(inputDir, newDataDir, recInfo)
+        print(f'Input data copied to: {newDataDir}')
 
-    #### prep the copied data...
-    for r in newDataDir:
-        print('{}...'.format(r.name))
+    #### prep the data
+    for recInfo in recInfos:
+        newDataDir = outputDir / recInfo.proc_directory_name
+        print(f'{newDataDir.name}...')
         print('  Getting camera calibration...')
-        sceneVideoDimensions = getCameraFromFile(r)
+        sceneVideoDimensions = getCameraFromFile(inputDir, newDataDir)
         print('  Prepping gaze data...')
-        gazeDf, frameTimestamps = formatGazeData(r, sceneVideoDimensions)
+        gazeDf, frameTimestamps = formatGazeData(inputDir, newDataDir, recInfo, sceneVideoDimensions)
 
         # write the gaze data to a csv file
-        gazeDf.to_csv(str(r / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")
+        gazeDf.to_csv(str(newDataDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")
 
         # also store frame timestamps
-        frameTimestamps.to_csv(str(r / 'frameTimestamps.tsv'), sep='\t')
+        frameTimestamps.to_csv(str(newDataDir / 'frameTimestamps.tsv'), sep='\t')
 
 
-def copySMIRecordings(inputDir, outputDir):
-    """
-    Copy the relevant files from the specified input dir to the specified output dirs
-    NB: an SMI directory may contain multiple recordings
-    """
-    if not inputDir.is_dir():
-        raise RuntimeError('The directory "%s" was not found' % inputDir)
-    participant = inputDir.name
+def getRecordingInfo(inputDir):
+    # returns None if not a recording directory
+    recInfos = []
+
+    # NB: can be multiple recordings in an SMI folder
+
+    camInfo = readSMICamInfoFile(inputDir)
+    serial = camInfo.get("MiiSimulation",'DeviceSerialNumber')
     
     # get recordings. We expect the user to rename their exports to have the same format
     # as the other files in a project directory. So e.g., data exported from 001-2-recording.idf
-    # for the corresponding 001-2-recording.avi, should be named 001-2-recording.txt
-    outputDirs = []
-    for r in inputDir.glob('*.txt'):
-        if not str(r).endswith('recording.txt'):
-            print("file {} not recognized as a recording (wrong name, should end with '-recording.txt'), skipping".format(str(r.name)))
-            continue
+    # for the corresponding 001-2-recording.avi, should be named 001-2-recording.txt. The
+    # exported video should be called 001-2-export.avi
+    for r in inputDir.glob('*-export.avi'):
+        recInfos.append(utils.Recording(source_directory=inputDir, eye_tracker=utils.Type.SMI_ETG))
+        recInfos[-1].participant = inputDir.name
+        recInfos[-1].name = str(r.name)[:-len('-export.avi')]
+        recInfos[-1].glasses_serial = serial
 
-        recording = str(r.name)[:-len('-recording.txt')]
+    # should return None if no valid recordings found
+    return recInfos if recInfos else None
 
-        outputDirs.append(outputDir / ('SMI_ETG_%s_%s' % (participant,recording)))
-        if not outputDirs[-1].is_dir():
-            outputDirs[-1].mkdir()
+        
+def checkRecording(inputDir, recInfo):
+    """
+    This checks that the folder is properly prepared
+    (i.e. the required BeGaze exports were run)
+    """
+    # check we have an exported gaze data file
+    file = recInfo.name + '-export.avi'
+    if not (inputDir / file).is_file():
+        raise RuntimeError(f'{file} file not found in {inputDir}. Make sure you export the scene video using BeGaze as described in the glassesValidator manual.')
 
-        # Copy relevent files to new directory
-        exportName = r.stem.split('-')
-        exportName = '-'.join([exportName[0],exportName[1],'export'])
-        if not (inputDir / (exportName+'.avi')).is_file():
-            raise RuntimeError("file {} cannot be found in the folder {}, make sure you export the scene video using BeGaze as described in the glassesValidator manual".format(exportName+'.avi',inputDir))
+    # check we have an exported scene video
+    file = recInfo.name + '-recording.txt'
+    if not (inputDir / file).is_file():
+        raise RuntimeError(f'{file} file not found in {inputDir}. Make sure you export the gaze data using BeGaze as described in the glassesValidator manual.')
 
-        for f in [('codec1.bin','caminfo.txt'), (r.name,'gazedata.txt'), (exportName+'.avi','worldCamera.avi')]:
-            outFileName = f[0]
-            if f[1] is not None:
-                outFileName = f[1]
-            shutil.copyfile(str(inputDir / f[0]), str(outputDirs[-1] / outFileName))
 
-        # if ffmpeg is on path, remux avi to mp4 (reencode audio from flac to aac as flac is not supported in mp4)
-        if shutil.which('ffmpeg') is not None:
-            # make mp4
-            cmd_str = ' '.join(['ffmpeg', '-y', '-i', '"'+str(outputDirs[-1] / 'worldCamera.avi')+'"', '-vcodec', 'copy', '-acodec', 'aac', '"'+str(outputDirs[-1] / 'worldCamera.mp4')+'"'])
-            os.system(cmd_str)
-            # clean up
-            if (outputDirs[-1] / 'worldCamera.mp4').is_file():
-                (outputDirs[-1] / 'worldCamera.avi').unlink(missing_ok=True)
+def copySMIRecordings(inputDir, outputDir, recInfo):
+    """
+    Copy the relevant files from the specified input dir to the specified output dirs
+    """
+    
+    # Copy relevent files to new directory
+    file = recInfo.name + '-export.avi'
+    shutil.copyfile(str(inputDir / file), str(outputDir / 'worldCamera.avi'))
 
-    # return the full path to the output dir
-    return outputDirs
+    # if ffmpeg is on path, remux avi to mp4 (reencode audio from flac to aac as flac is not supported in mp4)
+    if shutil.which('ffmpeg') is not None:
+        # make mp4
+        cmd_str = ' '.join(['ffmpeg', '-y', '-i', '"'+str(outputDir / 'worldCamera.avi')+'"', '-vcodec', 'copy', '-acodec', 'aac', '"'+str(outputDir / 'worldCamera.mp4')+'"'])
+        os.system(cmd_str)
+        # clean up
+        (outputDir / 'worldCamera.avi').unlink(missing_ok=True)
 
-def getCameraFromFile(inputDir):
+
+def readSMICamInfoFile(inputDir):
+    with open(inputDir / 'codec1.bin', 'r') as file:
+        camInfoStr = file.read().replace('## ', '')
+    
+    camInfo = configparser.ConfigParser(converters={'nparray': lambda x: np.fromstring(x,sep='\t')})
+    camInfo.read_string(camInfoStr)
+    return camInfo
+
+
+def getCameraFromFile(inputDir, outputDir):
     """
     Read camera calibration from information file
     """
-    with open(inputDir / 'caminfo.txt', 'r') as file:
-        camInfoStr = file.read().replace('## ', '')
-
-    # file no longer needed, remove
-    (inputDir / 'caminfo.txt').unlink(missing_ok=True)
-    
-    caminfo = configparser.ConfigParser(converters={'nparray': lambda x: np.fromstring(x,sep='\t')})
-    caminfo.read_string(camInfoStr)
+    camInfo = readSMICamInfoFile(inputDir)
 
     camera = {}
-    camera['FOV'] = caminfo.getfloat("MiiSimulation",'SceneCamFOV')
-    camera['resolution'] = np.array([caminfo.getint("MiiSimulation",'SceneCamWidth'), caminfo.getint("MiiSimulation",'SceneCamHeight')])
-    camera['sensorOffsets'] = np.array([caminfo.getfloat("MiiSimulation",'SceneCamSensorOffsetX'), caminfo.getfloat("MiiSimulation",'SceneCamSensorOffsetY')])
+    camera['FOV'] = camInfo.getfloat("MiiSimulation",'SceneCamFOV')
+    camera['resolution'] = np.array([camInfo.getint("MiiSimulation",'SceneCamWidth'), camInfo.getint("MiiSimulation",'SceneCamHeight')])
+    camera['sensorOffsets'] = np.array([camInfo.getfloat("MiiSimulation",'SceneCamSensorOffsetX'), camInfo.getfloat("MiiSimulation",'SceneCamSensorOffsetY')])
     
-    camera['radialDistortion'] = caminfo.getnparray("MiiSimulation",'SceneCamRadialDistortion')
-    camera['tangentialDistortion'] = caminfo.getnparray("MiiSimulation",'SceneCamTangentialDistortion')
+    camera['radialDistortion'] = camInfo.getnparray("MiiSimulation",'SceneCamRadialDistortion')
+    camera['tangentialDistortion'] = camInfo.getnparray("MiiSimulation",'SceneCamTangentialDistortion')
 
-    camera['position'] = caminfo.getnparray("MiiSimulation",'SceneCamPos')
-    camera['eulerAngles'] = np.array([caminfo.getfloat("MiiSimulation",'SceneCamOrX'), caminfo.getfloat("MiiSimulation",'SceneCamOrY'), caminfo.getfloat("MiiSimulation",'SceneCamOrZ')])
+    camera['position'] = camInfo.getnparray("MiiSimulation",'SceneCamPos')
+    camera['eulerAngles'] = np.array([camInfo.getfloat("MiiSimulation",'SceneCamOrX'), camInfo.getfloat("MiiSimulation",'SceneCamOrY'), camInfo.getfloat("MiiSimulation",'SceneCamOrZ')])
 
     # now turn these fields into focal length and principal point
     # 1. FOV is horizontal FOV of camera, given resolution we can compute
@@ -150,7 +181,7 @@ def getCameraFromFile(inputDir):
 
 
     # store to file
-    fs = cv2.FileStorage(str(inputDir / 'calibration.xml'), cv2.FILE_STORAGE_WRITE)
+    fs = cv2.FileStorage(str(outputDir / 'calibration.xml'), cv2.FILE_STORAGE_WRITE)
     for key,value in camera.items():
         fs.write(name=key,val=value)
     fs.release()
@@ -158,7 +189,7 @@ def getCameraFromFile(inputDir):
     return camera['resolution']
 
 
-def formatGazeData(inputDir, sceneVideoDimensions):
+def formatGazeData(inputDir, outputDir, recInfo, sceneVideoDimensions):
     """
     load gazedata file
     format to get the gaze coordinates w.r.t. world camera, and timestamps for
@@ -170,13 +201,14 @@ def formatGazeData(inputDir, sceneVideoDimensions):
     """
 
     # convert the text file to pandas dataframe
-    df = gazedata2df(inputDir / 'gazedata.txt', sceneVideoDimensions)
+    file = recInfo.name + '-recording.txt'
+    df = gazedata2df(inputDir / file, sceneVideoDimensions)
 
     # read video file, create array of frame timestamps
-    if (inputDir / 'worldCamera.mp4').is_file():
-        frameTimestamps = utils.getFrameTimestampsFromVideo(inputDir / 'worldCamera.mp4')
+    if (outputDir / 'worldCamera.mp4').is_file():
+        frameTimestamps = utils.getFrameTimestampsFromVideo(outputDir / 'worldCamera.mp4')
     else:
-        frameTimestamps = utils.getFrameTimestampsFromVideo(inputDir / 'worldCamera.avi')
+        frameTimestamps = utils.getFrameTimestampsFromVideo(outputDir / 'worldCamera.avi')
 
     # SMI frame counter seems to be of the format HH:MM:SS:FR, where HH:MM:SS is a normal
     # hour, minute, second timecode, and FR is a frame number for within that second. The
@@ -206,9 +238,6 @@ def gazedata2df(textFile,sceneVideoDimensions):
         textData = file.read()
 
     df = pd.read_table(StringIO(textData),comment='#',index_col=False)
-
-    # json no longer needed, remove
-    textFile.unlink(missing_ok=True)
 
     # get assumed viewing distance
     matchedLines    = [line for line in textData.split('\n') if "Head Distance [mm]" in line]
@@ -263,14 +292,3 @@ def gazedata2df(textFile,sceneVideoDimensions):
 
     # return the dataframe
     return df
-
-
-if __name__ == '__main__':
-    basePath = Path(__file__).resolve().parent / 'data'
-    inBasePath = basePath / 'SMI_ETG2'
-    outBasePath = basePath / 'preprocced'
-    if not outBasePath.is_dir():
-        outBasePath.mkdir()
-    for d in inBasePath.iterdir():
-        if d.is_dir():
-            preprocessData(d,outBasePath)

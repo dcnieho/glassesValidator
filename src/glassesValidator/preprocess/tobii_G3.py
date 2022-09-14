@@ -12,13 +12,14 @@ The output directory will contain:
 """
 
 import shutil
-from pathlib import Path
+import pathlib
 import json
 import gzip
 import cv2
 import pandas as pd
 import numpy as np
 import math
+import datetime
 
 from .. import utils
 
@@ -27,18 +28,35 @@ def preprocessData(inputDir, outputDir):
     """
     Run all preprocessing steps on tobii data
     """
-    inputDir  = Path(inputDir)
-    outputDir = Path(outputDir)
+    inputDir  = pathlib.Path(inputDir)
+    outputDir = pathlib.Path(outputDir)
+    print(f'processing: {inputDir.name}')
 
-    print('processing: {}'.format(inputDir.name))
+
+    ### check and copy needed files to the output directory
+    print('Check and copy raw data...')
+     ### check tobii recording and get export directory
+    recInfo = getRecordingInfo(inputDir)
+    if recInfo is None:
+        raise RuntimeError(f"The folder {inputDir} is not recognized as a Tobii Glasses 3 recording.")
+
+    # make output dir
+    recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
+    newDataDir = outputDir / recInfo.proc_directory_name
+    if not newDataDir.is_dir():
+        newDataDir.mkdir()
+
+    # store rec info
+    recInfo.store_as_json(newDataDir / 'recording.json')
+
+
     ### copy the raw data to the output directory
-    print('Copying raw data...')
-    newDataDir = copyTobiiRecording(inputDir, outputDir)
-    print('Input data copied to: {}'.format(newDataDir))
+    copyTobiiRecording(inputDir, newDataDir)
+    print(f'Input data copied to: {newDataDir}')
 
     #### prep the copied data...
     print('Getting camera calibration...')
-    sceneVideoDimensions = getCameraFromJson(newDataDir)
+    sceneVideoDimensions = getCameraFromJson(inputDir, newDataDir)
     print('Prepping gaze data...')
     gazeDf, frameTimestamps = formatGazeData(newDataDir, sceneVideoDimensions)
 
@@ -48,45 +66,52 @@ def preprocessData(inputDir, outputDir):
     # also store frame timestamps
     frameTimestamps.to_csv(str(newDataDir / 'frameTimestamps.tsv'), sep='\t')
 
-    ### cleanup
-    for f in ['livedata.json', 'et.tslv']:
-        (newDataDir / f).unlink(missing_ok=True)
+
+def getRecordingInfo(inputDir):
+    # returns None if not a recording directory
+    recInfo = utils.Recording(source_directory=inputDir, eye_tracker=utils.Type.Tobii_Glasses_3)
+    
+    # get recording info
+    with open(inputDir / 'recording.g3', 'rb') as j:
+        rInfo = json.load(j)
+    recInfo.name = rInfo['name']
+    recInfo.duration = int(rInfo['duration']*1000)          # in seconds, convert to ms
+    time_string = rInfo['created']
+    if time_string[-1:]=='Z':
+        # change Z suffix to +00:00 for ISO 8601 format that datetime understands
+        time_string = time_string[:-1]+'+00:00'
+    recInfo.start_time = int(datetime.datetime.fromisoformat(time_string).timestamp())
+
+    
+    # get participant info
+    with open(inputDir / rInfo['meta-folder'] / 'participant', 'rb') as j:
+        pInfo = json.load(j)
+    recInfo.participant = pInfo['name']
+    
+    # get system info
+    recInfo.firmware_version = (inputDir / rInfo['meta-folder'] / 'RuVersion').read_text()
+    recInfo.glasses_serial = (inputDir / rInfo['meta-folder'] / 'HuSerial').read_text()
+    recInfo.recording_unit_serial = (inputDir / rInfo['meta-folder'] / 'RuSerial').read_text()
+
+    # we got a valid recording and at least some info if we got here
+    # return what we've got
+    return recInfo
 
 
 def copyTobiiRecording(inputDir, outputDir):
     """
     Copy the relevant files from the specified input dir to the specified output dir
     """
-    with open(inputDir / 'recording.g3', 'rb') as j:
-        rInfo = json.load(j)
-    recording = rInfo['name']
-    with open(str(inputDir / rInfo['meta-folder'] / 'participant'), 'rb') as j:
-        pInfo = json.load(j)
-    participant = pInfo['name']
-
-    outputDir = outputDir / ('tobiiG3_%s_%s' % (participant,recording))
-    if not outputDir.is_dir():
-        outputDir.mkdir()
-
     # Copy relevent files to new directory
-    for f in [('recording.g3',None), (rInfo['gaze']['file'],'gazedata.gz'), ('scenevideo.mp4','worldCamera.mp4')]:
-        outFileName = f[0]
-        if f[1] is not None:
-            outFileName = f[1]
-        shutil.copyfile(str(inputDir / f[0]), str(outputDir / outFileName))
+    shutil.copyfile(str(inputDir / 'scenevideo.mp4'), str(outputDir / 'worldCamera.mp4'))
 
-    # Unzip the gaze data file
+    # Unzip the gaze data and tslv files
     for f in ['gazedata.gz']:
-        with gzip.open(str(outputDir / f)) as zipFile:
-            with open(outputDir / Path(f).stem, 'wb') as unzippedFile:
-                for line in zipFile:
-                    unzippedFile.write(line)
-        (outputDir / f).unlink(missing_ok=True)
+        with gzip.open(str(inputDir / f)) as zipFile:
+            with open(outputDir / pathlib.Path(f).stem, 'wb') as unzippedFile:
+                shutil.copyfileobj(zipFile, unzippedFile)
 
-    # return the full path to the output dir
-    return outputDir
-
-def getCameraFromJson(inputDir):
+def getCameraFromJson(inputDir, outputDir):
     """
     Read camera calibration from recording information file
     """
@@ -120,13 +145,10 @@ def getCameraFromJson(inputDir):
 
 
     # store to file
-    fs = cv2.FileStorage(str(inputDir / 'calibration.xml'), cv2.FILE_STORAGE_WRITE)
+    fs = cv2.FileStorage(str(outputDir / 'calibration.xml'), cv2.FILE_STORAGE_WRITE)
     for key,value in camera.items():
         fs.write(name=key,val=value)
     fs.release()
-
-    # json no longer needed, remove
-    (inputDir / 'recording.g3').unlink(missing_ok=True)
 
     return camera['resolution']
 
@@ -196,14 +218,3 @@ def json2df(jsonFile,sceneVideoDimensions):
 
     # return the dataframe
     return df
-
-
-if __name__ == '__main__':
-    basePath = Path(__file__).resolve().parent / 'data'
-    inBasePath = basePath / 'tobiiG3'
-    outBasePath = basePath / 'preprocced'
-    if not outBasePath.is_dir():
-        outBasePath.mkdir()
-    for d in inBasePath.iterdir():
-        if d.is_dir():
-            preprocessData(d,outBasePath)

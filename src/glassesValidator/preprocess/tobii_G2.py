@@ -12,7 +12,7 @@ The output directory will contain:
 """
 
 import shutil
-from pathlib import Path
+import pathlib
 import json
 import gzip
 import cv2
@@ -20,6 +20,7 @@ import pandas as pd
 import numpy as np
 import struct
 import math
+import datetime
 
 from .. import utils
 
@@ -28,14 +29,31 @@ def preprocessData(inputDir, outputDir):
     """
     Run all preprocessing steps on tobii data
     """
-    inputDir  = Path(inputDir)
-    outputDir = Path(outputDir)
+    inputDir  = pathlib.Path(inputDir)
+    outputDir = pathlib.Path(outputDir)
+    print(f'processing: {inputDir.name}')
 
-    print('processing: {}'.format(inputDir.name))
+
+    ### check and copy needed files to the output directory
+    print('Check and copy raw data...')
+     ### check tobii recording and get export directory
+    recInfo = getRecordingInfo(inputDir)
+    if recInfo is None:
+        raise RuntimeError(f"The folder {inputDir} is not recognized as a Tobii Glasses 2 recording.")
+
+    # make output dir
+    recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
+    newDataDir = outputDir / recInfo.proc_directory_name
+    if not newDataDir.is_dir():
+        newDataDir.mkdir()
+
+    # store rec info
+    recInfo.store_as_json(newDataDir / 'recording.json')
+
+
     ### copy the raw data to the output directory
-    print('Copying raw data...')
-    newDataDir = copyTobiiRecording(inputDir, outputDir)
-    print('Input data copied to: {}'.format(newDataDir))
+    copyTobiiRecording(inputDir, newDataDir)
+    print(f'Input data copied to: {newDataDir}')
 
     #### prep the copied data...
     print('Getting camera calibration...')
@@ -49,44 +67,62 @@ def preprocessData(inputDir, outputDir):
     # also store frame timestamps
     frameTimestamps.to_csv(str(newDataDir / 'frameTimestamps.tsv'), sep='\t')
 
-    ### cleanup
-    for f in ['livedata.json', 'et.tslv']:
-        (newDataDir / f).unlink(missing_ok=True)
+
+def getRecordingInfo(inputDir):
+    # returns None if not a recording directory
+    recInfo = utils.Recording(source_directory=inputDir, eye_tracker=utils.Type.Tobii_Glasses_2)
+
+    # get participant info
+    file = inputDir / 'participant.json'
+    if not file.is_file():
+        return None
+    with open(file, 'r') as j:
+        iInfo = json.load(j)
+    recInfo.participant = iInfo['pa_info']['Name']
+    
+    # get recording info
+    file = inputDir / 'recording.json'
+    if not file.is_file():
+        return None
+    with open(file, 'r') as j:
+        iInfo = json.load(j)
+    recInfo.name = iInfo['rec_info']['Name']
+    recInfo.duration   = int(iInfo['rec_length']*1000)          # in seconds, convert to ms
+    time_string = iInfo['rec_created']
+    if time_string[-4:].isdigit() and time_string[-5:-4]=='+':
+        # add hour:minute separator for ISO 8601 format that datetime understands
+        time_string = time_string[:-2]+':'+time_string[-2:]
+    recInfo.start_time = int(datetime.datetime.fromisoformat(time_string).timestamp())
+    
+    # get system info
+    file = inputDir / 'sysinfo.json'
+    if not file.is_file():
+        return None
+    with open(file, 'r') as j:
+        iInfo = json.load(j)
+
+    recInfo.firmware_version = iInfo['servicemanager_version']
+    recInfo.glasses_serial = iInfo['hu_serial']
+    recInfo.recording_unit_serial = iInfo['ru_serial']
+
+    # we got a valid recording and at least some info if we got here
+    # return what we've got
+    return recInfo
 
 
 def copyTobiiRecording(inputDir, outputDir):
     """
     Copy the relevant files from the specified input dir to the specified output dir
     """
-    with open(inputDir / 'participant.json', 'rb') as j:
-        pInfo = json.load(j)
-    participant = pInfo['pa_info']['Name']
-    with open(inputDir / 'recording.json', 'rb') as j:
-        rInfo = json.load(j)
-    recording = rInfo['rec_info']['Name']
-
-    outputDir = outputDir / ('tobiiG2_%s_%s' % (participant,recording))
-    if not outputDir.is_dir():
-        outputDir.mkdir()
-
     # Copy relevent files to new directory
     inputDir = inputDir / 'segments' / '1'
-    for f in [('livedata.json.gz',None), ('et.tslv.gz',None), ('fullstream.mp4','worldCamera.mp4')]:
-        outFileName = f[0]
-        if f[1] is not None:
-            outFileName = f[1]
-        shutil.copyfile(str(inputDir / f[0]), str(outputDir / outFileName))
+    shutil.copyfile(str(inputDir / 'fullstream.mp4'), str(outputDir / 'worldCamera.mp4'))
 
     # Unzip the gaze data and tslv files
     for f in ['livedata.json.gz', 'et.tslv.gz']:
-        with gzip.open(str(outputDir / f)) as zipFile:
-            with open(outputDir / Path(f).stem, 'wb') as unzippedFile:
-                for line in zipFile:
-                    unzippedFile.write(line)
-        (outputDir / f).unlink(missing_ok=True)
-
-    # return the full path to the output dir
-    return outputDir
+        with gzip.open(str(inputDir / f)) as zipFile:
+            with open(outputDir / pathlib.Path(f).stem, 'wb') as unzippedFile:
+                shutil.copyfileobj(zipFile, unzippedFile)
 
 def getCameraFromTSLV(inputDir):
     """
@@ -250,14 +286,3 @@ def json2df(jsonFile,sceneVideoDimensions):
 
     # return the dataframe
     return df, scene_video_ts_offset
-
-
-if __name__ == '__main__':
-    basePath = Path(__file__).resolve().parent / 'data'
-    inBasePath = basePath / 'tobiiG2'
-    outBasePath = basePath / 'preprocced'
-    if not outBasePath.is_dir():
-        outBasePath.mkdir()
-    for d in inBasePath.iterdir():
-        if d.is_dir():
-            preprocessData(d,outBasePath)

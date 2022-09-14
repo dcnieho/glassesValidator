@@ -26,24 +26,56 @@ def preprocessData(inputDir, outputDir, camCalFile=None):
     """
     inputDir  = Path(inputDir)
     outputDir = Path(outputDir)
-
-    print('processing: {}'.format(inputDir.name))
-    ### copy the raw data to the output directory
-    print('Copying raw data...')
-    copySeeTrueRecordings(inputDir, outputDir, camCalFile)
+    print(f'processing: {inputDir.name}')
 
 
-def copySeeTrueRecordings(inputDir, baseOutputDir, camCalFile):
-    """
-    Copy the relevant files from the specified input dir to the specified output dirs
-    NB: a SeeTrue directory may contain multiple recordings
-    """
-    participant = inputDir.name
+    ### check and copy needed files to the output directory
+    print('Check and copy raw data...')
+    recInfos = getRecordingInfo(inputDir)
+    if recInfos is None:
+        raise RuntimeError(f"The folder {inputDir} does not contain SeeTrue recordings.")
+
+    # make output dirs
+    for i in range(len(recInfos)):
+        recInfos[i].proc_directory_name = utils.make_fs_dirname(recInfos[i], outputDir)
+        newDataDir = outputDir / recInfos[i].proc_directory_name
+        if not newDataDir.is_dir():
+            newDataDir.mkdir()
+
+        # store rec info
+        recInfos[i].store_as_json(newDataDir / 'recording.json')
+
+        
+    #### prep the data
+    for recInfo in recInfos:
+        newDataDir = outputDir / recInfo.proc_directory_name
+        print(f'{newDataDir.name}...')
+        print('  Getting camera calibration...')
+        if camCalFile is not None:
+            shutil.copyfile(str(camCalFile), str(newDataDir / 'calibration.xml'))
+        else:
+            print('    !! No camera calibration provided!')
+
+        # NB: gaze data and scene video prep are intertwined, status messages are output inside this function
+        gazeDf, frameTimestamps = copySeeTrueRecording(inputDir, newDataDir, recInfo)
+
+        # write the gaze data to a csv file
+        gazeDf.to_csv(str(newDataDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")
+
+        # also store frame timestamps
+        frameTimestamps.to_csv(str(newDataDir / 'frameTimestamps.tsv'), sep='\t')
+
+
+def getRecordingInfo(inputDir):
+    # returns None if not a recording directory
+    recInfos = []
+
+    # NB: a SeeTrue directory may contain multiple recordings
     
     # get recordings. These are indicated by the sequence number in both EyeData.csv and ScenePics folder names
     for r in inputDir.glob('*.csv'):
         if not str(r.name).startswith('EyeData'):
-            print("file {} not recognized as a recording (wrong name, should start with 'EyeData'), skipping".format(str(r.name)))
+            print(f"file {r.name} not recognized as a recording (wrong name, should start with 'EyeData'), skipping")
             continue
 
         # get sequence number
@@ -52,132 +84,136 @@ def copySeeTrueRecordings(inputDir, baseOutputDir, camCalFile):
         # check there is a matching scenevideo
         sceneVidDir = r.parent / ('ScenePics_' + recording)
         if not sceneVidDir.is_dir():
-            print("folder {} not found, meaning there is no scene video for this recording, skipping".format(str(sceneVidDir)))
+            print(f"folder {sceneVidDir} not found, meaning there is no scene video for this recording, skipping")
             continue
 
-        # get scene video dimensions by interrogating a frame in sceneVidDir
-        frame = next(sceneVidDir.glob('*.jpeg'))
-        h,w,_ = cv2.imread(str(frame)).shape
+        recInfos.append(utils.Recording(source_directory=inputDir, eye_tracker=utils.Type.SeeTrue))
+        recInfos[-1].participant = inputDir.name
+        recInfos[-1].name = recording
 
-        outputDir = baseOutputDir / ('SeeTrue_%s_%s' % (participant,recording))
-        if not outputDir.is_dir():
-            outputDir.mkdir()
-        print('Input data will be copied to: {}'.format(outputDir))
+    # should return None if no valid recordings found
+    return recInfos if recInfos else None
 
-        # copy scene camera calibration file, if any
-        if camCalFile is not None:
-            shutil.copyfile(str(camCalFile), str(outputDir / 'calibration.xml'))
 
-        # prep gaze data and get video frame timestamps from it
-        print('  Prepping gaze data...')
-        gazeDf, frameTimestamps = formatGazeData(r, [w,h])
+def copySeeTrueRecording(inputDir, outputDir, recInfo):
+    """
+    Copy the relevant files from the specified input dir to the specified output dirs
+    """
+    # get scene video dimensions by interrogating a frame in sceneVidDir
+    sceneVidDir = inputDir / ('ScenePics_' + recInfo.name)
+    frame = next(sceneVidDir.glob('*.jpeg'))
+    h,w,_ = cv2.imread(str(frame)).shape
+    
+    # prep gaze data and get video frame timestamps from it
+    print('  Prepping gaze data...')
+    file = f'EyeData_{recInfo.name}.csv'
+    gazeDf, frameTimestamps = formatGazeData(inputDir / file, [w,h])
 
-        # make scene video
-        print('  Prepping scene video...')
-        # 1. see if there are frames missing, insert black frames if so
-        frames = []
-        for f in sceneVidDir.glob('*.jpeg'):
-            _,fr = f.stem.split('_')
-            frames.append(int(fr))
+    # make scene video
+    print('  Prepping scene video...')
+    # 1. see if there are frames missing, insert black frames if so
+    frames = []
+    for f in sceneVidDir.glob('*.jpeg'):
+        _,fr = f.stem.split('_')
+        frames.append(int(fr))
 
-        # 2. see if framenumbers are as expected from the gaze data file
-        # get average ifi
-        ifi = np.mean(np.diff(frameTimestamps.index))
-        # 2.1 remove frame timestamps that are before the first frame for which we have an image
-        frameTimestamps=frameTimestamps.drop(frameTimestamps[frameTimestamps.frame_idx < frames[ 0]].index)
-        # 2.2 remove frame timestamps that are beyond last frame for which we have an image
-        frameTimestamps=frameTimestamps.drop(frameTimestamps[frameTimestamps.frame_idx > frames[-1]].index)
-        # 2.3 add frame timestamps for images we have before first eye data
-        if frames[ 0] < frameTimestamps.iloc[ 0,:].to_numpy()[0]:
-            nFrames = frameTimestamps.iloc[ 0,:].to_numpy()[0] - frames[ 0]
-            t0 = frameTimestamps.index[0]
-            f0 = frameTimestamps.iloc[ 0,:].to_numpy()[0]
-            for f in range(-1,-(nFrames+1),-1):
-                frameTimestamps.loc[t0+f*ifi] = f0+f
-            frameTimestamps = frameTimestamps.sort_index()
-        # 2.4 add frame timestamps for images we have after last eye data
-        if frames[-1] > frameTimestamps.iloc[-1,:].to_numpy()[0]:
-            nFrames = frames[-1] - frameTimestamps.iloc[-1,:].to_numpy()[0]
-            t0 = frameTimestamps.index[-1]
-            f0 = frameTimestamps.iloc[-1,:].to_numpy()[0]
-            for f in range(1,nFrames+1):
-                frameTimestamps.loc[t0+f*ifi] = f0+f
-            frameTimestamps = frameTimestamps.sort_index()
-        # 2.5 check if holes, fill
-        blackFrames = []
-        frameDelta = np.diff(frames)
-        if np.any(frameDelta>1):
-            # frames images missing, add them (NB: if timestamps also missing, thats dealt with below)
-            idxGaps = np.argwhere(frameDelta>1).flatten()     # idxGaps is last idx before each gap
-            frGaps  = np.array(frames)[idxGaps].flatten()
-            nFrames = frameDelta[idxGaps].flatten()
-            for b,x in zip(frGaps+1,nFrames):
-                for y in range(x-1):
-                    blackFrames.append(b+y)
+    # 2. see if framenumbers are as expected from the gaze data file
+    # get average ifi
+    ifi = np.mean(np.diff(frameTimestamps.index))
+    # 2.1 remove frame timestamps that are before the first frame for which we have an image
+    frameTimestamps=frameTimestamps.drop(frameTimestamps[frameTimestamps.frame_idx < frames[ 0]].index)
+    # 2.2 remove frame timestamps that are beyond last frame for which we have an image
+    frameTimestamps=frameTimestamps.drop(frameTimestamps[frameTimestamps.frame_idx > frames[-1]].index)
+    # 2.3 add frame timestamps for images we have before first eye data
+    if frames[ 0] < frameTimestamps.iloc[ 0,:].to_numpy()[0]:
+        nFrames = frameTimestamps.iloc[ 0,:].to_numpy()[0] - frames[ 0]
+        t0 = frameTimestamps.index[0]
+        f0 = frameTimestamps.iloc[ 0,:].to_numpy()[0]
+        for f in range(-1,-(nFrames+1),-1):
+            frameTimestamps.loc[t0+f*ifi] = f0+f
+        frameTimestamps = frameTimestamps.sort_index()
+    # 2.4 add frame timestamps for images we have after last eye data
+    if frames[-1] > frameTimestamps.iloc[-1,:].to_numpy()[0]:
+        nFrames = frames[-1] - frameTimestamps.iloc[-1,:].to_numpy()[0]
+        t0 = frameTimestamps.index[-1]
+        f0 = frameTimestamps.iloc[-1,:].to_numpy()[0]
+        for f in range(1,nFrames+1):
+            frameTimestamps.loc[t0+f*ifi] = f0+f
+        frameTimestamps = frameTimestamps.sort_index()
+    # 2.5 check if holes, fill
+    blackFrames = []
+    frameDelta = np.diff(frames)
+    if np.any(frameDelta>1):
+        # frames images missing, add them (NB: if timestamps also missing, thats dealt with below)
+        idxGaps = np.argwhere(frameDelta>1).flatten()     # idxGaps is last idx before each gap
+        frGaps  = np.array(frames)[idxGaps].flatten()
+        nFrames = frameDelta[idxGaps].flatten()
+        for b,x in zip(frGaps+1,nFrames):
+            for y in range(x-1):
+                blackFrames.append(b+y)
                 
-            # make black frame
-            blackIm = np.zeros((h,w,3), np.uint8)   # black image
-            for f in blackFrames:
-                # store black frame to file
-                cv2.imwrite(str(sceneVidDir / 'frame_{:d}.jpeg'.format(f)),blackIm)
-                frames.append(f)
-            frames = sorted(frames)
-
-        frameTsDelta = np.diff(frameTimestamps.frame_idx)
-        if np.any(frameTsDelta>1):
-            # frames missing from frametimestamps
-            err
-            
-        if len(frames) != frameTimestamps.shape[0]:
-            raise RuntimeError('Number of frames ({}) isn''t equal to number of frame timestamps ({}) and this couldnt be repaired'.format(len(frames),frameTimestamps.shape[0]))
-        
-        # 3. make into video
-        framerate = "{:.4f}".format(1000./ifi)
-        cmd_str = ' '.join(['ffmpeg', '-y', '-f', 'image2', '-framerate', framerate, '-start_number', str(frames[0]), '-i', '"'+str(sceneVidDir / 'frame_%d.jpeg')+'"', '"'+str(outputDir / 'worldCamera.mp4')+'"'])
-        os.system(cmd_str)
-
-        # attempt 2 that should allow correct VFR video files, but doesn't work with current MediaWriter
-        # due to what i think is a bug: https://github.com/matham/ffpyplayer/issues/129.
-        ## get which pixel format
-        #codec    = ffpyplayer.tools.get_format_codec(fmt='mp4')
-        #pix_fmt  = ffpyplayer.tools.get_best_pix_fmt('bgr24',ffpyplayer.tools.get_supported_pixfmts(codec))
-        #fpsFrac  = Fraction(1000./ifi).limit_denominator(10000).as_integer_ratio()
-        #fpsFrac  = tuple([x*10 for x in fpsFrac])
-        ## scene video
-        #out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':w, 'height_in':h,'frame_rate':fpsFrac}
-        #vidOut   = MediaWriter(str(outputDir / 'worldCamera.mp4'), [out_opts], overwrite=True)
-        #t0       = frameTimestamps.index[0]
-        #for i,f in enumerate(frames):
-        #    frame = cv2.imread(str(sceneVidDir / 'frame_{:5d}.jpeg'.format(f)))
-        #    img   = Image(plane_buffers=[frame.flatten().tobytes()], pix_fmt='bgr24', size=(int(w), int(h)))
-        #    t = (frameTimestamps.index[i]-t0)/1000
-        #    print(t, t/(fpsFrac[1]/fpsFrac[0]))
-        #    vidOut.write_frame(img=img, pts=t)
-        
-        # delete the black frames we added, if any
+        # make black frame
+        blackIm = np.zeros((h,w,3), np.uint8)   # black image
         for f in blackFrames:
-            if (sceneVidDir / 'frame_{:d}.jpeg'.format(f)).is_file():
-                (sceneVidDir / 'frame_{:d}.jpeg'.format(f)).unlink(missing_ok=True)
-                
-        # 4. write data to file
-        # fix up frame idxs and timestamps
-        firstFrame = frameTimestamps['frame_idx'].min()
+            # store black frame to file
+            cv2.imwrite(str(sceneVidDir / 'frame_{:d}.jpeg'.format(f)),blackIm)
+            frames.append(f)
+        frames = sorted(frames)
 
-        # write the gaze data to a csv file
-        gazeDf['frame_idx'] -= firstFrame
-        gazeDf.to_csv(str(outputDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")
-
-        # also store frame timestamps
-        # this is what it should be if we get VFR video file writing above to work
-        #frameTimestamps['frame_idx'] -= firstFrame
-        #frameTimestamps=frameTimestamps.reset_index().set_index('frame_idx')
-        #frameTimestamps['timestamp'] -= frameTimestamps['timestamp'].min()
-        # instead now, get actual ts for each frame in written video as that is what we
-        # have to work with. Note that these do not match gaze data ts, but code nowhere
-        # assumes they do
-        frameTimestamps = utils.getFrameTimestampsFromVideo(outputDir / 'worldCamera.mp4')
+    frameTsDelta = np.diff(frameTimestamps.frame_idx)
+    if np.any(frameTsDelta>1):
+        # frames missing from frametimestamps
+        err
+            
+    if len(frames) != frameTimestamps.shape[0]:
+        raise RuntimeError('Number of frames ({}) isn''t equal to number of frame timestamps ({}) and this couldnt be repaired'.format(len(frames),frameTimestamps.shape[0]))
         
-        frameTimestamps.to_csv(str(outputDir / 'frameTimestamps.tsv'), sep='\t')
+    # 3. make into video
+    framerate = "{:.4f}".format(1000./ifi)
+    cmd_str = ' '.join(['ffmpeg', '-y', '-f', 'image2', '-framerate', framerate, '-start_number', str(frames[0]), '-i', '"'+str(sceneVidDir / 'frame_%d.jpeg')+'"', '"'+str(outputDir / 'worldCamera.mp4')+'"'])
+    os.system(cmd_str)
+
+    # attempt 2 that should allow correct VFR video files, but doesn't work with current MediaWriter
+    # due to what i think is a bug: https://github.com/matham/ffpyplayer/issues/129.
+    ## get which pixel format
+    #codec    = ffpyplayer.tools.get_format_codec(fmt='mp4')
+    #pix_fmt  = ffpyplayer.tools.get_best_pix_fmt('bgr24',ffpyplayer.tools.get_supported_pixfmts(codec))
+    #fpsFrac  = Fraction(1000./ifi).limit_denominator(10000).as_integer_ratio()
+    #fpsFrac  = tuple([x*10 for x in fpsFrac])
+    ## scene video
+    #out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':w, 'height_in':h,'frame_rate':fpsFrac}
+    #vidOut   = MediaWriter(str(outputDir / 'worldCamera.mp4'), [out_opts], overwrite=True)
+    #t0       = frameTimestamps.index[0]
+    #for i,f in enumerate(frames):
+    #    frame = cv2.imread(str(sceneVidDir / 'frame_{:5d}.jpeg'.format(f)))
+    #    img   = Image(plane_buffers=[frame.flatten().tobytes()], pix_fmt='bgr24', size=(int(w), int(h)))
+    #    t = (frameTimestamps.index[i]-t0)/1000
+    #    print(t, t/(fpsFrac[1]/fpsFrac[0]))
+    #    vidOut.write_frame(img=img, pts=t)
+        
+    # delete the black frames we added, if any
+    for f in blackFrames:
+        if (sceneVidDir / 'frame_{:d}.jpeg'.format(f)).is_file():
+            (sceneVidDir / 'frame_{:d}.jpeg'.format(f)).unlink(missing_ok=True)
+                
+    # 4. write data to file
+    # fix up frame idxs and timestamps
+    firstFrame = frameTimestamps['frame_idx'].min()
+
+    # write the gaze data to a csv file
+    gazeDf['frame_idx'] -= firstFrame
+
+    # also store frame timestamps
+    # this is what it should be if we get VFR video file writing above to work
+    #frameTimestamps['frame_idx'] -= firstFrame
+    #frameTimestamps=frameTimestamps.reset_index().set_index('frame_idx')
+    #frameTimestamps['timestamp'] -= frameTimestamps['timestamp'].min()
+    # instead now, get actual ts for each frame in written video as that is what we
+    # have to work with. Note that these do not match gaze data ts, but code nowhere
+    # assumes they do
+    frameTimestamps = utils.getFrameTimestampsFromVideo(outputDir / 'worldCamera.mp4')
+        
+    return gazeDf, frameTimestamps
 
 
 
@@ -202,7 +238,7 @@ def formatGazeData(inputFile, sceneVideoDimensions):
     return df, frameTimestamps
 
 
-def gazedata2df(textFile,sceneVideoDimensions):
+def gazedata2df(textFile, sceneVideoDimensions):
     """
     convert the gazedata file to a pandas dataframe
     """
@@ -234,14 +270,3 @@ def gazedata2df(textFile,sceneVideoDimensions):
 
     # return the dataframe
     return df
-
-
-if __name__ == '__main__':
-    basePath = Path(__file__).resolve().parent / 'data'
-    inBasePath = basePath / 'SeeTrue'
-    outBasePath = basePath / 'preprocced'
-    if not outBasePath.is_dir():
-        outBasePath.mkdir()
-    for d in inBasePath.iterdir():
-        if d.is_dir():
-            preprocessData(d,outBasePath)

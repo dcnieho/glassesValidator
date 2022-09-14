@@ -48,6 +48,20 @@ class Type(AutoName):
     Tobii_Glasses_3 = auto()
     Unknown         = auto()
 
+def type_string_to_enum(device: str):
+    if isinstance(device, Type):
+        return device
+
+    if isinstance(device, str):
+        if hasattr(Type, device):
+            return getattr(Type, device)
+        elif device in [e.value for e in Type]:
+            return Type(device)
+        else:
+            raise ValueError(f"The string '{device}' is not a known eye tracker type. Known types: {[e.value for e in Type]}")
+    else:
+        raise ValueError(f"The variable '{device}' should be a string with one of the following values: {[e.value for e in Type]}")
+
 
 class Status(AutoName):
     Normal          = auto()
@@ -59,20 +73,20 @@ class Status(AutoName):
 
 @dataclasses.dataclass
 class Recording:
-    name                        : str       = ""
-    source_directory            : str       = ""
-    proc_directory              : str       = ""
-    start_time                  : Timestamp = 0
-    duration                    : int       = 0
-    eye_tracker                 : Type      = Type.Unknown
-    project                     : str       = ""
-    participant                 : str       = ""
-    firmware_version            : str       = ""
-    glasses_serial              : str       = ""
-    recording_unit_serial       : str       = ""
-    recording_software_version  : str       = ""
-    scene_camera_serial         : str       = ""
-    status                      : Status    = Status.Unknown
+    name                        : str           = ""
+    source_directory            : pathlib.Path  = ""
+    proc_directory_name         : str           = ""
+    start_time                  : Timestamp     = 0
+    duration                    : int           = 0
+    eye_tracker                 : Type          = Type.Unknown
+    project                     : str           = ""
+    participant                 : str           = ""
+    firmware_version            : str           = ""
+    glasses_serial              : str           = ""
+    recording_unit_serial       : str           = ""
+    recording_software_version  : str           = ""
+    scene_camera_serial         : str           = ""
+    status                      : Status        = Status.Unknown
 
     def store_as_json(self,path):
         class EnumEncoder(json.JSONEncoder):
@@ -107,15 +121,23 @@ class Recording:
             return json.load(f, object_hook=reconstitute)
 
 
-def make_fs_dirname(rec: Recording):
-    
+def make_fs_dirname(rec: Recording, dir: pathlib.Path):
     if rec.participant:
         filename = f"{rec.eye_tracker.value}_{rec.participant}_{rec.name}"
     else:
         filename = f"{rec.eye_tracker.value}_{rec.name}"
+        
+    # make sure its a valid path
+    filename = pathvalidate.sanitize_filename(filename)
 
-    return pathvalidate.sanitize_filename(filename)
+    # check it doesn't already exist
+    if (dir / filename).is_dir():
+        raise RuntimeError(f"The path {dir/filename} already exists.")
+        while (dir / filename).is_dir():
+            # TODO: add _1, _2, etc
+            pass
 
+    return filename
 
 
 def getXYZLabels(stringList,N=3):

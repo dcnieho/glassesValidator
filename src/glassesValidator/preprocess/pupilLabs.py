@@ -30,21 +30,25 @@ from .. import utils
 
 def preprocessData(inputDir, outputDir, device):
     """
-    Run all preprocessing steps on tobii data
+    Run all preprocessing steps on pupil data
     """
     inputDir  = Path(inputDir)
     outputDir = Path(outputDir)
-    print('processing: {}'.format(inputDir.name))
+    device    = utils.type_string_to_enum(device)
+    print(f'processing: {inputDir.name}')
 
 
-    ### check copy needed files to the output directory
+    ### check and copy needed files to the output directory
     print('Check and copy raw data...')
      ### check pupil recording and get export directory
     exportFile = checkPupilRecording(inputDir)
     recInfo = getRecordingInfo(inputDir, device)
+    if recInfo is None:
+        raise RuntimeError(f"The folder {device.value} is not recognized as a {exportFile} recording.")
 
     # make output dir
-    newDataDir = outputDir / recInfo.proc_directory
+    recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
+    newDataDir = outputDir / recInfo.proc_directory_name
     if not newDataDir.is_dir():
         newDataDir.mkdir()
 
@@ -53,7 +57,7 @@ def preprocessData(inputDir, outputDir, device):
     
     # copy world video
     shutil.copyfile(str(inputDir / 'world.mp4'), str(newDataDir / 'worldCamera.mp4'))
-    print('Input data copied to: {}'.format(newDataDir))
+    print(f'Input data copied to: {newDataDir}')
 
 
     ### get camera cal
@@ -77,30 +81,37 @@ def preprocessData(inputDir, outputDir, device):
 
         
 def checkPupilRecording(inputDir):
+    """
+    This checks that the folder is properly prepared
+    (i.e. opened in pupil player and an export was run)
+    """
     # check we have an info.player.json file
     if not (inputDir / 'info.player.json').is_file():
-        raise RuntimeError('info.player.json file not found for {}. Open the recording in Pupil Player before importing into glassesValidator.'.format(inputDir))
+        raise RuntimeError(f'info.player.json file not found for {inputDir}. Open the recording in Pupil Player before importing into glassesValidator.')
 
     # check we have an export in the input dir
     inputExpDir = inputDir / 'exports'
     if not inputExpDir.is_dir():
-        raise RuntimeError('no exports folder for {}. Perform a recording export in Pupil Player before importing into glassesValidator.'.format(inputDir))
+        raise RuntimeError(f'no exports folder for {inputDir}. Perform a recording export in Pupil Player before importing into glassesValidator.')
 
     # get latest export in that folder that contain a gaze position file
     gpFiles = sorted(list(inputExpDir.rglob('*gaze_positions*.csv')))
     if not gpFiles:
-        raise RuntimeError('There are no exports in the folder {}. Perform a recording export in Pupil Player before importing into glassesValidator.'.format(inputExpDir))
+        raise RuntimeError(f'There are no exports in the folder {inputExpDir}. Perform a recording export in Pupil Player before importing into glassesValidator.')
     
     return gpFiles[-1]
 
 
 def getRecordingInfo(inputDir, device):
+    # returns None if not a recording directory
     recInfo = utils.Recording(source_directory=inputDir)
 
     match device:
-        case 'pupilCore':
-            recInfo.eye_tracker = utils.Type['Pupil_Core']
-            with open(inputDir / 'info.player.json', 'r') as j:
+        case utils.Type.Pupil_Core:
+            file = inputDir / 'info.player.json'
+            if not file.is_file():
+                return None
+            with open(file, 'r') as j:
                 iInfo = json.load(j)
             recInfo.name = iInfo['recording_name']
             recInfo.start_time = int(iInfo['start_time_system_s'])      # UTC in seconds, keep second part
@@ -116,9 +127,11 @@ def getRecordingInfo(inputDir, device):
                     if not pd.isnull(df[nameRow].value).to_numpy()[0]:
                         recInfo.participant = df.loc[nameRow,'value'].to_numpy()[0]
 
-        case 'pupilInvisible':
-            recInfo.eye_tracker = utils.Type['Pupil_Invisible']
-            with open(inputDir / 'info.invisible.json', 'r') as j:
+        case utils.Type.Pupil_Invisible:
+            file = inputDir / 'info.invisible.json'
+            if not file.is_file():
+                return None
+            with open(file, 'r') as j:
                 iInfo = json.load(j)
             recInfo.name = iInfo['template_data']['recording_name']
             recInfo.recording_software_version = iInfo['app_version']
@@ -128,17 +141,21 @@ def getRecordingInfo(inputDir, device):
             recInfo.recording_unit_serial = iInfo['android_device_id']
             recInfo.scene_camera_serial = iInfo['scene_camera_serial_number']
             # get participant name
-            wearer_id = iInfo['wearer_id']
-            with open(inputDir / 'wearer.json', 'r') as j:
-                iInfo = json.load(j)
-            if wearer_id==iInfo['uuid']:
-                recInfo.participant = iInfo['name']
+            file = inputDir / 'wearer.json'
+            if file.is_file():
+                wearer_id = iInfo['wearer_id']
+                with open(file, 'r') as j:
+                    iInfo = json.load(j)
+                if wearer_id==iInfo['uuid']:
+                    recInfo.participant = iInfo['name']
 
         case _:
             print(f"Device {device} unknown")
-
-    recInfo.proc_directory = utils.make_fs_dirname(recInfo)
-
+            return None
+       
+    # we got a valid recording and at least some info if we got here
+    # add device and return what we've got
+    recInfo.eye_tracker = device
     return recInfo
 
 
@@ -166,7 +183,7 @@ def getCameraCalFromOnline(inputDir, outputDir, recInfo):
     """
     Get camera calibration from pupil labs
     """
-    url = 'https://api.cloud.pupil-labs.com/v2/hardware/' + recInfo.scene_camera_serial + '/calibration.v1?json'
+    url = f'https://api.cloud.pupil-labs.com/v2/hardware/{recInfo.scene_camera_serial}/calibration.v1?json'
 
     camInfo = json.loads(urlopen(url).read())
     if camInfo['status'] != 'success':
@@ -265,8 +282,7 @@ def readGazeData(file,sceneVideoDimensions, recInfo):
     """
     convert the gaze_positions.csv file to a pandas dataframe
     """
-
-    isCore      = recInfo.eye_tracker is utils.Type.Pupil_Core
+    isCore = recInfo.eye_tracker is utils.Type.Pupil_Core
 
     df = pd.read_csv(file)
 
@@ -319,15 +335,3 @@ def readGazeData(file,sceneVideoDimensions, recInfo):
 
     # return the dataframe
     return df
-
-
-if __name__ == '__main__':
-    basePath = Path(__file__).resolve().parent / 'data'
-    for dev in ['pupilCore','pupilInvisible']:
-        inBasePath = basePath / dev
-        outBasePath = basePath / 'preprocced'
-        if not outBasePath.is_dir():
-            outBasePath.mkdir()
-        for d in inBasePath.iterdir():
-            if d.is_dir():
-                preprocessData(d,outBasePath,dev)
