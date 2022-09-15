@@ -34,6 +34,28 @@ class Timestamp:
             self.display = datetime.date.fromtimestamp(unix_time).strftime(self.format)
 
 
+def hex_to_rgba_0_1(hex):
+    r = int(hex[1:3], base=16) / 255
+    g = int(hex[3:5], base=16) / 255
+    b = int(hex[5:7], base=16) / 255
+    if len(hex) > 7:
+        a = int(hex[7:9], base=16) / 255
+    else:
+        a = 1.0
+    return (r, g, b, a)
+
+
+def rgba_0_1_to_hex(rgba):
+    r = "%.2x" % int(rgba[0] * 255)
+    g = "%.2x" % int(rgba[1] * 255)
+    b = "%.2x" % int(rgba[2] * 255)
+    if len(rgba) > 3:
+        a = "%.2x" % int(rgba[3] * 255)
+    else:
+        a = "FF"
+    return f"#{r}{g}{b}{a}"
+
+
 class AutoName(Enum):
     def _generate_next_value_(name, start, count, last_values):
         return name.strip("_").replace("__", "-").replace("_", " ")
@@ -47,6 +69,16 @@ class Type(AutoName):
     Tobii_Glasses_2 = auto()
     Tobii_Glasses_3 = auto()
     Unknown         = auto()
+
+Type.Pupil_Core     .color = hex_to_rgba_0_1("#E6194B")
+Type.Pupil_Invisible.color = hex_to_rgba_0_1("#3CB44B")
+Type.SMI_ETG        .color = hex_to_rgba_0_1("#4363D8")
+Type.SeeTrue        .color = hex_to_rgba_0_1("#911EB4")
+Type.Tobii_Glasses_2.color = hex_to_rgba_0_1("#F58231")
+Type.Tobii_Glasses_3.color = hex_to_rgba_0_1("#F032E6")
+Type.Unknown        .color = hex_to_rgba_0_1("#393939")
+
+eye_tracker_names = [getattr(Type,x).value for x in Type.__members__ if x!='Unknown']
 
 def type_string_to_enum(device: str):
     if isinstance(device, Type):
