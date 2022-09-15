@@ -75,7 +75,7 @@ def getRecordingInfo(inputDir):
     # get recordings. These are indicated by the sequence number in both EyeData.csv and ScenePics folder names
     for r in inputDir.glob('*.csv'):
         if not str(r.name).startswith('EyeData'):
-            print(f"file {r.name} not recognized as a recording (wrong name, should start with 'EyeData'), skipping")
+            # print(f"file {r.name} not recognized as a recording (wrong name, should start with 'EyeData'), skipping")
             continue
 
         # get sequence number
@@ -84,7 +84,7 @@ def getRecordingInfo(inputDir):
         # check there is a matching scenevideo
         sceneVidDir = r.parent / ('ScenePics_' + recording)
         if not sceneVidDir.is_dir():
-            print(f"folder {sceneVidDir} not found, meaning there is no scene video for this recording, skipping")
+            # print(f"folder {sceneVidDir} not found, meaning there is no scene video for this recording, skipping")
             continue
 
         recInfos.append(utils.Recording(source_directory=inputDir, eye_tracker=utils.Type.SeeTrue))
