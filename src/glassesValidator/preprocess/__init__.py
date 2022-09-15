@@ -20,6 +20,10 @@ def getRecordingInfo(inputDir: str | pathlib.Path, device: str | _utils.Type):
     inputDir  = pathlib.Path(inputDir)
     device = _utils.type_string_to_enum(device)
 
+    file = inputDir / 'recording_glassesValidator.json'
+    if file.is_file():
+        return [_utils.Recording.load_from_json(file)]
+
     recInfo = None
     match device:
         case _utils.Type.Pupil_Core:
