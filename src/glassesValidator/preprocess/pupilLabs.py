@@ -53,7 +53,7 @@ def preprocessData(inputDir, outputDir, device):
         newDataDir.mkdir()
 
     # store rec info
-    recInfo.store_as_json(newDataDir / 'recording.json')
+    recInfo.store_as_json(newDataDir / 'recording_glassesValidator.json')
     
     # copy world video
     shutil.copyfile(str(inputDir / 'world.mp4'), str(newDataDir / 'worldCamera.mp4'))

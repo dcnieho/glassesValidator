@@ -43,7 +43,7 @@ def preprocessData(inputDir, outputDir, camCalFile=None):
             newDataDir.mkdir()
 
         # store rec info
-        recInfos[i].store_as_json(newDataDir / 'recording.json')
+        recInfos[i].store_as_json(newDataDir / 'recording_glassesValidator.json')
 
         
     #### prep the data
