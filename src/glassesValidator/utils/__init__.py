@@ -153,23 +153,26 @@ class Recording:
             return Recording(**json.load(f, object_hook=reconstitute))
 
 
-def make_fs_dirname(rec: Recording, dir: pathlib.Path):
+def make_fs_dirname(rec: Recording, dir: pathlib.Path = None):
     if rec.participant:
-        filename = f"{rec.eye_tracker.value}_{rec.participant}_{rec.name}"
+        dirname = f"{rec.eye_tracker.value}_{rec.participant}_{rec.name}"
     else:
-        filename = f"{rec.eye_tracker.value}_{rec.name}"
+        dirname = f"{rec.eye_tracker.value}_{rec.name}"
         
     # make sure its a valid path
-    filename = pathvalidate.sanitize_filename(filename)
+    dirname = pathvalidate.sanitize_filename(dirname)
 
     # check it doesn't already exist
-    if (dir / filename).is_dir():
-        raise RuntimeError(f"The path {dir/filename} already exists.")
-        while (dir / filename).is_dir():
-            # TODO: add _1, _2, etc
-            pass
+    if dir is not None:
+        if (dir / dirname).is_dir():
+            # add _1, _2, etc, until we find a unique name
+            fver=1
+            while (dir / f'{dirname}_{fver}').is_dir():
+                fver += 1
 
-    return filename
+            dirname = f'{dirname}_{fver}'
+
+    return dirname
 
 
 def getXYZLabels(stringList,N=3):
