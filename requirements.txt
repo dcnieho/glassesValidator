@@ -12,4 +12,6 @@ I2MC
 msgpack
 aiosqlite
 uvloop ; sys_platform != "win32"
+pyicu ; sys_platform != "win32"
 pathvalidate
+natsort
