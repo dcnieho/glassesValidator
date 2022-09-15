@@ -120,7 +120,7 @@ class Recording:
     scene_camera_serial         : str           = ""
     status                      : Status        = Status.Unknown
 
-    def store_as_json(self,path):
+    def store_as_json(self, path):
         class EnumEncoder(json.JSONEncoder):
             def default(self, obj):
                 if type(obj) in [Type, Status]:
@@ -150,7 +150,7 @@ class Recording:
                 return d
 
         with open(path, 'r') as f:
-            return json.load(f, object_hook=reconstitute)
+            return Recording(**json.load(f, object_hook=reconstitute))
 
 
 def make_fs_dirname(rec: Recording, dir: pathlib.Path):
