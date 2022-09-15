@@ -72,7 +72,10 @@ def getRecordingInfo(inputDir):
     recInfo = utils.Recording(source_directory=inputDir, eye_tracker=utils.Type.Tobii_Glasses_3)
     
     # get recording info
-    with open(inputDir / 'recording.g3', 'rb') as j:
+    file = inputDir / 'recording.g3'
+    if not file.is_file():
+        return None
+    with open(file, 'rb') as j:
         rInfo = json.load(j)
     recInfo.name = rInfo['name']
     recInfo.duration = int(rInfo['duration']*1000)          # in seconds, convert to ms
@@ -84,7 +87,10 @@ def getRecordingInfo(inputDir):
 
     
     # get participant info
-    with open(inputDir / rInfo['meta-folder'] / 'participant', 'rb') as j:
+    file = inputDir / rInfo['meta-folder'] / 'participant'
+    if not file.is_file():
+        return None
+    with open(file, 'rb') as j:
         pInfo = json.load(j)
     recInfo.participant = pInfo['name']
     
