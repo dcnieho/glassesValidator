@@ -92,7 +92,7 @@ def getRecordingInfo(inputDir):
     if time_string[-4:].isdigit() and time_string[-5:-4]=='+':
         # add hour:minute separator for ISO 8601 format that datetime understands
         time_string = time_string[:-2]+':'+time_string[-2:]
-    recInfo.start_time = int(datetime.datetime.fromisoformat(time_string).timestamp())
+    recInfo.start_time = utils.Timestamp(int(datetime.datetime.fromisoformat(time_string).timestamp()))
     
     # get system info
     file = inputDir / 'sysinfo.json'

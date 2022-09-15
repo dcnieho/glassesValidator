@@ -119,8 +119,8 @@ def getRecordingInfo(inputDir, device):
             with open(file, 'r') as j:
                 iInfo = json.load(j)
             recInfo.name = iInfo['recording_name']
-            recInfo.start_time = int(iInfo['start_time_system_s'])      # UTC in seconds, keep second part
-            recInfo.duration   = int(iInfo['duration_s']*1000)          # in seconds, convert to ms
+            recInfo.start_time = utils.Timestamp(int(iInfo['start_time_system_s'])) # UTC in seconds, keep second part
+            recInfo.duration   = int(iInfo['duration_s']*1000)                      # in seconds, convert to ms
             recInfo.recording_software_version = iInfo['recording_software_version']
 
             # get user name, if any
@@ -140,8 +140,8 @@ def getRecordingInfo(inputDir, device):
                 iInfo = json.load(j)
             recInfo.name = iInfo['template_data']['recording_name']
             recInfo.recording_software_version = iInfo['app_version']
-            recInfo.start_time = int(iInfo['start_time']//1000000000)   # UTC in nanoseconds, keep second part
-            recInfo.duration   = int(iInfo['duration']//1000000)        # in nanoseconds, convert to ms
+            recInfo.start_time = utils.Timestamp(int(iInfo['start_time']//1000000000))  # UTC in nanoseconds, keep second part
+            recInfo.duration   = int(iInfo['duration']//1000000)                        # in nanoseconds, convert to ms
             recInfo.glasses_serial = iInfo['glasses_serial_number']
             recInfo.recording_unit_serial = iInfo['android_device_id']
             recInfo.scene_camera_serial = iInfo['scene_camera_serial_number']

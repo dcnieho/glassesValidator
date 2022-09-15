@@ -80,7 +80,7 @@ def getRecordingInfo(inputDir):
     if time_string[-1:]=='Z':
         # change Z suffix to +00:00 for ISO 8601 format that datetime understands
         time_string = time_string[:-1]+'+00:00'
-    recInfo.start_time = int(datetime.datetime.fromisoformat(time_string).timestamp())
+    recInfo.start_time = utils.Timestamp(int(datetime.datetime.fromisoformat(time_string).timestamp()))
 
     
     # get participant info
