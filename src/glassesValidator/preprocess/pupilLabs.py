@@ -108,6 +108,11 @@ def getRecordingInfo(inputDir, device):
 
     match device:
         case utils.Type.Pupil_Core:
+            # check this is not an invisible recording
+            file = inputDir / 'info.invisible.json'
+            if file.is_file():
+                return None
+
             file = inputDir / 'info.player.json'
             if not file.is_file():
                 return None
