@@ -28,6 +28,16 @@
     <Compile Include="src\glassesValidator\config\markerBoard\__init__.py" />
     <Compile Include="src\glassesValidator\GUI\__init__.py" />
     <Compile Include="src\glassesValidator\GUI\_impl\__init__.py" />
+    <Compile Include="src\glassesValidator\GUI\_impl\async_thread.py" />
+    <Compile Include="src\glassesValidator\GUI\_impl\callbacks.py" />
+    <Compile Include="src\glassesValidator\GUI\_impl\db.py" />
+    <Compile Include="src\glassesValidator\GUI\_impl\filepicker.py" />
+    <Compile Include="src\glassesValidator\GUI\_impl\globals.py" />
+    <Compile Include="src\glassesValidator\GUI\_impl\gui.py" />
+    <Compile Include="src\glassesValidator\GUI\_impl\imagehelper.py" />
+    <Compile Include="src\glassesValidator\GUI\_impl\msgbox.py" />
+    <Compile Include="src\glassesValidator\GUI\_impl\structs.py" />
+    <Compile Include="src\glassesValidator\GUI\_impl\utils.py" />
     <Compile Include="src\glassesValidator\preprocess\SMI_ETG.py" />
     <Compile Include="src\glassesValidator\preprocess\SeeTrue.py" />
     <Compile Include="src\glassesValidator\preprocess\__init__.py" />

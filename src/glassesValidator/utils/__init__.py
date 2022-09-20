@@ -110,6 +110,7 @@ status_names = [getattr(Status,x).value for x in Status.__members__]
 class Recording:
     default_json_file_name      : typing.ClassVar[str] = 'recording_glassesValidator.json'
 
+    id                          : int           = None
     name                        : str           = ""
     source_directory            : pathlib.Path  = ""
     proc_directory_name         : str           = ""
