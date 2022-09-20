@@ -1,12 +1,8 @@
-#!/usr/bin/env python
 import sys
-
 
 def run():
     from ._impl import globals
-
     from ._impl.structs import Os
-
 
     if globals.os is Os.Windows:
         # Hide conhost if frozen or release
@@ -20,12 +16,9 @@ def run():
             uvloop.install()
         except Exception:
             pass
-
         
-    from ._impl import async_thread
+    from ._impl import async_thread, gui
     async_thread.setup()
-    
-    from ._impl import gui
     globals.gui = gui.MainGUI()
 
     # returns true if a new main_loop is needed, or false if all done
