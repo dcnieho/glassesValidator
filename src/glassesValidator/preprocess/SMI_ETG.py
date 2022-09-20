@@ -88,7 +88,7 @@ def getRecordingInfo(inputDir):
     # for the corresponding 001-2-recording.avi, should be named 001-2-recording.txt. The
     # exported video should be called 001-2-export.avi
     for r in inputDir.glob('*-export.avi'):
-        recInfos.append(utils.Recording(source_directory=inputDir, eye_tracker=utils.Type.SMI_ETG))
+        recInfos.append(utils.Recording(source_directory=inputDir, eye_tracker=utils.EyeTracker.SMI_ETG))
         recInfos[-1].participant = inputDir.name
         recInfos[-1].name = str(r.name)[:-len('-export.avi')]
         recInfos[-1].glasses_serial = serial

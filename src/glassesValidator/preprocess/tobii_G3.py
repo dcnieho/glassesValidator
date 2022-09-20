@@ -69,7 +69,7 @@ def preprocessData(inputDir, outputDir):
 
 def getRecordingInfo(inputDir):
     # returns None if not a recording directory
-    recInfo = utils.Recording(source_directory=inputDir, eye_tracker=utils.Type.Tobii_Glasses_3)
+    recInfo = utils.Recording(source_directory=inputDir, eye_tracker=utils.EyeTracker.Tobii_Glasses_3)
     
     # get recording info
     file = inputDir / 'recording.g3'

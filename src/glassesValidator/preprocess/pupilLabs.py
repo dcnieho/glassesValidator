@@ -63,9 +63,9 @@ def preprocessData(inputDir, outputDir, device):
     ### get camera cal
     print('Getting camera calibration...')
     match recInfo.eye_tracker:
-        case utils.Type.Pupil_Core:
+        case utils.EyeTracker.Pupil_Core:
             sceneVideoDimensions = getCameraFromMsgPack(inputDir, newDataDir)
-        case utils.Type.Pupil_Invisible:
+        case utils.EyeTracker.Pupil_Invisible:
             sceneVideoDimensions = getCameraCalFromOnline(inputDir, newDataDir, recInfo)
 
 
@@ -107,7 +107,7 @@ def getRecordingInfo(inputDir, device):
     recInfo = utils.Recording(source_directory=inputDir)
 
     match device:
-        case utils.Type.Pupil_Core:
+        case utils.EyeTracker.Pupil_Core:
             # check this is not an invisible recording
             file = inputDir / 'info.invisible.json'
             if file.is_file():
@@ -132,7 +132,7 @@ def getRecordingInfo(inputDir, device):
                     if not pd.isnull(df[nameRow].value).to_numpy()[0]:
                         recInfo.participant = df.loc[nameRow,'value'].to_numpy()[0]
 
-        case utils.Type.Pupil_Invisible:
+        case utils.EyeTracker.Pupil_Invisible:
             file = inputDir / 'info.invisible.json'
             if not file.is_file():
                 return None
@@ -287,7 +287,7 @@ def readGazeData(file,sceneVideoDimensions, recInfo):
     """
     convert the gaze_positions.csv file to a pandas dataframe
     """
-    isCore = recInfo.eye_tracker is utils.Type.Pupil_Core
+    isCore = recInfo.eye_tracker is utils.EyeTracker.Pupil_Core
 
     df = pd.read_csv(file)
 

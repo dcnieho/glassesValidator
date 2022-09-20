@@ -87,7 +87,7 @@ def getRecordingInfo(inputDir):
             # print(f"folder {sceneVidDir} not found, meaning there is no scene video for this recording, skipping")
             continue
 
-        recInfos.append(utils.Recording(source_directory=inputDir, eye_tracker=utils.Type.SeeTrue))
+        recInfos.append(utils.Recording(source_directory=inputDir, eye_tracker=utils.EyeTracker.SeeTrue))
         recInfos[-1].participant = inputDir.name
         recInfos[-1].name = recording
 

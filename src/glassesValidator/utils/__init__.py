@@ -61,7 +61,7 @@ class AutoName(Enum):
         return name.strip("_").replace("__", "-").replace("_", " ")
     
 
-class Type(AutoName):
+class EyeTracker(AutoName):
     Pupil_Core      = auto()
     Pupil_Invisible = auto()
     SMI_ETG         = auto()
@@ -70,29 +70,29 @@ class Type(AutoName):
     Tobii_Glasses_3 = auto()
     Unknown         = auto()
 
-Type.Pupil_Core     .color = hex_to_rgba_0_1("#E6194B")
-Type.Pupil_Invisible.color = hex_to_rgba_0_1("#3CB44B")
-Type.SMI_ETG        .color = hex_to_rgba_0_1("#4363D8")
-Type.SeeTrue        .color = hex_to_rgba_0_1("#911EB4")
-Type.Tobii_Glasses_2.color = hex_to_rgba_0_1("#F58231")
-Type.Tobii_Glasses_3.color = hex_to_rgba_0_1("#F032E6")
-Type.Unknown        .color = hex_to_rgba_0_1("#393939")
+EyeTracker.Pupil_Core     .color = hex_to_rgba_0_1("#E6194B")
+EyeTracker.Pupil_Invisible.color = hex_to_rgba_0_1("#3CB44B")
+EyeTracker.SMI_ETG        .color = hex_to_rgba_0_1("#4363D8")
+EyeTracker.SeeTrue        .color = hex_to_rgba_0_1("#911EB4")
+EyeTracker.Tobii_Glasses_2.color = hex_to_rgba_0_1("#F58231")
+EyeTracker.Tobii_Glasses_3.color = hex_to_rgba_0_1("#F032E6")
+EyeTracker.Unknown        .color = hex_to_rgba_0_1("#393939")
 
-eye_tracker_names = [getattr(Type,x).value for x in Type.__members__ if x!='Unknown']
+eye_tracker_names = [getattr(EyeTracker,x).value for x in EyeTracker.__members__ if x!='Unknown']
 
 def type_string_to_enum(device: str):
-    if isinstance(device, Type):
+    if isinstance(device, EyeTracker):
         return device
 
     if isinstance(device, str):
-        if hasattr(Type, device):
-            return getattr(Type, device)
-        elif device in [e.value for e in Type]:
-            return Type(device)
+        if hasattr(EyeTracker, device):
+            return getattr(EyeTracker, device)
+        elif device in [e.value for e in EyeTracker]:
+            return EyeTracker(device)
         else:
-            raise ValueError(f"The string '{device}' is not a known eye tracker type. Known types: {[e.value for e in Type]}")
+            raise ValueError(f"The string '{device}' is not a known eye tracker type. Known types: {[e.value for e in EyeTracker]}")
     else:
-        raise ValueError(f"The variable '{device}' should be a string with one of the following values: {[e.value for e in Type]}")
+        raise ValueError(f"The variable '{device}' should be a string with one of the following values: {[e.value for e in EyeTracker]}")
 
 
 class Status(AutoName):
@@ -110,7 +110,7 @@ class Recording:
     proc_directory_name         : str           = ""
     start_time                  : Timestamp     = 0
     duration                    : int           = 0
-    eye_tracker                 : Type          = Type.Unknown
+    eye_tracker                 : EyeTracker    = EyeTracker.Unknown
     project                     : str           = ""
     participant                 : str           = ""
     firmware_version            : str           = ""
@@ -123,7 +123,7 @@ class Recording:
     def store_as_json(self, path):
         class EnumEncoder(json.JSONEncoder):
             def default(self, obj):
-                if type(obj) in [Type, Status]:
+                if type(obj) in [EyeTracker, Status]:
                     return {"__enum__": str(obj)}
                 elif isinstance(obj,pathlib.Path):
                     return {"__pathlib.Path__": str(obj)}
@@ -138,8 +138,8 @@ class Recording:
             if "__enum__" in d:
                 name, member = d["__enum__"].split(".")
                 match name:
-                    case 'Type':
-                        return getattr(Type, member)
+                    case 'EyeTracker':
+                        return getattr(EyeTracker, member)
                     case 'Status':
                         return getattr(Status, member)
                     case other:

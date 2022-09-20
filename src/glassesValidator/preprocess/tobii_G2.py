@@ -70,7 +70,7 @@ def preprocessData(inputDir, outputDir):
 
 def getRecordingInfo(inputDir):
     # returns None if not a recording directory
-    recInfo = utils.Recording(source_directory=inputDir, eye_tracker=utils.Type.Tobii_Glasses_2)
+    recInfo = utils.Recording(source_directory=inputDir, eye_tracker=utils.EyeTracker.Tobii_Glasses_2)
 
     # get participant info
     file = inputDir / 'participant.json'
