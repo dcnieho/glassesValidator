@@ -102,6 +102,8 @@ class Status(AutoName):
     Abandoned       = auto()
     Unknown         = auto()
 
+status_names = [getattr(Status,x).value for x in Status.__members__]
+
 
 @dataclasses.dataclass
 class Recording:
