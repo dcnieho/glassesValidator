@@ -31,7 +31,7 @@ class Timestamp:
         if self.value == 0:
             self.display = ""
         else:
-            self.display = datetime.date.fromtimestamp(unix_time).strftime(self.format)
+            self.display = datetime.datetime.fromtimestamp(unix_time).strftime(self.format)
 
 
 def hex_to_rgba_0_1(hex):
