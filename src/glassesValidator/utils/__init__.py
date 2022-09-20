@@ -109,7 +109,7 @@ class Recording:
     source_directory            : pathlib.Path  = ""
     proc_directory_name         : str           = ""
     start_time                  : Timestamp     = 0
-    duration                    : int           = 0
+    duration                    : int           = None
     eye_tracker                 : EyeTracker    = EyeTracker.Unknown
     project                     : str           = ""
     participant                 : str           = ""
