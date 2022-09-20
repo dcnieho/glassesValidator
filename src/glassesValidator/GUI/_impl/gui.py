@@ -1,15 +1,15 @@
 from imgui.integrations.glfw import GlfwRenderer
 import concurrent.futures
-import OpenGL.GL as gl
 from PIL import Image
 import configparser
 import platform
 import asyncio
 import pathlib
 import OpenGL
+import OpenGL.GL as gl
+import glfw
 import imgui
 import time
-import glfw
 import sys
 import datetime
 import typing
@@ -544,7 +544,7 @@ class MainGUI():
         self.repeat_chars = False
         self.prev_any_hovered = None
         self.refresh_ratio_smooth = 0.0
-        self.project_to_load = None
+        self.project_to_load: pathlib.Path|str = None
         self.input_chars: list[int] = []
 
         # Show errors in threads
@@ -562,6 +562,7 @@ class MainGUI():
             utils.push_popup(msgbox.msgbox, "Oops!", f"Something went wrong in an asynchronous task of a separate thread:\n\n{tb}", MsgBox.error)
         async_thread.done_callback = asyncexcepthook
 
+        db.setup()
         self.init_imgui_glfw()
 
     def init_imgui_glfw(self, re_init = False):
@@ -945,19 +946,16 @@ class MainGUI():
     def load_project(self, folder: pathlib.Path):
         self.project_to_load = folder
 
-    def _do_load_project(self):
-        db.shutdown()
-        globals.project_path = self.project_to_load
-        self.init_imgui_glfw(re_init=True)
-        db.setup()
-        self.recording_list = RecordingTable(globals.recordings, globals.selected_recordings)
-        self.project_to_load = None
-
     def unload_project(self):
-        db.shutdown()
-        self.recording_list = None
-        globals.project_path = None
+        self.project_to_load = ""
+
+    def reload_interface(self):
+        globals.project_path = None if self.project_to_load=="" else self.project_to_load
         db.setup()
+        self.init_imgui_glfw(re_init=True)
+        if globals.project_path is not None:
+            self.recording_list = RecordingTable(globals.recordings, globals.selected_recordings)
+        self.project_to_load = None
 
     def main_loop(self):
         scroll_energy = 0.0
@@ -1085,11 +1083,13 @@ class MainGUI():
         self.save_imgui_ini()
         self.impl.shutdown()
         glfw.terminate()
+        db.shutdown()
 
         if self.project_to_load is not None:
-            self._do_load_project()
-            # run a fresh main loop instance
-            self.main_loop()
+            self.reload_interface()
+            return True     # signal to run a fresh main loop instance
+        else:
+            return False
 
 
     def save_imgui_ini(self, path: str | pathlib.Path = None):
@@ -1346,6 +1346,8 @@ class MainGUI():
             # Right click = more options context menu
             if imgui.selectable("󰅸 Do stuff", False)[0]:
                 pass # do some processing, callbacks.something(recording)
+            if imgui.selectable("󰅸 Unload project", False)[0]:
+                self.unload_project()
             imgui.end_popup()
 
         imgui.begin_child("Settings")

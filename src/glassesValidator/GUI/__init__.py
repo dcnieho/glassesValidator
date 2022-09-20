@@ -25,14 +25,9 @@ def run():
     from ._impl import async_thread
     async_thread.setup()
     
-    from ._impl import db
     from ._impl import gui
-    db.setup()
-
     globals.gui = gui.MainGUI()
 
-    # only returns once GUI is closed, may need to refresh to open another project
-    globals.gui.main_loop()
-
-    # tear down
-    db.shutdown()
+    # returns true if a new main_loop is needed, or false if all done
+    while globals.gui.main_loop():
+        pass
