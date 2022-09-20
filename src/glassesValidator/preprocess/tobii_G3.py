@@ -47,7 +47,7 @@ def preprocessData(inputDir, outputDir):
         newDataDir.mkdir()
 
     # store rec info
-    recInfo.store_as_json(newDataDir / 'recording_glassesValidator.json')
+    recInfo.store_as_json(newDataDir)
 
 
     ### copy the raw data to the output directory

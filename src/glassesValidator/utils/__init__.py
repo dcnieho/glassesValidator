@@ -14,6 +14,7 @@ from enum import Enum, auto
 import datetime
 import json
 import pathvalidate
+import typing
 
 from .mp4analyser import iso
 from .. import config as gv_config
@@ -107,6 +108,8 @@ status_names = [getattr(Status,x).value for x in Status.__members__]
 
 @dataclasses.dataclass
 class Recording:
+    default_json_file_name      : typing.ClassVar[str] = 'recording_glassesValidator.json'
+
     name                        : str           = ""
     source_directory            : pathlib.Path  = ""
     proc_directory_name         : str           = ""
@@ -122,20 +125,25 @@ class Recording:
     scene_camera_serial         : str           = ""
     status                      : Status        = Status.Unknown
 
-    def store_as_json(self, path):
+    def store_as_json(self, path: str | pathlib.Path):
         class EnumEncoder(json.JSONEncoder):
             def default(self, obj):
                 if type(obj) in [EyeTracker, Status]:
                     return {"__enum__": str(obj)}
                 elif isinstance(obj,pathlib.Path):
                     return {"__pathlib.Path__": str(obj)}
+                elif isinstance(obj,Timestamp):
+                    return {"__Timestamp__": obj.value}
                 return json.JSONEncoder.default(self, obj)
-
+            
+        path = pathlib.Path(path)
+        if path.is_dir():
+            path /= self.default_json_file_name
         with open(path, 'w') as f:
             json.dump(dataclasses.asdict(self), f, cls=EnumEncoder)
 
-    @staticmethod
-    def load_from_json(path):
+    @classmethod
+    def load_from_json(cls, path: str | pathlib.Path):
         def reconstitute(d):
             if "__enum__" in d:
                 name, member = d["__enum__"].split(".")
@@ -148,11 +156,16 @@ class Recording:
                         raise ValueError(f'unknown enum "{other}"')
             elif "__pathlib.Path__" in d:
                 return pathlib.Path(d["__pathlib.Path__"])
+            elif "__Timestamp__" in d:
+                return Timestamp(d["__Timestamp__"])
             else:
                 return d
 
+        path = pathlib.Path(path)
+        if path.is_dir():
+            path /= cls.default_json_file_name
         with open(path, 'r') as f:
-            return Recording(**json.load(f, object_hook=reconstitute))
+            return cls(**json.load(f, object_hook=reconstitute))
 
 
 def make_fs_dirname(rec: Recording, dir: pathlib.Path = None):
