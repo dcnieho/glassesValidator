@@ -61,6 +61,11 @@ async def _add_recordings(recordings: dict[int, Recording], selected: dict[int, 
             await db.load_recordings(rid)
         
 async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTracker):
+    # notify we're preparing the recordings to be opened
+    def prepping_recs_popup():
+        globals.gui.draw_preparing_recordings_for_import_popup(eye_tracker)
+    utils.push_popup(lambda: utils.popup("Preparing import", prepping_recs_popup, buttons = None, closable=False, outside=False))
+
     # step 1, find what recordings of this type of eye tracker are in the path
     all_recs = []
     dup_recs = []
@@ -79,7 +84,12 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
 
     # sort in order natural for OS
     all_recs = natsort.os_sorted(all_recs, lambda rec: rec.source_directory)
+    
+    # get ready to show result
+    # 1. remove progress popup
+    del globals.popup_stack[-1]
 
+    # 2. if nothing importable found, notify
     if not all_recs:
         if dup_recs:
             dup_recs = natsort.os_sorted(dup_recs, lambda rec: rec.source_directory)
@@ -92,13 +102,13 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
         utils.push_popup(msgbox.msgbox, "Nothing to import", msg, MsgBox.warn, more=more)
         return
 
+    # 3. if something importable found, show to user so they can select the ones they want
     # put in dict
     recordings_to_add = {}
     recordings_selected_to_add = {}
     for id,rec in enumerate(all_recs):
         recordings_to_add[id] = rec
         recordings_selected_to_add[id] = True
-
 
     recording_list = gui.RecordingTable(recordings_to_add, recordings_selected_to_add, True)
     def list_recs_popup():
@@ -109,8 +119,6 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
         "󰄬 Continue": lambda: async_thread.run(_add_recordings(recordings_to_add, recordings_selected_to_add)),
         "󰜺 Cancel": None
     }
-
-    # ask what type of eye tracker we should be looking for
     utils.push_popup(lambda: utils.popup("Select recordings", list_recs_popup, buttons = buttons, closable=True, outside=False))
 
 def add_recordings(paths: list[pathlib.Path]):

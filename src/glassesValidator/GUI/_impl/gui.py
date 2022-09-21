@@ -1187,6 +1187,31 @@ class MainGUI():
 
         return combo_value, eye_tracker
 
+    def draw_preparing_recordings_for_import_popup(self, eye_tracker):
+        spacing = 2 * imgui.style.item_spacing.x
+        icon = "󰋗"
+        color = (0.45, 0.09, 1.00)
+        imgui.push_font(self.icon_font)
+        icon_size = imgui.calc_text_size(icon)
+        imgui.text_colored(icon, *color)
+        imgui.pop_font()
+        imgui.same_line(spacing=spacing)
+
+        imgui.begin_group()
+        imgui.dummy(0,2*imgui.style.item_spacing.y)
+        text = f'Searching the path(s) you provided for {eye_tracker.value} recordings.'
+        imgui.text_unformatted(text)
+        imgui.dummy(0,3*imgui.style.item_spacing.y)
+        text_size = imgui.calc_text_size(text)
+        spinner_radii = [x*self.size_mult for x in [22, 16, 10]]
+        imgui.set_cursor_pos_x(imgui.get_cursor_pos_x()+(text_size.x-2*spinner_radii[0])/2)
+        utils.draw_spinner('waitSpinner', *spinner_radii, 3.5*self.size_mult, c1=imgui.color_convert_float4_to_u32(*globals.settings.style_text), c2=imgui.color_convert_float4_to_u32(*globals.settings.style_accent), c3=imgui.color_convert_float4_to_u32(*globals.settings.style_text))
+        imgui.dummy(0,2*imgui.style.item_spacing.y)
+        imgui.end_group()
+
+        imgui.same_line(spacing=spacing)
+        imgui.dummy(0, 0)
+
     def draw_select_recordings_to_import(self, recording_list: RecordingTable):
         spacing = 2 * imgui.style.item_spacing.x
         imgui.same_line(spacing=spacing)
