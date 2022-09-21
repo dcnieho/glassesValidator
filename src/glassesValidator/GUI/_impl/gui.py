@@ -580,17 +580,13 @@ class MainGUI():
         # Determine what monitor we're (mostly) on, for scaling
         mon, self.monitor = utils.get_current_monitor(*self.screen_pos, *self.screen_size)
         # apply scaling
-        if not re_init:
-            xscale, yscale = glfw.get_monitor_content_scale(mon)
-            self.size_mult = max(xscale, yscale)
-            if is_default:
-                glfw.set_window_size(self.window, int(self.screen_size[0]*self.size_mult), int(self.screen_size[1]*self.size_mult))
-            elif self.size_mult!=self.last_size_mult:
-                glfw.set_window_size(self.window, int(self.screen_size[0]/self.last_size_mult*self.size_mult), int(self.screen_size[1]/self.last_size_mult*self.size_mult))
-        else:
-            # NB: if reinit, no need to figure out scaling again, either equal to whats already set, or already loaded from file
-            # just put it in the right place
-            self.size_mult = self.last_size_mult
+        xscale, yscale = glfw.get_monitor_content_scale(mon)
+        self.size_mult = max(xscale, yscale)
+        if re_init and is_default:
+            glfw.set_window_size(self.window, int(self.screen_size[0]*self.size_mult), int(self.screen_size[1]*self.size_mult))
+        elif self.size_mult!=self.last_size_mult:
+            glfw.set_window_size(self.window, int(self.screen_size[0]/self.last_size_mult*self.size_mult), int(self.screen_size[1]/self.last_size_mult*self.size_mult))
+
         # make sure that styles are correctly scaled this first time we set them up
         self.last_size_mult = 1.0
 
