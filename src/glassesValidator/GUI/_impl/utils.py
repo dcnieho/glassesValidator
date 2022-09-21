@@ -58,6 +58,8 @@ def init_project_folder(folder: str | pathlib.Path, imgui_ini_saver: typing.Call
 
 
 def fast_scandir(dirname):
+    if not dirname.is_dir():
+        return []
     subfolders= [pathlib.Path(f.path) for f in os.scandir(dirname) if f.is_dir()]
     for dirname in list(subfolders):
         subfolders.extend(fast_scandir(dirname))
