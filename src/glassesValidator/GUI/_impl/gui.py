@@ -940,7 +940,10 @@ class MainGUI():
         return size * self.size_mult
 
     def load_project(self, folder: pathlib.Path):
-        self.project_to_load = folder
+        if globals.project_path==folder:
+            utils.push_popup(msgbox.msgbox, "Project opening error", "The selected folder is the currently opened project folder. Not re-opened.", MsgBox.error)
+        else:
+            self.project_to_load = folder
 
     def unload_project(self):
         self.project_to_load = ""
@@ -1121,6 +1124,14 @@ class MainGUI():
         except Exception:
             pass    # already saved with imgui.save_ini_settings_to_disk above
 
+    def get_folder_picker(self,creating=False):
+        def select_callback(selected):
+            if selected:
+                self.try_load_project(selected,creating=creating)
+        picker = filepicker.DirPicker("Select or drop project folder", callback=select_callback)
+        picker.show_only_dirs = True
+        return picker
+
     def draw_unopened_interface(self):
         avail      = imgui.get_content_region_available()
         but_width  = self.scaled(200)
@@ -1139,18 +1150,12 @@ class MainGUI():
 
         imgui.set_cursor_pos_x(but_x)
         imgui.set_cursor_pos_y(but_y)
-        def get_picker(creating=False):
-            def select_callback(selected):
-                if selected:
-                    self.try_load_project(selected,creating=creating)
-            picker = filepicker.DirPicker("Select or drop project folder", callback=select_callback)
-            picker.show_only_dirs = True
-            return picker
-        if imgui.button("Open project", width=but_width, height=but_height):
-            utils.push_popup(get_picker())
+        
+        if imgui.button("󰮝 New project", width=but_width, height=but_height):
+            utils.push_popup(self.get_folder_picker(creating=True))
         imgui.same_line(spacing=10*imgui.style.item_spacing.x)
-        if imgui.button("Create new project", width=but_width, height=but_height):
-            utils.push_popup(get_picker(creating=True))
+        if imgui.button("󰷏 Open project", width=but_width, height=but_height):
+            utils.push_popup(self.get_folder_picker())
 
     def draw_select_eye_tracker_popup(self, combo_value, eye_tracker):
         spacing = 2 * imgui.style.item_spacing.x
@@ -1331,9 +1336,10 @@ class MainGUI():
     def draw_sidebar(self):
         set = globals.settings
         right_width = self.scaled(90)
-        checkbox_offset = right_width - imgui.get_frame_height()
-
+        frame_height = imgui.get_frame_height()
+        checkbox_offset = right_width - frame_height
         width = imgui.get_content_region_available_width()
+
         height = self.scaled(100)
         # Normal button
         if imgui.button("Process all!", width=width, height=height):
@@ -1342,8 +1348,6 @@ class MainGUI():
             # Right click = more options context menu
             if imgui.selectable("󰅸 Do stuff", False)[0]:
                 pass # do some processing, callbacks.something(recording)
-            if imgui.selectable("󰅸 Unload project", False)[0]:
-                self.unload_project()
             imgui.end_popup()
 
         imgui.begin_child("Settings")
@@ -1413,6 +1417,63 @@ class MainGUI():
                     flt.invert = value
                     self.recording_list.require_sort = True
 
+            imgui.end_table()
+            imgui.spacing()
+
+        if self.start_settings_section("Project", right_width):
+            # for full width buttons, in lieu of column-spanning API that doesn't exist
+            # interrupt table
+            imgui.end_table()
+
+            btn_width = right_width*1.5
+            imgui.set_cursor_pos_x((width-btn_width)/2)
+            if imgui.button("󰮝 New project", width=btn_width):
+                utils.push_popup(self.get_folder_picker(creating=True))
+            imgui.set_cursor_pos_x((width-btn_width)/2)
+            if imgui.button("󰷏 Open project", width=btn_width):
+                utils.push_popup(self.get_folder_picker())
+            imgui.set_cursor_pos_x((width-btn_width)/2)
+            if imgui.button("󰮞 Close project", width=btn_width):
+                self.unload_project()
+                
+            # continue table
+            self.start_settings_section("Project", right_width, collapsible = False)
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.text("Show remove button:")
+            imgui.table_next_column()
+            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+            changed, value = imgui.checkbox("###show_remove_btn", set.show_remove_btn)
+            if changed:
+                set.show_remove_btn = value
+                async_thread.run(db.update_settings("show_remove_btn"))
+
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.text("Confirm when removing:")
+            imgui.table_next_column()
+            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+            changed, value = imgui.checkbox("###confirm_on_remove", set.confirm_on_remove)
+            if changed:
+                set.confirm_on_remove = value
+                async_thread.run(db.update_settings("confirm_on_remove"))
+
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.text("Workers:")
+            imgui.same_line()
+            draw_hover_text(
+                "Each recording is processed by a worker and each worker can handle 1 "
+                "recording at a time. Having more workers means more recordings are processed "
+                "simultaneously, but having too many will freeze the program. In most cases 3 "
+                "workers is a good compromise."
+            )
+            imgui.table_next_column()
+            changed, value = imgui.drag_int("###refresh_workers", set.refresh_workers, change_speed=0.5, min_value=1, max_value=100)
+            set.refresh_workers = min(max(value, 1), 100)
+            if changed:
+                async_thread.run(db.update_settings("refresh_workers"))
+                
             imgui.end_table()
             imgui.spacing()
 
@@ -1495,53 +1556,9 @@ class MainGUI():
 
             imgui.table_next_row()
             imgui.table_next_column()
-            imgui.text(f"Current framerate: {round(imgui.io.framerate, 3)}")
+            imgui.text(f"Current framerate: {round(imgui.io.framerate, 2)}")
             imgui.spacing()
 
-            imgui.end_table()
-            imgui.spacing()
-
-        if self.start_settings_section("Manage", right_width):
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.text("Show remove button:")
-            imgui.table_next_column()
-            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###show_remove_btn", set.show_remove_btn)
-            if changed:
-                set.show_remove_btn = value
-                async_thread.run(db.update_settings("show_remove_btn"))
-
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.text("Confirm when removing:")
-            imgui.table_next_column()
-            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###confirm_on_remove", set.confirm_on_remove)
-            if changed:
-                set.confirm_on_remove = value
-                async_thread.run(db.update_settings("confirm_on_remove"))
-                
-            imgui.end_table()
-            imgui.spacing()
-
-        if self.start_settings_section("Processing", right_width):
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.text("Workers:")
-            imgui.same_line()
-            draw_hover_text(
-                "Each recording is processed by a worker and each worker can handle 1 "
-                "recording at a time. Having more workers means more recordings are processed "
-                "simultaneously, but having too many will freeze the program. In most cases 3 "
-                "workers is a good compromise."
-            )
-            imgui.table_next_column()
-            changed, value = imgui.drag_int("###refresh_workers", set.refresh_workers, change_speed=0.5, min_value=1, max_value=100)
-            set.refresh_workers = min(max(value, 1), 100)
-            if changed:
-                async_thread.run(db.update_settings("refresh_workers"))
-                
             imgui.end_table()
             imgui.spacing()
 
