@@ -194,7 +194,10 @@ async def load():
     globals.selected_recordings = {}
     if globals.project_path is not None:
         await load_recordings()
-        globals.rec_id.set_count(max(globals.recordings.keys()))
+        if globals.recordings:
+            globals.rec_id.set_count(max(globals.recordings.keys()))
+        else:
+            globals.rec_id.set_count(0)
 
 
 def py_to_sql(value: enum.Enum | bool | list | tuple | typing.Any):
