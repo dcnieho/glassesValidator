@@ -257,39 +257,34 @@ def draw_spinner(label: str, radius1: float, radius2: float, radius3: float, thi
 
     # determine size
     style  = imgui.get_style()
-    radius = max([radius1, radius2, radius3])
+    radii  = [radius1, radius2, radius3]
+    radius = max(radii)
     size   = [2*radius, 2*(radius+style.frame_padding.y)]
+
     # draw dummy of that size and reset cursor back to position before if that dummy was visible. The dummy reserves the space we need to draw in
     cur_pos = imgui.get_cursor_pos()
     imgui.push_id("testSpinner")
     imgui.dummy(size[0],size[1])
     imgui.pop_id()
     imgui.set_cursor_pos(cur_pos)
+
+    # if our draw area is visible, draw the spinner
     if imgui.is_item_visible():
-        # ok, our draw area is visible, now draw
         pos = imgui.get_cursor_screen_pos()
         center = [x+y/2 for x,y in zip(pos,size)]
         num_segments = calc_circle_auto_segment_count(radius) * 2
         angle_offset = angle / num_segments
-        draw_list = imgui.get_window_draw_list()
+        colors = [c1, c2, c3]
+        fac = [1, 1.2, 0.9]
 
-        start1 = imgui.get_time() * speed
-        path   = []
-        for i in range(num_segments):
-            a = start1 + (i * angle_offset)
-            path.append((center[0] + math.cos(a) * radius1, center[1] + math.sin(a) * radius1))
-        draw_list.add_polyline(path, c1, flags=imgui.DRAW_NONE, thickness=thickness)
-        
-        start2 = imgui.get_time() * 1.2 * speed
-        path   = []
-        for i in range(num_segments):
-            a = start2 + (i * angle_offset)
-            path.append((center[0] + math.cos(-a) * radius2, center[1] + math.sin(-a) * radius2))
-        draw_list.add_polyline(path, c2, flags=imgui.DRAW_NONE, thickness=thickness)
-        
-        start3 = imgui.get_time() * 0.9 * speed
-        path   = []
-        for i in range(num_segments):
-            a = start3 + (i * angle_offset)
-            path.append((center[0] + math.cos(a) * radius3, center[1] + math.sin(a) * radius3))
-        draw_list.add_polyline(path, c1, flags=imgui.DRAW_NONE, thickness=thickness)
+        t = imgui.get_time()
+        draw_list = imgui.get_window_draw_list()
+        for i,r in enumerate(radii):
+            path = []
+            start = fac[i] * t * speed
+            neg   = -1 if i==1 else 1
+            for k in range(num_segments):
+                a = start + (k * angle_offset)
+                path.append((center[0] + math.cos(neg*a) * r, center[1] + math.sin(neg*a) * r))
+
+            draw_list.add_polyline(path, colors[i], flags=imgui.DRAW_NONE, thickness=thickness)
