@@ -95,9 +95,11 @@ class RecordingTable():
             if (num_recordings := len(self.recordings)) != self._num_recordings:
                 self._num_recordings = num_recordings
                 self.require_sort = True
+            frame_height = imgui.get_frame_height()
 
             # Setup
-            imgui.table_setup_column("󰄵 Selector", imgui.TABLE_COLUMN_NO_HIDE | imgui.TABLE_COLUMN_NO_SORT | imgui.TABLE_COLUMN_NO_RESIZE | imgui.TABLE_COLUMN_NO_REORDER)  # 0
+            checkbox_width = frame_height
+            imgui.table_setup_column("󰄵 Selector", imgui.TABLE_COLUMN_NO_HIDE | imgui.TABLE_COLUMN_NO_SORT | imgui.TABLE_COLUMN_NO_RESIZE | imgui.TABLE_COLUMN_NO_REORDER, init_width_or_weight=checkbox_width)  # 0
             imgui.table_setup_column("󰖠 Eye Tracker", imgui.TABLE_COLUMN_NO_RESIZE)  # 1
             imgui.table_setup_column("󱀩 Status", imgui.TABLE_COLUMN_NO_RESIZE | (imgui.TABLE_COLUMN_DEFAULT_HIDE if self.in_adder_popup else 0))  # 2
             imgui.table_setup_column("󰌖 Name", imgui.TABLE_COLUMN_WIDTH_STRETCH | imgui.TABLE_COLUMN_DEFAULT_SORT | imgui.TABLE_COLUMN_NO_HIDE | imgui.TABLE_COLUMN_NO_RESIZE, 100.)  # 3
@@ -162,7 +164,6 @@ class RecordingTable():
                     imgui.table_header(column_name[2:])
 
             # Loop rows
-            frame_height = imgui.get_frame_height()
             a=.4
             style_selected_row = (*tuple(a*x+(1-a)*y for x,y in zip(globals.settings.style_accent[:3],globals.settings.style_bg[:3])), 1.)
             a=.2
