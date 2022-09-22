@@ -140,15 +140,15 @@ class RecordingTable():
                 if i==0:  # checkbox column: reflects whether all, some or none of visible recordings are selected, and allows selecting all or none
                     # get state
                     num_selected = sum([self.selected_recordings[id] for id in self.sorted_recordings_ids])
-                    if num_selected==len(self.sorted_recordings_ids):
-                        # all selected
-                        multi_selected_state = 1
-                    elif num_selected>0:
-                        # some selected
-                        multi_selected_state = 0
-                    else:
+                    if num_selected==0:
                         # none selected
                         multi_selected_state = -1
+                    elif num_selected==len(self.sorted_recordings_ids):
+                        # all selected
+                        multi_selected_state = 1
+                    else:
+                        # some selected
+                        multi_selected_state = 0
 
                     if multi_selected_state==0:
                         imgui.internal.push_item_flag(imgui.internal.ITEM_MIXED_VALUE,True)
