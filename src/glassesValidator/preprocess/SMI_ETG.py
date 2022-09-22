@@ -75,11 +75,13 @@ def preprocessData(inputDir, outputDir):
 
 
 def getRecordingInfo(inputDir):
-    # returns None if not a recording directory
-    recInfos = []
+    # returns None if directory does not any recordings
 
     # NB: can be multiple recordings in an SMI folder
 
+    # but first see this is a recording folder at all
+    if not (inputDir / 'codec1.bin').is_file():
+        return None
     camInfo = readSMICamInfoFile(inputDir)
     serial = camInfo.get("MiiSimulation",'DeviceSerialNumber')
     
@@ -87,6 +89,7 @@ def getRecordingInfo(inputDir):
     # as the other files in a project directory. So e.g., data exported from 001-2-recording.idf
     # for the corresponding 001-2-recording.avi, should be named 001-2-recording.txt. The
     # exported video should be called 001-2-export.avi
+    recInfos = []
     for r in inputDir.glob('*-export.avi'):
         recInfos.append(utils.Recording(source_directory=inputDir, eye_tracker=utils.EyeTracker.SMI_ETG))
         recInfos[-1].participant = inputDir.name
