@@ -185,7 +185,7 @@ class FilePicker:
             closed = True
         if closed:
             if self.callback:
-                self.callback(self.selected)
+                self.callback([pathlib.Path(self.selected)])
             self.active = False
         return opened, closed
 

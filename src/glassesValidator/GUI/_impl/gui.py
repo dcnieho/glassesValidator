@@ -1124,10 +1124,13 @@ class MainGUI():
         except Exception:
             pass    # already saved with imgui.save_ini_settings_to_disk above
 
-    def get_folder_picker(self,creating=False):
+    def get_folder_picker(self, creating=False, select_for_add=False):
         def select_callback(selected):
             if selected:
-                self.try_load_project(selected,creating=creating)
+                if select_for_add:
+                    callbacks.add_recordings(selected)
+                else:
+                    self.try_load_project(selected,creating=creating)
         picker = filepicker.DirPicker("Select or drop project folder", callback=select_callback)
         picker.show_only_dirs = True
         return picker
@@ -1460,6 +1463,10 @@ class MainGUI():
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󰮞 Close project", width=btn_width):
                 self.unload_project()
+
+            imgui.set_cursor_pos_x((width-btn_width)/2)
+            if imgui.button("󱃩 Add recordings", width=btn_width):
+                utils.push_popup(self.get_folder_picker(select_for_add=True))
                 
             # continue table
             self.start_settings_section("Project", right_width, collapsible = False)
