@@ -885,7 +885,15 @@ class MainGUI():
                         self.new_screen_size = int(self.screen_size[0]/self.last_size_mult*self.size_mult), int(self.screen_size[1]/self.last_size_mult*self.size_mult)
 
     def try_load_project(self, path: str | pathlib.Path, creating = False):
+        if isinstance(path,list):
+            if not path:
+                utils.push_popup(msgbox.msgbox, "Project opening error", "A single project directory should be provided. None provided so cannot open.", MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in paths])))
+            elif len(path)>1:
+                utils.push_popup(msgbox.msgbox, "Project opening error", "Only a single project directory should be provided, but {len(path)} were provided. Cannot open multiple projects.", MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in paths])))
+            else:
+                path = path[0]
         path = pathlib.Path(path)
+        
         if utils.is_project_folder(path):
             if creating:
                 buttons = {
@@ -931,7 +939,7 @@ class MainGUI():
                 callbacks.add_recordings(paths)
             else:
                 if len(paths)!=1 or not (path := paths[0]).is_dir():
-                    utils.push_popup(msgbox.msgbox, "Project opening error", "Only a single project directory should be drag-dropped on the glassesValidator GUI", MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in paths])))
+                    utils.push_popup(msgbox.msgbox, "Project opening error", "Only a single project directory should be drag-dropped on the glassesValidator GUI.", MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in paths])))
                 else:
                     # load project
                     self.try_load_project(path)
