@@ -157,6 +157,7 @@ class FilePicker:
             # Cancel button
             if imgui.button("󰜺 Cancel"):
                 imgui.close_current_popup()
+                self.selected = None
                 closed = True
             # Ok button
             imgui.same_line()
@@ -185,7 +186,7 @@ class FilePicker:
             closed = True
         if closed:
             if self.callback:
-                self.callback([pathlib.Path(self.selected)])
+                self.callback([pathlib.Path(self.selected)] if self.selected is not None else None)
             self.active = False
         return opened, closed
 
