@@ -22,7 +22,7 @@ from .. import utils
 # will also be shown if available.
 
 
-def process(inputDir,configDir=None, showReference=False):
+def process(inputDir, configDir=None, showReference=False):
     # if showReference, also draw reference board with gaze overlaid on it (if available)
     inputDir  = Path(inputDir)
     if configDir is not None:

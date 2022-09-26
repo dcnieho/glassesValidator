@@ -25,24 +25,46 @@ import datetime
 from .. import utils
 
 
-def preprocessData(inputDir, outputDir):
+def preprocessData(outputDir, inputDir=None, recInfo=None):
     """
     Run all preprocessing steps on tobii data
     """
-    inputDir  = pathlib.Path(inputDir)
     outputDir = pathlib.Path(outputDir)
+    if inputDir is not None:
+        inputDir  = pathlib.Path(inputDir)
+        if recInfo is not None and pathlib.Path(recInfo.source_directory) != inputDir:
+            raise ValueError(f"The provided source_dir ({inputDir}) does not equal the source directory set in recInfo ({recInfo.source_directory}).")
+    elif recInfo is None:
+        raise RuntimeError('Either the "inputDir" or the "recInfo" input argument should be set.')
+    else:
+        inputDir  = pathlib.Path(recInfo.source_directory)
+    
+    if recInfo is not None:
+        if recInfo.eye_tracker!=utils.EyeTracker.Tobii_Glasses_2:
+            raise ValueError(f'Provided recInfo is for a device ({recInfo.eye_tracker.value}) that is not an {utils.EyeTracker.Tobii_Glasses_2.value}. Cannot use.')
+        if not recInfo.proc_directory_name:
+            recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
+        newDir = outputDir / recInfo.proc_directory_name
+        if newDir.is_dir():
+            raise RuntimeError(f'Output directory specified in recInfo ({recInfo.proc_directory_name}) already exists in the outputDir ({outputDir}). Cannot use.')
+
+
     print(f'processing: {inputDir.name}')
 
 
     ### check and copy needed files to the output directory
     print('Check and copy raw data...')
      ### check tobii recording and get export directory
-    recInfo = getRecordingInfo(inputDir)
-    if recInfo is None:
-        raise RuntimeError(f"The folder {inputDir} is not recognized as a Tobii Glasses 2 recording.")
+    if recInfo is not None:
+        checkRecording(inputDir, recInfo)
+    else:
+        recInfo = getRecordingInfo(inputDir)
+        if recInfo is None:
+            raise RuntimeError(f"The folder {inputDir} is not recognized as a Tobii Glasses 2 recording.")
 
     # make output dir
-    recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
+    if recInfo.proc_directory_name is None or not recInfo.proc_directory_name:
+        recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
     newDataDir = outputDir / recInfo.proc_directory_name
     if not newDataDir.is_dir():
         newDataDir.mkdir()
@@ -108,6 +130,26 @@ def getRecordingInfo(inputDir):
     # we got a valid recording and at least some info if we got here
     # return what we've got
     return recInfo
+
+
+def checkRecording(inputDir, recInfo):
+    actualRecInfo = getRecordingInfo(inputDir)
+    if actualRecInfo is None or recInfo.name!=actualRecInfo.name:
+        raise ValueError(f"A recording with the name \"{recInfo.name}\" was not found in the folder {inputDir}.")
+    
+    # make sure caller did not mess with recInfo
+    if recInfo.participant!=actualRecInfo.participant:
+        raise ValueError(f"A recording with the participant \"{recInfo.participant}\" was not found in the folder {inputDir}.")
+    if recInfo.duration!=actualRecInfo.duration:
+        raise ValueError(f"A recording with the duration \"{recInfo.duration}\" was not found in the folder {inputDir}.")
+    if recInfo.start_time.value!=actualRecInfo.start_time.value:
+        raise ValueError(f"A recording with the start_time \"{recInfo.start_time.display}\" was not found in the folder {inputDir}.")
+    if recInfo.firmware_version!=actualRecInfo.firmware_version:
+        raise ValueError(f"A recording with the firmware_version \"{recInfo.firmware_version}\" was not found in the folder {inputDir}.")
+    if recInfo.glasses_serial!=actualRecInfo.glasses_serial:
+        raise ValueError(f"A recording with the glasses_serial \"{recInfo.glasses_serial}\" was not found in the folder {inputDir}.")
+    if recInfo.recording_unit_serial!=actualRecInfo.recording_unit_serial:
+        raise ValueError(f"A recording with the recording_unit_serial \"{recInfo.recording_unit_serial}\" was not found in the folder {inputDir}.")
 
 
 def copyTobiiRecording(inputDir, outputDir):

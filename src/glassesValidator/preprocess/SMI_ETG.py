@@ -25,24 +25,48 @@ from scipy.spatial.transform import Rotation
 from .. import utils
 
 
-def preprocessData(inputDir, outputDir):
+def preprocessData(outputDir, inputDir=None, recInfo=None):
     """
     Run all preprocessing steps on SMI data
     """
-    inputDir  = pathlib.Path(inputDir)
     outputDir = pathlib.Path(outputDir)
+    if inputDir is not None:
+        inputDir  = pathlib.Path(inputDir)
+        if recInfo is not None and pathlib.Path(recInfo.source_directory) != inputDir:
+            raise ValueError(f"The provided source_dir ({inputDir}) does not equal the source directory set in recInfo ({recInfo.source_directory}).")
+    elif recInfo is None:
+        raise RuntimeError('Either the "inputDir" or the "recInfo" input argument should be set.')
+    else:
+        inputDir  = pathlib.Path(recInfo.source_directory)
+    
+    if recInfo is not None:
+        if recInfo.eye_tracker!=utils.EyeTracker.SMI_ETG:
+            raise ValueError(f'Provided recInfo is for a device ({recInfo.eye_tracker.value}) that is not an {utils.EyeTracker.SMI_ETG.value}. Cannot use.')
+        if not recInfo.proc_directory_name:
+            recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
+        newDir = outputDir / recInfo.proc_directory_name
+        if newDir.is_dir():
+            raise RuntimeError(f'Output directory specified in recInfo ({recInfo.proc_directory_name}) already exists in the outputDir ({outputDir}). Cannot use.')
+
+
     print(f'processing: {inputDir.name}')
 
 
     ### check and copy needed files to the output directory
     print('Check and copy raw data...')
-    recInfos = getRecordingInfo(inputDir)
-    if recInfos is None:
-        raise RuntimeError(f"The folder {inputDir} does not contain SMI ETG recordings prepared for glassesValidator. If this is an SMI recording folder, you may not have run the required gaze data and scene video exports yet. See the glassesValidator manual for which exports you should perform with BeGaze first as well as the file naming scheme.")
+    if recInfo is not None:
+        if not checkRecording(inputDir, recInfo, use_return=True):
+            raise ValueError(f"A recording with the name \"{recInfo.name}\" was not found in the folder {inputDir}. Check that the name is correct and make sure that you export the scene video and gaze data using BeGaze as described in the glassesValidator manual.")
+        recInfos = [recInfo]
+    else:
+        recInfos = getRecordingInfo(inputDir)
+        if recInfos is None:
+            raise RuntimeError(f"The folder {inputDir} does not contain SMI ETG recordings prepared for glassesValidator. If this is an SMI recording folder, you may not have run the required gaze data and scene video exports yet. See the glassesValidator manual for which exports you should perform with BeGaze first as well as the file naming scheme.")
 
     # make output dirs
     for i in range(len(recInfos)):
-        recInfos[i].proc_directory_name = utils.make_fs_dirname(recInfos[i], outputDir)
+        if recInfos[i].proc_directory_name is None or not recInfos[i].proc_directory_name:
+            recInfos[i].proc_directory_name = utils.make_fs_dirname(recInfos[i], outputDir)
         newDataDir = outputDir / recInfos[i].proc_directory_name
         if not newDataDir.is_dir():
             newDataDir.mkdir()
@@ -100,7 +124,7 @@ def getRecordingInfo(inputDir):
     return recInfos if recInfos else None
 
         
-def checkRecording(inputDir, recInfo):
+def checkRecording(inputDir, recInfo, use_return = False):
     """
     This checks that the folder is properly prepared
     (i.e. the required BeGaze exports were run)
@@ -108,12 +132,20 @@ def checkRecording(inputDir, recInfo):
     # check we have an exported gaze data file
     file = recInfo.name + '-export.avi'
     if not (inputDir / file).is_file():
-        raise RuntimeError(f'{file} file not found in {inputDir}. Make sure you export the scene video using BeGaze as described in the glassesValidator manual.')
+        if use_return:
+            return False
+        else:
+            raise RuntimeError(f'{file} file not found in {inputDir}. Make sure you export the scene video using BeGaze as described in the glassesValidator manual.')
 
     # check we have an exported scene video
     file = recInfo.name + '-recording.txt'
     if not (inputDir / file).is_file():
-        raise RuntimeError(f'{file} file not found in {inputDir}. Make sure you export the gaze data using BeGaze as described in the glassesValidator manual.')
+        if use_return:
+            return False
+        else:
+            raise RuntimeError(f'{file} file not found in {inputDir}. Make sure you export the gaze data using BeGaze as described in the glassesValidator manual.')
+
+    return True
 
 
 def copySMIRecordings(inputDir, outputDir, recInfo):

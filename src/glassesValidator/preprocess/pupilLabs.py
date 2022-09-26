@@ -15,7 +15,7 @@ The output directory will contain:
 """
 
 import shutil
-from pathlib import Path
+import pathlib
 import json
 import cv2
 import pandas as pd
@@ -28,13 +28,42 @@ from urllib.request import urlopen
 from .. import utils
 
 
-def preprocessData(inputDir, outputDir, device):
+def preprocessData(outputDir, device=None, inputDir=None, recInfo=None):
     """
     Run all preprocessing steps on pupil data
     """
-    inputDir  = Path(inputDir)
-    outputDir = Path(outputDir)
-    device    = utils.type_string_to_enum(device)
+    outputDir = pathlib.Path(outputDir)
+    if inputDir is not None:
+        inputDir  = pathlib.Path(inputDir)
+        if recInfo is not None and pathlib.Path(recInfo.source_directory) != inputDir:
+            raise ValueError(f"The provided source_dir ({inputDir}) does not equal the source directory set in recInfo ({recInfo.source_directory}).")
+    elif recInfo is None:
+        raise RuntimeError('Either the "inputDir" or the "recInfo" input argument should be set.')
+    else:
+        inputDir  = pathlib.Path(recInfo.source_directory)
+    
+    if recInfo is not None:
+        if not recInfo.eye_tracker in [utils.EyeTracker.Pupil_Core, utils.EyeTracker.Pupil_Invisible]:
+            raise ValueError(f'Provided recInfo is for a device ({recInfo.eye_tracker.value}) that is not a {utils.EyeTracker.Pupil_Core.value} or a {utils.EyeTracker.Pupil_Invisible.value}. Cannot use.')
+        if not recInfo.proc_directory_name:
+            recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
+        newDir = outputDir / recInfo.proc_directory_name
+        if newDir.is_dir():
+            raise RuntimeError(f'Output directory specified in recInfo ({recInfo.proc_directory_name}) already exists in the outputDir ({outputDir}). Cannot use.')
+
+    if device is None and recInfo is None:
+        raise RuntimeError('Either the "device" or the "recInfo" input argument should be set.')
+    if device is not None:
+        device = utils.type_string_to_enum(device)
+        if not device in [utils.EyeTracker.Pupil_Core, utils.EyeTracker.Pupil_Invisible]:
+            raise ValueError(f'Provided device ({recInfo.eye_tracker.value}) is not a {utils.EyeTracker.Pupil_Core.value} or a {utils.EyeTracker.Pupil_Invisible.value}.')
+    if recInfo is not None:
+        if device is not None:
+            if recInfo.eye_tracker != device:
+                raise ValueError(f'Provided device ({device.value}) did not match device specific in recInfo ({recInfo.eye_tracker.value}). Provide matching values or do not provide the device input argument.')
+        else:
+            device = recInfo.eye_tracker
+
     print(f'processing: {inputDir.name}')
 
 
@@ -42,12 +71,16 @@ def preprocessData(inputDir, outputDir, device):
     print('Check and copy raw data...')
      ### check pupil recording and get export directory
     exportFile = checkPupilRecording(inputDir)
-    recInfo = getRecordingInfo(inputDir, device)
-    if recInfo is None:
-        raise RuntimeError(f"The folder {device.value} is not recognized as a {exportFile} recording.")
+    if recInfo is not None:
+        checkRecording(inputDir, recInfo)
+    else:
+        recInfo = getRecordingInfo(inputDir, device)
+        if recInfo is None:
+            raise RuntimeError(f"The folder {device.value} is not recognized as a {exportFile} recording.")
 
     # make output dir
-    recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
+    if recInfo.proc_directory_name is None or not recInfo.proc_directory_name:
+        recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
     newDataDir = outputDir / recInfo.proc_directory_name
     if not newDataDir.is_dir():
         newDataDir.mkdir()
@@ -104,7 +137,7 @@ def checkPupilRecording(inputDir):
 
 def getRecordingInfo(inputDir, device):
     # returns None if not a recording directory
-    recInfo = utils.Recording(source_directory=inputDir)
+    recInfo = utils.Recording(source_directory=inputDir, eye_tracker=device)
 
     match device:
         case utils.EyeTracker.Pupil_Core:
@@ -159,9 +192,33 @@ def getRecordingInfo(inputDir, device):
             return None
        
     # we got a valid recording and at least some info if we got here
-    # add device and return what we've got
-    recInfo.eye_tracker = device
+    # return what we've got
     return recInfo
+
+
+def checkRecording(inputDir, recInfo):
+    actualRecInfo = getRecordingInfo(inputDir, recInfo.eye_tracker)
+    if actualRecInfo is None or recInfo.name!=actualRecInfo.name:
+        raise ValueError(f"A recording with the name \"{recInfo.name}\" was not found in the folder {inputDir}.")
+    
+    # make sure caller did not mess with recInfo
+    if recInfo.duration!=actualRecInfo.duration:
+        raise ValueError(f"A recording with the duration \"{recInfo.duration}\" was not found in the folder {inputDir}.")
+    if recInfo.start_time.value!=actualRecInfo.start_time.value:
+        raise ValueError(f"A recording with the start_time \"{recInfo.start_time.display}\" was not found in the folder {inputDir}.")
+    if recInfo.recording_software_version!=actualRecInfo.recording_software_version:
+        raise ValueError(f"A recording with the duration \"{recInfo.duration}\" was not found in the folder {inputDir}.")
+
+    if recInfo.eye_tracker==utils.EyeTracker.Pupil_Invisible:
+        # for invisible recordings we have a bit more info
+        if recInfo.glasses_serial!=actualRecInfo.glasses_serial:
+            raise ValueError(f"A recording with the glasses_serial \"{recInfo.glasses_serial}\" was not found in the folder {inputDir}.")
+        if recInfo.recording_unit_serial!=actualRecInfo.recording_unit_serial:
+            raise ValueError(f"A recording with the recording_unit_serial \"{recInfo.recording_unit_serial}\" was not found in the folder {inputDir}.")
+        if recInfo.scene_camera_serial!=actualRecInfo.scene_camera_serial:
+            raise ValueError(f"A recording with the scene_camera_serial \"{recInfo.scene_camera_serial}\" was not found in the folder {inputDir}.")
+        if (recInfo.participant is not None or actualRecInfo.participant is not None) and recInfo.participant!=actualRecInfo.participant:
+            raise ValueError(f"A recording with the participant \"{recInfo.participant}\" was not found in the folder {inputDir}.")
 
 
 def getCameraFromMsgPack(inputDir, outputDir):
