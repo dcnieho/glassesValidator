@@ -70,6 +70,7 @@ class EyeTracker(AutoName):
     Tobii_Glasses_2 = auto()
     Tobii_Glasses_3 = auto()
     Unknown         = auto()
+eye_tracker_names = [getattr(EyeTracker,x).value for x in EyeTracker.__members__ if x!='Unknown']
 
 EyeTracker.Pupil_Core     .color = hex_to_rgba_0_1("#E6194B")
 EyeTracker.Pupil_Invisible.color = hex_to_rgba_0_1("#3CB44B")
@@ -78,8 +79,6 @@ EyeTracker.SeeTrue        .color = hex_to_rgba_0_1("#911EB4")
 EyeTracker.Tobii_Glasses_2.color = hex_to_rgba_0_1("#F58231")
 EyeTracker.Tobii_Glasses_3.color = hex_to_rgba_0_1("#F032E6")
 EyeTracker.Unknown        .color = hex_to_rgba_0_1("#393939")
-
-eye_tracker_names = [getattr(EyeTracker,x).value for x in EyeTracker.__members__ if x!='Unknown']
 
 def type_string_to_enum(device: str):
     if isinstance(device, EyeTracker):
@@ -96,14 +95,47 @@ def type_string_to_enum(device: str):
         raise ValueError(f"The variable '{device}' should be a string with one of the following values: {[e.value for e in EyeTracker]}")
 
 
-class Status(AutoName):
-    Normal          = auto()
-    Completed       = auto()
-    OnHold          = auto()
-    Abandoned       = auto()
-    Unknown         = auto()
+# this is a bit of a mix of a list of the various tasks, and a status-keeper so we know where we are in the process.
+# hence the Not_imported and Unknown states are mixed in, and all names are past tense verbs
+# To get actual task versions, use task_names_friendly
+class Task(AutoName):
+    Not_Imported                    = auto()
+    Imported                        = auto()
+    Coded                           = auto()
+    Markers_Detected                = auto()
+    Gaze_Tranformed_To_World        = auto()
+    Target_Offsets_Computed         = auto()
+    Fixation_Intervals_Determined   = auto()
+    Data_Quality_Calculated         = auto()
+    Unknown                         = auto()
 
-status_names = [getattr(Status,x).value for x in Status.__members__]
+def _get_task_name_friendly(name):
+    match name:
+        case 'Imported':
+            return 'Import'
+        case 'Coded':
+            return 'Code'
+        case 'Markers_Detected':
+            return 'Detect Markers'
+        case 'Gaze_Tranformed_To_World':
+            return 'Tranform Gaze To World'
+        case 'Target_Offsets_Computed':
+            return 'Compute Target Offsets'
+        case 'Fixation_Intervals_Determined':
+            return 'Determine Fixation Intervals'
+        case 'Data_Quality_Calculated':
+            return 'Calculate Data Quality'
+    return '' # 'Not_Imported', 'Unknown'
+
+task_names = [getattr(Task,x).value for x in Task.__members__]
+task_names_friendly = [_get_task_name_friendly(x) for x in Task.__members__]   # non verb version
+
+class Status(AutoName):
+    Not_Started     = auto()
+    Running         = auto()
+    Finished        = auto()
+    Errored         = auto()
+status_names = [getattr(Task,x).value for x in Task.__members__]
 
 
 @dataclasses.dataclass
@@ -124,49 +156,22 @@ class Recording:
     recording_unit_serial       : str           = ""
     recording_software_version  : str           = ""
     scene_camera_serial         : str           = ""
-    status                      : Status        = Status.Unknown
+    task                        : Task          = Task.Unknown
 
     def store_as_json(self, path: str | pathlib.Path):
-        class EnumEncoder(json.JSONEncoder):
-            def default(self, obj):
-                if type(obj) in [EyeTracker, Status]:
-                    return {"__enum__": str(obj)}
-                elif isinstance(obj,pathlib.Path):
-                    return {"__pathlib.Path__": str(obj)}
-                elif isinstance(obj,Timestamp):
-                    return {"__Timestamp__": obj.value}
-                return json.JSONEncoder.default(self, obj)
-            
         path = pathlib.Path(path)
         if path.is_dir():
             path /= self.default_json_file_name
         with open(path, 'w') as f:
-            json.dump(dataclasses.asdict(self), f, cls=EnumEncoder)
+            json.dump(dataclasses.asdict(self), f, cls=CustomTypeEncoder)
 
     @classmethod
     def load_from_json(cls, path: str | pathlib.Path):
-        def reconstitute(d):
-            if "__enum__" in d:
-                name, member = d["__enum__"].split(".")
-                match name:
-                    case 'EyeTracker':
-                        return getattr(EyeTracker, member)
-                    case 'Status':
-                        return getattr(Status, member)
-                    case other:
-                        raise ValueError(f'unknown enum "{other}"')
-            elif "__pathlib.Path__" in d:
-                return pathlib.Path(d["__pathlib.Path__"])
-            elif "__Timestamp__" in d:
-                return Timestamp(d["__Timestamp__"])
-            else:
-                return d
-
         path = pathlib.Path(path)
         if path.is_dir():
             path /= cls.default_json_file_name
         with open(path, 'r') as f:
-            return cls(**json.load(f, object_hook=reconstitute))
+            return cls(**json.load(f, object_hook=json_reconstitute))
 
 
 def make_fs_dirname(rec: Recording, dir: pathlib.Path = None):
@@ -189,6 +194,35 @@ def make_fs_dirname(rec: Recording, dir: pathlib.Path = None):
             dirname = f'{dirname}_{fver}'
 
     return dirname
+
+class CustomTypeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if type(obj) in [EyeTracker, Task, Status]:
+            return {"__enum__": str(obj)}
+        elif isinstance(obj,pathlib.Path):
+            return {"__pathlib.Path__": str(obj)}
+        elif isinstance(obj,Timestamp):
+            return {"__Timestamp__": obj.value}
+        return json.JSONEncoder.default(self, obj)
+
+def json_reconstitute(d):
+    if "__enum__" in d:
+        name, member = d["__enum__"].split(".")
+        match name:
+            case 'EyeTracker':
+                return getattr(EyeTracker, member)
+            case 'Task':
+                return getattr(Task, member)
+            case 'Status':
+                return getattr(Status, member)
+            case other:
+                raise ValueError(f'unknown enum "{other}"')
+    elif "__pathlib.Path__" in d:
+        return pathlib.Path(d["__pathlib.Path__"])
+    elif "__Timestamp__" in d:
+        return Timestamp(d["__Timestamp__"])
+    else:
+        return d
 
 
 def getXYZLabels(stringList,N=3):

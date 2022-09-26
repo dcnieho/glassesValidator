@@ -1,7 +1,7 @@
 import dataclasses
 from enum import Enum, auto
 
-from ...utils import AutoName
+from ...utils import AutoName, Task
 
 
 class CounterContext:
@@ -52,10 +52,35 @@ class SortSpec:
 class FilterMode(AutoName):
     Choose      = auto()
     Eye_Tracker = auto()
-    Status      = auto()
-
+    Task_State  = auto()
 filter_mode_names = [getattr(FilterMode,x).value for x in FilterMode.__members__]
 
+# summary version of task state, for client presentation
+class TaskSimplified(AutoName):
+    Not_Imported    = auto()
+    Imported        = auto()
+    Coded           = auto()
+    Processed       = auto()
+    Unknown         = auto()
+simplified_task_names = [getattr(TaskSimplified,x).value for x in TaskSimplified.__members__]
+
+def get_simplified_task_state(task: Task):
+    match task:
+        # before stage 1
+        case Task.Not_Imported:
+            return TaskSimplified.Not_Imported
+        # after stage 1
+        case Task.Imported:
+            return TaskSimplified.Imported
+        # after stage 2 / during stage 3
+        case Task.Coded | Task.Markers_Detected | Task.Gaze_Tranformed_To_World | Task.Target_Offsets_Computed | Task.Fixation_Intervals_Determined:
+            return TaskSimplified.Coded
+        # after stage 3:
+        case Task.Data_Quality_Calculated:
+            return TaskSimplified.Processed
+        # other
+        case _: # includes Task.Unknown
+            return TaskSimplified.Unknown
 
 @dataclasses.dataclass
 class Filter:

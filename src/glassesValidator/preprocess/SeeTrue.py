@@ -18,6 +18,8 @@ from .. import utils
 
 
 def preprocessData(outputDir, inputDir=None, recInfo=None, camCalFile=None):
+    from . import get_recording_status, update_recording_status
+
     if shutil.which('ffmpeg') is None:
         RuntimeError('ffmpeg must be on path to prep SeeTrue recording for processing with GlassesValidator')
 
@@ -69,6 +71,10 @@ def preprocessData(outputDir, inputDir=None, recInfo=None, camCalFile=None):
         # store rec info
         recInfos[i].store_as_json(newDataDir)
 
+        # make sure there is a processing status file, and update it
+        get_recording_status(newDataDir, create_if_missing=True)
+        update_recording_status(newDataDir, utils.Task.Imported, utils.Status.Running)
+
         
     #### prep the data
     for recInfo in recInfos:
@@ -88,6 +94,9 @@ def preprocessData(outputDir, inputDir=None, recInfo=None, camCalFile=None):
 
         # also store frame timestamps
         frameTimestamps.to_csv(str(newDataDir / 'frameTimestamps.tsv'), sep='\t')
+
+        # indicate import finished
+        update_recording_status(newDataDir, utils.Task.Imported, utils.Status.Finished)
 
 
 def getRecordingInfo(inputDir):

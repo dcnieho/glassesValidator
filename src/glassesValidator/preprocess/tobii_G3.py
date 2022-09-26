@@ -25,6 +25,8 @@ from .. import utils
 
 
 def preprocessData(outputDir, inputDir=None, recInfo=None):
+    from . import get_recording_status, update_recording_status
+
     """
     Run all preprocessing steps on tobii data
     """
@@ -71,6 +73,10 @@ def preprocessData(outputDir, inputDir=None, recInfo=None):
     # store rec info
     recInfo.store_as_json(newDataDir)
 
+    # make sure there is a processing status file, and update it
+    get_recording_status(newDataDir, create_if_missing=True)
+    update_recording_status(newDataDir, utils.Task.Imported, utils.Status.Running)
+
 
     ### copy the raw data to the output directory
     copyTobiiRecording(inputDir, newDataDir)
@@ -87,6 +93,9 @@ def preprocessData(outputDir, inputDir=None, recInfo=None):
 
     # also store frame timestamps
     frameTimestamps.to_csv(str(newDataDir / 'frameTimestamps.tsv'), sep='\t')
+
+    # indicate import finished
+    update_recording_status(newDataDir, utils.Task.Imported, utils.Status.Finished)
 
 
 def getRecordingInfo(inputDir):

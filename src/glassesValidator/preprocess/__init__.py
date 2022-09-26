@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import pathlib
+import json
+
 from .. import utils as _utils
 
 from .tobii_G2 import preprocessData as tobii_G2
@@ -49,7 +51,7 @@ def get_recording_info(source_dir: str | pathlib.Path, device: str | _utils.EyeT
 
 # single front end to the various device import functions. Step 1 of our 3-step process
 def do_import(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = None, device: str | _utils.EyeTracker = None, rec_info: _utils.Recording = None):
-    output_dir  = pathlib.Path(output_dir)
+    output_dir = pathlib.Path(output_dir)
 
     if rec_info is not None:
         if isinstance(rec_info,list):
@@ -103,3 +105,34 @@ def do_import(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = N
     if rec_info is not None and not isinstance(rec_info,list):
         rec_info = [rec_info]
     return rec_info
+
+
+_status_file = 'glassesValidator.recording'
+def _create_recording_status_file(file: pathlib.Path):
+    task_status_dict = {str(getattr(_utils.Task,x)): _utils.Status.Not_Started for x in _utils.Task.__members__ if x not in ['Not_Imported', 'Unknown']}
+
+    with open(file, 'w') as f:
+        json.dump(task_status_dict, f, cls=_utils.CustomTypeEncoder)
+
+
+def get_recording_status(path: str | pathlib.Path, create_if_missing = False):
+    path = pathlib.Path(path)
+
+    file = path / _status_file
+    if not file.is_file():
+        _create_recording_status_file(file)
+
+    with open(file, 'r') as f:
+        return json.load(f, object_hook=_utils.json_reconstitute)
+
+
+def update_recording_status(path: str | pathlib.Path, task: _utils.Task, status: _utils.Status):
+    rec_status = get_recording_status(path)
+
+    rec_status[str(task)] = status
+
+    file = path / _status_file
+    with open(file, 'w') as f:
+        json.dump(rec_status, f, cls=_utils.CustomTypeEncoder)
+
+    return rec_status

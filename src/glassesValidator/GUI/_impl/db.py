@@ -5,11 +5,12 @@ import enum
 import json
 import dataclasses
 import pathlib
+import re
 from concurrent.futures import Future
 
 from .structs import DefaultStyleDark, Settings
 from . import globals, utils, async_thread
-from ...utils import EyeTracker, Recording, Status, hex_to_rgba_0_1, rgba_0_1_to_hex
+from ...utils import EyeTracker, Recording, Task, hex_to_rgba_0_1, rgba_0_1_to_hex
 
 connection: aiosqlite.Connection = None
 db_save_future: Future = None
@@ -39,10 +40,15 @@ async def create_table(table_name: str, columns: dict[str, str]):
         )
     """)
     
-    # Add missing columns for backwards compatibility
+    # Add missing and update existing columns for backwards compatibility
     cursor = await connection.execute(f"""
         PRAGMA table_info({table_name})
     """)
+    key_column = None
+    for column_name, column_def in columns.items():
+        if "primary key" in column_def.lower():
+            key_column = column_name
+            break
     has_columns = [tuple(row) for row in await cursor.fetchall()]  # (index, name, type, can_be_null, default, idk)
     has_column_names = [column[1] for column in has_columns]
     has_column_defs = [(column[2], column[4]) for column in has_columns]  # (type, default)
@@ -53,6 +59,32 @@ async def create_table(table_name: str, columns: dict[str, str]):
                 ALTER TABLE {table_name}
                 ADD COLUMN {column_name} {column_def}
             """)
+        elif key_column is not None:  # Can only attempt default fix if key is present to transfer values
+            has_column_def = has_column_defs[has_column_names.index(column_name)]  # (type, default)
+            if not column_def.strip().lower().startswith(has_column_def[0].lower()):
+                raise Exception(f"Existing database column '{column_name}' has incorrect type ({column_def[:column_def.find(' ')]} != {has_column_def[0]})")
+            if " default " in column_def.lower() and not re.search(r"[Dd][Ee][Ff][Aa][Uu][Ll][Tt]\s+?" + re.escape(str(has_column_def[1])), column_def):
+                # Default is different, recreate column and transfer values
+                cursor = await connection.execute(f"""
+                    SELECT {key_column}, {column_name}
+                    FROM {table_name}
+                """)
+                rows = await cursor.fetchall()
+                await connection.execute(f"""
+                    ALTER TABLE {table_name}
+                    DROP COLUMN {column_name}
+                """)
+                await connection.execute(f"""
+                    ALTER TABLE {table_name}
+                    ADD COLUMN {column_name} {column_def}
+                """)
+                for row in rows:
+                    await connection.execute(f"""
+                        UPDATE {table_name}
+                        SET
+                            {column_name} = ?
+                        WHERE {key_column}=?
+                    """, (row[column_name], row[key_column]))
 
 
 async def connect():
@@ -106,7 +138,7 @@ async def connect():
             "recording_unit_serial":        f'TEXT    DEFAULT ""',
             "recording_software_version":   f'TEXT    DEFAULT ""',
             "scene_camera_serial":          f'TEXT    DEFAULT ""',
-            "status":                       f'TEXT    DEFAULT "{Status.Unknown.value}"',
+            "task":                         f'TEXT    DEFAULT "{Task.Unknown.value}"',
         })
 
 

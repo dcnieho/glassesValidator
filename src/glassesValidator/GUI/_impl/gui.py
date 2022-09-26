@@ -17,9 +17,9 @@ import io
 from importlib.resources import files, as_file
 
 
-from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, SortSpec, filter_mode_names
+from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, SortSpec, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
 from . import globals, async_thread, callbacks, db, filepicker, imagehelper, msgbox, utils
-from ...utils import EyeTracker, Recording, Status, hex_to_rgba_0_1, eye_tracker_names, status_names
+from ...utils import EyeTracker, Recording, Task, hex_to_rgba_0_1, eye_tracker_names, task_names
 
 imgui.io = None
 imgui.style = None
@@ -387,17 +387,25 @@ class RecordingTable():
             imgui.text(recording.name, *args, **kwargs)
 
     def draw_recording_status_widget(self, recording: Recording, *args, **kwargs):
-        if recording.status is Status.Unknown:
-            imgui.text_colored("󰀨", 0.50, 0.50, 0.50, *args, **kwargs)
-        elif recording.status is Status.Completed:
-            imgui.text_colored("󰄳", 0.00, 0.85, 0.00, *args, **kwargs)
-        elif recording.status is Status.OnHold:
-            imgui.text_colored("󰏥", 0.00, 0.50, 0.95, *args, **kwargs)
-        elif recording.status is Status.Abandoned:
-            imgui.text_colored("󰅙", 0.87, 0.20, 0.20, *args, **kwargs)
-        else:
-            imgui.text("", *args, **kwargs)
-        draw_hover_text(recording.status.value, text='')
+        match get_simplified_task_state(recording.task):
+            # before stage 1
+            case TaskSimplified.Not_Imported:
+                imgui.text_colored("󰲞", 0.5000, 0.5000, 0.5000, *args, **kwargs)
+            # after stage 1
+            case TaskSimplified.Imported:
+                imgui.text_colored("󰲠", 0.3333, 0.6167, 0.3333, *args, **kwargs)
+            # after stage 2 / during stage 3
+            case TaskSimplified.Coded:
+                imgui.text_colored("󰲢", 0.1667, 0.7333, 0.1667, *args, **kwargs)
+            # after stage 3:
+            case TaskSimplified.Processed:
+                imgui.text_colored("󰲤", 0.0000, 0.8500, 0.0000, *args, **kwargs)
+            # other
+            case TaskSimplified.Unknown:
+                imgui.text_colored("󰀨", 0.8700, 0.2000, 0.2000, *args, **kwargs)
+            case _:
+                imgui.text("", *args, **kwargs)
+        draw_hover_text(recording.task.value, text='')
 
     def draw_recording_remove_button(self, recording: Recording, id: int, label="", selectable=False, *args, **kwargs):
         extra = "_adder" if self.in_adder_popup else ""
@@ -464,7 +472,7 @@ class RecordingTable():
                     case 1:     # Eye tracker
                         key = lambda id: self.recordings[id].eye_tracker.value
                     case 2:     # Status
-                        key = lambda id: self.recordings[id].status.value
+                        key = lambda id: task_names.index(self.recordings[id].task.value)
                     case 4:     # Participant
                         key = lambda id: self.recordings[id].participant.lower()
                     case 5:     # Project
@@ -495,8 +503,8 @@ class RecordingTable():
                 match flt.mode.value:
                     case FilterMode.Eye_Tracker.value:
                         key = lambda id: flt.invert != (self.recordings[id].eye_tracker is flt.match)
-                    case FilterMode.Status.value:
-                        key = lambda id: flt.invert != (self.recordings[id].status is flt.match)
+                    case FilterMode.Task_State.value:
+                        key = lambda id: flt.invert != (get_simplified_task_state(self.recordings[id].task) is flt.match)
                     case _:
                         key = None
                 if key is not None:
@@ -1416,8 +1424,8 @@ class MainGUI():
                 match flt.mode.value:
                     case FilterMode.Eye_Tracker.value:
                         flt.match = EyeTracker(eye_tracker_names[0])
-                    case FilterMode.Status.value:
-                        flt.match = Status(status_names[0])
+                    case FilterMode.Task_State.value:
+                        flt.match = TaskSimplified(simplified_task_names[0])
                 self.recording_list.add_filter(flt)
 
             for flt in self.recording_list.filters:
@@ -1430,14 +1438,14 @@ class MainGUI():
                 if imgui.button(f"Remove###filter_{flt.id}_remove", width=right_width):
                     self.recording_list.remove_filter(flt.id)
                     
-                if flt.mode is FilterMode.Status:
+                if flt.mode is FilterMode.Task_State:
                     imgui.table_next_row()
                     imgui.table_next_column()
-                    imgui.text("  Status value:")
+                    imgui.text("  Task state:")
                     imgui.table_next_column()
-                    changed, value = imgui.combo(f"###filter_{flt.id}_value", status_names.index(flt.match.value), status_names)
+                    changed, value = imgui.combo(f"###filter_{flt.id}_value", simplified_task_names.index(flt.match.value), simplified_task_names)
                     if changed:
-                        flt.match = Status(status_names[value])
+                        flt.match = TaskSimplified(simplified_task_names[value])
                         self.recording_list.require_sort = True
 
                 elif flt.mode is FilterMode.Eye_Tracker:
