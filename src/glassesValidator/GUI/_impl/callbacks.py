@@ -8,7 +8,7 @@ import shutil
 
 from .structs import MsgBox, Os
 from . import globals, async_thread, db, gui, msgbox, utils
-from ...utils import EyeTracker, Recording, eye_tracker_names
+from ...utils import EyeTracker, Recording, Task, eye_tracker_names
 from ... import preprocess
 
 
@@ -57,6 +57,7 @@ def remove_recording(rec: Recording, bypass_confirm=False):
 async def _add_recordings(recordings: dict[int, Recording], selected: dict[int, bool]):
     for id in recordings:
         if selected[id]:
+            recordings[id].task = Task.Not_Imported
             rid = await db.add_recording(recordings[id])
             await db.load_recordings(rid)
         
