@@ -8,7 +8,9 @@ if frozen:
     self_path = pathlib.Path(sys.executable).parent
 else:
     self_path = pathlib.Path(__file__).parent
-    sys.path.append(str(self_path/"src"))
+    src_path  = str(self_path/"src")
+    if not src_path in sys.path:
+        sys.path.append(src_path)
 
 if __name__=="__main__":
     import glassesValidator
