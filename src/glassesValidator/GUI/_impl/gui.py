@@ -4,6 +4,7 @@ from PIL import Image
 import configparser
 import platform
 import asyncio
+import pebble
 import pathlib
 import OpenGL
 import OpenGL.GL as gl
@@ -12,13 +13,12 @@ import imgui
 import time
 import sys
 import datetime
-import typing
 import io
 from importlib.resources import files, as_file
 
 
-from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, SortSpec, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
-from . import globals, async_thread, callbacks, db, filepicker, imagehelper, msgbox, utils
+from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, SortSpec, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
+from . import globals, async_thread, callbacks, db, filepicker, imagehelper, msgbox, process_pool, utils
 from ...utils import EyeTracker, Recording, Task, hex_to_rgba_0_1, eye_tracker_names, task_names
 
 imgui.io = None
@@ -572,10 +572,21 @@ class MainGUI():
                 return
             tb = utils.get_traceback(type(exc), exc, exc.__traceback__)
             if isinstance(exc, asyncio.TimeoutError):
-                utils.push_popup(msgbox.msgbox, "Processing error", f"A background process has failed:\n{type(exc).__name__}: {str(exc) or 'No further details'}\n\nPossible causes include:\n - You are running with too many workers, try lowering them in settings", MsgBox.warn, more=tb)
+                utils.push_popup(msgbox.msgbox, "Processing error", f"A background process has failed:\n{type(exc).__name__}: {str(exc) or 'No further details'}", MsgBox.warn, more=tb)
                 return
             utils.push_popup(msgbox.msgbox, "Oops!", f"Something went wrong in an asynchronous task of a separate thread:\n\n{tb}", MsgBox.error)
         async_thread.done_callback = asyncexcepthook
+
+        # Show errors in worker processes
+        def worker_process_hook(future: pebble.ProcessFuture, id: int, state: ProcessState):
+            if state==ProcessState.Errorred:
+                exc = future.exception()    # should not throw exception since CancelledError is already encoded in state and future is done
+                tb = utils.get_traceback(type(exc), exc, exc.__traceback__)
+                if isinstance(exc, concurrent.futures.TimeoutError):
+                    utils.push_popup(msgbox.msgbox, "Processing error", f"A worker process has failed for work item {id}:\n{type(exc).__name__}: {str(exc) or 'No further details'}\n\nPossible causes include:\n - You are running with too many workers, try lowering them in settings", MsgBox.warn, more=tb)
+                    return
+                utils.push_popup(msgbox.msgbox, "Oops!", f"Something went wrong in a worker process for work item {id}:\n\n{tb}", MsgBox.error)
+        process_pool.done_callback = worker_process_hook
 
         db.setup()
         self.init_imgui_glfw()

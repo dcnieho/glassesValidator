@@ -126,3 +126,10 @@ class Settings:
     style_text                  : tuple[float]
     style_text_dim              : tuple[float]
     vsync_ratio                 : int
+
+class ProcessState(Enum):
+    Pending     = auto()
+    Running     = auto()
+    Cancelled   = auto()
+    Errorred    = auto()
+    Completed   = auto()

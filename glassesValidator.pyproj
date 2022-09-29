@@ -36,6 +36,7 @@
     <Compile Include="src\glassesValidator\GUI\_impl\gui.py" />
     <Compile Include="src\glassesValidator\GUI\_impl\imagehelper.py" />
     <Compile Include="src\glassesValidator\GUI\_impl\msgbox.py" />
+    <Compile Include="src\glassesValidator\GUI\_impl\process_pool.py" />
     <Compile Include="src\glassesValidator\GUI\_impl\structs.py" />
     <Compile Include="src\glassesValidator\GUI\_impl\utils.py" />
     <Compile Include="src\glassesValidator\preprocess\SMI_ETG.py" />
