@@ -41,7 +41,6 @@ def setup():
     _work_id_provider = CounterContext()
 
     _status_dict = {}
-    _status_queue = aioprocessing.AioManager().AioQueue()
 
     # NB: pool and status checker are only started in run() once needed
 
@@ -109,16 +108,19 @@ def run(fn: typing.Callable, *args, **kwargs):
     global _work_id_provider
     global _status_update_coro
     global _status_dict
+    global _status_queue
     global _status_update_coro
 
+    if _status_queue is None:
+        _status_queue = aioprocessing.AioManager().AioQueue()
     if _pool is None or not _pool.active:
         context = multiprocessing.get_context("spawn")  # ensure consistent behavior on Windows (where this is default) and Unix (where fork is default, but that may bring complications)
         if globals.settings is None:
             max_workers = 2
         else:
             max_workers = globals.settings.process_workers
-
         _pool = pebble.ProcessPool(max_workers=max_workers, context=context)
+
     if _status_update_coro is None or _status_update_coro.done():
         _status_update_coro = async_thread.run(_check_status_update(_status_dict, _status_queue))
         
