@@ -98,7 +98,7 @@ async def connect():
     await create_table("settings", {
         "_":                           f'INTEGER PRIMARY KEY CHECK (_=0)',
         "confirm_on_remove":           f'INTEGER DEFAULT {int(True)}',
-        "refresh_workers":             f'INTEGER DEFAULT 3',
+        "process_workers":             f'INTEGER DEFAULT 2',
         "render_when_unfocused":       f'INTEGER DEFAULT {int(True)}',
         "scroll_amount":               f'REAL    DEFAULT 1.0',
         "scroll_smooth":               f'INTEGER DEFAULT {int(True)}',

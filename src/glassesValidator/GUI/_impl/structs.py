@@ -108,7 +108,7 @@ class MsgBox(Enum):
 @dataclasses.dataclass
 class Settings:
     confirm_on_remove           : bool
-    refresh_workers             : int
+    process_workers             : int
     render_when_unfocused       : bool
     scroll_amount               : float
     scroll_smooth               : bool

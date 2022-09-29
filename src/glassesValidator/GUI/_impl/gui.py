@@ -1526,14 +1526,17 @@ class MainGUI():
             draw_hover_text(
                 "Each recording is processed by a worker and each worker can handle 1 "
                 "recording at a time. Having more workers means more recordings are processed "
-                "simultaneously, but having too many will freeze the program. In most cases 3 "
-                "workers is a good compromise."
+                "simultaneously, but having too many will not provide any gain and might freeze "
+                "the program and your whole program. Since much of the processing utilizes more "
+                "than one processor thread, set this value to signficantly less than the number "
+                "of threads available in your system. In most cases 2--3 workers is a good "
+                "should provide a good experience."
             )
             imgui.table_next_column()
-            changed, value = imgui.drag_int("###refresh_workers", set.refresh_workers, change_speed=0.5, min_value=1, max_value=100)
-            set.refresh_workers = min(max(value, 1), 100)
+            changed, value = imgui.drag_int("###process_workers", set.process_workers, change_speed=0.5, min_value=1, max_value=100)
+            set.process_workers = min(max(value, 1), 100)
             if changed:
-                async_thread.run(db.update_settings("refresh_workers"))
+                async_thread.run(db.update_settings("process_workers"))
                 
             imgui.end_table()
             imgui.spacing()
