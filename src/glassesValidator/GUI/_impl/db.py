@@ -289,7 +289,7 @@ async def remove_recording(id: int):
 
 async def add_recording(rec: Recording):
     async with globals.rec_id:
-        rec.id = globals.rec_id.count
+        rec.id = globals.rec_id.get_count()
 
     keys    = ", ".join(f"{key.name}" for key in dataclasses.fields(rec))
     values  = "{}".format(tuple(py_to_sql(at) if (at:=getattr(rec, key.name)) else "null" for key in dataclasses.fields(rec)))

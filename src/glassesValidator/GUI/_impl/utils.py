@@ -1,10 +1,7 @@
 import OpenGL.GL as gl
-import concurrent
-import subprocess
 import pathlib
 import functools
 import traceback
-import asyncio
 import typing
 import random
 import imgui
@@ -13,9 +10,8 @@ import glfw
 import sys
 import os
 
-from . import globals, db, async_thread, msgbox
-from .structs import Os, SortSpec, Filter, FilterMode
-from ...utils import Recording
+from . import globals, msgbox
+from .structs import Os
 
 
 

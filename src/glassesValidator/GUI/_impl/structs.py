@@ -5,10 +5,10 @@ from ...utils import AutoName, Task
 
 
 class CounterContext:
-    count = 0
+    _count = -1     # so that first number is 0
 
     def __enter__(self):
-        self.count += 1
+        self._count += 1
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
@@ -19,8 +19,11 @@ class CounterContext:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         self.__exit__(exc_type, exc_val, exc_tb)
 
+    def get_count(self):
+        return self._count
+
     def set_count(self, count):
-        self.count = count
+        self._count = count
 
         
 class DefaultStyleDark:
