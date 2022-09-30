@@ -102,7 +102,7 @@ class RecordingTable():
             imgui.table_setup_column("󰄵 Selector", imgui.TABLE_COLUMN_NO_HIDE | imgui.TABLE_COLUMN_NO_SORT | imgui.TABLE_COLUMN_NO_RESIZE | imgui.TABLE_COLUMN_NO_REORDER, init_width_or_weight=checkbox_width)  # 0
             imgui.table_setup_column("󰖠 Eye Tracker", imgui.TABLE_COLUMN_NO_RESIZE)  # 1
             imgui.table_setup_column("󱀩 Status", imgui.TABLE_COLUMN_NO_RESIZE | (imgui.TABLE_COLUMN_DEFAULT_HIDE if self.in_adder_popup else 0))  # 2
-            imgui.table_setup_column("󰌖 Name", imgui.TABLE_COLUMN_WIDTH_STRETCH | imgui.TABLE_COLUMN_DEFAULT_SORT | imgui.TABLE_COLUMN_NO_HIDE | imgui.TABLE_COLUMN_NO_RESIZE, 100.)  # 3
+            imgui.table_setup_column("󰌖 Name", imgui.TABLE_COLUMN_DEFAULT_SORT | imgui.TABLE_COLUMN_NO_HIDE | imgui.TABLE_COLUMN_NO_RESIZE)  # 3
             imgui.table_setup_column("󰀓 Participant", imgui.TABLE_COLUMN_NO_RESIZE)  # 4
             imgui.table_setup_column("󰨸 Project", imgui.TABLE_COLUMN_DEFAULT_HIDE | imgui.TABLE_COLUMN_NO_RESIZE)  # 5
             imgui.table_setup_column("󰁫 Duration", imgui.TABLE_COLUMN_NO_RESIZE)  # 6
