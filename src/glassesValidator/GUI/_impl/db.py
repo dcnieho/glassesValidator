@@ -211,6 +211,14 @@ async def load_recordings(id: int = None):
         globals.recordings[recording["id"]] = Recording(**recording)
         globals.selected_recordings[recording["id"]] = False
 
+        # check if working dir exists. If not, ensure recording status is not imported
+        rec = globals.recordings[recording["id"]]
+        if rec.proc_directory_name:
+            rec_path = globals.project_path / rec.proc_directory_name
+            if not rec_path.is_dir():
+                rec.task = Task.Not_Imported
+                async_thread.run(update_recording(rec, "task"))
+
 
 async def load():
     types = Settings.__annotations__
