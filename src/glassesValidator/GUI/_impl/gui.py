@@ -263,10 +263,10 @@ class RecordingTable():
                             # Working Directory
                             imgui.text(recording.proc_directory_name or "Unknown")
                             if imgui.is_item_hovered():
-                                if recording.proc_directory_name:
-                                    text = str(globals.project_path / recording.proc_directory_name)
+                                if recording.proc_directory_name and (path:=globals.project_path / recording.proc_directory_name).is_dir():
+                                    text = str(path)
                                 else:
-                                    text = 'Working dirctory not created yet'
+                                    text = 'Working directory not created yet'
                                 draw_tooltip(text)
                         case 9:
                             # Source Directory
