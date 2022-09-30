@@ -466,7 +466,19 @@ class RecordingTable():
     def draw_recording_context_menu(self, recording: Recording, id: int):
         if not self.in_adder_popup:
             if id not in globals.jobs:
-                self.draw_recording_process_button(recording, label="󰼛 Process", selectable=True)
+                match get_simplified_task_state(recording.task):
+                    # before stage 1
+                    case TaskSimplified.Not_Imported:
+                        self.draw_recording_process_button(recording, label="󰼛 Import", selectable=True, action=Task.Imported)
+                    # after stage 1
+                    case TaskSimplified.Imported:
+                        self.draw_recording_process_button(recording, label="󰼛 Code Intervals", selectable=True, action=Task.Coded)
+                    # after stage 2 / during stage 3
+                    case TaskSimplified.Coded:
+                        self.draw_recording_process_button(recording, label="󰼛 Process", selectable=True, action=Task.Markers_Detected)
+                    # after stage 3 or unknown:
+                    case TaskSimplified.Processed | TaskSimplified.Unknown:
+                        pass # no buton to draw when completely done or unknown state (should never be in unknown state)
             else:
                 self.draw_recording_process_cancel_button(recording, label="󱠮 Cancel processing", selectable=True)
             self.draw_recording_open_folder_button(recording, label="󰷏 Open Working Folder", selectable=True)
@@ -479,7 +491,7 @@ class RecordingTable():
         imgui.separator()
         return self.draw_recording_remove_button(recording, id, label="󰩺 Remove", selectable=True)
 
-    def draw_recording_process_button(self, recording: Recording, label="", selectable=False, *args, **kwargs):
+    def draw_recording_process_button(self, recording: Recording, label="", selectable=False, action = None, *args, **kwargs):
         id = f"{label}###{recording.id}_process_button"
         if selectable:
             clicked = imgui.selectable(id, False, *args, **kwargs)[0]
@@ -488,7 +500,7 @@ class RecordingTable():
         if clicked:
             # get all selected recordings, invoke callback for all of them
             ids = [rid for rid in self.selected_recordings if self.selected_recordings[rid]]
-            async_thread.run(callbacks.process_recordings(ids))
+            async_thread.run(callbacks.process_recordings(ids, task=action, chain=action==Task.Markers_Detected))
         return clicked
 
     def draw_recording_process_cancel_button(self, recording: Recording, label="", selectable=False, *args, **kwargs):
@@ -649,6 +661,22 @@ class MainGUI():
                     rec.task = job.task
                     async_thread.run(db.update_recording(rec, "task"))
                     del globals.jobs[rec_id]
+                    # start next step, if wanted
+                    if job.should_chain_next:
+                        task = None
+                        match job.task:
+                            case Task.Coded:
+                                task = Task.Markers_Detected
+                            case Task.Markers_Detected:
+                                task = Task.Gaze_Tranformed_To_World
+                            case Task.Gaze_Tranformed_To_World:
+                                task = Task.Target_Offsets_Computed
+                            case Task.Target_Offsets_Computed:
+                                task = Task.Fixation_Intervals_Determined
+                            case Task.Fixation_Intervals_Determined:
+                                task = Task.Data_Quality_Calculated
+                        if task:
+                            async_thread.run(callbacks.process_recordings([rec_id], task=task, chain=True))
                 case ProcessState.Failed:
                     exc = future.exception()    # should not throw exception since CancelledError is already encoded in state and future is done
                     tb = utils.get_traceback(type(exc), exc, exc.__traceback__)

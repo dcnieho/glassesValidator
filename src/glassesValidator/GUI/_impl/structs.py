@@ -129,9 +129,10 @@ class Settings:
 
 @dataclasses.dataclass
 class JobDescription:
-    id:         int
-    payload:    Recording
-    task:       Task
+    id:                 int
+    payload:            Recording
+    task:               Task
+    should_chain_next:  bool
 
 class ProcessState(Enum):
     Pending     = auto()

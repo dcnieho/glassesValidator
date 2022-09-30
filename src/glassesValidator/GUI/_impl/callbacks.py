@@ -9,8 +9,7 @@ import shutil
 from .structs import JobDescription, MsgBox, Os
 from . import globals, async_thread, db, gui, msgbox, process_pool, utils
 from ...utils import EyeTracker, Recording, Task, eye_tracker_names, make_fs_dirname
-from ... import preprocess
-from ... import process
+from ... import preprocess, process
 
 
 
@@ -183,25 +182,33 @@ def _process_recording(rec: Recording, task: Task = None, chain=True):
                 task = Task.Unknown
 
     # get function for task
+    kwargs = {}
+    working_dir = globals.project_path / rec.proc_directory_name
     match task:
         case Task.Imported:
             fun = preprocess.do_import
             args = (globals.project_path,)
             kwargs = {'rec_info': rec}
         case Task.Coded:
-            fun = preprocess.do_import
+            fun = process.codeMarkerInterval
+            args = (working_dir,)
         case Task.Markers_Detected:
-            fun = preprocess.do_import
+            fun = process.detectMarkers
+            args = (working_dir,)
         case Task.Gaze_Tranformed_To_World:
-            fun = preprocess.do_import
+            fun = process.gazeToBoard
+            args = (working_dir,)
         case Task.Target_Offsets_Computed:
-            fun = preprocess.do_import
+            fun = process.computeOffsetsToTargets
+            args = (working_dir,)
         case Task.Fixation_Intervals_Determined:
-            fun = preprocess.do_import
+            fun = process.determineFixationIntervals
+            args = (working_dir,)
         case Task.Data_Quality_Calculated:
-            fun = preprocess.do_import
+            fun = process.calculateDataQuality
+            args = (working_dir,)
          
-        # other, includes Task.Unknown (all already done), nothing to do if no specific task specified:
+        # other, includes Task.Unknown (all already done, see above), nothing to do if no specific task specified:
         case _:
             fun = None  # nothing to do
 
@@ -213,7 +220,7 @@ def _process_recording(rec: Recording, task: Task = None, chain=True):
     job_id = process_pool.run(fun,*args,**kwargs)
 
     # store to job queue
-    globals.jobs[rec.id] = JobDescription(job_id, rec, task)
+    globals.jobs[rec.id] = JobDescription(job_id, rec, task, chain)
 
 async def process_recordings(ids: list[int], task: Task = None, chain=True):
     for rec_id in ids:
