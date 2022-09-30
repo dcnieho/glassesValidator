@@ -6,3 +6,6 @@ from .d_gazeToBoard import process as gazeToBoard
 from .e1_computeOffsetsToTargets import process as computeOffsetsToTargets
 from .e2_determineFixationIntervals import process as determineFixationIntervals
 from .f_calculateDataQuality import process as calculateDataQuality
+
+
+__all__ = ['codeMarkerInterval','detectMarkers','gazeToBoard','computeOffsetsToTargets','determineFixationIntervals','calculateDataQuality']

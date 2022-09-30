@@ -6,15 +6,16 @@ import numpy as np
 import pandas as pd
 import warnings
 
-from .. import config
+from .. import config, utils
 
 
-def process(inputDir,configDir=None):
+def process(inputDir, configDir=None):
     inputDir  = Path(inputDir)
     if configDir is not None:
         configDir = pathlib.Path(configDir)
 
     print('processing: {}'.format(inputDir.name))
+    utils.update_recording_status(inputDir, utils.Task.Data_Quality_Calculated, utils.Status.Running)
     
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.getValidationSetup(configDir)
@@ -88,9 +89,5 @@ def process(inputDir,configDir=None):
     
 
     df.to_csv(str(inputDir / 'dataQuality.tsv'), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.3f")
-
-if __name__ == '__main__':
-    basePath = Path(__file__).resolve().parent
-    for d in (basePath / 'data' / 'preprocced').iterdir():
-        if d.is_dir():
-            process(d,basePath)
+    
+    utils.update_recording_status(inputDir, utils.Task.Data_Quality_Calculated, utils.Status.Finished)

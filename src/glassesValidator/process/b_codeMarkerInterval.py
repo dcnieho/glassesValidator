@@ -29,6 +29,7 @@ def process(inputDir, configDir=None, showReference=False):
         configDir = pathlib.Path(configDir)
 
     print('processing: {}'.format(inputDir.name))
+    utils.update_recording_status(inputDir, utils.Task.Coded, utils.Status.Running)
     
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.getValidationSetup(configDir)
@@ -232,13 +233,6 @@ def process(inputDir, configDir=None, showReference=False):
         for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't write out incomplete intervals
             csv_writer.writerow(analyzeFrames[f:f+2])
 
+    utils.update_recording_status(inputDir, utils.Task.Coded, utils.Status.Finished)
+
     return stopAllProcessing
-
-
-
-if __name__ == '__main__':
-    basePath = Path(__file__).resolve().parent
-    for d in (basePath / 'data' / 'preprocced').iterdir():
-        if d.is_dir():
-            if process(d,basePath):
-                break

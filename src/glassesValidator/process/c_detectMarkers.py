@@ -9,7 +9,7 @@ from .. import config
 from .. import utils
 
 
-def process(inputDir,configDir=None,visualizeDetection=False,showRejectedMarkers=False,FPSFac=1):
+def process(inputDir, configDir=None, visualizeDetection=False, showRejectedMarkers=False, FPSFac=1):
     # if visualizeDetection, draw each frame and overlay info about detected markers and board
     # if showRejectedMarkers, rejected marker candidates are also drawn on frame. Possibly useful for debug
     inputDir  = Path(inputDir)
@@ -17,6 +17,7 @@ def process(inputDir,configDir=None,visualizeDetection=False,showRejectedMarkers
         configDir = pathlib.Path(configDir)
 
     print('processing: {}'.format(inputDir.name))
+    utils.update_recording_status(inputDir, utils.Task.Markers_Detected, utils.Status.Running)
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.getValidationSetup(configDir)
@@ -162,13 +163,7 @@ def process(inputDir,configDir=None,visualizeDetection=False,showRejectedMarkers
     csv_file.close()
     cap.release()
     cv2.destroyAllWindows()
+    
+    utils.update_recording_status(inputDir, utils.Task.Markers_Detected, utils.Status.Finished)
 
     return stopAllProcessing
-
-
-if __name__ == '__main__':
-    basePath = Path(__file__).resolve().parent
-    for d in (basePath / 'data' / 'preprocced').iterdir():
-        if d.is_dir():
-            if process(d,basePath):
-                break

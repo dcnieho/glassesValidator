@@ -141,6 +141,37 @@ class Status(AutoName):
 status_names = [getattr(Task,x).value for x in Task.__members__]
 
 
+_status_file = 'glassesValidator.recording'
+def _create_recording_status_file(file: pathlib.Path):
+    task_status_dict = {str(getattr(Task,x)): Status.Not_Started for x in Task.__members__ if x not in ['Not_Imported', 'Unknown']}
+
+    with open(file, 'w') as f:
+        json.dump(task_status_dict, f, cls=CustomTypeEncoder)
+
+
+def get_recording_status(path: str | pathlib.Path, create_if_missing = False):
+    path = pathlib.Path(path)
+
+    file = path / _status_file
+    if not file.is_file():
+        _create_recording_status_file(file)
+
+    with open(file, 'r') as f:
+        return json.load(f, object_hook=json_reconstitute)
+
+
+def update_recording_status(path: str | pathlib.Path, task: Task, status: Status):
+    rec_status = get_recording_status(path)
+
+    rec_status[str(task)] = status
+
+    file = path / _status_file
+    with open(file, 'w') as f:
+        json.dump(rec_status, f, cls=CustomTypeEncoder)
+
+    return rec_status
+
+
 @dataclasses.dataclass
 class Recording:
     default_json_file_name      : typing.ClassVar[str] = 'recording_glassesValidator.json'
@@ -166,7 +197,11 @@ class Recording:
         if path.is_dir():
             path /= self.default_json_file_name
         with open(path, 'w') as f:
-            json.dump(dataclasses.asdict(self), f, cls=CustomTypeEncoder)
+            data = dataclasses.asdict(self)
+            # dump these two which are not properties of the project per se
+            del data['id']
+            del data['task']
+            json.dump(data, f, cls=CustomTypeEncoder)
 
     @classmethod
     def load_from_json(cls, path: str | pathlib.Path):

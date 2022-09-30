@@ -107,32 +107,5 @@ def do_import(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = N
     return rec_info
 
 
-_status_file = 'glassesValidator.recording'
-def _create_recording_status_file(file: pathlib.Path):
-    task_status_dict = {str(getattr(_utils.Task,x)): _utils.Status.Not_Started for x in _utils.Task.__members__ if x not in ['Not_Imported', 'Unknown']}
-
-    with open(file, 'w') as f:
-        json.dump(task_status_dict, f, cls=_utils.CustomTypeEncoder)
-
-
-def get_recording_status(path: str | pathlib.Path, create_if_missing = False):
-    path = pathlib.Path(path)
-
-    file = path / _status_file
-    if not file.is_file():
-        _create_recording_status_file(file)
-
-    with open(file, 'r') as f:
-        return json.load(f, object_hook=_utils.json_reconstitute)
-
-
-def update_recording_status(path: str | pathlib.Path, task: _utils.Task, status: _utils.Status):
-    rec_status = get_recording_status(path)
-
-    rec_status[str(task)] = status
-
-    file = path / _status_file
-    with open(file, 'w') as f:
-        json.dump(rec_status, f, cls=_utils.CustomTypeEncoder)
-
-    return rec_status
+__all__ = ['tobii_G2','tobii_G3','SMI_ETG','SeeTrue','pupil_core','pupil_invisible',
+           'get_recording_info','do_import']

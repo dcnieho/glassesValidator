@@ -29,8 +29,6 @@ from .. import utils
 
 
 def preprocessData(outputDir, device=None, inputDir=None, recInfo=None):
-    from . import get_recording_status, update_recording_status
-
     """
     Run all preprocessing steps on pupil data
     """
@@ -91,8 +89,8 @@ def preprocessData(outputDir, device=None, inputDir=None, recInfo=None):
     recInfo.store_as_json(newDataDir)
 
     # make sure there is a processing status file, and update it
-    get_recording_status(newDataDir, create_if_missing=True)
-    update_recording_status(newDataDir, utils.Task.Imported, utils.Status.Running)
+    utils.get_recording_status(newDataDir, create_if_missing=True)
+    utils.update_recording_status(newDataDir, utils.Task.Imported, utils.Status.Running)
 
     
     # copy world video
@@ -120,7 +118,7 @@ def preprocessData(outputDir, device=None, inputDir=None, recInfo=None):
     frameTimestamps.to_csv(str(newDataDir / 'frameTimestamps.tsv'), sep='\t')
 
     # indicate import finished
-    update_recording_status(newDataDir, utils.Task.Imported, utils.Status.Finished)
+    utils.update_recording_status(newDataDir, utils.Task.Imported, utils.Status.Finished)
 
         
 def checkPupilRecording(inputDir):

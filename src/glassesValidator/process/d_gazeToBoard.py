@@ -10,7 +10,7 @@ from .. import config
 from .. import utils
 
 
-def process(inputDir,configDir=None,showVisualization=False,showReference=True,showOnlyIntervals=True,FPSFac=1):
+def process(inputDir, configDir=None, showVisualization=False, showReference=True, showOnlyIntervals=True, FPSFac=1):
     # if showVisualization, draw each frame + gaze and overlay info about detected markers and board
     # if showReference, gaze in board space is also drawn in a separate window
     # if showOnlyIntervals, shows only frames in the marker intervals (if available)
@@ -19,6 +19,7 @@ def process(inputDir,configDir=None,showVisualization=False,showReference=True,s
         configDir = pathlib.Path(configDir)
 
     print('processing: {}'.format(inputDir.name))
+    utils.update_recording_status(inputDir, utils.Task.Gaze_Tranformed_To_World, utils.Status.Running)
     
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.getValidationSetup(configDir)
@@ -156,13 +157,6 @@ def process(inputDir,configDir=None,showVisualization=False,showReference=True,s
         cap.release()
         cv2.destroyAllWindows()
 
+    utils.update_recording_status(inputDir, utils.Task.Gaze_Tranformed_To_World, utils.Status.Finished)
+
     return stopAllProcessing
-
-
-
-if __name__ == '__main__':
-    basePath = Path(__file__).resolve().parent
-    for d in (basePath / 'data' / 'preprocced').iterdir():
-        if d.is_dir():
-            if process(d,basePath):
-                break
