@@ -52,6 +52,9 @@ def cleanup():
     global _status_queue
     global _status_update_coro
 
+    # cancel all pending and running jobs
+    cancel_all_jobs()
+
     # stop pool
     if _pool and _pool.active:
         _pool.stop()
@@ -67,7 +70,7 @@ def cleanup():
     _status_update_coro = None
     _status_queue = None
 
-def _work_bootstrapper(status_queue,id, fn,*args,**kwargs):
+def _work_bootstrapper(status_queue,id, fn,args,kwargs):
     status_queue.put({id: ProcessState.Running})
     fn(*args,**kwargs)
 
@@ -128,7 +131,7 @@ def run(fn: typing.Callable, *args, **kwargs):
         work_id = _work_id_provider.get_count()
         _status_dict[work_id] = ProcessState.Pending
         # route function execution through _work_bootstrapper() so that we get a notification that the work item is started to be processed once a worker takes it up
-        _work_items[work_id] = async_thread.loop.run_in_executor(_pool, _work_bootstrapper, None, _status_queue, work_id, fn, *args, **kwargs)
+        _work_items[work_id] = async_thread.loop.run_in_executor(_pool, _work_bootstrapper, None, _status_queue, work_id, fn, args, kwargs)
         _work_items[work_id].add_done_callback(_process_done_hook)
         return work_id
 
@@ -149,6 +152,8 @@ def cancel_all_jobs():
     for id in reversed(_work_items):    # reversed so that later pending jobs don't start executing when earlier gets cancelled, only to be cancelled directly after
         if not _work_items[id].done():
             _work_items[id].cancel()
+
+
 
 
 # Example usage
