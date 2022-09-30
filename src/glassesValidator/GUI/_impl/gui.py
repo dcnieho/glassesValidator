@@ -660,6 +660,10 @@ class MainGUI():
                         return
                     utils.push_popup(msgbox.msgbox, "Oops!", f"Something went wrong in a worker process for recording '{rec.name}' (work item {job_id}):\n\n{tb}", MsgBox.error)
                     del globals.jobs[rec_id]
+
+            # special case: remove working directory again if an import task was cancelled or errored
+            if job.task==Task.Imported and state in [ProcessState.Cancelled, ProcessState.Errored]:
+                pass#async_thread.run(callbacks.remove_recording_working_dir(rec))
         process_pool.done_callback = worker_process_hook
 
         db.setup()
