@@ -19,7 +19,7 @@ reference         = "Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström,
 reference_bibtex  = "<bibtex here>"
 
 
-from .structs import CounterContext, Os, Settings
+from .structs import CounterContext, JobDescription, Os, Settings
 from .gui import MainGUI
 from ...utils import Recording
 
@@ -49,3 +49,4 @@ settings: Settings = None
 rec_id: CounterContext = CounterContext()
 recordings: dict[int, Recording] = None
 selected_recordings: dict[int, bool] = None
+jobs: dict[int, JobDescription] = None

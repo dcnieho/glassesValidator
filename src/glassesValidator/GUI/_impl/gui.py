@@ -19,7 +19,7 @@ from importlib.resources import files, as_file
 
 from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, SortSpec, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
 from . import globals, async_thread, callbacks, db, filepicker, imagehelper, msgbox, process_pool, utils
-from ...utils import EyeTracker, Recording, Task, hex_to_rgba_0_1, eye_tracker_names, task_names
+from ...utils import EyeTracker, Recording, Task, hex_to_rgba_0_1, eye_tracker_names, get_task_name_friendly, task_names
 
 imgui.io = None
 imgui.style = None
@@ -387,25 +387,39 @@ class RecordingTable():
             imgui.text(recording.name, *args, **kwargs)
 
     def draw_recording_status_widget(self, recording: Recording, *args, **kwargs):
-        match get_simplified_task_state(recording.task):
-            # before stage 1
-            case TaskSimplified.Not_Imported:
-                imgui.text_colored("󰲞", 0.5000, 0.5000, 0.5000, *args, **kwargs)
-            # after stage 1
-            case TaskSimplified.Imported:
-                imgui.text_colored("󰲠", 0.3333, 0.6167, 0.3333, *args, **kwargs)
-            # after stage 2 / during stage 3
-            case TaskSimplified.Coded:
-                imgui.text_colored("󰲢", 0.1667, 0.7333, 0.1667, *args, **kwargs)
-            # after stage 3:
-            case TaskSimplified.Processed:
-                imgui.text_colored("󰲤", 0.0000, 0.8500, 0.0000, *args, **kwargs)
-            # other
-            case TaskSimplified.Unknown:
-                imgui.text_colored("󰀨", 0.8700, 0.2000, 0.2000, *args, **kwargs)
-            case _:
-                imgui.text("", *args, **kwargs)
-        draw_hover_text(recording.task.value, text='')
+        if recording.id in globals.jobs and ((job_state:=process_pool.get_job_state((job:=globals.jobs[recording.id]).id))==ProcessState.Pending or job_state==ProcessState.Running):
+            symbol_size = imgui.calc_text_size("󰲞")
+            if job_state==ProcessState.Pending:
+                thickness = symbol_size.x / 3 / 2.5 # 3 is number of dots, 2.5 is nextItemKoeff in utils.bounce_dots()
+                utils.bounce_dots(f'waitBounceDots_{recording.id}', thickness, color=imgui.color_convert_float4_to_u32(*globals.settings.style_text))
+                hover_text = f'Pending: {get_task_name_friendly(job.task)}'
+            else:
+                spinner_radii = [x/22/2*symbol_size.x for x in [22, 16, 10]]
+                lw = 3.5/22/2*symbol_size.x
+                utils.draw_spinner(f'runSpinner_{recording.id}', *spinner_radii, lw, c1=imgui.color_convert_float4_to_u32(*globals.settings.style_text), c2=imgui.color_convert_float4_to_u32(*globals.settings.style_accent), c3=imgui.color_convert_float4_to_u32(*globals.settings.style_text))
+                hover_text = f'Running: {get_task_name_friendly(job.task)}'
+        else:
+            match get_simplified_task_state(recording.task):
+                # before stage 1
+                case TaskSimplified.Not_Imported:
+                    imgui.text_colored("󰲞", 0.5000, 0.5000, 0.5000, *args, **kwargs)
+                # after stage 1
+                case TaskSimplified.Imported:
+                    imgui.text_colored("󰲠", 0.3333, 0.6167, 0.3333, *args, **kwargs)
+                # after stage 2 / during stage 3
+                case TaskSimplified.Coded:
+                    imgui.text_colored("󰲢", 0.1667, 0.7333, 0.1667, *args, **kwargs)
+                # after stage 3:
+                case TaskSimplified.Processed:
+                    imgui.text_colored("󰲤", 0.0000, 0.8500, 0.0000, *args, **kwargs)
+                # other
+                case TaskSimplified.Unknown:
+                    imgui.text_colored("󰀨", 0.8700, 0.2000, 0.2000, *args, **kwargs)
+                case _:
+                    imgui.text("", *args, **kwargs)
+            hover_text = recording.task.value
+
+        draw_hover_text(hover_text, text='')
 
     def draw_recording_remove_button(self, recording: Recording, id: int, label="", selectable=False, *args, **kwargs):
         extra = "_adder" if self.in_adder_popup else ""
@@ -441,7 +455,7 @@ class RecordingTable():
 
     def draw_recording_context_menu(self, recording: Recording, id: int):
         if not self.in_adder_popup:
-            self.draw_recording_go_button(recording, label="󱄋 Process", selectable=True)
+            self.draw_recording_process_button(recording, label="󱄋 Process", selectable=True)
             self.draw_recording_open_folder_button(recording, label="󰷏 Open Folder", selectable=True)
             self.draw_recording_open_folder_button(recording, label="󰷏 Open Source Folder", selectable=True, source_dir=True)
         else:
@@ -450,14 +464,16 @@ class RecordingTable():
         imgui.separator()
         return self.draw_recording_remove_button(recording, id, label="󰩺 Remove", selectable=True)
 
-    def draw_recording_go_button(self, recording: Recording, label="", selectable=False, *args, **kwargs):
+    def draw_recording_process_button(self, recording: Recording, label="", selectable=False, *args, **kwargs):
         id = f"{label}###{recording.id}_go_button"
         if selectable:
             clicked = imgui.selectable(id, False, *args, **kwargs)[0]
         else:
             clicked = imgui.button(id, *args, **kwargs)
         if clicked:
-            pass # do some processing, callbacks.something(recording)
+            # get all selected recordings, invoke callback for all of them
+            ids = [rid for rid in self.selected_recordings if self.selected_recordings[rid]]
+            async_thread.run(callbacks.process_recordings(ids))
         return clicked
 
     def sort_and_filter_recordings(self, sort_specs_in: imgui.core._ImGuiTableSortSpecs):
@@ -577,15 +593,42 @@ class MainGUI():
             utils.push_popup(msgbox.msgbox, "Oops!", f"Something went wrong in an asynchronous task of a separate thread:\n\n{tb}", MsgBox.error)
         async_thread.done_callback = asyncexcepthook
 
-        # Show errors in worker processes
-        def worker_process_hook(future: pebble.ProcessFuture, id: int, state: ProcessState):
-            if state==ProcessState.Errored:
-                exc = future.exception()    # should not throw exception since CancelledError is already encoded in state and future is done
-                tb = utils.get_traceback(type(exc), exc, exc.__traceback__)
-                if isinstance(exc, concurrent.futures.TimeoutError):
-                    utils.push_popup(msgbox.msgbox, "Processing error", f"A worker process has failed for work item {id}:\n{type(exc).__name__}: {str(exc) or 'No further details'}\n\nPossible causes include:\n - You are running with too many workers, try lowering them in settings", MsgBox.warn, more=tb)
-                    return
-                utils.push_popup(msgbox.msgbox, "Oops!", f"Something went wrong in a worker process for work item {id}:\n\n{tb}", MsgBox.error)
+        # Process state changes in worker processes
+        def worker_process_hook(future: pebble.ProcessFuture, job_id: int, state: ProcessState):
+            if globals.jobs is None:
+                return
+            if state==ProcessState.Pending or state==ProcessState.Running:
+                # nothing to do for these
+                return
+
+            # find corresponding job and recording id
+            found = False
+            for rec_id in globals.jobs:
+                job = globals.jobs[rec_id]
+                if job.id == job_id:
+                    found = True
+                    break
+            if not found:
+                return  # nothing to do (shouldn't occur)
+            rec = globals.recordings[rec_id]
+
+            match state:
+                case ProcessState.Cancelled:
+                    # just remove job
+                    del globals.jobs[rec_id]
+                case ProcessState.Completed:
+                    # update recording state
+                    rec.task = job.task
+                    async_thread.run(db.update_recording(rec, "task"))
+                    del globals.jobs[rec_id]
+                case ProcessState.Errored:
+                    exc = future.exception()    # should not throw exception since CancelledError is already encoded in state and future is done
+                    tb = utils.get_traceback(type(exc), exc, exc.__traceback__)
+                    if isinstance(exc, concurrent.futures.TimeoutError):
+                        utils.push_popup(msgbox.msgbox, "Processing error", f"A worker process has failed for recording '{rec.name}' (work item {job_id}):\n{type(exc).__name__}: {str(exc) or 'No further details'}\n\nPossible causes include:\n - You are running with too many workers, try lowering them in settings", MsgBox.warn, more=tb)
+                        return
+                    utils.push_popup(msgbox.msgbox, "Oops!", f"Something went wrong in a worker process for recording '{rec.name}' (work item {job_id}):\n\n{tb}", MsgBox.error)
+                    del globals.jobs[rec_id]
         process_pool.done_callback = worker_process_hook
 
         db.setup()
@@ -993,6 +1036,7 @@ class MainGUI():
     def main_loop(self):
         scroll_energy = 0.0
         have_set_window_size = False
+        globals.jobs = {}
         while not glfw.window_should_close(self.window) and self.project_to_load is None:
             # for repeating characters that were input while bottom bar didn't have input focus
             if self.repeat_chars:
@@ -1116,6 +1160,8 @@ class MainGUI():
         self.save_imgui_ini()
         self.impl.shutdown()
         glfw.terminate()
+        process_pool.cancel_all_jobs()
+        globals.jobs = None
         db.shutdown()
 
         if self.project_to_load is not None:

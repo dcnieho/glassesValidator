@@ -1,7 +1,7 @@
 import dataclasses
 from enum import Enum, auto
 
-from ...utils import AutoName, Task
+from ...utils import AutoName, Recording, Task
 
 
 class CounterContext:
@@ -126,6 +126,12 @@ class Settings:
     style_text                  : tuple[float]
     style_text_dim              : tuple[float]
     vsync_ratio                 : int
+
+@dataclasses.dataclass
+class JobDescription:
+    id:         int
+    payload:    Recording
+    task:       Task
 
 class ProcessState(Enum):
     Pending     = auto()

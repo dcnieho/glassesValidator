@@ -109,7 +109,10 @@ class Task(AutoName):
     Data_Quality_Calculated         = auto()
     Unknown                         = auto()
 
-def _get_task_name_friendly(name):
+def get_task_name_friendly(name: str | Task):
+    if isinstance(name,Task):
+        name = name.name
+
     match name:
         case 'Imported':
             return 'Import'
@@ -128,7 +131,7 @@ def _get_task_name_friendly(name):
     return '' # 'Not_Imported', 'Unknown'
 
 task_names = [getattr(Task,x).value for x in Task.__members__]
-task_names_friendly = [_get_task_name_friendly(x) for x in Task.__members__]   # non verb version
+task_names_friendly = [get_task_name_friendly(x) for x in Task.__members__]   # non verb version
 
 class Status(AutoName):
     Not_Started     = auto()

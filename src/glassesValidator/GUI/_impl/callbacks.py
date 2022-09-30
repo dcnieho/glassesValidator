@@ -6,10 +6,11 @@ import os
 import shutil
 
 
-from .structs import MsgBox, Os
-from . import globals, async_thread, db, gui, msgbox, utils
+from .structs import JobDescription, MsgBox, Os
+from . import globals, async_thread, db, gui, msgbox, process_pool, utils
 from ...utils import EyeTracker, Recording, Task, eye_tracker_names
 from ... import preprocess
+from ... import process
 
 
 
@@ -137,3 +138,68 @@ def add_recordings(paths: list[pathlib.Path]):
 
     # ask what type of eye tracker we should be looking for
     utils.push_popup(lambda: utils.popup("Select eye tracker", add_recs_popup, buttons = buttons, closable=True, outside=True))
+
+def _process_recording(rec: Recording, task: Task = None, chain=True):
+    # find what is the next task to do for this recording
+    if task is None:
+        match rec.task:
+            # stage 1
+            case Task.Not_Imported:
+                task = Task.Imported
+
+            # stage 2
+            case Task.Imported:
+                task = Task.Coded
+
+            # stage 3 substeps
+            case Task.Coded:
+                task = Task.Markers_Detected
+            case Task.Markers_Detected:
+                task = Task.Gaze_Tranformed_To_World
+            case Task.Gaze_Tranformed_To_World:
+                task = Task.Target_Offsets_Computed
+            case Task.Target_Offsets_Computed:
+                task = Task.Fixation_Intervals_Determined
+            case Task.Fixation_Intervals_Determined:
+                task = Task.Data_Quality_Calculated
+
+            # other, includes Task.Data_Quality_Calculated (all already done), nothing to do if no specific task specified:
+            case _:
+                task = Task.Unknown
+
+    # get function for task
+    match task:
+        case Task.Imported:
+            fun = preprocess.do_import
+            args = (globals.project_path,)
+            kwargs = {'rec_info': rec}
+        case Task.Coded:
+            fun = preprocess.do_import
+        case Task.Markers_Detected:
+            fun = preprocess.do_import
+        case Task.Gaze_Tranformed_To_World:
+            fun = preprocess.do_import
+        case Task.Target_Offsets_Computed:
+            fun = preprocess.do_import
+        case Task.Fixation_Intervals_Determined:
+            fun = preprocess.do_import
+        case Task.Data_Quality_Calculated:
+            fun = preprocess.do_import
+         
+        # other, includes Task.Unknown (all already done), nothing to do if no specific task specified:
+        case _:
+            fun = None  # nothing to do
+
+    # exit if nothing to do
+    if fun is None:
+        return
+
+    # launch task
+    job_id = process_pool.run(fun,*args,**kwargs)
+
+    # store to job queue
+    globals.jobs[rec.id] = JobDescription(job_id, rec, task)
+
+async def process_recordings(ids: list[int], task: Task = None, chain=True):
+    for rec_id in ids:
+        _process_recording(globals.recordings[rec_id], task, chain)

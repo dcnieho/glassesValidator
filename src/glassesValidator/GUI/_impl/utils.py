@@ -259,7 +259,7 @@ def draw_spinner(label: str, radius1: float, radius2: float, radius3: float, thi
 
     # draw dummy of that size and reset cursor back to position before if that dummy was visible. The dummy reserves the space we need to draw in
     cur_pos = imgui.get_cursor_pos()
-    imgui.push_id("testSpinner")
+    imgui.push_id(label)
     imgui.dummy(size[0],size[1])
     imgui.pop_id()
     imgui.set_cursor_pos(cur_pos)
@@ -284,3 +284,38 @@ def draw_spinner(label: str, radius1: float, radius2: float, radius3: float, thi
                 path.append((center[0] + math.cos(neg*a) * r, center[1] + math.sin(neg*a) * r))
 
             draw_list.add_polyline(path, colors[i], flags=imgui.DRAW_NONE, thickness=thickness)
+
+def bounce_dots(label: str, thickness: float, color = 0xffffffff, speed = 2.8, dots=3):
+    # based on ImSpinner::SpinnerBounceDots from https://github.com/dalerank/imspinner
+    # but implemented a bit roundabout because a whole bunch of needed imgui and imgui.internal functions are not exposed by pyimgui
+    nextItemKoeff = 2.5
+    heightKoeff = 2.
+    heightSpeed = 0.8
+
+    style  = imgui.get_style()
+    size   = [(thickness * nextItemKoeff) * dots + style.frame_padding.x, thickness * 4 * heightKoeff + style.frame_padding.y]
+
+    # draw dummy of that size and reset cursor back to position before if that dummy was visible. The dummy reserves the space we need to draw in
+    cur_pos = imgui.get_cursor_pos()
+    imgui.push_id(label)
+    imgui.dummy(size[0],size[1])
+    imgui.pop_id()
+    imgui.set_cursor_pos(cur_pos)
+
+    # if our draw area is visible, draw the spinner
+    if imgui.is_item_visible():
+        pos = imgui.get_cursor_screen_pos()
+        center = [x+y/2 for x,y in zip(pos,size)]
+
+        start = imgui.get_time() * speed;
+        draw_list = imgui.get_window_draw_list()
+        offset = math.pi / dots
+        
+        for i in range(dots):
+            a = start + (math.pi - i * offset)
+            sina = math.sin(a * heightSpeed)
+            y = center[1] + sina * thickness * heightKoeff
+            if (y > center[1]):
+                y = center[1]
+            y+=thickness * heightKoeff  # move down so animation is centered around center
+            draw_list.add_circle_filled(pos.x + style.frame_padding.x  + i * (thickness * nextItemKoeff), y, thickness, color, 32)
