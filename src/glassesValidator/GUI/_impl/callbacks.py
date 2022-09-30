@@ -8,7 +8,7 @@ import shutil
 
 from .structs import JobDescription, MsgBox, Os
 from . import globals, async_thread, db, gui, msgbox, process_pool, utils
-from ...utils import EyeTracker, Recording, Task, eye_tracker_names
+from ...utils import EyeTracker, Recording, Task, eye_tracker_names, make_fs_dirname
 from ... import preprocess
 from ... import process
 
@@ -34,16 +34,30 @@ def open_folder(path: pathlib.Path):
         ))
 
 
-def remove_recording(rec: Recording, bypass_confirm=False):
+async def remove_recording_working_dir(rec: Recording):
+    if rec.proc_directory_name:
+        rec_path = globals.project_path / rec.proc_directory_name
+        if rec_path.is_dir():
+            shutil.rmtree(rec_path)
+        
+        # also set recording state back to not imported
+        # NB: this might get called from remove_recording.remove_callback() below
+        # after the recording is already removed from the database. That is not
+        # an issue because db.update_recording() will be effectively no-op
+        rec.task = Task.Not_Imported
+        async_thread.run(db.update_recording(rec, "task"))
+
+
+async def remove_recording(rec: Recording, bypass_confirm=False):
     def remove_callback():
+        if rec.id in globals.jobs:
+            process_pool.cancel_job(globals.jobs[rec.id].id)
         del globals.recordings[rec.id]
         del globals.selected_recordings[rec.id]
         async_thread.run(db.remove_recording(rec.id))
 
         if rec.proc_directory_name:
-            rec_path = globals.project_path / rec.proc_directory_name
-            if rec_path.is_dir():
-                async_thread.run(lambda: shutil.rmtree(rec_path))
+            async_thread.run(remove_recording_working_dir(rec))
 
     if not bypass_confirm and globals.settings.confirm_on_remove:
         buttons = {
@@ -204,3 +218,9 @@ def _process_recording(rec: Recording, task: Task = None, chain=True):
 async def process_recordings(ids: list[int], task: Task = None, chain=True):
     for rec_id in ids:
         _process_recording(globals.recordings[rec_id], task, chain)
+
+
+async def cancel_processing_recordings(ids: list[int]):
+    for rec_id in ids:
+        if rec_id in globals.jobs:
+            process_pool.cancel_job(globals.jobs[rec_id].id)

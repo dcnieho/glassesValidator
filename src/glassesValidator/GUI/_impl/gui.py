@@ -329,7 +329,7 @@ class RecordingTable():
                             del self.recordings[rid]
                             del self.selected_recordings[rid]
                         else:
-                            callbacks.remove_recording(self.recordings[rid])
+                           async_thread.run(callbacks.remove_recording(self.recordings[rid]))
                     
                     self.require_sort = True
 
@@ -433,12 +433,12 @@ class RecordingTable():
     def draw_recording_open_folder_button(self, recording: Recording, label="", selectable=False, source_dir=False, *args, **kwargs):
         if source_dir:
             extra = "src_"
-            disable = False
             path = recording.source_directory
+            disable = False
         else:
             extra = ""
-            disable = not recording.proc_directory_name
             path = globals.project_path / recording.proc_directory_name
+            disable = not recording.proc_directory_name or not path.is_dir()
 
         id = f"{label}###{recording.id}_open_{extra}folder"
         if disable:
@@ -453,10 +453,25 @@ class RecordingTable():
             callbacks.open_folder(path)
         return clicked
 
+    def draw_recording_remove_folder_button(self, recording: Recording, label="", selectable=False, *args, **kwargs):
+        id = f"{label}###{recording.id}_remove_folder"
+        if selectable:
+            clicked = imgui.selectable(id, False, *args, **kwargs)[0]
+        else:
+            clicked = imgui.button(id, *args, **kwargs)
+        if clicked:
+            async_thread.run(callbacks.remove_recording_working_dir(recording))
+        return clicked
+
     def draw_recording_context_menu(self, recording: Recording, id: int):
         if not self.in_adder_popup:
-            self.draw_recording_process_button(recording, label="󱄋 Process", selectable=True)
-            self.draw_recording_open_folder_button(recording, label="󰷏 Open Folder", selectable=True)
+            if id not in globals.jobs:
+                self.draw_recording_process_button(recording, label="󰼛 Process", selectable=True)
+            else:
+                self.draw_recording_process_cancel_button(recording, label="󱠮 Cancel processing", selectable=True)
+            self.draw_recording_open_folder_button(recording, label="󰷏 Open Working Folder", selectable=True)
+            if recording.proc_directory_name and (globals.project_path / recording.proc_directory_name).is_dir():
+                self.draw_recording_remove_folder_button(recording, label="󰮞 Remove Working Folder", selectable=True)
             self.draw_recording_open_folder_button(recording, label="󰷏 Open Source Folder", selectable=True, source_dir=True)
         else:
             # in this context, the source folder is just the folder
@@ -465,7 +480,7 @@ class RecordingTable():
         return self.draw_recording_remove_button(recording, id, label="󰩺 Remove", selectable=True)
 
     def draw_recording_process_button(self, recording: Recording, label="", selectable=False, *args, **kwargs):
-        id = f"{label}###{recording.id}_go_button"
+        id = f"{label}###{recording.id}_process_button"
         if selectable:
             clicked = imgui.selectable(id, False, *args, **kwargs)[0]
         else:
@@ -474,6 +489,18 @@ class RecordingTable():
             # get all selected recordings, invoke callback for all of them
             ids = [rid for rid in self.selected_recordings if self.selected_recordings[rid]]
             async_thread.run(callbacks.process_recordings(ids))
+        return clicked
+
+    def draw_recording_process_cancel_button(self, recording: Recording, label="", selectable=False, *args, **kwargs):
+        id = f"{label}###{recording.id}_process_button"
+        if selectable:
+            clicked = imgui.selectable(id, False, *args, **kwargs)[0]
+        else:
+            clicked = imgui.button(id, *args, **kwargs)
+        if clicked:
+            # get all selected recordings, invoke callback for all of them
+            ids = [rid for rid in self.selected_recordings if self.selected_recordings[rid]]
+            async_thread.run(callbacks.cancel_processing_recordings(ids))
         return clicked
 
     def sort_and_filter_recordings(self, sort_specs_in: imgui.core._ImGuiTableSortSpecs):
