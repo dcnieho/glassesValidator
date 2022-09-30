@@ -387,7 +387,7 @@ class RecordingTable():
             imgui.text(recording.name, *args, **kwargs)
 
     def draw_recording_status_widget(self, recording: Recording, *args, **kwargs):
-        if recording.id in globals.jobs and ((job_state:=process_pool.get_job_state((job:=globals.jobs[recording.id]).id))==ProcessState.Pending or job_state==ProcessState.Running):
+        if recording.id in globals.jobs and (job_state:=process_pool.get_job_state((job:=globals.jobs[recording.id]).id)) in [ProcessState.Pending, ProcessState.Running]:
             symbol_size = imgui.calc_text_size("󰲞")
             if job_state==ProcessState.Pending:
                 thickness = symbol_size.x / 3 / 2.5 # 3 is number of dots, 2.5 is nextItemKoeff in utils.bounce_dots()
@@ -624,7 +624,7 @@ class MainGUI():
         def worker_process_hook(future: pebble.ProcessFuture, job_id: int, state: ProcessState):
             if globals.jobs is None:
                 return
-            if state==ProcessState.Pending or state==ProcessState.Running:
+            if state in [ProcessState.Pending, ProcessState.Running]:
                 # nothing to do for these
                 return
 
@@ -636,7 +636,11 @@ class MainGUI():
                     found = True
                     break
             if not found:
-                return  # nothing to do (shouldn't occur)
+                # nothing to do because no job with this id (shouldn't occur)
+                return
+            if rec_id not in globals.recordings:
+                # might happen if recording already removed
+                return
             rec = globals.recordings[rec_id]
 
             match state:
@@ -1187,8 +1191,10 @@ class MainGUI():
         self.save_imgui_ini()
         self.impl.shutdown()
         glfw.terminate()
-        process_pool.cancel_all_jobs()
-        globals.jobs = None
+        if globals.jobs:
+            process_pool.cancel_all_jobs()
+        # NB: we do not do globals.jobs = None because cancellation notifications may well arrive after we have exited this main_loop()
+        # it seems not possible to wait in a simple loop like 'while globals.jobs' as that blocks receiving the callback
         db.shutdown()
 
         if self.project_to_load is not None:
