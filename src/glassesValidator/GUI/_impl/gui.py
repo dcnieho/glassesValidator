@@ -621,11 +621,8 @@ class MainGUI():
         async_thread.done_callback = asyncexcepthook
 
         # Process state changes in worker processes
-        def worker_process_hook(future: pebble.ProcessFuture, job_id: int, state: ProcessState):
+        def worker_process_done_hook(future: pebble.ProcessFuture, job_id: int, state: ProcessState):
             if globals.jobs is None:
-                return
-            if state in [ProcessState.Pending, ProcessState.Running]:
-                # nothing to do for these
                 return
 
             # find corresponding job and recording id
@@ -664,7 +661,7 @@ class MainGUI():
             # special case: remove working directory again if an import task was canceled or failed
             if job.task==Task.Imported and state in [ProcessState.Canceled, ProcessState.Failed]:
                 pass#async_thread.run(callbacks.remove_recording_working_dir(rec))
-        process_pool.done_callback = worker_process_hook
+        process_pool.done_callback = worker_process_done_hook
 
         db.setup()
         self.init_imgui_glfw()
