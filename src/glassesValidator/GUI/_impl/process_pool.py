@@ -83,10 +83,10 @@ def _process_done_hook(future: pebble.ProcessFuture):
     try:
         exc = future.exception()
     except asyncio.CancelledError:
-        state = ProcessState.Cancelled
+        state = ProcessState.Canceled
     else:
         if exc:
-            state = ProcessState.Errored
+            state = ProcessState.Failed
         else:
             state = ProcessState.Completed
             
@@ -107,7 +107,7 @@ async def _check_status_update(status_dict, status_queue):
                 status_dict[id] = item[id]
 
                 # execute user callback, if any, to notify state change
-                # but only for pending and running state, completed, cancelled and errored are notified by _process_done_hook
+                # but only for pending and running state, completed, canceled and failed are notified by _process_done_hook
                 if done_callback:
                     done_callback(_work_items[id], id, item[id])
 
@@ -155,7 +155,7 @@ def cancel_job(id: int):
     return future.cancel()
 
 def cancel_all_jobs():
-    for id in reversed(_work_items):    # reversed so that later pending jobs don't start executing when earlier gets cancelled, only to be cancelled directly after
+    for id in reversed(_work_items):    # reversed so that later pending jobs don't start executing when earlier gets cancelled, only to be canceled directly after
         if not _work_items[id].done():
             _work_items[id].cancel()
 
@@ -180,7 +180,7 @@ if __name__ == "__main__":
 
     # example user callback
     def worker_process_hook(future: pebble.ProcessFuture, id: int, state: ProcessState):
-        if state==ProcessState.Errorred:
+        if state==ProcessState.Failed:
             exc = future.exception()    # should not throw exception since CancelledError is already encoded in state and future is done
             tb = utils.get_traceback(type(exc), exc, exc.__traceback__)
             print(f"Something went wrong in a worker process for work item {id}:\n\n{tb}")
@@ -206,7 +206,7 @@ if __name__ == "__main__":
         print('cancelling jobs')
         for id in reversed(work_ids):
             process_pool.cancel_job(id)
-        await asyncio.sleep(.2)  # little bit of time to make jobs have been cancelled before we check their state
+        await asyncio.sleep(.2)  # little bit of time to make jobs have been canceled before we check their state
         print_job_states(work_ids)
     
         # 3. enqueue some more work, see what states we have
@@ -221,7 +221,7 @@ if __name__ == "__main__":
         # 4. cancel everything, and see what states we have then
         print('cancelling all jobs')
         process_pool.cancel_all_jobs()
-        await asyncio.sleep(.2)  # little bit of time to make jobs have been cancelled before we check their state
+        await asyncio.sleep(.2)  # little bit of time to make jobs have been canceled before we check their state
         print_job_states(work_ids)
 
         # 5. make sure you clean up before exiting, else you'll get some nasty crashes as process

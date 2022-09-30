@@ -136,6 +136,6 @@ class JobDescription:
 class ProcessState(Enum):
     Pending     = auto()
     Running     = auto()
-    Cancelled   = auto()
-    Errored     = auto()
+    Canceled    = auto()
+    Failed      = auto()
     Completed   = auto()

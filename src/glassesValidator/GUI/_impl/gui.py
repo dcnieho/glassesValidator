@@ -644,7 +644,7 @@ class MainGUI():
             rec = globals.recordings[rec_id]
 
             match state:
-                case ProcessState.Cancelled:
+                case ProcessState.Canceled:
                     # just remove job
                     del globals.jobs[rec_id]
                 case ProcessState.Completed:
@@ -652,7 +652,7 @@ class MainGUI():
                     rec.task = job.task
                     async_thread.run(db.update_recording(rec, "task"))
                     del globals.jobs[rec_id]
-                case ProcessState.Errored:
+                case ProcessState.Failed:
                     exc = future.exception()    # should not throw exception since CancelledError is already encoded in state and future is done
                     tb = utils.get_traceback(type(exc), exc, exc.__traceback__)
                     if isinstance(exc, concurrent.futures.TimeoutError):
@@ -661,8 +661,8 @@ class MainGUI():
                     utils.push_popup(msgbox.msgbox, "Oops!", f"Something went wrong in a worker process for recording '{rec.name}' (work item {job_id}):\n\n{tb}", MsgBox.error)
                     del globals.jobs[rec_id]
 
-            # special case: remove working directory again if an import task was cancelled or errored
-            if job.task==Task.Imported and state in [ProcessState.Cancelled, ProcessState.Errored]:
+            # special case: remove working directory again if an import task was canceled or failed
+            if job.task==Task.Imported and state in [ProcessState.Canceled, ProcessState.Failed]:
                 pass#async_thread.run(callbacks.remove_recording_working_dir(rec))
         process_pool.done_callback = worker_process_hook
 
