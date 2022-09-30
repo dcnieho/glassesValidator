@@ -86,7 +86,7 @@ def _process_done_hook(future: pebble.ProcessFuture):
         state = ProcessState.Cancelled
     else:
         if exc:
-            state = ProcessState.Errorred
+            state = ProcessState.Errored
         else:
             state = ProcessState.Completed
             
@@ -103,7 +103,13 @@ def _process_done_hook(future: pebble.ProcessFuture):
 async def _check_status_update(status_dict, status_queue):
     while (item := await status_queue.coro_get()) is not None:
         for id in item:
-            status_dict[id] = item[id]
+            if id not in status_dict or status_dict[id].value<item[id].value:   # make sure we don't go backward in state
+                status_dict[id] = item[id]
+
+                # execute user callback, if any, to notify state change
+                # but only for pending and running state, completed, cancelled and errored are notified by _process_done_hook
+                if done_callback:
+                    done_callback(_work_items[id], id, item[id])
 
 def run(fn: typing.Callable, *args, **kwargs):
     global _pool
@@ -129,9 +135,9 @@ def run(fn: typing.Callable, *args, **kwargs):
         
     with _work_id_provider:
         work_id = _work_id_provider.get_count()
-        _status_dict[work_id] = ProcessState.Pending
         # route function execution through _work_bootstrapper() so that we get a notification that the work item is started to be processed once a worker takes it up
         _work_items[work_id] = async_thread.loop.run_in_executor(_pool, _work_bootstrapper, None, _status_queue, work_id, fn, args, kwargs)
+        _status_queue.put({work_id: ProcessState.Pending})
         _work_items[work_id].add_done_callback(_process_done_hook)
         return work_id
 

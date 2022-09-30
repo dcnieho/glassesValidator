@@ -131,5 +131,5 @@ class ProcessState(Enum):
     Pending     = auto()
     Running     = auto()
     Cancelled   = auto()
-    Errorred    = auto()
+    Errored     = auto()
     Completed   = auto()

@@ -579,7 +579,7 @@ class MainGUI():
 
         # Show errors in worker processes
         def worker_process_hook(future: pebble.ProcessFuture, id: int, state: ProcessState):
-            if state==ProcessState.Errorred:
+            if state==ProcessState.Errored:
                 exc = future.exception()    # should not throw exception since CancelledError is already encoded in state and future is done
                 tb = utils.get_traceback(type(exc), exc, exc.__traceback__)
                 if isinstance(exc, concurrent.futures.TimeoutError):
