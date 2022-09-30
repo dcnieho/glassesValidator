@@ -59,6 +59,7 @@ async def _add_recordings(recordings: dict[int, Recording], selected: dict[int, 
     for id in recordings:
         if selected[id]:
             recordings[id].task = Task.Not_Imported
+            recordings[id].proc_directory_name = make_fs_dirname(recordings[id], globals.project_path)
             rid = await db.add_recording(recordings[id])
             await db.load_recordings(rid)
         
