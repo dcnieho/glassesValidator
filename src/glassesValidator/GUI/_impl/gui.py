@@ -342,6 +342,7 @@ class RecordingTable():
 
             # show menu when right-clicking the empty space
             if not self.in_adder_popup and imgui.begin_popup_context_item("###recording_list_context",mouse_button=imgui.POPUP_MOUSE_BUTTON_RIGHT | imgui.POPUP_NO_OPEN_OVER_EXISTING_POPUP):
+                utils.set_all(self.selected_recordings, False)
                 if imgui.selectable("󱃩 Add recordings###context_menu", False)[0]:
                     utils.push_popup(globals.gui.get_folder_picker(select_for_add=True))
                 imgui.end_popup()
