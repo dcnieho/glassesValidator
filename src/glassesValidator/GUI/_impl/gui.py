@@ -192,7 +192,7 @@ class RecordingTable():
                         # makes the table row only cell_padding_y/2 longer. The whole row is highlighted correctly
                         cell_padding_y = imgui.style.cell_padding.y
                         cur_pos_y = imgui.get_cursor_pos_y()
-                        imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() - cell_padding_y/2)
+                        imgui.set_cursor_pos_y(cur_pos_y - cell_padding_y/2)
                         imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 0.)
                         imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0.,0.))
                         imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0.,cell_padding_y))
@@ -312,16 +312,19 @@ class RecordingTable():
                         utils.set_all(self.selected_recordings, False)
                         self.selected_recordings[id] = True if num_selected>1 else selectable_out
 
+            last_y = imgui.get_cursor_pos_y()
             imgui.end_table()
 
-            # handle click in table area outside header (not signalled by is_item_clicked())
-            # and outside all selectables: deselect all
-            if imgui.is_item_clicked() and not any_selectable_clicked:
+            # handle click in table area outside header+contents:
+            # deselect all, and if right click, show popup
+            # check mouse is below bottom of last drawn row so that clicking on the one pixel empty space between selectables
+            # does not cause everything to unselect or popup to open
+            if imgui.is_item_clicked() and not any_selectable_clicked and imgui.io.mouse_pos.y>last_y:  # left mouse click (NB: table header is not signalled by is_item_clicked(), so this works correctly)
                 utils.set_all(self.selected_recordings, False)
 
             # show menu when right-clicking the empty space
-            if not self.in_adder_popup and imgui.begin_popup_context_item("###recording_list_context",mouse_button=imgui.POPUP_MOUSE_BUTTON_RIGHT | imgui.POPUP_NO_OPEN_OVER_EXISTING_POPUP):
-                utils.set_all(self.selected_recordings, False)
+            if not self.in_adder_popup and imgui.io.mouse_pos.y>last_y and imgui.begin_popup_context_item("###recording_list_context",mouse_button=imgui.POPUP_MOUSE_BUTTON_RIGHT | imgui.POPUP_NO_OPEN_OVER_EXISTING_POPUP):
+                utils.set_all(self.selected_recordings, False)  # deselect on right mouse click as well
                 if imgui.selectable("󱃩 Add recordings###context_menu", False)[0]:
                     utils.push_popup(globals.gui.get_folder_picker(select_for_add=True))
                 imgui.end_popup()
@@ -1242,7 +1245,7 @@ class MainGUI():
         if globals.jobs:
             process_pool.cancel_all_jobs()
         # NB: we do not do globals.jobs = None because cancellation notifications may well arrive after we have exited this main_loop()
-        # it seems not possible to wait in a simple loop like 'while globals.jobs' as that blocks receiving the callback
+        # it seems not possible to wait in a simple loop like 'while globals.jobs' with a time.sleep as that blocks receiving the callback
         db.shutdown()
 
         if self.project_to_load is not None:
@@ -1539,6 +1542,7 @@ class MainGUI():
                 pass # do some processing, callbacks.something(recording)
             imgui.end_popup()
 
+        # the whole settings section
         imgui.begin_child("Settings")
 
         if self.start_settings_section("Filter", right_width, collapsible=False):
