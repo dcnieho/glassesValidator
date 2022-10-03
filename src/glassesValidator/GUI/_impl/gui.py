@@ -176,7 +176,6 @@ class RecordingTable():
                 num_columns_drawn = 0
                 selectable_clicked = False
                 checkbox_clicked, checkbox_hovered = False, False
-                should_remove = False
                 remove_button_hovered = False
                 has_drawn_hitbox = False
                 for ri in range(self._recording_list_column_count+1):
@@ -211,10 +210,7 @@ class RecordingTable():
                         imgui.set_item_allow_overlap()
                         imgui.pop_style_color(3)
                         imgui.pop_style_var(3)
-                        selectable_right_clicked, should_remove_from_context_menu = \
-                            self.handle_recording_hitbox_events(recording, id)
-                        should_remove = should_remove_from_context_menu
-                        selectable_clicked = selectable_clicked or selectable_right_clicked
+                        selectable_right_clicked = self.handle_recording_hitbox_events(id)
                         has_drawn_hitbox = True
                         
                     if num_columns_drawn==2:
@@ -243,7 +239,7 @@ class RecordingTable():
                         case 3:
                             # Name
                             if globals.settings.show_remove_btn:
-                                should_remove = self.draw_recording_remove_button(recording, id, label="󰩺") or should_remove
+                                self.draw_recording_remove_button([id], label="󰩺")
                                 remove_button_hovered = imgui.is_item_hovered()
                                 imgui.same_line()
                             self.draw_recording_name_text(recording)
@@ -290,7 +286,8 @@ class RecordingTable():
                             imgui.text(recording.scene_camera_serial or "Unknown")
                     
                 # handle selection logic
-                any_selectable_clicked = any_selectable_clicked or selectable_clicked
+                # NB: the part of this logic that has to do with right-clicks is in handle_recording_hitbox_events()
+                any_selectable_clicked = any_selectable_clicked or selectable_clicked or selectable_right_clicked
                 if checkbox_clicked:
                     self.selected_recordings[id] = checkbox_out
                 elif selectable_clicked and not (checkbox_hovered or remove_button_hovered): # don't enter this branch if interaction is with checkbox or button on the table row
@@ -312,26 +309,8 @@ class RecordingTable():
                                 self.selected_recordings[self.sorted_recordings_ids[rid]] = True
                     else:
                         # deselect all other ones except clicked
-                        was_selected = self.selected_recordings[id]
-                        if not selectable_right_clicked or not was_selected:
-                            utils.set_all(self.selected_recordings, False)
-                            self.selected_recordings[id] = True if (not was_selected or num_selected>1) else selectable_out
-
-                # handle remove action
-                if should_remove:
-                    # determine which to remove. If right-clicked on a selection, operate on all selected
-                    if should_remove_from_context_menu:
-                        ids = [rid for rid in self.selected_recordings if self.selected_recordings[rid]]
-                    else:
-                        ids = [id]
-                    for rid in ids:
-                        if self.in_adder_popup:
-                            del self.recordings[rid]
-                            del self.selected_recordings[rid]
-                        else:
-                           async_thread.run(callbacks.remove_recording(self.recordings[rid]))
-                    
-                    self.require_sort = True
+                        utils.set_all(self.selected_recordings, False)
+                        self.selected_recordings[id] = True if num_selected>1 else selectable_out
 
             imgui.end_table()
 
@@ -347,16 +326,32 @@ class RecordingTable():
                     utils.push_popup(globals.gui.get_folder_picker(select_for_add=True))
                 imgui.end_popup()
 
-    def handle_recording_hitbox_events(self, recording: Recording, id: int):
+    def handle_recording_hitbox_events(self, id: int):
         extra = "_adder" if self.in_adder_popup else ""
-        remove = False
         right_clicked = False
         # Right click = context menu
         if imgui.begin_popup_context_item(f"###{id}_context{extra}"):
+            # update selected recordings. same logic as windows explorer:
+            # 1. if right-clicked on one of the selected recordings, regardless of what modifier is pressed, keep selection as is
+            # 2. if right-clicked elsewhere than on one of the selected recordings:
+            # 2a. if control is down pop up right-click menu for the selected recordings.
+            # 2b. if control not down, deselect everything except clicked item (if any)
+            # NB: popup not shown when shift or control are down, do not know why...
+            if not self.selected_recordings[id] and not imgui.get_io().key_ctrl:
+                utils.set_all(self.selected_recordings, False)
+                self.selected_recordings[id] = True
+
             right_clicked = True
-            remove = self.draw_recording_context_menu(recording, id)
+            self.draw_recordings_context_menu()
             imgui.end_popup()
-        return right_clicked, remove
+        return right_clicked
+
+    def remove_recording(self, rec_id: int):
+        if self.in_adder_popup:
+            del self.recordings[rec_id]
+            del self.selected_recordings[rec_id]
+        else:
+            async_thread.run(callbacks.remove_recording(self.recordings[rec_id]))
 
     def draw_eye_tracker_widget(self, recording: Recording, align=False, *args, **kwargs):
         col = recording.eye_tracker.color
@@ -422,16 +417,27 @@ class RecordingTable():
 
         draw_hover_text(hover_text, text='')
 
-    def draw_recording_remove_button(self, recording: Recording, id: int, label="", selectable=False, *args, **kwargs):
+    def draw_recording_remove_button(self, ids: list[int], label="", selectable=False, *args, **kwargs):
+        if not ids:
+            return False
+
         extra = "_adder" if self.in_adder_popup else ""
-        id = f"{label}###{id}_remove{extra}"
+        id = f"{label}###{ids[0]}_remove{extra}"
         if selectable:
             clicked = imgui.selectable(id, False, *args, **kwargs)[0]
         else:
             clicked = imgui.button(id, *args, **kwargs)
+        if clicked:
+            for rid in ids:
+                self.remove_recording(rid)
+            self.require_sort = True
         return clicked
 
-    def draw_recording_open_folder_button(self, recording: Recording, label="", selectable=False, source_dir=False, *args, **kwargs):
+    def draw_recording_open_folder_button(self, ids: list[int], label="", selectable=False, source_dir=False, *args, **kwargs):
+        if len(ids)!=1:
+            return False
+        recording = self.recordings[ids[0]]
+
         if source_dir:
             extra = "src_"
             path = recording.source_directory
@@ -454,65 +460,77 @@ class RecordingTable():
             callbacks.open_folder(path)
         return clicked
 
-    def draw_recording_remove_folder_button(self, recording: Recording, label="", selectable=False, *args, **kwargs):
-        id = f"{label}###{recording.id}_remove_folder"
+    def draw_recording_remove_folder_button(self, ids: list[int], label="", selectable=False, *args, **kwargs):
+        if not ids:
+            return False
+
+        id = f"{label}###{ids[0]}_remove_folder"
         if selectable:
             clicked = imgui.selectable(id, False, *args, **kwargs)[0]
         else:
             clicked = imgui.button(id, *args, **kwargs)
         if clicked:
-            async_thread.run(callbacks.remove_recording_working_dir(recording))
+            for id in ids:
+                async_thread.run(callbacks.remove_recording_working_dir(self.recordings[id]))
         return clicked
 
-    def draw_recording_context_menu(self, recording: Recording, id: int):
-        if not self.in_adder_popup:
-            if id not in globals.jobs:
-                match get_simplified_task_state(recording.task):
-                    # before stage 1
-                    case TaskSimplified.Not_Imported:
-                        self.draw_recording_process_button(recording, label="󰼛 Import", selectable=True, action=Task.Imported)
-                    # after stage 1
-                    case TaskSimplified.Imported:
-                        self.draw_recording_process_button(recording, label="󰼛 Code Intervals", selectable=True, action=Task.Coded)
-                    # after stage 2 / during stage 3
-                    case TaskSimplified.Coded:
-                        self.draw_recording_process_button(recording, label="󰼛 Process", selectable=True, action=Task.Markers_Detected)
-                    # after stage 3 or unknown:
-                    case TaskSimplified.Processed | TaskSimplified.Unknown:
-                        pass # no buton to draw when completely done or unknown state (should never be in unknown state)
-            else:
-                self.draw_recording_process_cancel_button(recording, label="󱠮 Cancel processing", selectable=True)
-            self.draw_recording_open_folder_button(recording, label="󰷏 Open Working Folder", selectable=True)
-            if recording.proc_directory_name and (globals.project_path / recording.proc_directory_name).is_dir():
-                self.draw_recording_remove_folder_button(recording, label="󰮞 Remove Working Folder", selectable=True)
-            self.draw_recording_open_folder_button(recording, label="󰷏 Open Source Folder", selectable=True, source_dir=True)
-        else:
-            # in this context, the source folder is just the folder
-            self.draw_recording_open_folder_button(recording, label="󰷏 Open Folder", selectable=True, source_dir=True)
-        imgui.separator()
-        return self.draw_recording_remove_button(recording, id, label="󰩺 Remove", selectable=True)
+    def draw_recordings_context_menu(self):
+        ids = [rid for rid in self.selected_recordings if self.selected_recordings[rid]]
+        if not ids:
+            return
 
-    def draw_recording_process_button(self, recording: Recording, label="", selectable=False, action = None, *args, **kwargs):
-        id = f"{label}###{recording.id}_process_button"
+        if not self.in_adder_popup:
+            has_job = [id in globals.jobs for id in ids]
+            has_no_job = [not x for x in has_job]
+            if any(has_no_job):
+                # before stage 1
+                not_imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Not_Imported]
+                self.draw_recording_process_button(not_imported_ids, label="󰼛 Import", selectable=True, action=Task.Imported)
+                # after stage 1
+                imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Imported]
+                self.draw_recording_process_button(imported_ids, label="󰼛 Code Intervals", selectable=True, action=Task.Coded)
+                # after stage 2 / during stage 3
+                coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Coded]
+                self.draw_recording_process_button(coded_ids, label="󰼛 Process", selectable=True, action=Task.Markers_Detected)
+            if any(has_job):
+                self.draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label="󱠮 Cancel processing", selectable=True)
+
+            if len(ids)==1:
+                self.draw_recording_open_folder_button(ids, label="󰷏 Open Working Folder", selectable=True)
+            work_dir_ids = [id for id in ids if (pd:=self.recordings[id].proc_directory_name) and (globals.project_path / pd).is_dir()]
+            if work_dir_ids:
+                self.draw_recording_remove_folder_button(work_dir_ids, label="󰮞 Remove Working Folder", selectable=True)
+
+            if len(ids)==1:
+                self.draw_recording_open_folder_button(ids, label="󰷏 Open Source Folder", selectable=True, source_dir=True)
+        elif len(ids)==1:
+            # in this context, the source folder is just the folder
+            self.draw_recording_open_folder_button(ids, label="󰷏 Open Folder", selectable=True, source_dir=True)
+        self.draw_recording_remove_button(ids, label="󰩺 Remove", selectable=True)
+
+    def draw_recording_process_button(self, ids: list[int], label="", selectable=False, action = None, *args, **kwargs):
+        if not ids:
+            return False
+
+        id = f"{label}###{ids[0]}_process_button"
         if selectable:
             clicked = imgui.selectable(id, False, *args, **kwargs)[0]
         else:
             clicked = imgui.button(id, *args, **kwargs)
         if clicked:
-            # get all selected recordings, invoke callback for all of them
-            ids = [rid for rid in self.selected_recordings if self.selected_recordings[rid]]
             async_thread.run(callbacks.process_recordings(ids, task=action, chain=action==Task.Markers_Detected))
         return clicked
 
-    def draw_recording_process_cancel_button(self, recording: Recording, label="", selectable=False, *args, **kwargs):
-        id = f"{label}###{recording.id}_process_button"
+    def draw_recording_process_cancel_button(self, ids: list[int], label="", selectable=False, *args, **kwargs):
+        if not ids:
+            return False
+
+        id = f"{label}###{ids[0]}_process_button"
         if selectable:
             clicked = imgui.selectable(id, False, *args, **kwargs)[0]
         else:
             clicked = imgui.button(id, *args, **kwargs)
         if clicked:
-            # get all selected recordings, invoke callback for all of them
-            ids = [rid for rid in self.selected_recordings if self.selected_recordings[rid]]
             async_thread.run(callbacks.cancel_processing_recordings(ids))
         return clicked
 
