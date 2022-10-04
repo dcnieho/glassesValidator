@@ -1613,7 +1613,7 @@ class MainGUI():
             imgui.end_table()
             imgui.spacing()
 
-        if self.start_settings_section("Project", right_width):
+        if self.start_settings_section("Project", right_width, collapsible=set.show_advanced_options):
             # for full width buttons, in lieu of column-spanning API that doesn't exist
             # interrupt table
             imgui.end_table()
@@ -1643,47 +1643,58 @@ class MainGUI():
             self.start_settings_section("Project", right_width, collapsible = False)
             imgui.table_next_row()
             imgui.table_next_column()
-            imgui.text("Show remove button:")
+            imgui.text("Show advanced options:")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###show_remove_btn", set.show_remove_btn)
+            changed, value = imgui.checkbox("###show_advanced_options", set.show_advanced_options)
             if changed:
-                set.show_remove_btn = value
-                async_thread.run(db.update_settings("show_remove_btn"))
+                set.show_advanced_options = value
+                async_thread.run(db.update_settings("show_advanced_options"))
 
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.text("Confirm when removing:")
-            imgui.table_next_column()
-            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###confirm_on_remove", set.confirm_on_remove)
-            if changed:
-                set.confirm_on_remove = value
-                async_thread.run(db.update_settings("confirm_on_remove"))
+            if set.show_advanced_options:
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text("Show remove button:")
+                imgui.table_next_column()
+                imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                changed, value = imgui.checkbox("###show_remove_btn", set.show_remove_btn)
+                if changed:
+                    set.show_remove_btn = value
+                    async_thread.run(db.update_settings("show_remove_btn"))
 
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.text("Workers:")
-            imgui.same_line()
-            draw_hover_text(
-                "Each recording is processed by a worker and each worker can handle 1 "
-                "recording at a time. Having more workers means more recordings are processed "
-                "simultaneously, but having too many will not provide any gain and might freeze "
-                "the program and your whole program. Since much of the processing utilizes more "
-                "than one processor thread, set this value to signficantly less than the number "
-                "of threads available in your system. In most cases 2--3 workers is a good "
-                "should provide a good experience."
-            )
-            imgui.table_next_column()
-            changed, value = imgui.drag_int("###process_workers", set.process_workers, change_speed=0.5, min_value=1, max_value=100)
-            set.process_workers = min(max(value, 1), 100)
-            if changed:
-                async_thread.run(db.update_settings("process_workers"))
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text("Confirm when removing:")
+                imgui.table_next_column()
+                imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                changed, value = imgui.checkbox("###confirm_on_remove", set.confirm_on_remove)
+                if changed:
+                    set.confirm_on_remove = value
+                    async_thread.run(db.update_settings("confirm_on_remove"))
+
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text("Workers:")
+                imgui.same_line()
+                draw_hover_text(
+                    "Each recording is processed by a worker and each worker can handle 1 "
+                    "recording at a time. Having more workers means more recordings are processed "
+                    "simultaneously, but having too many will not provide any gain and might freeze "
+                    "the program and your whole program. Since much of the processing utilizes more "
+                    "than one processor thread, set this value to signficantly less than the number "
+                    "of threads available in your system. In most cases 2--3 workers is a good "
+                    "should provide a good experience."
+                )
+                imgui.table_next_column()
+                changed, value = imgui.drag_int("###process_workers", set.process_workers, change_speed=0.5, min_value=1, max_value=100)
+                set.process_workers = min(max(value, 1), 100)
+                if changed:
+                    async_thread.run(db.update_settings("process_workers"))
                 
             imgui.end_table()
             imgui.spacing()
 
-        if self.start_settings_section("Interface", right_width):
+        if set.show_advanced_options and self.start_settings_section("Interface", right_width):
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.text("Smooth scrolling:")
@@ -1768,102 +1779,133 @@ class MainGUI():
             imgui.end_table()
             imgui.spacing()
 
-        if self.start_settings_section("Style", right_width):
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.text("Corner radius:")
-            imgui.table_next_column()
-            changed, value = imgui.drag_int("###style_corner_radius", set.style_corner_radius, change_speed=0.04, min_value=0, max_value=20, format="%d px")
-            set.style_corner_radius = min(max(value, 0), 20)
-            if changed:
-                imgui.style.window_rounding = imgui.style.frame_rounding = imgui.style.tab_rounding = \
-                imgui.style.child_rounding = imgui.style.grab_rounding = imgui.style.popup_rounding = \
-                imgui.style.scrollbar_rounding = globals.settings.style_corner_radius * self.size_mult
-                async_thread.run(db.update_settings("style_corner_radius"))
+        if set.show_advanced_options:
+            if self.start_settings_section("Style", right_width):
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text("Corner radius:")
+                imgui.table_next_column()
+                changed, value = imgui.drag_int("###style_corner_radius", set.style_corner_radius, change_speed=0.04, min_value=0, max_value=20, format="%d px")
+                set.style_corner_radius = min(max(value, 0), 20)
+                if changed:
+                    imgui.style.window_rounding = imgui.style.frame_rounding = imgui.style.tab_rounding = \
+                    imgui.style.child_rounding = imgui.style.grab_rounding = imgui.style.popup_rounding = \
+                    imgui.style.scrollbar_rounding = globals.settings.style_corner_radius * self.size_mult
+                    async_thread.run(db.update_settings("style_corner_radius"))
 
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.text("Accent:")
-            imgui.table_next_column()
-            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.color_edit3("###style_accent", *set.style_accent[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
-            if changed:
-                set.style_accent = (*value, 1.0)
-                self.refresh_styles()
-                async_thread.run(db.update_settings("style_accent"))
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text("Accent:")
+                imgui.table_next_column()
+                imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                changed, value = imgui.color_edit3("###style_accent", *set.style_accent[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
+                if changed:
+                    set.style_accent = (*value, 1.0)
+                    self.refresh_styles()
+                    async_thread.run(db.update_settings("style_accent"))
 
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.text("Color recording name:")
-            imgui.same_line()
-            draw_hover_text(
-                "If selected, recording name will be drawn in the accent color instead of the text color."
-            )
-            imgui.table_next_column()
-            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###style_color_recording_name", set.style_color_recording_name)
-            if changed:
-                set.style_color_recording_name = value
-                async_thread.run(db.update_settings("style_color_recording_name"))
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text("Color recording name:")
+                imgui.same_line()
+                draw_hover_text(
+                    "If selected, recording name will be drawn in the accent color instead of the text color."
+                )
+                imgui.table_next_column()
+                imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                changed, value = imgui.checkbox("###style_color_recording_name", set.style_color_recording_name)
+                if changed:
+                    set.style_color_recording_name = value
+                    async_thread.run(db.update_settings("style_color_recording_name"))
 
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.text("Background:")
-            imgui.table_next_column()
-            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.color_edit3("###style_bg", *set.style_bg[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
-            if changed:
-                set.style_bg = (*value, 1.0)
-                self.refresh_styles()
-                async_thread.run(db.update_settings("style_bg"))
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text("Background:")
+                imgui.table_next_column()
+                imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                changed, value = imgui.color_edit3("###style_bg", *set.style_bg[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
+                if changed:
+                    set.style_bg = (*value, 1.0)
+                    self.refresh_styles()
+                    async_thread.run(db.update_settings("style_bg"))
 
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.text("Alt background:")
-            imgui.table_next_column()
-            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.color_edit3("###style_alt_bg", *set.style_alt_bg[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
-            if changed:
-                set.style_alt_bg = (*value, 1.0)
-                self.refresh_styles()
-                async_thread.run(db.update_settings("style_alt_bg"))
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text("Alt background:")
+                imgui.table_next_column()
+                imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                changed, value = imgui.color_edit3("###style_alt_bg", *set.style_alt_bg[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
+                if changed:
+                    set.style_alt_bg = (*value, 1.0)
+                    self.refresh_styles()
+                    async_thread.run(db.update_settings("style_alt_bg"))
 
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.text("Border:")
-            imgui.table_next_column()
-            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.color_edit3("###style_border", *set.style_border[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
-            if changed:
-                set.style_border = (*value, 1.0)
-                self.refresh_styles()
-                async_thread.run(db.update_settings("style_border"))
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text("Border:")
+                imgui.table_next_column()
+                imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                changed, value = imgui.color_edit3("###style_border", *set.style_border[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
+                if changed:
+                    set.style_border = (*value, 1.0)
+                    self.refresh_styles()
+                    async_thread.run(db.update_settings("style_border"))
 
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.text("Text:")
-            imgui.table_next_column()
-            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.color_edit3("###style_text", *set.style_text[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
-            if changed:
-                set.style_text = (*value, 1.0)
-                self.refresh_styles()
-                async_thread.run(db.update_settings("style_text"))
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text("Text:")
+                imgui.table_next_column()
+                imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                changed, value = imgui.color_edit3("###style_text", *set.style_text[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
+                if changed:
+                    set.style_text = (*value, 1.0)
+                    self.refresh_styles()
+                    async_thread.run(db.update_settings("style_text"))
 
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.text("Text dim:")
-            imgui.table_next_column()
-            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.color_edit3("###style_text_dim", *set.style_text_dim[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
-            if changed:
-                set.style_text_dim = (*value, 1.0)
-                self.refresh_styles()
-                async_thread.run(db.update_settings("style_text_dim"))
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text("Text dim:")
+                imgui.table_next_column()
+                imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                changed, value = imgui.color_edit3("###style_text_dim", *set.style_text_dim[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
+                if changed:
+                    set.style_text_dim = (*value, 1.0)
+                    self.refresh_styles()
+                    async_thread.run(db.update_settings("style_text_dim"))
 
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.text("Defaults:")
+                imgui.table_next_column()
+                style = None
+                if imgui.button("Dark", width=right_width):
+                    style = DefaultStyleDark
+                if imgui.button("Light", width=right_width):
+                    style = DefaultStyleLight
+                if style is not None:
+                    set.style_corner_radius = style.corner_radius
+                    set.style_accent        = hex_to_rgba_0_1(style.accent)
+                    set.style_alt_bg        = hex_to_rgba_0_1(style.alt_bg)
+                    set.style_bg            = hex_to_rgba_0_1(style.bg)
+                    set.style_border        = hex_to_rgba_0_1(style.border)
+                    set.style_text          = hex_to_rgba_0_1(style.text)
+                    set.style_text_dim      = hex_to_rgba_0_1(style.text_dim)
+                    self.refresh_styles()
+                    async_thread.run(db.update_settings(
+                        "style_corner_radius",
+                        "style_accent",
+                        "style_alt_bg",
+                        "style_bg",
+                        "style_border",
+                        "style_text",
+                        "style_text_dim",
+                    ))
+
+                imgui.end_table()
+        elif self.start_settings_section("Style", right_width, collapsible=False):
             imgui.table_next_row()
             imgui.table_next_column()
-            imgui.text("Defaults:")
+            imgui.text("Default style:")
             imgui.table_next_column()
             style = None
             if imgui.button("Dark", width=right_width):
@@ -1890,6 +1932,7 @@ class MainGUI():
                 ))
 
             imgui.end_table()
-            imgui.spacing()
+            
+        imgui.spacing()
 
         imgui.end_child()

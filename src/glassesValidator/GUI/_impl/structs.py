@@ -116,6 +116,7 @@ class Settings:
     scroll_amount               : float
     scroll_smooth               : bool
     scroll_smooth_speed         : float
+    show_advanced_options       : bool
     show_remove_btn             : bool
     style_accent                : tuple[float]
     style_alt_bg                : tuple[float]
