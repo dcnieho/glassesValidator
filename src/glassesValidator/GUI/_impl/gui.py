@@ -1573,6 +1573,7 @@ class MainGUI():
             for flt in self.recording_list.filters:
                 imgui.spacing()
                 imgui.spacing()
+                imgui.separator()
                 imgui.table_next_row()
                 imgui.table_next_column()
                 imgui.text(f"{flt.mode.value} filter:")
@@ -1609,6 +1610,8 @@ class MainGUI():
                 if changed:
                     flt.invert = value
                     self.recording_list.require_sort = True
+            if self.recording_list.filters:
+                imgui.separator()
 
             imgui.end_table()
             imgui.spacing()
