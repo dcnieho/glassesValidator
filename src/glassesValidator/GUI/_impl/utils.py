@@ -32,7 +32,7 @@ def is_project_folder(folder: str | pathlib.Path):
     if not folder.is_dir():
         return False
     # a project directory should contain the (empty)
-    # glassesValidator.project file
+    # glassesValidator.project file and imgui.ini file
     return (folder/'imgui.ini').is_file() and (folder/'glassesValidator.project').is_file()
 
 
@@ -245,7 +245,7 @@ def calc_circle_auto_segment_count(radius, max_error=0.3):
     IM_ROUNDUP_TO_EVEN                  = lambda x: math.ceil(x / 2.) * 2
     IM_DRAWLIST_CIRCLE_AUTO_SEGMENT_MIN = 4
     IM_DRAWLIST_CIRCLE_AUTO_SEGMENT_MAX = 512
-    return IM_ROUNDUP_TO_EVEN(math.pi / math.acos(1 - min([max_error, radius]) / radius))
+    return max(min(IM_ROUNDUP_TO_EVEN(math.pi / math.acos(1 - min([max_error, radius]) / radius)), IM_DRAWLIST_CIRCLE_AUTO_SEGMENT_MAX), IM_DRAWLIST_CIRCLE_AUTO_SEGMENT_MIN)
 
 def draw_spinner(label: str, radius1: float, radius2: float, radius3: float, thickness: float, c1 = 0xffffffff, c2 = 0x80ffffff, c3 = 0xffffffff, speed = 2.8, angle = math.pi):    # NB: ABGR order for colors when specified like this
     # based on ImSpinner::SpinnerAngTriple from https://github.com/dalerank/imspinner
@@ -306,6 +306,7 @@ def bounce_dots(label: str, thickness: float, color = 0xffffffff, speed = 2.8, d
     if imgui.is_item_visible():
         pos = imgui.get_cursor_screen_pos()
         center = [x+y/2 for x,y in zip(pos,size)]
+        num_segments = calc_circle_auto_segment_count(thickness) * 2
 
         start = imgui.get_time() * speed;
         draw_list = imgui.get_window_draw_list()
@@ -318,4 +319,4 @@ def bounce_dots(label: str, thickness: float, color = 0xffffffff, speed = 2.8, d
             if (y > center[1]):
                 y = center[1]
             y+=thickness * heightKoeff  # move down so animation is centered around center
-            draw_list.add_circle_filled(pos.x + style.frame_padding.x  + i * (thickness * nextItemKoeff), y, thickness, color, 32)
+            draw_list.add_circle_filled(pos.x + style.frame_padding.x  + i * (thickness * nextItemKoeff), y, thickness, color, num_segments)
