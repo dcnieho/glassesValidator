@@ -1630,6 +1630,7 @@ class MainGUI():
 
             imgui.table_next_row()
             imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
             imgui.text("Add filter:")
             imgui.table_next_column()
             changed, value = imgui.combo("###add_filter", 0, filter_mode_names)
@@ -1648,6 +1649,7 @@ class MainGUI():
                 imgui.separator()
                 imgui.table_next_row()
                 imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
                 imgui.text(f"{flt.mode.value} filter:")
                 imgui.table_next_column()
                 if imgui.button(f"Remove###filter_{flt.id}_remove", width=right_width):
@@ -1656,6 +1658,7 @@ class MainGUI():
                 if flt.mode is FilterMode.Task_State:
                     imgui.table_next_row()
                     imgui.table_next_column()
+                    imgui.align_text_to_frame_padding()
                     imgui.text("  Task state:")
                     imgui.table_next_column()
                     changed, value = imgui.combo(f"###filter_{flt.id}_value", simplified_task_names.index(flt.match.value), simplified_task_names)
@@ -1666,6 +1669,7 @@ class MainGUI():
                 elif flt.mode is FilterMode.Eye_Tracker:
                     imgui.table_next_row()
                     imgui.table_next_column()
+                    imgui.align_text_to_frame_padding()
                     imgui.text("  Eye Tracker:")
                     imgui.table_next_column()
                     changed, value = imgui.combo(f"###filter_{flt.id}_value", eye_tracker_names.index(flt.match.value), eye_tracker_names)
@@ -1675,6 +1679,7 @@ class MainGUI():
 
                 imgui.table_next_row()
                 imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
                 imgui.text("  Invert filter:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
@@ -1711,6 +1716,7 @@ class MainGUI():
             self.start_settings_section("Project", right_width, collapsible = False)
             imgui.table_next_row()
             imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
             imgui.text("Show advanced options:")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
@@ -1741,6 +1747,7 @@ class MainGUI():
 
                 imgui.table_next_row()
                 imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
                 imgui.text("Show remove button:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
@@ -1751,6 +1758,7 @@ class MainGUI():
 
                 imgui.table_next_row()
                 imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
                 imgui.text("Confirm when removing:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
@@ -1761,6 +1769,7 @@ class MainGUI():
 
                 imgui.table_next_row()
                 imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
                 imgui.text("Workers:")
                 imgui.same_line()
                 draw_hover_text(
@@ -1784,6 +1793,7 @@ class MainGUI():
         if set.show_advanced_options and self.start_settings_section("Interface", right_width):
             imgui.table_next_row()
             imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
             imgui.text("Smooth scrolling:")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
@@ -1797,6 +1807,7 @@ class MainGUI():
 
             imgui.table_next_row()
             imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
             imgui.text("Smoothness:")
             imgui.same_line()
             draw_hover_text(
@@ -1813,6 +1824,7 @@ class MainGUI():
 
             imgui.table_next_row()
             imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
             imgui.text("Scroll mult:")
             imgui.same_line()
             draw_hover_text(
@@ -1826,6 +1838,7 @@ class MainGUI():
 
             imgui.table_next_row()
             imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
             imgui.text("Vsync ratio:")
             imgui.same_line()
             draw_hover_text(
@@ -1842,6 +1855,7 @@ class MainGUI():
 
             imgui.table_next_row()
             imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
             imgui.text("Render if unfocused:")
             imgui.same_line()
             draw_hover_text(
@@ -1870,6 +1884,7 @@ class MainGUI():
             if self.start_settings_section("Style", right_width):
                 imgui.table_next_row()
                 imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
                 imgui.text("Corner radius:")
                 imgui.table_next_column()
                 changed, value = imgui.drag_int("###style_corner_radius", set.style_corner_radius, change_speed=0.04, min_value=0, max_value=20, format="%d px")
@@ -1882,6 +1897,7 @@ class MainGUI():
 
                 imgui.table_next_row()
                 imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
                 imgui.text("Accent:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
@@ -1893,6 +1909,7 @@ class MainGUI():
 
                 imgui.table_next_row()
                 imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
                 imgui.text("Color recording name:")
                 imgui.same_line()
                 draw_hover_text(
@@ -1907,6 +1924,7 @@ class MainGUI():
 
                 imgui.table_next_row()
                 imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
                 imgui.text("Background:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
@@ -1918,6 +1936,7 @@ class MainGUI():
 
                 imgui.table_next_row()
                 imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
                 imgui.text("Alt background:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
@@ -1929,6 +1948,7 @@ class MainGUI():
 
                 imgui.table_next_row()
                 imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
                 imgui.text("Border:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
@@ -1940,6 +1960,7 @@ class MainGUI():
 
                 imgui.table_next_row()
                 imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
                 imgui.text("Text:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
@@ -1951,6 +1972,7 @@ class MainGUI():
 
                 imgui.table_next_row()
                 imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
                 imgui.text("Text dim:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
@@ -1992,6 +2014,7 @@ class MainGUI():
         elif self.start_settings_section("Style", right_width, collapsible=False):
             imgui.table_next_row()
             imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
             imgui.text("Default style:")
             imgui.table_next_column()
             style = None
