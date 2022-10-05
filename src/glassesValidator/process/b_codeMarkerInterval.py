@@ -8,6 +8,11 @@ import csv
 
 from ffpyplayer.player import MediaPlayer
 
+import sys
+isMacOS = sys.platform.startswith("darwin")
+if isMacOS:
+    import AppKit
+
 from .. import config
 from .. import utils
 
@@ -81,6 +86,7 @@ def process(inputDir, configDir=None, showReference=False):
     armLength = reference.markerSize/2 # arms of axis are half a marker long
     stopAllProcessing = False
     hasResized = False
+    hasRequestedFocus = not isMacOS # False only if on Mac OS, else True since its a no-op
     while True:
         frame, val = player.get_frame(force_refresh=True)
         if val == 'eof':
@@ -148,6 +154,10 @@ def process(inputDir, configDir=None, showReference=False):
                         
             if showReference:
                 cv2.imshow("reference", refImg)
+
+        if not hasRequestedFocus:
+            AppKit.NSApplication.sharedApplication().activateIgnoringOtherApps_(1)
+            hasRequestedFocus = True
 
         key = cv2.waitKey(1) & 0xFF
         # seek: don't ask me why, but relative seeking works best for backward,
