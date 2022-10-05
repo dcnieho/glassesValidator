@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import pathlib
-import json
 
 from .. import utils as _utils
 
