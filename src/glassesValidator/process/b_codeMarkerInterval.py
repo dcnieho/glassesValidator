@@ -61,7 +61,7 @@ def process(inputDir, configDir=None, showReference=False):
 
     # set up video playback
     # 1. OpenCV window for scene video
-    cv2.namedWindow("frame",cv2.WINDOW_NORMAL)
+    cv2.namedWindow("code validation intervals",cv2.WINDOW_NORMAL)
     # 2. if wanted and available, second OpenCV window for reference board with gaze on that plane
     showReference &= hasWorldGaze  # no reference board if we don't have world gaze, it'd be empty and pointless
     if showReference:
@@ -73,7 +73,7 @@ def process(inputDir, configDir=None, showReference=False):
     inVideo = inputDir / 'worldCamera.mp4'
     if not inVideo.is_file():
         inVideo = inputDir / 'worldCamera.avi'
-    ff_opts = {'volume': 1., 'sync':'audio', 'framedrop':True}
+    ff_opts = {'volume': 1., 'sync': 'audio', 'framedrop': True}
     player = MediaPlayer(str(inVideo), ff_opts=ff_opts)
 
     # show
@@ -137,13 +137,13 @@ def process(inputDir, configDir=None, showReference=False):
 
             
             if frame is not None:
-                cv2.imshow("frame", frame)
+                cv2.imshow("code validation intervals", frame)
                 if not hasResized:
                     if width>1280 or height>800:
                         sFac = max([width/1280., height/800.])
-                        cv2.resizeWindow('frame', round(width/sFac), round(height/sFac))
+                        cv2.resizeWindow('code validation intervals', round(width/sFac), round(height/sFac))
                     else:
-                        cv2.resizeWindow('frame', width, height)
+                        cv2.resizeWindow('code validation intervals', width, height)
                     hasResized = True
                         
             if showReference:
