@@ -103,7 +103,7 @@ async def connect():
         "scroll_amount":               f'REAL    DEFAULT 1.0',
         "scroll_smooth":               f'INTEGER DEFAULT {int(True)}',
         "scroll_smooth_speed":         f'REAL    DEFAULT 8.0',
-        "show_advanced_options":       f'INTEGER DEFAULT {int(True)}',
+        "show_advanced_options":       f'INTEGER DEFAULT {int(False)}',
         "show_remove_btn":             f'INTEGER DEFAULT {int(True)}',
         "style_accent":                f'TEXT    DEFAULT "{DefaultStyleDark.accent}"',
         "style_alt_bg":                f'TEXT    DEFAULT "{DefaultStyleDark.alt_bg}"',
