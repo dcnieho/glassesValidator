@@ -713,12 +713,11 @@ class MainGUI():
                 pass#async_thread.run(callbacks.remove_recording_working_dir(rec))
         process_pool.done_callback = worker_process_done_hook
 
-        db.setup()
-        self.init_imgui_glfw()
+        self.load_interface()
 
-    def init_imgui_glfw(self, re_init = False):
+    def init_imgui_glfw(self, is_reload = False):
         # tear down current context
-        if re_init and (ctx := imgui.get_current_context()) is not None:
+        if is_reload and (ctx := imgui.get_current_context()) is not None:
             imgui.io.ini_file_name = None   # don't store settings to ini, we already did that manually and with augmentation
             imgui.destroy_context(ctx)
 
@@ -733,7 +732,7 @@ class MainGUI():
         # apply scaling
         xscale, yscale = glfw.get_monitor_content_scale(mon)
         self.size_mult = max(xscale, yscale)
-        if re_init and is_default:
+        if is_reload and is_default:
             glfw.set_window_size(self.window, int(self.screen_size[0]*self.size_mult), int(self.screen_size[1]*self.size_mult))
         elif self.size_mult!=self.last_size_mult:
             glfw.set_window_size(self.window, int(self.screen_size[0]/self.last_size_mult*self.size_mult), int(self.screen_size[1]/self.last_size_mult*self.size_mult))
@@ -745,7 +744,7 @@ class MainGUI():
         self.setup_imgui_impl()
         self.setup_imgui_style()
 
-        if not re_init:
+        if not is_reload:
             # this should be done only once
             self.style_imgui_functions()
 
@@ -1107,13 +1106,14 @@ class MainGUI():
     def unload_project(self):
         self.project_to_load = ""
 
-    def reload_interface(self):
-        globals.project_path = None if self.project_to_load=="" else self.project_to_load
+    def load_interface(self, is_reload = False):
+        if is_reload:
+            globals.project_path = None if self.project_to_load=="" else self.project_to_load
+            self.project_to_load = None
         db.setup()
-        self.init_imgui_glfw(re_init=True)
+        self.init_imgui_glfw(is_reload=is_reload)
         if globals.project_path is not None:
             self.recording_list = RecordingTable(globals.recordings, globals.selected_recordings)
-        self.project_to_load = None
 
     def main_loop(self):
         scroll_energy = 0.0
@@ -1249,7 +1249,7 @@ class MainGUI():
         db.shutdown()
 
         if self.project_to_load is not None:
-            self.reload_interface()
+            self.load_interface(is_reload=True)
             return True     # signal to run a fresh main loop instance
         else:
             return False

@@ -1,7 +1,8 @@
 import sys
 import multiprocessing
+import pathlib
 
-def run():
+def run(project: str | pathlib.Path = None):
     multiprocessing.freeze_support()
 
     from ._impl import globals
@@ -19,6 +20,10 @@ def run():
             uvloop.install()
         except Exception:
             pass
+
+    if project is not None:
+        from ._impl import globals
+        globals.project_path = pathlib.Path(project)
         
     from ._impl import async_thread, gui, process_pool
     async_thread.setup()
