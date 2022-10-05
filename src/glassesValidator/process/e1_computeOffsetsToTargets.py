@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
-import sys
-from pathlib import Path
+import pathlib
 import math
 
 import cv2
@@ -13,7 +12,7 @@ from .. import utils
 
 
 def process(inputDir, configDir=None):
-    inputDir  = Path(inputDir)
+    inputDir  = pathlib.Path(inputDir)
     if configDir is not None:
         configDir = pathlib.Path(configDir)
 

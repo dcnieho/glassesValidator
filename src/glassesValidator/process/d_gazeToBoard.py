@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from pathlib import Path
+import pathlib
 
 import cv2
 import numpy as np
@@ -14,7 +14,7 @@ def process(inputDir, configDir=None, showVisualization=False, showReference=Tru
     # if showVisualization, draw each frame + gaze and overlay info about detected markers and board
     # if showReference, gaze in board space is also drawn in a separate window
     # if showOnlyIntervals, shows only frames in the marker intervals (if available)
-    inputDir  = Path(inputDir)
+    inputDir  = pathlib.Path(inputDir)
     if configDir is not None:
         configDir = pathlib.Path(configDir)
 

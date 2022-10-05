@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from pathlib import Path
+import pathlib
 import numpy as np
 
 import cv2
@@ -24,7 +24,7 @@ from .. import utils
 
 def process(inputDir, configDir=None, showReference=False):
     # if showReference, also draw reference board with gaze overlaid on it (if available)
-    inputDir  = Path(inputDir)
+    inputDir  = pathlib.Path(inputDir)
     if configDir is not None:
         configDir = pathlib.Path(configDir)
 

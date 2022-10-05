@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from pathlib import Path
+import pathlib
 
 import numpy as np
 import pandas as pd
@@ -10,7 +10,7 @@ from .. import config, utils
 
 
 def process(inputDir, configDir=None):
-    inputDir  = Path(inputDir)
+    inputDir  = pathlib.Path(inputDir)
     if configDir is not None:
         configDir = pathlib.Path(configDir)
 

@@ -1,4 +1,4 @@
-from pathlib import Path
+import pathlib
 
 import cv2
 import numpy as np
@@ -12,7 +12,7 @@ from .. import utils
 def process(inputDir, configDir=None, visualizeDetection=False, showRejectedMarkers=False, FPSFac=1):
     # if visualizeDetection, draw each frame and overlay info about detected markers and board
     # if showRejectedMarkers, rejected marker candidates are also drawn on frame. Possibly useful for debug
-    inputDir  = Path(inputDir)
+    inputDir  = pathlib.Path(inputDir)
     if configDir is not None:
         configDir = pathlib.Path(configDir)
 
