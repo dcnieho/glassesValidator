@@ -1532,14 +1532,67 @@ class MainGUI():
         checkbox_offset = right_width - frame_height
         width = imgui.get_content_region_available_width()
 
+        # Big action button
         height = self.scaled(100)
-        # Normal button
-        if imgui.button("Process all!", width=width, height=height):
-            pass
-        if imgui.begin_popup_context_item(f"###refresh_context"):
+        # 1. see what actions are available
+        # 1a. we always have the add recordings option
+        text = ["󱃩 Add recordings"]
+        action = [lambda: utils.push_popup(self.get_folder_picker(select_for_add=True))]
+        hover_text = ["Press the \"󱃩 Add recordings\" button to select a folder or folders\n" \
+                      "that will be searched for importable recordings. You will then be able\n"\
+                      "to select which of the found recordings you wish to import. You can\n"\
+                      "also start importing recordings by drag-dropping one or multiple\n"\
+                      "folders onto glassesValidator."]
+        # 1b. if any jobs running, we have the cancel all action regardless of selection
+        if globals.jobs:
+            text.append("󱠮 Cancel all jobs")
+            action.append(lambda: async_thread.run(callbacks.cancel_processing_recordings(list(globals.jobs.keys()))))
+            hover_text.append("Stop processing all pending and running jobs.")
+        # 1c. if there is a selection, we have some actions for the selection
+        ids = [rid for rid in globals.selected_recordings if globals.selected_recordings[rid]]
+        if ids:
+            has_job = [id in globals.jobs for id in ids]
+            has_no_job = [not x for x in has_job]
+            if any(has_no_job):
+                # before stage 1
+                not_imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Not_Imported]
+                if not_imported_ids:
+                    text.append("󰼛 Import")
+                    action.append(lambda: async_thread.run(callbacks.process_recordings(not_imported_ids, task=Task.Imported, chain=False)))
+                    hover_text.append("Run import job for the selected recordings.")
+                # after stage 1
+                imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Imported]
+                if imported_ids:
+                    text.append("󰼛 Code Intervals")
+                    action.append(lambda: async_thread.run(callbacks.process_recordings(imported_ids, task=Task.Coded, chain=False)))
+                    hover_text.append("Code validation intervals for the selected recordings.")
+                # after stage 2 / during stage 3
+                coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Coded]
+                if coded_ids:
+                    text.append("󰼛 Process")
+                    action.append(lambda: async_thread.run(callbacks.process_recordings(coded_ids, task=Task.Markers_Detected, chain=True)))
+                    hover_text.append("Run processing to determine data quality for the selected recordings.")
+            if any(has_job):
+                text.append("󱠮 Cancel selected jobs")
+                action.append(lambda: async_thread.run(callbacks.cancel_processing_recordings([id for id,q in zip(ids,has_job) if q])))
+                hover_text.append("Stop processing selected pending and running jobs.")
+
+        # 2. draw it. Last item has highest priority, so that ends up on the button
+        # rest in priority order in the right click menu
+        if imgui.button(text[-1], width=width, height=height):
+            action[-1]()
+        if hover_text[-1] or len(text)>1:
+            ht = hover_text[-1]
+            if len(text)>1:
+                ht += ("\n\n" if hover_text[-1] else "") + "Right click for more options"
+            draw_hover_text(ht,text='')
+        if len(text)>1 and imgui.begin_popup_context_item(f"###big_button_context"):
             # Right click = more options context menu
-            if imgui.selectable("󰅸 Do stuff", False)[0]:
-                pass # do some processing, callbacks.something(recording)
+            for i in reversed(range(len(text)-1)):
+                if imgui.selectable(text[i], False)[0]:
+                    action[i]()
+                if hover_text[i]:
+                    draw_hover_text(hover_text[i],text='')
             imgui.end_popup()
 
         # the whole settings section
