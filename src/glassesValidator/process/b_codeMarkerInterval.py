@@ -87,6 +87,7 @@ def process(inputDir, configDir=None, showReference=False):
     stopAllProcessing = False
     hasResized = False
     hasRequestedFocus = not isMacOS # False only if on Mac OS, else True since its a no-op
+    showHelp = False
     while True:
         frame, val = player.get_frame(force_refresh=True)
         if val == 'eof':
@@ -135,12 +136,27 @@ def process(inputDir, configDir=None, showReference=False):
             
             # annotate what frame we're on
             frameClr = (0,0,255) if analysisIntervalIdx is not None else (0,0,0)
-            cv2.rectangle(frame,(0,int(height)),(int(0.35*width),int(height)-30), frameClr, -1)
-            cv2.putText(frame, ("%8.3f [%6d]" % (pts, frame_idx) ), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
+            text = "%8.3f [%6d]" % (pts, frame_idx) 
+            textSize,baseline = cv2.getTextSize(text,cv2.FONT_HERSHEY_PLAIN,2,2)
+            cv2.rectangle(frame,(0,int(height)),(textSize[0]+2,int(height)-textSize[1]-baseline-5), frameClr, -1)
+            cv2.putText(frame, (text), (2, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
             # annotate analysis intervals
-            cv2.rectangle(frame,(0,30),(int(width),0), frameClr, -1)
-            cv2.putText(frame, (analysisLbl), (0, 25), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
-
+            textSize,baseline = cv2.getTextSize(analysisLbl,cv2.FONT_HERSHEY_PLAIN,2,2)
+            cv2.rectangle(frame,(0,textSize[1]+baseline+5),(textSize[0]+5,0), frameClr, -1)
+            cv2.putText(frame, (analysisLbl), (0, textSize[1]+baseline), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
+            # show help
+            if not showHelp:
+                cv2.putText(frame,("Press I for help"), (0,55), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
+            else:
+                cv2.putText(frame,("H: back 1 s, shift+H: back 10 s"), (0,55), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
+                cv2.putText(frame,("L: forward 1 s, shift+L: forward 10 s"), (0,85), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
+                cv2.putText(frame,("J: back 1 frame, K: forward 1 frame"), (0,115), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
+                cv2.putText(frame,("P: pause or resume playback"), (0,145), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
+                cv2.putText(frame,("F: mark frame, D: delete frame or current interval"), (0,175), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
+                cv2.putText(frame,("S: seek to start of next interval, shift+S seek to start of previous interval"), (0,205), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
+                cv2.putText(frame,("E: seek to end of next interval, shift+E seek to end of previous interval"), (0,235), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
+                cv2.putText(frame,("N/Q: quit"), (0,265), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
+                cv2.putText(frame,("I: toggle help"), (0,265), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
             
             if frame is not None:
                 cv2.imshow("code validation intervals", frame)
@@ -160,9 +176,11 @@ def process(inputDir, configDir=None, showReference=False):
             hasRequestedFocus = True
 
         key = cv2.waitKey(1) & 0xFF
+        if key == ord('i'):
+            showHelp = not showHelp
         # seek: don't ask me why, but relative seeking works best for backward,
         # and seeking to absolute pts best for forward seeking.
-        if key == ord('j'):
+        elif key == ord('j'):
             step = (i2t.get(frame_idx)-i2t.get(max(0,frame_idx-1)))/1000
             player.seek(-step)                              # back one frame
         elif key == ord('k'):
