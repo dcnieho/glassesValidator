@@ -1684,16 +1684,6 @@ class MainGUI():
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󰮞 Close project", width=btn_width):
                 self.unload_project()
-
-            imgui.set_cursor_pos_x((width-btn_width)/2)
-            if imgui.button("󱃩 Add recordings", width=btn_width):
-                utils.push_popup(self.get_folder_picker(select_for_add=True))
-            draw_hover_text(
-                "Press the \"󱃩 Add recordings\" button to select a folder or folders "
-                "that will be searched for importable recordings. You will then be able "
-                "to select which of the found recordings you wish to import. You can "
-                "also start importing recordings by drag-dropping one or multiple "
-                "folders onto glassesValidator.", text='')
                 
             # continue table
             self.start_settings_section("Project", right_width, collapsible = False)
