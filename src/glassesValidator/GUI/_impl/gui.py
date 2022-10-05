@@ -1185,6 +1185,16 @@ class MainGUI():
                     for r in globals.selected_recordings:
                         globals.selected_recordings[r] = False
 
+                # delete should issue delete for selected recordings, if any
+                if imgui.is_key_pressed(glfw.KEY_DELETE) and not globals.popup_stack:
+                    any_deleted = False
+                    for rid in globals.selected_recordings:
+                        if globals.selected_recordings[rid]:
+                            async_thread.run(callbacks.remove_recording(globals.recordings[rid]))
+                            any_deleted = True
+                    if any_deleted:
+                        self.recording_list.require_sort = True
+
                 imgui.new_frame()
 
                 imgui.set_next_window_position(0, 0, imgui.ONCE)
