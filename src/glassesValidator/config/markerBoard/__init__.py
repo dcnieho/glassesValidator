@@ -10,7 +10,7 @@ def deployMaker(outDir):
     if not outDir.is_dir():
         raise RuntimeError('the requested directory "%s" does not exist' % outDir)
 
-    # copy over all config files
+    # copy over all files
     for r in ['board.tex']:
         with importlib.resources.path(__package__, r) as p:
             shutil.copyfile(p, str(outDir/r))

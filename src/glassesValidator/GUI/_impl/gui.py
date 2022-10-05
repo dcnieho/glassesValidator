@@ -1054,9 +1054,9 @@ class MainGUI():
     def try_load_project(self, path: str | pathlib.Path, creating = False):
         if isinstance(path,list):
             if not path:
-                utils.push_popup(msgbox.msgbox, "Project opening error", "A single project directory should be provided. None provided so cannot open.", MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in paths])))
+                utils.push_popup(msgbox.msgbox, "Project opening error", "A single project directory should be provided. None provided so cannot open.", MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in path])))
             elif len(path)>1:
-                utils.push_popup(msgbox.msgbox, "Project opening error", "Only a single project directory should be provided, but {len(path)} were provided. Cannot open multiple projects.", MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in paths])))
+                utils.push_popup(msgbox.msgbox, "Project opening error", "Only a single project directory should be provided, but {len(path)} were provided. Cannot open multiple projects.", MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in path])))
             else:
                 path = path[0]
         path = pathlib.Path(path)
