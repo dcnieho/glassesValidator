@@ -496,7 +496,7 @@ class RecordingTable():
                 coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Coded]
                 self.draw_recording_process_button(coded_ids, label="󰼛 Process", selectable=True, action=Task.Markers_Detected)
             if any(has_job):
-                self.draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label="󱠮 Cancel processing", selectable=True)
+                self.draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label="󱠮 Cancel job", selectable=True)
 
             if len(ids)==1:
                 self.draw_recording_open_folder_button(ids, label="󰷏 Open Working Folder", selectable=True)
