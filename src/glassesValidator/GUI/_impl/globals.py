@@ -50,3 +50,4 @@ rec_id: CounterContext = CounterContext()
 recordings: dict[int, Recording] = None
 selected_recordings: dict[int, bool] = None
 jobs: dict[int, JobDescription] = None
+coding_job_queue: dict[int, JobDescription] = None

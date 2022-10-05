@@ -153,7 +153,7 @@ def add_recordings(paths: list[pathlib.Path]):
     # ask what type of eye tracker we should be looking for
     utils.push_popup(lambda: utils.popup("Select eye tracker", add_recs_popup, buttons = buttons, closable=True, outside=True))
 
-def _process_recording(rec: Recording, task: Task = None, chain=True):
+def process_recording(rec: Recording, task: Task = None, chain=True):
     # find what is the next task to do for this recording
     if task is None:
         match rec.task:
@@ -216,18 +216,25 @@ def _process_recording(rec: Recording, task: Task = None, chain=True):
     if fun is None:
         return
 
-    # launch task
-    job_id = process_pool.run(fun,*args,**kwargs)
+    # special case if its a marker coding task, of which we can have only one at a time. If we already have a marker coding task
+    should_launch_task = task!=Task.Coded or not any((globals.jobs[j].task==Task.Coded for j in globals.jobs))
+            
+    if should_launch_task:
+        # launch task
+        job_id = process_pool.run(fun,*args,**kwargs)
 
-    # store to job queue
-    globals.jobs[rec.id] = JobDescription(job_id, rec, task, chain)
+        # store to job queue
+        globals.jobs[rec.id] = JobDescription(job_id, rec, task, chain)
+    else:
+        globals.coding_job_queue[rec.id] = JobDescription(None, rec, task, chain)
 
 async def process_recordings(ids: list[int], task: Task = None, chain=True):
     for rec_id in ids:
-        _process_recording(globals.recordings[rec_id], task, chain)
-
+        process_recording(globals.recordings[rec_id], task, chain)
 
 async def cancel_processing_recordings(ids: list[int]):
     for rec_id in ids:
         if rec_id in globals.jobs:
             process_pool.cancel_job(globals.jobs[rec_id].id)
+        if rec_id in globals.coding_job_queue:
+            del globals.coding_job_queue[rec_id]

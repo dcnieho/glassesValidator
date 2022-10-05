@@ -386,7 +386,17 @@ class RecordingTable():
             imgui.text(recording.name, *args, **kwargs)
 
     def draw_recording_status_widget(self, recording: Recording, *args, **kwargs):
-        if recording.id in globals.jobs and (job_state:=process_pool.get_job_state((job:=globals.jobs[recording.id]).id)) in [ProcessState.Pending, ProcessState.Running]:
+        job_state = None
+        if recording.id in globals.jobs:
+            job = globals.jobs[recording.id]
+            job_state = process_pool.get_job_state(job.id)
+            if job_state not in [ProcessState.Pending, ProcessState.Running]:
+                job_state = None
+        if recording.id in globals.coding_job_queue:
+            job = globals.coding_job_queue[recording.id]
+            job_state = ProcessState.Pending
+
+        if job_state:
             symbol_size = imgui.calc_text_size("󰲞")
             if job_state==ProcessState.Pending:
                 thickness = symbol_size.x / 3 / 2.5 # 3 is number of dots, 2.5 is nextItemKoeff in utils.bounce_dots()
@@ -483,7 +493,7 @@ class RecordingTable():
             return
 
         if not self.in_adder_popup:
-            has_job = [id in globals.jobs for id in ids]
+            has_job = [(id in globals.jobs or id in globals.coding_job_queue) for id in ids]
             has_no_job = [not x for x in has_job]
             if any(has_no_job):
                 # before stage 1
@@ -491,10 +501,10 @@ class RecordingTable():
                 self.draw_recording_process_button(not_imported_ids, label="󰼛 Import", selectable=True, action=Task.Imported)
                 # after stage 1
                 imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Imported]
-                self.draw_recording_process_button(imported_ids, label="󰼛 Code Intervals", selectable=True, action=Task.Coded)
+                self.draw_recording_process_button(imported_ids, label="󰼛 Code validation intervals", selectable=True, action=Task.Coded)
                 # after stage 2 / during stage 3
                 coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Coded]
-                self.draw_recording_process_button(coded_ids, label="󰼛 Process", selectable=True, action=Task.Markers_Detected)
+                self.draw_recording_process_button(coded_ids, label="󰼛 Calculate data quality", selectable=True, action=Task.Markers_Detected)
             if any(has_job):
                 self.draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label="󱠮 Cancel job", selectable=True)
 
@@ -654,7 +664,7 @@ class MainGUI():
             utils.push_popup(msgbox.msgbox, "Oops!", f"Something went wrong in an asynchronous task of a separate thread:\n\n{tb}", MsgBox.error)
         async_thread.done_callback = asyncexcepthook
 
-        # Process state changes in worker processes
+        # Process state changes in worker processes. NB: not fired on items enqueued in globals.coding_job_queue
         def worker_process_done_hook(future: pebble.ProcessFuture, job_id: int, state: ProcessState):
             if globals.jobs is None:
                 return
@@ -711,6 +721,13 @@ class MainGUI():
             # special case: remove working directory again if an import task was canceled or failed
             if job.task==Task.Imported and state in [ProcessState.Canceled, ProcessState.Failed]:
                 pass#async_thread.run(callbacks.remove_recording_working_dir(rec))
+
+            # special case: the ended task was a coding task, we have further coding tasks to enqueue, and there are none currently enqueued
+            if job.task==Task.Coded and globals.coding_job_queue and not any((globals.jobs[j].task==Task.Coded for j in globals.jobs)):
+                rec_id = list(globals.coding_job_queue.keys())[0]
+                job = globals.coding_job_queue[rec_id]
+                del globals.coding_job_queue[rec_id]
+                callbacks.process_recording(job.payload, job.task, job.should_chain_next)
         process_pool.done_callback = worker_process_done_hook
 
         self.load_interface()
@@ -1119,6 +1136,7 @@ class MainGUI():
         scroll_energy = 0.0
         have_set_window_size = False
         globals.jobs = {}
+        globals.coding_job_queue = {}
         while not glfw.window_should_close(self.window) and self.project_to_load is None:
             # for repeating characters that were input while bottom bar didn't have input focus
             if self.repeat_chars:
@@ -1246,6 +1264,7 @@ class MainGUI():
             process_pool.cancel_all_jobs()
         # NB: we do not do globals.jobs = None because cancellation notifications may well arrive after we have exited this main_loop()
         # it seems not possible to wait in a simple loop like 'while globals.jobs' with a time.sleep as that blocks receiving the callback
+        globals.coding_job_queue = None # this one we can just clear as its not enqueued on the job queue, no cancellation will be issued
         db.shutdown()
 
         if self.project_to_load is not None:
@@ -1544,14 +1563,14 @@ class MainGUI():
                       "also start importing recordings by drag-dropping one or multiple\n"\
                       "folders onto glassesValidator."]
         # 1b. if any jobs running, we have the cancel all action regardless of selection
-        if globals.jobs:
+        if globals.jobs or globals.coding_job_queue:
             text.append("󱠮 Cancel all jobs")
-            action.append(lambda: async_thread.run(callbacks.cancel_processing_recordings(list(globals.jobs.keys()))))
+            action.append(lambda: async_thread.run(callbacks.cancel_processing_recordings(list(globals.jobs.keys())+list(globals.coding_job_queue.keys()))))
             hover_text.append("Stop processing all pending and running jobs.")
         # 1c. if there is a selection, we have some actions for the selection
         ids = [rid for rid in globals.selected_recordings if globals.selected_recordings[rid]]
         if ids:
-            has_job = [id in globals.jobs for id in ids]
+            has_job = [(id in globals.jobs or id in globals.coding_job_queue) for id in ids]
             has_no_job = [not x for x in has_job]
             if any(has_no_job):
                 # before stage 1
@@ -1563,13 +1582,13 @@ class MainGUI():
                 # after stage 1
                 imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Imported]
                 if imported_ids:
-                    text.append("󰼛 Code Intervals")
+                    text.append("󰼛 Code validation intervals")
                     action.append(lambda: async_thread.run(callbacks.process_recordings(imported_ids, task=Task.Coded, chain=False)))
                     hover_text.append("Code validation intervals for the selected recordings.")
                 # after stage 2 / during stage 3
                 coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Coded]
                 if coded_ids:
-                    text.append("󰼛 Process")
+                    text.append("󰼛 Calculate data quality")
                     action.append(lambda: async_thread.run(callbacks.process_recordings(coded_ids, task=Task.Markers_Detected, chain=True)))
                     hover_text.append("Run processing to determine data quality for the selected recordings.")
             if any(has_job):
