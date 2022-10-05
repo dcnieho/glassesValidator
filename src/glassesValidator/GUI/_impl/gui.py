@@ -1129,8 +1129,11 @@ class MainGUI():
             self.project_to_load = None
         db.setup()
         self.init_imgui_glfw(is_reload=is_reload)
+        globals.config_dir = None
         if globals.project_path is not None:
             self.recording_list = RecordingTable(globals.recordings, globals.selected_recordings)
+            if (globals.project_path / "config").is_dir():
+                globals.config_dir = "config"
 
     def main_loop(self):
         scroll_energy = 0.0

@@ -35,6 +35,7 @@ def open_folder(path: pathlib.Path):
 
 async def _deploy_config(conf_dir: pathlib.Path):
     config.deployValidationConfig(conf_dir)
+    globals.config_dir = conf_dir.name
 
 async def deploy_config(project_path: str|pathlib.Path):
     conf_dir = pathlib.Path(project_path)/"config"
@@ -204,25 +205,24 @@ def process_recording(rec: Recording, task: Task = None, chain=True):
         case Task.Imported:
             fun = preprocess.do_import
             args = (globals.project_path,)
-            kwargs = {'rec_info': rec}
-        case Task.Coded:
-            fun = process.codeMarkerInterval
+            kwargs['rec_info'] = rec
+        case Task.Coded | Task.Markers_Detected | Task.Gaze_Tranformed_To_World | Task.Target_Offsets_Computed | Task.Fixation_Intervals_Determined | Task.Data_Quality_Calculated:
+            match task:
+                case Task.Coded:
+                    fun = process.codeMarkerInterval
+                case Task.Markers_Detected:
+                    fun = process.detectMarkers
+                case Task.Gaze_Tranformed_To_World:
+                    fun = process.gazeToBoard
+                case Task.Target_Offsets_Computed:
+                    fun = process.computeOffsetsToTargets
+                case Task.Fixation_Intervals_Determined:
+                    fun = process.determineFixationIntervals
+                case Task.Data_Quality_Calculated:
+                    fun = process.calculateDataQuality
             args = (working_dir,)
-        case Task.Markers_Detected:
-            fun = process.detectMarkers
-            args = (working_dir,)
-        case Task.Gaze_Tranformed_To_World:
-            fun = process.gazeToBoard
-            args = (working_dir,)
-        case Task.Target_Offsets_Computed:
-            fun = process.computeOffsetsToTargets
-            args = (working_dir,)
-        case Task.Fixation_Intervals_Determined:
-            fun = process.determineFixationIntervals
-            args = (working_dir,)
-        case Task.Data_Quality_Calculated:
-            fun = process.calculateDataQuality
-            args = (working_dir,)
+            if globals.config_dir:
+                kwargs['configDir'] = globals.project_path / globals.config_dir
          
         # other, includes Task.Unknown (all already done, see above), nothing to do if no specific task specified:
         case _:
