@@ -110,6 +110,7 @@ class MsgBox(Enum):
 
 @dataclasses.dataclass
 class Settings:
+    config_dir                  : str
     confirm_on_remove           : bool
     process_workers             : int
     render_when_unfocused       : bool

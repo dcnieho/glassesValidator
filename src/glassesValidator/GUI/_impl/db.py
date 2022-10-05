@@ -97,6 +97,7 @@ async def connect():
 
     await create_table("settings", {
         "_":                           f'INTEGER PRIMARY KEY CHECK (_=0)',
+        "config_dir":                  f'INTEGER DEFAULT "config"',
         "confirm_on_remove":           f'INTEGER DEFAULT {int(True)}',
         "process_workers":             f'INTEGER DEFAULT 2',
         "render_when_unfocused":       f'INTEGER DEFAULT {int(True)}',

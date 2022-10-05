@@ -43,7 +43,6 @@ data_path.mkdir(parents=True, exist_ok=True)
 # Variables
 popup_stack = []
 project_path: pathlib.Path = None
-config_dir: str = None
 should_exit: bool = False
 gui: MainGUI = None
 settings: Settings = None

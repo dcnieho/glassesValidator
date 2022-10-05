@@ -1129,11 +1129,8 @@ class MainGUI():
             self.project_to_load = None
         db.setup()
         self.init_imgui_glfw(is_reload=is_reload)
-        globals.config_dir = None
         if globals.project_path is not None:
             self.recording_list = RecordingTable(globals.recordings, globals.selected_recordings)
-            if (globals.project_path / "config").is_dir():
-                globals.config_dir = "config"
 
     def main_loop(self):
         scroll_energy = 0.0
@@ -1705,7 +1702,7 @@ class MainGUI():
                 utils.push_popup(self.get_folder_picker())
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󱂀 Deploy config", width=btn_width):
-                async_thread.run(callbacks.deploy_config(globals.project_path))
+                async_thread.run(callbacks.deploy_config(globals.project_path, globals.settings.config_dir))
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󰮞 Close project", width=btn_width):
                 self.unload_project()
@@ -1723,6 +1720,25 @@ class MainGUI():
                 async_thread.run(db.update_settings("show_advanced_options"))
 
             if set.show_advanced_options:
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
+                imgui.text("Config folder:")
+                imgui.table_next_column()
+                changed, value = imgui.input_text("###config_dir", set.config_dir)
+                if changed:
+                    set.config_dir = value
+                    async_thread.run(db.update_settings("config_dir"))
+                if imgui.is_item_hovered():
+                    if set.config_dir:
+                        if (path:=globals.project_path / globals.settings.config_dir).is_dir():
+                            text = str(path)
+                        else:
+                            text = 'Configuration not deployed yet'
+                    else:
+                        text = 'Configuration directory cannot be an empty value'
+                    draw_tooltip(text)
+
                 imgui.table_next_row()
                 imgui.table_next_column()
                 imgui.text("Show remove button:")
@@ -1753,8 +1769,8 @@ class MainGUI():
                     "simultaneously, but having too many will not provide any gain and might freeze "
                     "the program and your whole program. Since much of the processing utilizes more "
                     "than one processor thread, set this value to signficantly less than the number "
-                    "of threads available in your system. In most cases 2--3 workers is a good "
-                    "should provide a good experience."
+                    "of threads available in your system. In most cases 2--3 workers should provide "
+                    "a good experience."
                 )
                 imgui.table_next_column()
                 changed, value = imgui.drag_int("###process_workers", set.process_workers, change_speed=0.5, min_value=1, max_value=100)

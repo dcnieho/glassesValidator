@@ -35,10 +35,13 @@ def open_folder(path: pathlib.Path):
 
 async def _deploy_config(conf_dir: pathlib.Path):
     config.deployValidationConfig(conf_dir)
-    globals.config_dir = conf_dir.name
 
-async def deploy_config(project_path: str|pathlib.Path):
-    conf_dir = pathlib.Path(project_path)/"config"
+async def deploy_config(project_path: str|pathlib.Path, config_dir: str):
+    if not config_dir:
+        utils.push_popup(msgbox.msgbox, "Cannot deploy", "Configuration directory cannot be an empty value", MsgBox.error)
+        return
+
+    conf_dir = pathlib.Path(project_path) / config_dir
     if not conf_dir.is_dir():
         conf_dir.mkdir()
         await _deploy_config(conf_dir)
@@ -221,8 +224,8 @@ def process_recording(rec: Recording, task: Task = None, chain=True):
                 case Task.Data_Quality_Calculated:
                     fun = process.calculateDataQuality
             args = (working_dir,)
-            if globals.config_dir:
-                kwargs['configDir'] = globals.project_path / globals.config_dir
+            if globals.settings.config_dir and (config_dir := globals.project_path / globals.settings.config_dir).is_dir():
+                kwargs['configDir'] = config_dir
          
         # other, includes Task.Unknown (all already done, see above), nothing to do if no specific task specified:
         case _:
