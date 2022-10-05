@@ -1701,6 +1701,9 @@ class MainGUI():
             if imgui.button("󰷏 Open project", width=btn_width):
                 utils.push_popup(self.get_folder_picker())
             imgui.set_cursor_pos_x((width-btn_width)/2)
+            if imgui.button("󱂀 Deploy config", width=btn_width):
+                async_thread.run(callbacks.deploy_config(globals.project_path))
+            imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󰮞 Close project", width=btn_width):
                 self.unload_project()
                 

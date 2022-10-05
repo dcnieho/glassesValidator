@@ -9,7 +9,7 @@ import shutil
 from .structs import JobDescription, MsgBox, Os
 from . import globals, async_thread, db, gui, msgbox, process_pool, utils
 from ...utils import EyeTracker, Recording, Task, eye_tracker_names, make_fs_dirname
-from ... import preprocess, process
+from ... import config, preprocess, process
 
 
 
@@ -31,6 +31,22 @@ def open_folder(path: pathlib.Path):
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         ))
+
+
+async def _deploy_config(conf_dir: pathlib.Path):
+    config.deployValidationConfig(conf_dir)
+
+async def deploy_config(project_path: str|pathlib.Path):
+    conf_dir = pathlib.Path(project_path)/"config"
+    if not conf_dir.is_dir():
+        conf_dir.mkdir()
+        await _deploy_config(conf_dir)
+    else:
+        buttons = {
+            "󰄬 Yes": lambda: async_thread.run(_deploy_config(conf_dir)),
+            "󰜺 No": None
+        }
+        utils.push_popup(msgbox.msgbox, "Deploy configuration", f"The folder {conf_dir} already exist. Do you want to deploy a configuration to this folder,\npotentially overwriting any configuration that is already there?", MsgBox.warn, buttons)
 
 
 async def remove_recording_working_dir(rec: Recording):
