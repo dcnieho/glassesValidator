@@ -19,7 +19,7 @@ from importlib.resources import files, as_file
 
 from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, SortSpec, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
 from . import globals, async_thread, callbacks, db, filepicker, imagehelper, msgbox, process_pool, utils
-from ...utils import EyeTracker, Recording, Task, hex_to_rgba_0_1, eye_tracker_names, get_task_name_friendly, task_names
+from ...utils import EyeTracker, Recording, Task, Status, hex_to_rgba_0_1, eye_tracker_names, get_task_name_friendly, task_names, update_recording_status
 
 imgui.io = None
 imgui.style = None
@@ -661,7 +661,7 @@ class MainGUI():
             if isinstance(exc, asyncio.TimeoutError):
                 utils.push_popup(msgbox.msgbox, "Processing error", f"A background process has failed:\n{type(exc).__name__}: {str(exc) or 'No further details'}", MsgBox.warn, more=tb)
                 return
-            utils.push_popup(msgbox.msgbox, "Oops!", f"Something went wrong in an asynchronous task of a separate thread:\n\n{tb}", MsgBox.error)
+            utils.push_popup(msgbox.msgbox, "Processing error", f"Something went wrong in an asynchronous task of a separate thread:\n\n{tb}", MsgBox.error)
         async_thread.done_callback = asyncexcepthook
 
         # Process state changes in worker processes. NB: not fired on items enqueued in globals.coding_job_queue
@@ -683,16 +683,16 @@ class MainGUI():
                 # might happen if recording already removed
                 return
             rec = globals.recordings[rec_id]
-
+            
+            del globals.jobs[rec_id]
             match state:
                 case ProcessState.Canceled:
-                    # just remove job
-                    del globals.jobs[rec_id]
+                    # just remove job, so no-op here
+                    pass
                 case ProcessState.Completed:
                     # update recording state
                     rec.task = job.task
                     async_thread.run(db.update_recording(rec, "task"))
-                    del globals.jobs[rec_id]
                     # start next step, if wanted
                     if job.should_chain_next:
                         task = None
@@ -715,12 +715,16 @@ class MainGUI():
                     if isinstance(exc, concurrent.futures.TimeoutError):
                         utils.push_popup(msgbox.msgbox, "Processing error", f"A worker process has failed for recording '{rec.name}' (work item {job_id}):\n{type(exc).__name__}: {str(exc) or 'No further details'}\n\nPossible causes include:\n - You are running with too many workers, try lowering them in settings", MsgBox.warn, more=tb)
                         return
-                    utils.push_popup(msgbox.msgbox, "Oops!", f"Something went wrong in a worker process for recording '{rec.name}' (work item {job_id}):\n\n{tb}", MsgBox.error)
-                    del globals.jobs[rec_id]
+                    utils.push_popup(msgbox.msgbox, "Processing error", f"Something went wrong in a worker process for recording '{rec.name}' (work item {job_id}):\n\n{tb}", MsgBox.error)
 
-            # special case: remove working directory again if an import task was canceled or failed
-            if job.task==Task.Imported and state in [ProcessState.Canceled, ProcessState.Failed]:
-                async_thread.run(callbacks.remove_recording_working_dir(rec))
+            # clean up when a task failed or was canceled
+            if state in [ProcessState.Canceled, ProcessState.Failed]:
+                if job.task==Task.Imported:
+                    # remove working directory if this was an import task
+                    async_thread.run(callbacks.remove_recording_working_dir(rec))
+                else:
+                    # reset status of this aborted task
+                    update_recording_status(globals.project_path/rec.proc_directory_name, job.task, Status.Not_Started)
 
             # special case: the ended task was a coding task, we have further coding tasks to enqueue, and there are none currently enqueued
             if job.task==Task.Coded and globals.coding_job_queue and not any((globals.jobs[j].task==Task.Coded for j in globals.jobs)):
