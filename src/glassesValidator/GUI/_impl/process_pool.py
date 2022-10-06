@@ -71,6 +71,9 @@ class ProcessWaiter(object):
         if done_callback:
             done_callback(future, id, state)
 
+        # clean up the work item since we're done with it
+        del _work_items[id]
+
 def run(fn: typing.Callable, *args, **kwargs):
     global _pool
     global _work_items
@@ -111,10 +114,6 @@ def get_job_state(id: int):
         return None
     else:
         return _get_status_from_future(fut)
-
-def clear_job_state(id: int):
-    if id in _work_items:
-        del _work_items[id]
 
 def cancel_job(id: int):
     if (future := _work_items.get(id, None)) is None:
