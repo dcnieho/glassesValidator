@@ -89,7 +89,6 @@ def run(fn: typing.Callable, *args, **kwargs):
         
     with _work_id_provider:
         work_id = _work_id_provider.get_count()
-        # route function execution through _work_bootstrapper() so that we get a notification that the work item is started to be processed once a worker takes it up
         _work_items[work_id] = _pool.submit(fn, None, *args, **kwargs)
         _work_items[work_id]._waiters.append(ProcessWaiter())
         return work_id
