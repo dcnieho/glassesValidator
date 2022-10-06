@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import warnings
 
-from .. import config, utils
+from .. import utils
 
 
 def process(inputDir, configDir=None):
@@ -17,9 +17,6 @@ def process(inputDir, configDir=None):
 
     print('processing: {}'.format(inputDir.name))
     utils.update_recording_status(inputDir, utils.Task.Data_Quality_Calculated, utils.Status.Running)
-    
-    # open file with information about Aruco marker and Gaze target locations
-    validationSetup = config.getValidationSetup(configDir)
 
     # get time intervals to use for each target
     fileName = inputDir / "analysisInterval.tsv"
