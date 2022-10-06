@@ -504,7 +504,8 @@ class RecordingTable():
                 self.draw_recording_process_button(imported_ids, label="󰼛 Code validation intervals", selectable=True, action=Task.Coded)
                 # after stage 2 / during stage 3
                 coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Coded]
-                self.draw_recording_process_button(coded_ids, label="󰼛 Calculate data quality", selectable=True, action=Task.Markers_Detected)
+                # NB: don't send action, so that callback code figures out where we we lft off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
+                self.draw_recording_process_button(coded_ids, label="󰼛 Calculate data quality", selectable=True, should_chain_next=True)
             if any(has_job):
                 self.draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label="󱠮 Cancel job", selectable=True)
 
@@ -521,7 +522,7 @@ class RecordingTable():
             self.draw_recording_open_folder_button(ids, label="󰷏 Open Folder", selectable=True, source_dir=True)
         self.draw_recording_remove_button(ids, label="󰩺 Remove", selectable=True)
 
-    def draw_recording_process_button(self, ids: list[int], label="", selectable=False, action = None, *args, **kwargs):
+    def draw_recording_process_button(self, ids: list[int], label="", selectable=False, action = None, should_chain_next = False, *args, **kwargs):
         if not ids:
             return False
 
@@ -531,7 +532,7 @@ class RecordingTable():
         else:
             clicked = imgui.button(id, *args, **kwargs)
         if clicked:
-            async_thread.run(callbacks.process_recordings(ids, task=action, chain=action==Task.Markers_Detected))
+            async_thread.run(callbacks.process_recordings(ids, task=action, chain=should_chain_next))
         return clicked
 
     def draw_recording_process_cancel_button(self, ids: list[int], label="", selectable=False, *args, **kwargs):
@@ -695,7 +696,6 @@ class MainGUI():
                     async_thread.run(db.update_recording(rec, "task"))
                     # start next step, if wanted
                     if job.should_chain_next:
-                        task = None
                         match job.task:
                             case Task.Coded:
                                 task = Task.Markers_Detected
@@ -707,6 +707,8 @@ class MainGUI():
                                 task = Task.Fixation_Intervals_Determined
                             case Task.Fixation_Intervals_Determined:
                                 task = Task.Data_Quality_Calculated
+                            case _: # this includes when fully done (job.task==Task.Data_Quality_Calculated)
+                                task = None
                         if task:
                             async_thread.run(callbacks.process_recordings([rec_id], task=task, chain=True))
                 case ProcessState.Failed:
