@@ -56,7 +56,7 @@ class FilterMode(AutoName):
     Choose      = auto()
     Eye_Tracker = auto()
     Task_State  = auto()
-filter_mode_names = [getattr(FilterMode,x).value for x in FilterMode.__members__]
+filter_mode_names = [x.value for x in FilterMode]
 
 # summary version of task state, for client presentation
 class TaskSimplified(AutoName):
@@ -65,7 +65,7 @@ class TaskSimplified(AutoName):
     Coded           = auto()
     Processed       = auto()
     Unknown         = auto()
-simplified_task_names = [getattr(TaskSimplified,x).value for x in TaskSimplified.__members__]
+simplified_task_names = [x.value for x in TaskSimplified]
 
 def get_simplified_task_state(task: Task):
     match task:

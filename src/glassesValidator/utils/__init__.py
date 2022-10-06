@@ -70,7 +70,7 @@ class EyeTracker(AutoName):
     Tobii_Glasses_2 = auto()
     Tobii_Glasses_3 = auto()
     Unknown         = auto()
-eye_tracker_names = [getattr(EyeTracker,x).value for x in EyeTracker.__members__ if x!='Unknown']
+eye_tracker_names = [x.value for x in EyeTracker if x!=EyeTracker.Unknown]
 
 EyeTracker.Pupil_Core     .color = hex_to_rgba_0_1("#E6194B")
 EyeTracker.Pupil_Invisible.color = hex_to_rgba_0_1("#3CB44B")
@@ -130,15 +130,15 @@ def get_task_name_friendly(name: str | Task):
             return 'Calculate Data Quality'
     return '' # 'Not_Imported', 'Unknown'
 
-task_names = [getattr(Task,x).value for x in Task.__members__]
-task_names_friendly = [get_task_name_friendly(x) for x in Task.__members__]   # non verb version
+task_names = [x.value for x in Task]
+task_names_friendly = [get_task_name_friendly(x) for x in Task]   # non verb version
 
 class Status(AutoName):
     Not_Started     = auto()
     Running         = auto()
     Finished        = auto()
     Errored         = auto()
-status_names = [getattr(Task,x).value for x in Task.__members__]
+status_names = [x.value for x in Status]
 
 
 _status_file = 'glassesValidator.recording'
