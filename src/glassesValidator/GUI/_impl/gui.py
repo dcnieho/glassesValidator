@@ -720,7 +720,7 @@ class MainGUI():
 
             # special case: remove working directory again if an import task was canceled or failed
             if job.task==Task.Imported and state in [ProcessState.Canceled, ProcessState.Failed]:
-                pass#async_thread.run(callbacks.remove_recording_working_dir(rec))
+                async_thread.run(callbacks.remove_recording_working_dir(rec))
 
             # special case: the ended task was a coding task, we have further coding tasks to enqueue, and there are none currently enqueued
             if job.task==Task.Coded and globals.coding_job_queue and not any((globals.jobs[j].task==Task.Coded for j in globals.jobs)):

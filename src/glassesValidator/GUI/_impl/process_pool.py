@@ -51,24 +51,25 @@ def cleanup():
     _work_items = None
     _work_id_provider = None
 
-def _process_done_hook(future: pebble.ProcessFuture):
-    id = None
-    if _work_items is not None and future in _work_items.values():
-        id = list(_work_items.keys())[list(_work_items.values()).index(future)]
+class ProcessWaiter(object):
+    """Routes completion through to  user callback."""
+    def add_result(self, future):
+        self._notify(future, ProcessState.Completed)
 
-    try:
-        exc = future.exception()
-    except concurrent.futures.CancelledError:
-        state = ProcessState.Canceled
-    else:
-        if exc:
-            state = ProcessState.Failed
-        else:
-            state = ProcessState.Completed
+    def add_exception(self, future):
+        self._notify(future, ProcessState.Failed)
 
-    # execute user callback, if any
-    if done_callback:
-        done_callback(future, id, state)
+    def add_cancelled(self, future):
+        self._notify(future, ProcessState.Canceled)
+
+    def _notify(self, future, state: ProcessState):
+        id = None
+        if _work_items is not None and future in _work_items.values():
+            id = list(_work_items.keys())[list(_work_items.values()).index(future)]
+
+        # execute user callback, if any
+        if done_callback:
+            done_callback(future, id, state)
 
 def run(fn: typing.Callable, *args, **kwargs):
     global _pool
@@ -87,7 +88,7 @@ def run(fn: typing.Callable, *args, **kwargs):
         work_id = _work_id_provider.get_count()
         # route function execution through _work_bootstrapper() so that we get a notification that the work item is started to be processed once a worker takes it up
         _work_items[work_id] = _pool.submit(fn, None, *args, **kwargs)
-        _work_items[work_id].add_done_callback(_process_done_hook)
+        _work_items[work_id]._waiters.append(ProcessWaiter())
         return work_id
 
 def _get_status_from_future(fut: pebble.ProcessFuture):
