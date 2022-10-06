@@ -32,11 +32,11 @@ def process(inputDir, configDir=None):
         return
     offset = pd.read_csv(str(fileName), delimiter='\t',index_col=['marker_interval','timestamp','type','target'])
     # change type index into enum
-    offset.index = offset.index.set_levels(pd.CategoricalIndex([getattr(DataQualityType,x) for x in offset.index.levels[offset.index.names.index('type')]]),level='type')
+    typeIdx = offset.index.names.index('type')
+    offset.index = offset.index.set_levels(pd.CategoricalIndex([getattr(DataQualityType,x) for x in offset.index.levels[typeIdx]]),level='type')
 
     # check what we have to process
-    typeIdx = np.argwhere([x=='type' for x in offset.index.names]).flatten()
-    todo = [x for x in DataQualityType if x in offset.index.levels[typeIdx[0]]]
+    todo = [x for x in DataQualityType if x in offset.index.levels[typeIdx]]
     if (DataQualityType.pose_left_eye in todo) and (DataQualityType.pose_right_eye in todo):
         todo.append(DataQualityType.pose_left_right_avg)
         
