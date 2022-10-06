@@ -10,6 +10,7 @@ from .. import config, utils
 
 
 def process(inputDir, configDir=None):
+    from . import DataQualityType
     inputDir  = pathlib.Path(inputDir)
     if configDir is not None:
         configDir = pathlib.Path(configDir)
@@ -33,13 +34,14 @@ def process(inputDir, configDir=None):
         print('  no gaze offsets precomputed defined for this recording, skipping')
         return
     offset = pd.read_csv(str(fileName), delimiter='\t',index_col=['marker_interval','timestamp','type','target'])
+    # change type index into enum
+    offset.index = offset.index.set_levels(pd.CategoricalIndex([getattr(DataQualityType,x) for x in offset.index.levels[offset.index.names.index('type')]]),level='type')
 
     # check what we have to process
     typeIdx = np.argwhere([x=='type' for x in offset.index.names]).flatten()
-    todo = []
-    [todo.append(x) for x in ('pose_vidpos_homography','viewDist_vidpos_homography','pose_vidpos_ray','pose_left_eye','pose_right_eye') if x in offset.index.levels[typeIdx[0]]]
-    if ('pose_left_eye' in todo) and ('pose_right_eye' in todo):
-        todo.append('pose_left_right_avg')
+    todo = [x for x in DataQualityType if x in offset.index.levels[typeIdx[0]]]
+    if (DataQualityType.pose_left_eye in todo) and (DataQualityType.pose_right_eye in todo):
+        todo.append(DataQualityType.pose_left_right_avg)
         
     # prep output data frame
     idx  = []
@@ -47,7 +49,7 @@ def process(inputDir, configDir=None):
     for e in todo:
         idx.append(np.vstack((idxs[:,0],idxs.shape[0]*[e],idxs[:,1])).T)
     idx = pd.DataFrame(np.vstack(tuple(idx)),columns=[analysisIntervals.index.names[0],'type',analysisIntervals.index.names[1]])
-    df  = pd.DataFrame(index=pd.MultiIndex.from_frame(idx.astype({analysisIntervals.index.names[0]: 'int64','type': 'string', analysisIntervals.index.names[1]: 'int64'})))
+    df  = pd.DataFrame(index=pd.MultiIndex.from_frame(idx.astype({analysisIntervals.index.names[0]: 'int64','type': 'category', analysisIntervals.index.names[1]: 'int64'})))
     idx = pd.IndexSlice
     ts  = offset.index.get_level_values('timestamp')
     with warnings.catch_warnings():
@@ -67,11 +69,11 @@ def process(inputDir, configDir=None):
 
                 # per type (e.g. eye, using pose or viewing distance)
                 for e in todo:
-                    if e=='pose_left_right_avg':
+                    if e==DataQualityType.pose_left_right_avg:
                         # binocular average
-                        data = offset.loc[idx[i,qData,['pose_left_eye','pose_right_eye'],t],:].mean(level=['marker_interval','timestamp','target'],skipna=True)
+                        data = offset.loc[idx[i,qData,[DataQualityType.pose_left_eye,DataQualityType.pose_right_eye],t],:].mean(level=['marker_interval','timestamp','target'],skipna=True)
                     else:
-                        data = offset.loc[idx[i,qData,                e                 ,t],:]
+                        data = offset.loc[idx[i,qData,                                e                             ,t],:]
                     
                     df.loc[(i,e,t),'acc_x'] = np.nanmean(data['offset_x'])
                     df.loc[(i,e,t),'acc_y'] = np.nanmean(data['offset_y'])

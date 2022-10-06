@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import pathlib
+from enum import Enum, auto
 
 from .b_codeMarkerInterval import process as codeMarkerInterval
 from .c_detectMarkers import process as detectMarkers
@@ -20,6 +21,20 @@ def do_process(folder: str | pathlib.Path, config_dir=None):
     computeOffsetsToTargets(folder, config_dir)
     determineFixationIntervals(folder, config_dir)
     calculateDataQuality(folder, config_dir)
+
+
+# NB: using pose information requires a calibrated scene camera
+class DataQualityType(Enum):
+    viewDist_vidpos_homography  = auto()    # use homography to map gaze from video to marker board, and viewing distance defined in config to compute angular measures
+    pose_vidpos_homography      = auto()    # use homography to map gaze from video to marker board, and pose information w.r.t. marker board to compute angular measures
+    pose_vidpos_ray             = auto()    # use camera calibration to map gaze postion in scene video to cyclopean gaze vector, and pose information w.r.t. marker board to compute angular measures
+    pose_left_eye               = auto()    # use provided left eye gaze vector, and pose information w.r.t. marker board to compute angular measures
+    pose_right_eye              = auto()    # use provided right eye gaze vector, and pose information w.r.t. marker board to compute angular measures
+    pose_left_right_avg         = auto()    # report average of left (pose_left_eye) and right (pose_right_eye) eye angular values
+    
+    # so this get serialized in a user-friendly way by pandas..
+    def __str__(self):
+        return self.name
 
 
 __all__ = ['codeMarkerInterval','detectMarkers','gazeToBoard',

@@ -12,6 +12,7 @@ from .. import utils
 
 
 def process(inputDir, configDir=None):
+    from . import DataQualityType
     inputDir  = pathlib.Path(inputDir)
     if configDir is not None:
         configDir = pathlib.Path(configDir)
@@ -115,7 +116,7 @@ def process(inputDir, configDir=None):
         df                      = pd.DataFrame()
         df['timestamp']         = ts[dat[:,1],0]
         df['marker_interval']   = ival+1
-        map                     = ['pose_left_eye','pose_right_eye','pose_vidpos_ray','pose_vidpos_homography','viewDist_vidpos_homography']
+        map                     = [DataQualityType.pose_left_eye,DataQualityType.pose_right_eye,DataQualityType.pose_vidpos_ray,DataQualityType.pose_vidpos_homography,DataQualityType.viewDist_vidpos_homography]
         df['type']              = [map[e] for e in dat[:,0]]
         df['target']            = dat[:,2]
         df                      = pd.concat([df, pd.DataFrame(np.reshape(offset,(-1,2)),columns=['offset_x','offset_y'])],axis=1)
