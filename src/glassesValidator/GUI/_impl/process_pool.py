@@ -1,7 +1,6 @@
 import pebble
 import multiprocessing
 import typing
-import concurrent.futures
 
 
 if __name__ in ["__main__","__mp_main__"]:
@@ -52,7 +51,7 @@ def cleanup():
     _work_id_provider = None
 
 class ProcessWaiter(object):
-    """Routes completion through to  user callback."""
+    """Routes completion through to user callback."""
     def add_result(self, future):
         self._notify(future, ProcessState.Completed)
 
@@ -73,6 +72,13 @@ class ProcessWaiter(object):
 
         # clean up the work item since we're done with it
         del _work_items[id]
+
+        # stop pool if no work left so we don't keep hogging resources
+        # and no lingering Python processes show up in the taskbar of
+        # MacOS users (sic). Should also help clean restarts when GUI
+        # ran multiple times in a single session
+        if not _work_items:
+            cleanup()
 
 def run(fn: typing.Callable, *args, **kwargs):
     global _pool
