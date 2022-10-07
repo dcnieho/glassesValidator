@@ -42,4 +42,7 @@ def run(project: str | pathlib.Path = None):
         if not should_restart:
             break
 
+    # cleanup
+    async_thread.cleanup()
+
 

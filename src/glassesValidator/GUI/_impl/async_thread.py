@@ -14,12 +14,25 @@ def setup():
 
     loop = asyncio.new_event_loop()
 
-    def run_loop():
+    def run_loop(loop: asyncio.AbstractEventLoop):
         asyncio.set_event_loop(loop)
-        loop.run_forever()
+        try:
+            loop.run_forever()
+        finally:
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
 
-    thread = threading.Thread(target=run_loop, daemon=True)
+    thread = threading.Thread(target=run_loop, args=(loop,), daemon=True)
     thread.start()
+
+def cleanup():
+    global loop, thread
+    if loop:
+        loop.call_soon_threadsafe(loop.stop)
+        loop = None
+    if thread:
+        thread.join()
+        thread = None
 
 
 def run(coroutine: typing.Coroutine):
