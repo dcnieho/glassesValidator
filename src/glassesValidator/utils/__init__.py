@@ -92,7 +92,7 @@ def type_string_to_enum(device: str):
         else:
             raise ValueError(f"The string '{device}' is not a known eye tracker type. Known types: {[e.value for e in EyeTracker]}")
     else:
-        raise ValueError(f"The variable '{device}' should be a string with one of the following values: {[e.value for e in EyeTracker]}")
+        raise ValueError(f"The variable 'device' should be a string with one of the following values: {[e.value for e in EyeTracker]}")
 
 
 # this is a bit of a mix of a list of the various tasks, and a status-keeper so we know where we are in the process.
