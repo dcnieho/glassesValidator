@@ -156,7 +156,7 @@ def process(inputDir, configDir=None, showReference=False):
                 cv2.putText(frame,("S: seek to start of next interval, shift+S seek to start of previous interval"), (0,205), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
                 cv2.putText(frame,("E: seek to end of next interval, shift+E seek to end of previous interval"), (0,235), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
                 cv2.putText(frame,("N/Q: quit"), (0,265), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
-                cv2.putText(frame,("I: toggle help"), (0,265), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
+                cv2.putText(frame,("I: toggle help"), (0,295), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
             
             if frame is not None:
                 cv2.imshow("code validation intervals", frame)
