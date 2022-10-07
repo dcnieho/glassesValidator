@@ -848,7 +848,6 @@ class MainGUI():
 
     def style_imgui_functions(self):
         # Custom checkbox style
-        imgui._checkbox = imgui.checkbox
         def checkbox(label: str, state: bool, frame_size=None, do_vertical_align=True):
             if state:
                 imgui.push_style_color(imgui.COLOR_FRAME_BACKGROUND_HOVERED, *imgui.style.colors[imgui.COLOR_BUTTON_HOVERED])
@@ -870,14 +869,17 @@ class MainGUI():
             if state:
                 imgui.pop_style_color(3)
             return result
+        if not hasattr(imgui,'_checkbox'):
+            imgui._checkbox = imgui.checkbox
         imgui.checkbox = checkbox
         # Custom combo style
-        imgui._combo = imgui.combo
         def combo(*args, **kwargs):
             imgui.push_style_color(imgui.COLOR_BUTTON, *imgui.style.colors[imgui.COLOR_BUTTON_HOVERED])
             result = imgui._combo(*args, **kwargs)
             imgui.pop_style_color()
             return result
+        if not hasattr(imgui,'_combo'):
+            imgui._combo = imgui.combo
         imgui.combo = combo
 
     def refresh_styles(self):
