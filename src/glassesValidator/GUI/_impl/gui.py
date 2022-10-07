@@ -739,11 +739,6 @@ class MainGUI():
         self.load_interface()
 
     def init_imgui_glfw(self, is_reload = False):
-        # tear down current context
-        if is_reload and (ctx := imgui.get_current_context()) is not None:
-            imgui.io.ini_file_name = None   # don't store settings to ini, we already did that manually and with augmentation
-            imgui.destroy_context(ctx)
-
         # Setup ImGui
         size, pos, is_default = self.setup_imgui()
 
@@ -1277,6 +1272,9 @@ class MainGUI():
         # clean up
         self.save_imgui_ini()
         self.impl.shutdown()
+        if (ctx := imgui.get_current_context()) is not None:
+            imgui.io.ini_file_name = None   # don't store settings to ini, we already did that manually just above and with augmentation
+            imgui.destroy_context(ctx)
         glfw.terminate()
         if globals.jobs:
             process_pool.cancel_all_jobs()
