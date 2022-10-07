@@ -1276,11 +1276,11 @@ class MainGUI():
             imgui.io.ini_file_name = None   # don't store settings to ini, we already did that manually just above and with augmentation
             imgui.destroy_context(ctx)
         glfw.terminate()
+        globals.coding_job_queue = None # this one we can just clear as its not enqueued on the job queue, no cancellation will be issued
         if globals.jobs:
             process_pool.cancel_all_jobs()
         # NB: we do not do globals.jobs = None because cancellation notifications may well arrive after we have exited this main_loop()
         # it seems not possible to wait in a simple loop like 'while globals.jobs' with a time.sleep as that blocks receiving the callback
-        globals.coding_job_queue = None # this one we can just clear as its not enqueued on the job queue, no cancellation will be issued
         db.shutdown()
 
         if self.project_to_load is not None:
