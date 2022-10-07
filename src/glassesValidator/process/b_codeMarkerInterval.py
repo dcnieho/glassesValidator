@@ -253,6 +253,7 @@ def process(inputDir, configDir=None, showReference=False):
         
     player.close_player()
     cv2.destroyAllWindows()
+    cv2.waitKey(1)
 
     # store coded interval to file, if available
     with open(inputDir / 'markerInterval.tsv', 'w', newline='') as file:
