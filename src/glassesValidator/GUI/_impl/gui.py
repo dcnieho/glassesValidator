@@ -1724,6 +1724,8 @@ class MainGUI():
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󱂀 Deploy config", width=btn_width):
                 async_thread.run(callbacks.deploy_config(globals.project_path, globals.settings.config_dir))
+            if imgui.is_item_hovered():
+                draw_tooltip(f"Deploys a default glassesValidator to the '{globals.settings.config_dir}' folder in the open project. You can edit this configuration, which you may need to do, e.g., in case you used a different viewing distance, or different marker or gaze target layout.")
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󰮞 Close project", width=btn_width):
                 self.unload_project()
