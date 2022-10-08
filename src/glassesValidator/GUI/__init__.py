@@ -22,7 +22,7 @@ def run(project: str | pathlib.Path = None):
             pass
 
     if project is not None:
-        from ._impl import globals, utils
+        from ._impl import utils
         if not utils.is_project_folder(project):
             raise ValueError(f'Project opening error: The selected folder ({project}) is not a project folder. Cannot open.')
         globals.project_path = pathlib.Path(project)
