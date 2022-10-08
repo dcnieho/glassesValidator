@@ -38,6 +38,9 @@ def process(inputDir, configDir=None):
     # get info about markers on our board
     reference = utils.Reference(configDir, validationSetup)
     targets = {ID: reference.targets[ID].center for ID in reference.targets}   # get centers of targets
+
+    # get types of data quality to compute
+    dq_types = [DataQualityType.viewdist_vidpos_homography,DataQualityType.pose_vidpos_homography,DataQualityType.pose_vidpos_ray,DataQualityType.pose_left_eye,DataQualityType.pose_right_eye]
     
     # for each frame during analysis interval, determine offset
     # (angle) of gaze (each eye) to each of the targets
@@ -56,7 +59,7 @@ def process(inputDir, configDir=None):
         gaze3DHomography= np.vstack([s.gaze3DHomography for v in gazeWorldToAnal.values() for s in v])
         gaze2DHomography= np.vstack([s.gaze2DHomography for v in gazeWorldToAnal.values() for s in v])
 
-        offset = np.empty((oriLeft.shape[0],5,len(targets),2))
+        offset = np.empty((oriLeft.shape[0],len(dq_types),len(targets),2))
         offset[:] = np.nan
 
         for s in range(oriLeft.shape[0]):
@@ -66,30 +69,32 @@ def process(inputDir, configDir=None):
             RtBoard = np.hstack((RBoard, poses[frameIdxs[s]].tVec.reshape(3,1)))
 
             # all based on pose info
-            for e in range(5):
-                if e==0:
-                    ori         = oriLeft[s,:]
-                    gaze        = gaze3DLeft[s,:]
-                    gazeBoard   = gaze2DLeft[s,:]
-                elif e==1:
-                    ori         = oriRight[s,:]
-                    gaze        = gaze3DRight[s,:]
-                    gazeBoard   = gaze2DRight[s,:]
-                elif e==2:
-                    # from camera perspective, using 3D gaze point ray
-                    ori         = np.zeros(3)
-                    gaze        = gaze3DRay[s,:]
-                    gazeBoard   = gaze2DRay[s,:]
-                elif e in [3, 4]:
-                    # from camera perspective, using homography
-                    # 3: using pose info
-                    # 4: using assumed viewing distance
-                    ori         = np.zeros(3)
-                    gaze        = gaze3DHomography[s,:]
-                    gazeBoard   = gaze2DHomography[s,:]
+            for e in range(len(dq_types)):
+                match dq_types[e]:
+                    case DataQualityType.viewdist_vidpos_homography | DataQualityType.pose_vidpos_homography:
+                        # from camera perspective, using homography
+                        # 3: using pose info
+                        # 4: using assumed viewing distance
+                        ori         = np.zeros(3)
+                        gaze        = gaze3DHomography[s,:]
+                        gazeBoard   = gaze2DHomography[s,:]
+                    case DataQualityType.pose_vidpos_ray:
+                        # from camera perspective, using 3D gaze point ray
+                        ori         = np.zeros(3)
+                        gaze        = gaze3DRay[s,:]
+                        gazeBoard   = gaze2DRay[s,:]
+                    case DataQualityType.pose_left_eye:
+                        ori         = oriLeft[s,:]
+                        gaze        = gaze3DLeft[s,:]
+                        gazeBoard   = gaze2DLeft[s,:]
+                    case DataQualityType.pose_right_eye:
+                        ori         = oriRight[s,:]
+                        gaze        = gaze3DRight[s,:]
+                        gazeBoard   = gaze2DRight[s,:]
+                    
 
                 for ti,t in enumerate(targets):
-                    if e==4:
+                    if dq_types[e]==DataQualityType.viewdist_vidpos_homography:
                         # get vectors based on assumed viewing distance (from config), without using pose info
                         distMm  = validationSetup['distance']*10.
                         vGaze   = np.array([gazeBoard[0] , gazeBoard[1] , distMm])
@@ -116,8 +121,7 @@ def process(inputDir, configDir=None):
         df                      = pd.DataFrame()
         df['timestamp']         = ts[dat[:,1],0]
         df['marker_interval']   = ival+1
-        map                     = [DataQualityType.pose_left_eye,DataQualityType.pose_right_eye,DataQualityType.pose_vidpos_ray,DataQualityType.pose_vidpos_homography,DataQualityType.viewDist_vidpos_homography]
-        df['type']              = [map[e] for e in dat[:,0]]
+        df['type']              = [dq_types[e] for e in dat[:,0]]
         df['target']            = dat[:,2]
         df                      = pd.concat([df, pd.DataFrame(np.reshape(offset,(-1,2)),columns=['offset_x','offset_y'])],axis=1)
         df                      = df.dropna(axis=0, subset=['offset_x','offset_y'])  # drop any missing data

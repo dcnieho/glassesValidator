@@ -25,7 +25,7 @@ def do_process(folder: str | pathlib.Path, config_dir=None):
 
 # NB: using pose information requires a calibrated scene camera
 class DataQualityType(Enum):
-    viewDist_vidpos_homography  = auto()    # use homography to map gaze from video to marker board, and viewing distance defined in config to compute angular measures
+    viewdist_vidpos_homography  = auto()    # use homography to map gaze from video to marker board, and viewing distance defined in config to compute angular measures
     pose_vidpos_homography      = auto()    # use homography to map gaze from video to marker board, and pose information w.r.t. marker board to compute angular measures
     pose_vidpos_ray             = auto()    # use camera calibration to map gaze postion in scene video to cyclopean gaze vector, and pose information w.r.t. marker board to compute angular measures
     pose_left_eye               = auto()    # use provided left eye gaze vector, and pose information w.r.t. marker board to compute angular measures

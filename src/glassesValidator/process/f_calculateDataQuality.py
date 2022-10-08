@@ -48,9 +48,9 @@ def process(inputDir, configDir=None, dq_types=[]):
             dq_types.append(DataQualityType.pose_vidpos_homography)
         else:
             # else we're down to falling back on an assumed viewing distance
-            if not DataQualityType.viewDist_vidpos_homography in dq_have:
-                raise RuntimeError(f'Even data quality type {DataQualityType.viewDist_vidpos_homography} could not be used, bare minimum failed for some weird reason')
-            dq_types.append(DataQualityType.viewDist_vidpos_homography)
+            if not DataQualityType.viewdist_vidpos_homography in dq_have:
+                raise RuntimeError(f'Even data quality type {DataQualityType.viewdist_vidpos_homography} could not be used, bare minimum failed for some weird reason')
+            dq_types.append(DataQualityType.viewdist_vidpos_homography)
     else:
         if not isinstance(dq_types,list):
             dq_types = [dq_types]
