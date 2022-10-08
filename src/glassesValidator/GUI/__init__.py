@@ -32,8 +32,6 @@ def run(project: str | pathlib.Path = None):
     globals.gui = gui.MainGUI()
     
     while True:
-        process_pool.setup()
-
         # returns true if a new main_loop is needed, or false if all done
         should_restart = globals.gui.main_loop()
 

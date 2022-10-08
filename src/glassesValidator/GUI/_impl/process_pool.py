@@ -20,24 +20,15 @@ else:
 
 done_callback: typing.Callable = None
 
+# NB: pool is only started in run() once needed
 _pool: pebble.pool.process.ProcessPool = None
 _work_items: dict[int,pebble.ProcessFuture] = None
-_work_id_provider: CounterContext = None
+_work_id_provider: CounterContext = CounterContext()
 
-
-def setup():
-    global _work_items
-    global _work_id_provider
-
-    _work_items = {}
-    _work_id_provider = CounterContext()
-
-    # NB: pool is only started in run() once needed
 
 def cleanup():
     global _pool
     global _work_items
-    global _work_id_provider
 
     # cancel all pending and running jobs
     cancel_all_jobs()
@@ -48,7 +39,10 @@ def cleanup():
         _pool.join()
     _pool = None
     _work_items = None
-    _work_id_provider = None
+
+def cleanup_if_no_work():
+    if _pool and not _work_items:
+        cleanup()
 
 class ProcessWaiter(object):
     """Routes completion through to user callback."""
@@ -66,19 +60,12 @@ class ProcessWaiter(object):
         if _work_items is not None and future in _work_items.values():
             id = list(_work_items.keys())[list(_work_items.values()).index(future)]
 
-        # execute user callback, if any
-        if done_callback:
-            done_callback(future, id, state)
-
         # clean up the work item since we're done with it
         del _work_items[id]
 
-        # stop pool if no work left so we don't keep hogging resources
-        # and no lingering Python processes show up in the taskbar of
-        # MacOS users (sic). Should also help clean restarts when GUI
-        # ran multiple times in a single session
-        if not _work_items:
-            cleanup()
+        # execute user callback, if any
+        if done_callback:
+            done_callback(future, id, state)
 
 def run(fn: typing.Callable, *args, **kwargs):
     global _pool
@@ -92,6 +79,9 @@ def run(fn: typing.Callable, *args, **kwargs):
         else:
             max_workers = globals.settings.process_workers
         _pool = pebble.ProcessPool(max_workers=max_workers, context=context)
+
+    if _work_items is None:
+        _work_items = {}
         
     with _work_id_provider:
         work_id = _work_id_provider.get_count()
@@ -114,6 +104,8 @@ def _get_status_from_future(fut: pebble.ProcessFuture):
 
 
 def get_job_state(id: int):
+    if not _work_items:
+        return None
     fut = _work_items.get(id, None)
     if fut is None:
         return None
@@ -121,12 +113,16 @@ def get_job_state(id: int):
         return _get_status_from_future(fut)
 
 def cancel_job(id: int):
+    if not _work_items:
+        return False
     if (future := _work_items.get(id, None)) is None:
         return False
     
     return future.cancel()
 
 def cancel_all_jobs():
+    if not _work_items:
+        return
     for id in reversed(_work_items):    # reversed so that later pending jobs don't start executing when earlier gets cancelled, only to be canceled directly after
         if not _work_items[id].done():
             _work_items[id].cancel()
