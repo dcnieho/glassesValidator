@@ -1732,18 +1732,19 @@ class MainGUI():
                 
             # continue table
             self.start_settings_section("Project", right_width, collapsible = False)
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.align_text_to_frame_padding()
-            imgui.text("Show advanced options:")
-            imgui.table_next_column()
-            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###show_advanced_options", set.show_advanced_options)
-            if changed:
-                set.show_advanced_options = value
-                async_thread.run(db.update_settings("show_advanced_options"))
+            if not set.show_advanced_options:
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
+                imgui.text("Show advanced options:")
+                imgui.table_next_column()
+                imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                changed, value = imgui.checkbox("###show_advanced_options", set.show_advanced_options)
+                if changed:
+                    set.show_advanced_options = value
+                    async_thread.run(db.update_settings("show_advanced_options"))
 
-            if set.show_advanced_options:
+            else:
                 imgui.table_next_row()
                 imgui.table_next_column()
                 imgui.align_text_to_frame_padding()
@@ -1809,6 +1810,17 @@ class MainGUI():
             imgui.spacing()
 
         if set.show_advanced_options and self.start_settings_section("Interface", right_width):
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
+            imgui.text("Show advanced options:")
+            imgui.table_next_column()
+            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+            changed, value = imgui.checkbox("###show_advanced_options", set.show_advanced_options)
+            if changed:
+                set.show_advanced_options = value
+                async_thread.run(db.update_settings("show_advanced_options"))
+
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
