@@ -506,6 +506,9 @@ class RecordingTable():
                 coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Coded]
                 # NB: don't send action, so that callback code figures out where we we lft off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
                 self.draw_recording_process_button(coded_ids, label="󰼛 Calculate data quality", selectable=True, should_chain_next=True)
+                # already fully done, recompute
+                coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Processed]
+                self.draw_recording_process_button(coded_ids, label="󰼛 Recalculate data quality", selectable=True, action=Task.Data_Quality_Calculated)
             if any(has_job):
                 self.draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label="󱠮 Cancel job", selectable=True)
 
@@ -1620,6 +1623,12 @@ class MainGUI():
                     # NB: don't send action, so that callback code figures out where we we lft off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
                     action.append(lambda: async_thread.run(callbacks.process_recordings(coded_ids, chain=True)))
                     hover_text.append("Run processing to determine data quality for the selected recordings.")
+                # already fully done, recompute
+                coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
+                if coded_ids:
+                    text.append("󰼛 Recalculate data quality")
+                    action.append(lambda: async_thread.run(callbacks.process_recordings(coded_ids, task=Task.Data_Quality_Calculated)))
+                    hover_text.append("Re-run processing to determine data quality for the selected recordings. Use e.g. if you selected another type of data quality to be coputed in the advanced settings.")
             if any(has_job):
                 text.append("󱠮 Cancel selected jobs")
                 action.append(lambda: async_thread.run(callbacks.cancel_processing_recordings([id for id,q in zip(ids,has_job) if q])))
