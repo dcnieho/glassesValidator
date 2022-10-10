@@ -714,7 +714,7 @@ class MainGUI():
                             case _: # this includes when fully done (job.task==Task.Data_Quality_Calculated)
                                 task = None
                         if task:
-                            async_thread.run(callbacks.process_recordings([rec_id], task=task, chain=True))
+                            async_thread.run(callbacks.process_recording(rec_id, task=task, chain=True))
                 case ProcessState.Failed:
                     exc = future.exception()    # should not throw exception since CancelledError is already encoded in state and future is done
                     tb = utils.get_traceback(type(exc), exc, exc.__traceback__)
