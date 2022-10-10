@@ -162,15 +162,15 @@ def copySMIRecordings(inputDir, outputDir, recInfo):
     
     # Copy relevent files to new directory
     file = recInfo.name + '-export.avi'
-    shutil.copyfile(str(inputDir / file), str(outputDir / 'worldCamera.avi'))
 
     # if ffmpeg is on path, remux avi to mp4 (reencode audio from flac to aac as flac is not supported in mp4)
+    # else just copy
     if shutil.which('ffmpeg') is not None:
         # make mp4
-        cmd_str = ' '.join(['ffmpeg', '-y', '-i', '"'+str(outputDir / 'worldCamera.avi')+'"', '-vcodec', 'copy', '-acodec', 'aac', '"'+str(outputDir / 'worldCamera.mp4')+'"'])
+        cmd_str = ' '.join(['ffmpeg', '-y', '-i', '"'+str(inputDir / file)+'"', '-vcodec', 'copy', '-acodec', 'aac', '"'+str(outputDir / 'worldCamera.mp4')+'"'])
         os.system(cmd_str)
-        # clean up
-        (outputDir / 'worldCamera.avi').unlink(missing_ok=True)
+    else:
+        shutil.copyfile(str(inputDir / file), str(outputDir / 'worldCamera.avi'))
 
 
 def readSMICamInfoFile(inputDir):
