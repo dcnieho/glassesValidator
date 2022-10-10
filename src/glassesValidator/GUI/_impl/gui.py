@@ -1617,7 +1617,8 @@ class MainGUI():
                 coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Coded]
                 if coded_ids:
                     text.append("󰼛 Calculate data quality")
-                    action.append(lambda: async_thread.run(callbacks.process_recordings(coded_ids, task=Task.Markers_Detected, chain=True)))
+                    # NB: don't send action, so that callback code figures out where we we lft off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
+                    action.append(lambda: async_thread.run(callbacks.process_recordings(coded_ids, chain=True)))
                     hover_text.append("Run processing to determine data quality for the selected recordings.")
             if any(has_job):
                 text.append("󱠮 Cancel selected jobs")
