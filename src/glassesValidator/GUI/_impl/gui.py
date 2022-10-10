@@ -1604,12 +1604,24 @@ class MainGUI():
             text.append("󱠮 Cancel all jobs")
             action.append(lambda: async_thread.run(callbacks.cancel_processing_recordings(list(globals.jobs.keys())+list(globals.coding_job_queue.keys()))))
             hover_text.append("Stop processing all pending and running jobs.")
-        # 1c. if there is a selection, we have some actions for the selection
+        # 1c. if there is a selection, we have some actions for the selection. In order of priority (highest priority last)
         ids = [rid for rid in globals.selected_recordings if globals.selected_recordings[rid]]
         if ids:
             has_job = [(id in globals.jobs or id in globals.coding_job_queue) for id in ids]
             has_no_job = [not x for x in has_job]
             if any(has_no_job):
+                # already coded, recode
+                recoded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task) in [TaskSimplified.Coded, TaskSimplified.Processed]]
+                if recoded_ids:
+                    text.append("󰑐 Edit validation intervals")
+                    action.append(lambda: async_thread.run(callbacks.process_recordings(recoded_ids, task=Task.Coded, chain=set.continue_process_after_code)))
+                    hover_text.append("Edit validation interval coding for the selected recordings.")
+                # already fully done, recompute
+                processed_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
+                if processed_ids:
+                    text.append("󰑐 Recalculate data quality")
+                    action.append(lambda: async_thread.run(callbacks.process_recordings(processed_ids, task=Task.Markers_Detected)))
+                    hover_text.append("Re-run processing to determine data quality for the selected recordings. Use e.g. if you selected another type of data quality to be coputed in the advanced settings.")
                 # before stage 1
                 not_imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Not_Imported]
                 if not_imported_ids:
@@ -1622,12 +1634,6 @@ class MainGUI():
                     text.append("󰼛 Code validation intervals")
                     action.append(lambda: async_thread.run(callbacks.process_recordings(imported_ids, task=Task.Coded, chain=set.continue_process_after_code)))
                     hover_text.append("Code validation intervals for the selected recordings.")
-                # already coded, recode
-                recoded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task) in [TaskSimplified.Coded, TaskSimplified.Processed]]
-                if recoded_ids:
-                    text.append("󰑐 Edit validation intervals")
-                    action.append(lambda: async_thread.run(callbacks.process_recordings(recoded_ids, task=Task.Coded, chain=set.continue_process_after_code)))
-                    hover_text.append("Edit validation interval coding for the selected recordings.")
                 # after stage 2 / during stage 3
                 coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Coded]
                 if coded_ids:
@@ -1635,12 +1641,6 @@ class MainGUI():
                     # NB: don't send action, so that callback code figures out where we we left off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
                     action.append(lambda: async_thread.run(callbacks.process_recordings(coded_ids, chain=True)))
                     hover_text.append("Run processing to determine data quality for the selected recordings.")
-                # already fully done, recompute
-                processed_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
-                if processed_ids:
-                    text.append("󰑐 Recalculate data quality")
-                    action.append(lambda: async_thread.run(callbacks.process_recordings(processed_ids, task=Task.Markers_Detected)))
-                    hover_text.append("Re-run processing to determine data quality for the selected recordings. Use e.g. if you selected another type of data quality to be coputed in the advanced settings.")
             if any(has_job):
                 text.append("󱠮 Cancel selected jobs")
                 action.append(lambda: async_thread.run(callbacks.cancel_processing_recordings([id for id,q in zip(ids,has_job) if q])))
