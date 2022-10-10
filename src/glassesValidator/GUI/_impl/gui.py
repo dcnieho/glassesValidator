@@ -727,10 +727,10 @@ class MainGUI():
             if state in [ProcessState.Canceled, ProcessState.Failed]:
                 if job.task==Task.Imported:
                     # remove working directory if this was an import task
-                    async_thread.run(callbacks.remove_recording_working_dir(rec))
+                    async_thread.run(callbacks.remove_recording_working_dir(rec, job.project_path))
                 else:
                     # reset status of this aborted task
-                    update_recording_status(globals.project_path/rec.proc_directory_name, job.task, Status.Not_Started)
+                    update_recording_status(job.project_path/rec.proc_directory_name, job.task, Status.Not_Started)
 
             # special case: the ended task was a coding task, we have further coding tasks to enqueue, and there are none currently enqueued
             if job.task==Task.Coded and globals.coding_job_queue and not any((globals.jobs[j].task==Task.Coded for j in globals.jobs)):

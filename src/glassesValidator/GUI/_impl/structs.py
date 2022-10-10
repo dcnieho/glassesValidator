@@ -1,5 +1,6 @@
 import dataclasses
 from enum import Enum, auto
+import pathlib
 
 from ...utils import AutoName, Recording, Task
 
@@ -139,6 +140,7 @@ class Settings:
 class JobDescription:
     id:                 int
     payload:            Recording
+    project_path:       pathlib.Path
     task:               Task
     should_chain_next:  bool
 

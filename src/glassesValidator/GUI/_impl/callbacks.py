@@ -54,9 +54,12 @@ async def deploy_config(project_path: str|pathlib.Path, config_dir: str):
         utils.push_popup(msgbox.msgbox, "Deploy configuration", f"The folder {conf_dir} already exist. Do you want to deploy a configuration to this folder,\npotentially overwriting any configuration that is already there?", MsgBox.warn, buttons)
 
 
-async def remove_recording_working_dir(rec: Recording):
+async def remove_recording_working_dir(rec: Recording, project_path: pathlib.Path = None):
     if rec.proc_directory_name:
-        rec_path = globals.project_path / rec.proc_directory_name
+        if project_path:
+            rec_path =         project_path / rec.proc_directory_name
+        else:
+            rec_path = globals.project_path / rec.proc_directory_name
         if rec_path.is_dir():
             shutil.rmtree(rec_path)
         
@@ -251,15 +254,17 @@ async def process_recording(rec: Recording, task: Task = None, chain=True, kwarg
 
     # special case if its a marker coding task, of which we can have only one at a time. If we already have a marker coding task
     should_launch_task = task!=Task.Coded or not any((globals.jobs[j].task==Task.Coded for j in globals.jobs))
-            
+    
+    job = JobDescription(None, rec, globals.project_path, task, chain)
     if should_launch_task:
         # launch task
         job_id = process_pool.run(fun,*args,**kwargs)
 
         # store to job queue
-        globals.jobs[rec.id] = JobDescription(job_id, rec, task, chain)
+        job.id = job_id
+        globals.jobs[rec.id] = job
     else:
-        globals.coding_job_queue[rec.id] = JobDescription(None, rec, task, chain)
+        globals.coding_job_queue[rec.id] = job
 
 async def process_recordings(ids: list[int], task: Task = None, chain=True, kwargs={}):
     for rec_id in ids:
