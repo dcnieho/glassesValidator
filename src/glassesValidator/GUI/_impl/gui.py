@@ -502,13 +502,16 @@ class RecordingTable():
                 # after stage 1
                 imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Imported]
                 self.draw_recording_process_button(imported_ids, label="󰼛 Code validation intervals", selectable=True, action=Task.Coded)
+                # already coded, recode
+                recoded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task) in [TaskSimplified.Coded, TaskSimplified.Processed]]
+                self.draw_recording_process_button(recoded_ids, label="󰑐 Edit validation intervals", selectable=True, action=Task.Coded)
                 # after stage 2 / during stage 3
                 coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Coded]
-                # NB: don't send action, so that callback code figures out where we we lft off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
+                # NB: don't send action, so that callback code figures out where we we left off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
                 self.draw_recording_process_button(coded_ids, label="󰼛 Calculate data quality", selectable=True, should_chain_next=True)
                 # already fully done, recompute
-                coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Processed]
-                self.draw_recording_process_button(coded_ids, label="󰼛 Recalculate data quality", selectable=True, action=Task.Data_Quality_Calculated)
+                processed_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Processed]
+                self.draw_recording_process_button(processed_ids, label="󰑐 Recalculate data quality", selectable=True, action=Task.Markers_Detected, should_chain_next=True)
             if any(has_job):
                 self.draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label="󱠮 Cancel job", selectable=True)
 
@@ -1616,18 +1619,24 @@ class MainGUI():
                     text.append("󰼛 Code validation intervals")
                     action.append(lambda: async_thread.run(callbacks.process_recordings(imported_ids, task=Task.Coded, chain=False)))
                     hover_text.append("Code validation intervals for the selected recordings.")
+                # already coded, recode
+                recoded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task) in [TaskSimplified.Coded, TaskSimplified.Processed]]
+                if recoded_ids:
+                    text.append("󰑐 Edit validation intervals")
+                    action.append(lambda: async_thread.run(callbacks.process_recordings(recoded_ids, task=Task.Coded, chain=False)))
+                    hover_text.append("Edit validation interval coding for the selected recordings.")
                 # after stage 2 / during stage 3
                 coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Coded]
                 if coded_ids:
                     text.append("󰼛 Calculate data quality")
-                    # NB: don't send action, so that callback code figures out where we we lft off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
+                    # NB: don't send action, so that callback code figures out where we we left off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
                     action.append(lambda: async_thread.run(callbacks.process_recordings(coded_ids, chain=True)))
                     hover_text.append("Run processing to determine data quality for the selected recordings.")
                 # already fully done, recompute
-                coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
-                if coded_ids:
-                    text.append("󰼛 Recalculate data quality")
-                    action.append(lambda: async_thread.run(callbacks.process_recordings(coded_ids, task=Task.Data_Quality_Calculated)))
+                processed_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
+                if processed_ids:
+                    text.append("󰑐 Recalculate data quality")
+                    action.append(lambda: async_thread.run(callbacks.process_recordings(processed_ids, task=Task.Markers_Detected)))
                     hover_text.append("Re-run processing to determine data quality for the selected recordings. Use e.g. if you selected another type of data quality to be coputed in the advanced settings.")
             if any(has_job):
                 text.append("󱠮 Cancel selected jobs")
