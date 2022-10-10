@@ -652,7 +652,7 @@ class MainGUI():
         self.refresh_ratio_smooth = 0.0
         self.project_to_load: pathlib.Path|str = None
         self.input_chars: list[int] = []
-        self.maybe_cleanup_pool = False
+        self.maybe_cleanup_process_pool = False
 
         # Show errors in threads
         def asyncexcepthook(future: asyncio.Future):
@@ -740,7 +740,7 @@ class MainGUI():
                 callbacks.process_recording(job.payload, job.task, job.should_chain_next)
 
             # if there are no jobs left, trigger a possible cleanup of the pool by the main loop (see explanation there)
-            self.maybe_cleanup_pool = not globals.jobs
+            self.maybe_cleanup_process_pool = not globals.jobs
         process_pool.done_callback = worker_process_done_hook
 
         self.load_interface()
@@ -1279,10 +1279,10 @@ class MainGUI():
             # If the process pool is running, stop it if there is no more work.
             # This so we don't keep hogging resources and so that no lingering
             # Python processes show up in the taskbar of MacOS users (sic).
-            if self.maybe_cleanup_pool:
+            if self.maybe_cleanup_process_pool:
                 if not globals.jobs:
                     process_pool.cleanup_if_no_work()
-                self.maybe_cleanup_pool = False
+                self.maybe_cleanup_process_pool = False
 
         # clean up
         self.save_imgui_ini()
