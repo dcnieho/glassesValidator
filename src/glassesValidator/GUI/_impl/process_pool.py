@@ -1,6 +1,7 @@
 import pebble
 import multiprocessing
 import typing
+import threading
 
 
 if __name__ in ["__main__","__mp_main__"]:
@@ -24,15 +25,15 @@ done_callback: typing.Callable = None
 _pool: pebble.pool.process.ProcessPool = None
 _work_items: dict[int,pebble.ProcessFuture] = None
 _work_id_provider: CounterContext = CounterContext()
+_lock: threading.Lock = None
 
-
-def cleanup():
+def _cleanup():
     global _pool
     global _work_items
 
     # cancel all pending and running jobs
     cancel_all_jobs()
-
+    
     # stop pool
     if _pool and _pool.active:
         _pool.stop()
@@ -40,9 +41,17 @@ def cleanup():
     _pool = None
     _work_items = None
 
+def cleanup():
+    global _lock
+
+    with _lock:
+        _cleanup()
+
 def cleanup_if_no_work():
-    if _pool and not _work_items:
-        cleanup()
+    global _lock
+    with _lock:
+        if _pool and not _work_items:
+            _cleanup()
 
 class ProcessWaiter(object):
     """Routes completion through to user callback."""
@@ -56,38 +65,46 @@ class ProcessWaiter(object):
         self._notify(future, ProcessState.Canceled)
 
     def _notify(self, future, state: ProcessState):
-        id = None
-        if _work_items is not None and future in _work_items.values():
-            id = list(_work_items.keys())[list(_work_items.values()).index(future)]
+        global _lock
 
-        # clean up the work item since we're done with it
-        del _work_items[id]
+        with _lock:
+            id = None
+            if _work_items is not None and future in _work_items.values():
+                id = list(_work_items.keys())[list(_work_items.values()).index(future)]
 
-        # execute user callback, if any
-        if done_callback:
-            done_callback(future, id, state)
+            # clean up the work item since we're done with it
+            del _work_items[id]
+
+            # execute user callback, if any
+            if done_callback:
+                done_callback(future, id, state)
 
 def run(fn: typing.Callable, *args, **kwargs):
     global _pool
     global _work_items
     global _work_id_provider
+    global _lock
 
-    if _pool is None or not _pool.active:
-        context = multiprocessing.get_context("spawn")  # ensure consistent behavior on Windows (where this is default) and Unix (where fork is default, but that may bring complications)
-        if globals.settings is None:
-            max_workers = 2
-        else:
-            max_workers = globals.settings.process_workers
-        _pool = pebble.ProcessPool(max_workers=max_workers, context=context)
+    if _lock is None:
+        _lock = threading.Lock()
 
-    if _work_items is None:
-        _work_items = {}
+    with _lock:
+        if _pool is None or not _pool.active:
+            context = multiprocessing.get_context("spawn")  # ensure consistent behavior on Windows (where this is default) and Unix (where fork is default, but that may bring complications)
+            if globals.settings is None:
+                max_workers = 2
+            else:
+                max_workers = globals.settings.process_workers
+            _pool = pebble.ProcessPool(max_workers=max_workers, context=context)
+
+        if _work_items is None:
+            _work_items = {}
         
-    with _work_id_provider:
-        work_id = _work_id_provider.get_count()
-        _work_items[work_id] = _pool.submit(fn, None, *args, **kwargs)
-        _work_items[work_id]._waiters.append(ProcessWaiter())
-        return work_id
+        with _work_id_provider:
+            work_id = _work_id_provider.get_count()
+            _work_items[work_id] = _pool.submit(fn, None, *args, **kwargs)
+            _work_items[work_id]._waiters.append(ProcessWaiter())
+            return work_id
 
 def _get_status_from_future(fut: pebble.ProcessFuture):
     if fut.running():
