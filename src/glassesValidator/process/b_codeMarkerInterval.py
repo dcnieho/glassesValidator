@@ -46,14 +46,22 @@ def process(inputDir, configDir=None, showReference=False):
     # Read pose of marker board, if available
     hasBoardPose = False
     if (inputDir / 'boardPose.tsv').is_file():
-        poses = utils.BoardPose.readDataFromFile(inputDir / 'boardPose.tsv')
-        hasBoardPose = True
+        try:
+            poses = utils.BoardPose.readDataFromFile(inputDir / 'boardPose.tsv')
+            hasBoardPose = True
+        except:
+            # ignore when file can't be read or is empty
+            pass
 
     # Read gaze on board data, if available
     hasWorldGaze = False
     if (inputDir / 'gazeWorldPos.tsv').is_file():
-        gazesWorld = utils.GazeWorld.readDataFromFile(inputDir / 'gazeWorldPos.tsv')
-        hasWorldGaze = True
+        try:
+            gazesWorld = utils.GazeWorld.readDataFromFile(inputDir / 'gazeWorldPos.tsv')
+            hasWorldGaze = True
+        except:
+            # ignore when file can't be read or is empty
+            pass
 
     # get camera calibration info
     cameraMatrix,distCoeff = utils.readCameraCalibrationFile(inputDir / "calibration.xml")[0:2]
