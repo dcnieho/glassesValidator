@@ -9,7 +9,7 @@ import warnings
 from .. import utils
 
 
-def process(inputDir, configDir=None, dq_types=[]):
+def process(inputDir, configDir=None, dq_types=[], allow_dq_fallback=False):
     from . import DataQualityType
     inputDir  = pathlib.Path(inputDir)
     if configDir is not None:
@@ -39,6 +39,32 @@ def process(inputDir, configDir=None, dq_types=[]):
     dq_have = list(offset.index.levels[typeIdx])
     if (DataQualityType.pose_left_eye in dq_have) and (DataQualityType.pose_right_eye in dq_have):
         dq_have.append(DataQualityType.pose_left_right_avg)
+    if dq_types:
+        if not isinstance(dq_types,list):
+            dq_types = [dq_types]
+        # do some checks on user input
+        for i,dq in reversed(list(enumerate(dq_types))):
+            if not isinstance(dq, DataQualityType):
+                if isinstance(dq, str):
+                    if hasattr(DataQualityType, dq):
+                        dq = dq_types[i] = getattr(DataQualityType, dq)
+                    else:
+                        raise ValueError(f"The string '{dq}' is not a known data quality type. Known types: {[e.name for e in DataQualityType]}")
+                else:
+                    raise ValueError(f"The variable 'dq' should be a string with one of the following values: {[e.name for e in DataQualityType]}")
+            if not dq in dq_have:
+                if allow_dq_fallback:
+                    del dq_types[i]
+                else:
+                    raise RuntimeError(f'Data quality type {dq} could not be used as its not available for this recording. Available data quality types: {[e.name for e in dq_have]}')
+
+        if DataQualityType.pose_left_right_avg in dq_types:
+            if (not DataQualityType.pose_left_eye in dq_have) or (not DataQualityType.pose_right_eye in dq_have):
+                if allow_dq_fallback:
+                    dq_types.remove(DataQualityType.pose_left_right_avg)
+                else:
+                    raise RuntimeError(f'Cannot use the data quality type {DataQualityType.pose_left_right_avg} because it requires having data quality types {DataQualityType.pose_left_eye} and {DataQualityType.pose_right_eye} available, but one or both are not available. Available data quality types: {[e.name for e in dq_have]}')
+
     if not dq_types:
         if DataQualityType.pose_vidpos_ray in dq_have:
             # highest priority is DataQualityType.pose_vidpos_ray
@@ -51,25 +77,6 @@ def process(inputDir, configDir=None, dq_types=[]):
             if not DataQualityType.viewdist_vidpos_homography in dq_have:
                 raise RuntimeError(f'Even data quality type {DataQualityType.viewdist_vidpos_homography} could not be used, bare minimum failed for some weird reason')
             dq_types.append(DataQualityType.viewdist_vidpos_homography)
-    else:
-        if not isinstance(dq_types,list):
-            dq_types = [dq_types]
-        # do some checks on user input
-        for i,dq in enumerate(dq_types):
-            if not isinstance(dq, DataQualityType):
-                if isinstance(dq, str):
-                    if hasattr(DataQualityType, dq):
-                        dq = dq_types[i] = getattr(DataQualityType, dq)
-                    else:
-                        raise ValueError(f"The string '{dq}' is not a known data quality type. Known types: {[e.name for e in DataQualityType]}")
-                else:
-                    raise ValueError(f"The variable 'dq' should be a string with one of the following values: {[e.name for e in DataQualityType]}")
-            if not dq in dq_have:
-                raise RuntimeError(f'Data quality type {dq} could not be used as its not available for this recording. Available data quality types: {[e.name for e in dq_have]}')
-
-        if DataQualityType.pose_left_right_avg in dq_types:
-            if (not DataQualityType.pose_left_eye in dq_have) or (not DataQualityType.pose_right_eye in dq_have):
-                raise RuntimeError(f'Cannot use the data quality type {DataQualityType.pose_left_right_avg} because it requires having data quality types {DataQualityType.pose_left_eye} and {DataQualityType.pose_right_eye} available, but one or both are not available. Available data quality types: {[e.name for e in dq_have]}')
         
     # prep output data frame
     idx  = []

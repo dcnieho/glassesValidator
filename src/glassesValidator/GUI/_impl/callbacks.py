@@ -10,6 +10,7 @@ from .structs import JobDescription, MsgBox, Os
 from . import globals, async_thread, db, gui, msgbox, process_pool, utils
 from ...utils import EyeTracker, Recording, Task, eye_tracker_names, make_fs_dirname
 from ... import config, preprocess, process
+from ...process import DataQualityType
 
 
 
@@ -173,7 +174,7 @@ def add_recordings(paths: list[pathlib.Path]):
     # ask what type of eye tracker we should be looking for
     utils.push_popup(lambda: utils.popup("Select eye tracker", add_recs_popup, buttons = buttons, closable=True, outside=True))
 
-def process_recording(rec: Recording, task: Task = None, chain=True):
+def process_recording(rec: Recording, task: Task = None, chain=True, kwargs={}):
     # find what is the next task to do for this recording
     if task is None:
         match rec.task:
@@ -202,7 +203,6 @@ def process_recording(rec: Recording, task: Task = None, chain=True):
                 task = Task.Unknown
 
     # get function for task
-    kwargs = {}
     working_dir = globals.project_path / rec.proc_directory_name
     match task:
         case Task.Imported:
@@ -223,6 +223,20 @@ def process_recording(rec: Recording, task: Task = None, chain=True):
                     fun = process.determineFixationIntervals
                 case Task.Data_Quality_Calculated:
                     fun = process.calculateDataQuality
+                    kwargs['allow_dq_fallback'] = True
+                    kwargs['dq_types'] = []
+                    if globals.settings.dq_use_viewdist_vidpos_homography:
+                        kwargs['dq_types'].append(DataQualityType.viewdist_vidpos_homography)
+                    if globals.settings.dq_use_pose_vidpos_homography:
+                        kwargs['dq_types'].append(DataQualityType.pose_vidpos_homography)
+                    if globals.settings.dq_use_pose_vidpos_ray:
+                        kwargs['dq_types'].append(DataQualityType.pose_vidpos_ray)
+                    if globals.settings.dq_use_pose_left_eye:
+                        kwargs['dq_types'].append(DataQualityType.pose_left_eye)
+                    if globals.settings.dq_use_pose_right_eye:
+                        kwargs['dq_types'].append(DataQualityType.pose_right_eye)
+                    if globals.settings.dq_use_pose_left_right_avg:
+                        kwargs['dq_types'].append(DataQualityType.pose_left_right_avg)
             args = (working_dir,)
             if globals.settings.config_dir and (config_dir := globals.project_path / globals.settings.config_dir).is_dir():
                 kwargs['configDir'] = config_dir
@@ -247,9 +261,9 @@ def process_recording(rec: Recording, task: Task = None, chain=True):
     else:
         globals.coding_job_queue[rec.id] = JobDescription(None, rec, task, chain)
 
-async def process_recordings(ids: list[int], task: Task = None, chain=True):
+async def process_recordings(ids: list[int], task: Task = None, chain=True, kwargs={}):
     for rec_id in ids:
-        process_recording(globals.recordings[rec_id], task, chain)
+        process_recording(globals.recordings[rec_id], task, chain, kwargs)
 
 async def cancel_processing_recordings(ids: list[int]):
     for rec_id in ids:

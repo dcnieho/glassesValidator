@@ -112,6 +112,12 @@ class MsgBox(Enum):
 class Settings:
     config_dir                  : str
     confirm_on_remove           : bool
+    dq_use_viewdist_vidpos_homography : bool
+    dq_use_pose_vidpos_homography : bool
+    dq_use_pose_vidpos_ray      : bool
+    dq_use_pose_left_eye        : bool
+    dq_use_pose_right_eye       : bool
+    dq_use_pose_left_right_avg  : bool
     process_workers             : int
     render_when_unfocused       : bool
     scroll_amount               : float

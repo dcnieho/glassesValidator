@@ -1830,6 +1830,148 @@ class MainGUI():
             imgui.end_table()
             imgui.spacing()
 
+        if set.show_advanced_options and self.start_settings_section("Data quality types", right_width):
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
+            draw_hover_text(
+                    "Select here the types of data quality you would like to calculate "
+                    "for each of the recordings. When none selected, a good default is "
+                    "used for each recording. When none of the selected types is available, "
+                    "that same default is used instead. Whether a data qaulity type is "
+                    "available depends on what type of gaze information is available for a "
+                    "recording, as well as whether the camera is calibrated. Hover over a "
+                    "data quality type below to see what its prerequisites are.", text="(help)"
+                )
+            
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
+            imgui.text("Homography + view distance")
+            draw_hover_text(
+                    "Use homography to map gaze position from the scene video to "
+                    "the marker board, and use an assumed viewing distance (see "
+                    "the project's configuration) to compute data quality measures "
+                    "in degrees visual angle.", text=""
+                )
+            imgui.table_next_column()
+            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+            changed, value = imgui.checkbox("###dq_use_viewdist_vidpos_homography", set.dq_use_viewdist_vidpos_homography)
+            if changed:
+                set.dq_use_viewdist_vidpos_homography = value
+                async_thread.run(db.update_settings("dq_use_viewdist_vidpos_homography"))
+            
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
+            imgui.text("Homography + pose")
+            draw_hover_text(
+                    "Use homography to map gaze position from the scene video to "
+                    "the marker board, and use the determined pose of the scene "
+                    "camera (requires a calibrated camera) to compute data quality "
+                    "measures in degrees visual angle.", text=""
+                )
+            imgui.table_next_column()
+            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+            changed, value = imgui.checkbox("###dq_use_pose_vidpos_homography", set.dq_use_pose_vidpos_homography)
+            if changed:
+                set.dq_use_pose_vidpos_homography = value
+                async_thread.run(db.update_settings("dq_use_pose_vidpos_homography"))
+            
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
+            imgui.text("Video ray + pose")
+            draw_hover_text(
+                    "Use camera calibration to turn gaze position from the scene "
+                    "video into a direction vector, and determine gaze position on "
+                    "the marker board by intersecting this vector with the marker "
+                    "board. Then, use the determined pose of the scene camera "
+                    "(requires a calibrated camera) to compute data quality "
+                    "measures in degrees visual angle.", text=""
+                )
+            imgui.table_next_column()
+            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+            changed, value = imgui.checkbox("###dq_use_pose_vidpos_ray", set.dq_use_pose_vidpos_ray)
+            if changed:
+                set.dq_use_pose_vidpos_ray = value
+                async_thread.run(db.update_settings("dq_use_pose_vidpos_ray"))
+            
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
+            imgui.text("Left eye ray + pose")
+            draw_hover_text(
+                    "Use the gaze direction vector for the left eye provided by "
+                    "the eye tracker to determine gaze position on the marker "
+                    "board by intersecting this vector with the marker board. "
+                    "Then, use the determined pose of the scene camera "
+                    "(requires a camera calibration) to compute data quality "
+                    "measures in degrees visual angle.", text=""
+                )
+            imgui.table_next_column()
+            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+            changed, value = imgui.checkbox("###dq_use_pose_left_eye", set.dq_use_pose_left_eye)
+            if changed:
+                set.dq_use_pose_left_eye = value
+                async_thread.run(db.update_settings("dq_use_pose_left_eye"))
+                if not value:
+                    # can't have average if we don't have both individual eyes
+                    set.dq_use_pose_left_right_avg = value
+                    async_thread.run(db.update_settings("dq_use_pose_left_right_avg"))
+            
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
+            imgui.text("Right eye ray + pose")
+            draw_hover_text(
+                    "Use the gaze direction vector for the right eye provided by "
+                    "the eye tracker to determine gaze position on the marker "
+                    "board by intersecting this vector with the marker board. "
+                    "Then, use the determined pose of the scene camera "
+                    "(requires a camera calibration) to compute data quality "
+                    "measures in degrees visual angle.", text=""
+                )
+            imgui.table_next_column()
+            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+            changed, value = imgui.checkbox("###dq_use_pose_right_eye", set.dq_use_pose_right_eye)
+            if changed:
+                set.dq_use_pose_right_eye = value
+                async_thread.run(db.update_settings("dq_use_pose_right_eye"))
+                if not value:
+                    # can't have average if we don't have both individual eyes
+                    set.dq_use_pose_left_right_avg = value
+                    async_thread.run(db.update_settings("dq_use_pose_left_right_avg"))
+            
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
+            imgui.text("Average eye ray + pose")
+            draw_hover_text(
+                    "Take the average gaze position as determined by the "
+                    "intersection of the left and right gaze direction vectors "
+                    "with the markr board. Then, use the determined pose of "
+                    "the scene camera (requires a camera calibration) to compute "
+                    "data quality measures in degrees visual angle. Requires "
+                    "'Left eye ray + pose' and 'Right eye ray + pose' to be "
+                    "enabled.", text=""
+                )
+            imgui.table_next_column()
+            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+            changed, value = imgui.checkbox("###dq_use_pose_left_right_avg", set.dq_use_pose_left_right_avg)
+            if changed:
+                set.dq_use_pose_left_right_avg = value
+                async_thread.run(db.update_settings("dq_use_pose_left_right_avg"))
+                if value:
+                    # to be able to do average, left and right must also be done
+                    set.dq_use_pose_left_eye = value
+                    async_thread.run(db.update_settings("dq_use_pose_left_eye"))
+                    set.dq_use_pose_right_eye = value
+                    async_thread.run(db.update_settings("dq_use_pose_right_eye"))
+                
+            imgui.end_table()
+            imgui.spacing()
+
         if set.show_advanced_options and self.start_settings_section("Interface", right_width):
             imgui.table_next_row()
             imgui.table_next_column()
