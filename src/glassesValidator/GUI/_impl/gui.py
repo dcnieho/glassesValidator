@@ -737,7 +737,7 @@ class MainGUI():
                 rec_id = list(globals.coding_job_queue.keys())[0]
                 job = globals.coding_job_queue[rec_id]
                 del globals.coding_job_queue[rec_id]
-                callbacks.process_recording(job.payload, job.task, job.should_chain_next)
+                async_thread.run(callbacks.process_recording(job.payload, job.task, job.should_chain_next))
 
             # if there are no jobs left, trigger a possible cleanup of the pool by the main loop (see explanation there)
             self.maybe_cleanup_process_pool = not globals.jobs

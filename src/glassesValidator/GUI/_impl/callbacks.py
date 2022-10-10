@@ -174,7 +174,7 @@ def add_recordings(paths: list[pathlib.Path]):
     # ask what type of eye tracker we should be looking for
     utils.push_popup(lambda: utils.popup("Select eye tracker", add_recs_popup, buttons = buttons, closable=True, outside=True))
 
-def process_recording(rec: Recording, task: Task = None, chain=True, kwargs={}):
+async def process_recording(rec: Recording, task: Task = None, chain=True, kwargs={}):
     # find what is the next task to do for this recording
     if task is None:
         match rec.task:
@@ -263,7 +263,7 @@ def process_recording(rec: Recording, task: Task = None, chain=True, kwargs={}):
 
 async def process_recordings(ids: list[int], task: Task = None, chain=True, kwargs={}):
     for rec_id in ids:
-        process_recording(globals.recordings[rec_id], task, chain, kwargs)
+        await process_recording(globals.recordings[rec_id], task, chain, kwargs)
 
 async def cancel_processing_recordings(ids: list[int]):
     for rec_id in ids:
