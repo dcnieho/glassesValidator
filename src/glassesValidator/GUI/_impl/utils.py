@@ -221,7 +221,7 @@ def push_popup(*args, bottom=False, **kwargs):
     if len(args) + len(kwargs) > 1:
         if args[0] is popup or args[0] is msgbox.msgbox:
             args = list(args)
-            args[1] = args[1] + "###popup_" + rand_num_str()
+            args[1] = args[1] + "##popup_" + rand_num_str()
         popup_func = functools.partial(*args, **kwargs)
     else:
         popup_func = args[0]

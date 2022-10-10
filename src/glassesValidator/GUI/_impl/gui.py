@@ -88,7 +88,7 @@ class RecordingTable():
     def draw(self):
         extra = "_adder" if self.in_adder_popup else ""
         if imgui.begin_table(
-            f"###recording_list{extra}",
+            f"##recording_list{extra}",
             column=self._recording_list_column_count,
             flags=self.table_flags,
         ):
@@ -152,14 +152,14 @@ class RecordingTable():
 
                     if multi_selected_state==0:
                         imgui.internal.push_item_flag(imgui.internal.ITEM_MIXED_VALUE,True)
-                    clicked, new_state = imgui.checkbox(f"###test_selected{extra}", multi_selected_state==1, frame_size=(0,0), do_vertical_align=False)
+                    clicked, new_state = imgui.checkbox(f"##test_selected{extra}", multi_selected_state==1, frame_size=(0,0), do_vertical_align=False)
                     if multi_selected_state==0:
                         imgui.internal.pop_item_flag()
 
                     if clicked:
                         utils.set_all(self.selected_recordings, new_state, subset = self.sorted_recordings_ids)
                 elif i in (2,):  # Hide name for small columns, just use icon
-                    imgui.table_header(column_name[:1] + "###" + column_name[2:])
+                    imgui.table_header(column_name[:1] + "##" + column_name[2:])
                 else:
                     imgui.table_header(column_name[2:])
 
@@ -200,7 +200,7 @@ class RecordingTable():
                         imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, 0., 0., 0., 0.)
                         imgui.push_style_color(imgui.COLOR_HEADER       , 0., 0., 0., 0.)
                         imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, 0., 0., 0., 0.)
-                        selectable_clicked, selectable_out = imgui.selectable(f"###{id}_hitbox{extra}", self.selected_recordings[id], flags=imgui.SELECTABLE_SPAN_ALL_COLUMNS|imgui.internal.SELECTABLE_SELECT_ON_CLICK, height=frame_height+cell_padding_y)
+                        selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox{extra}", self.selected_recordings[id], flags=imgui.SELECTABLE_SPAN_ALL_COLUMNS|imgui.internal.SELECTABLE_SELECT_ON_CLICK, height=frame_height+cell_padding_y)
                         # instead override table row background color
                         if selectable_out:
                             imgui.table_set_background_color(imgui.TABLE_BACKGROUND_TARGET_ROW_BG0, imgui.color_convert_float4_to_u32(*style_selected_row))
@@ -219,7 +219,7 @@ class RecordingTable():
                         imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0.,imgui.style.frame_padding.y))
                         imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0.,imgui.style.item_spacing.y))
                         imgui.push_style_color(imgui.COLOR_BUTTON, 0.,0.,0.,0.)
-                        imgui.button(f"###{recording.id}_id", width=imgui.FLOAT_MIN)
+                        imgui.button(f"##{recording.id}_id", width=imgui.FLOAT_MIN)
                         imgui.pop_style_color()
                         imgui.pop_style_var(3)
                         
@@ -228,7 +228,7 @@ class RecordingTable():
                     match ri:
                         case 0:
                             # Selector
-                            checkbox_clicked, checkbox_out = imgui.checkbox(f"###{id}_selected{extra}", self.selected_recordings[id], frame_size=(0,0))
+                            checkbox_clicked, checkbox_out = imgui.checkbox(f"##{id}_selected{extra}", self.selected_recordings[id], frame_size=(0,0))
                             checkbox_hovered = imgui.is_item_hovered()
                         case 1:
                             # Eye Tracker
@@ -323,9 +323,9 @@ class RecordingTable():
                 utils.set_all(self.selected_recordings, False)
 
             # show menu when right-clicking the empty space
-            if not self.in_adder_popup and imgui.io.mouse_pos.y>last_y and imgui.begin_popup_context_item("###recording_list_context",mouse_button=imgui.POPUP_MOUSE_BUTTON_RIGHT | imgui.POPUP_NO_OPEN_OVER_EXISTING_POPUP):
+            if not self.in_adder_popup and imgui.io.mouse_pos.y>last_y and imgui.begin_popup_context_item("##recording_list_context",mouse_button=imgui.POPUP_MOUSE_BUTTON_RIGHT | imgui.POPUP_NO_OPEN_OVER_EXISTING_POPUP):
                 utils.set_all(self.selected_recordings, False)  # deselect on right mouse click as well
-                if imgui.selectable("󱃩 Add recordings###context_menu", False)[0]:
+                if imgui.selectable("󱃩 Add recordings##context_menu", False)[0]:
                     utils.push_popup(globals.gui.get_folder_picker(select_for_add=True))
                 imgui.end_popup()
 
@@ -333,7 +333,7 @@ class RecordingTable():
         extra = "_adder" if self.in_adder_popup else ""
         right_clicked = False
         # Right click = context menu
-        if imgui.begin_popup_context_item(f"###{id}_context{extra}"):
+        if imgui.begin_popup_context_item(f"##{id}_context{extra}"):
             # update selected recordings. same logic as windows explorer:
             # 1. if right-clicked on one of the selected recordings, regardless of what modifier is pressed, keep selection as is
             # 2. if right-clicked elsewhere than on one of the selected recordings:
@@ -373,7 +373,7 @@ class RecordingTable():
         if align:
             imgui.begin_group()
             imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + backup_y_padding)
-        imgui.button(f"{recording.eye_tracker.value}###{recording.id}_type", *args, width=self._eye_tracker_label_width, **kwargs)
+        imgui.button(f"{recording.eye_tracker.value}##{recording.id}_type", *args, width=self._eye_tracker_label_width, **kwargs)
         if align:
             imgui.end_group()
         imgui.pop_style_color(3)
@@ -435,7 +435,7 @@ class RecordingTable():
             return False
 
         extra = "_adder" if self.in_adder_popup else ""
-        id = f"{label}###{ids[0]}_remove{extra}"
+        id = f"{label}##{ids[0]}_remove{extra}"
         if selectable:
             clicked = imgui.selectable(id, False, *args, **kwargs)[0]
         else:
@@ -460,7 +460,7 @@ class RecordingTable():
             path = globals.project_path / recording.proc_directory_name
             disable = not recording.proc_directory_name or not path.is_dir()
 
-        id = f"{label}###{recording.id}_open_{extra}folder"
+        id = f"{label}##{recording.id}_open_{extra}folder"
         if disable:
             utils.push_disabled()
         if selectable:
@@ -477,7 +477,7 @@ class RecordingTable():
         if not ids:
             return False
 
-        id = f"{label}###{ids[0]}_remove_folder"
+        id = f"{label}##{ids[0]}_remove_folder"
         if selectable:
             clicked = imgui.selectable(id, False, *args, **kwargs)[0]
         else:
@@ -529,7 +529,7 @@ class RecordingTable():
         if not ids:
             return False
 
-        id = f"{label}###{ids[0]}_process_button"
+        id = f"{label}##{ids[0]}_process_button"
         if selectable:
             clicked = imgui.selectable(id, False, *args, **kwargs)[0]
         else:
@@ -542,7 +542,7 @@ class RecordingTable():
         if not ids:
             return False
 
-        id = f"{label}###{ids[0]}_process_button"
+        id = f"{label}##{ids[0]}_process_button"
         if selectable:
             clicked = imgui.selectable(id, False, *args, **kwargs)[0]
         else:
@@ -1227,25 +1227,25 @@ class MainGUI():
                 if globals.project_path is not None:
                     sidebar_size = self.scaled(self.sidebar_size)
                     
-                    imgui.begin_child("###main_frame", width=-(sidebar_size+self.scaled(4)))
-                    imgui.begin_child("###recording_list_frame", height=-imgui.get_frame_height_with_spacing(), flags=imgui.WINDOW_HORIZONTAL_SCROLLING_BAR)
+                    imgui.begin_child("##main_frame", width=-(sidebar_size+self.scaled(4)))
+                    imgui.begin_child("##recording_list_frame", height=-imgui.get_frame_height_with_spacing(), flags=imgui.WINDOW_HORIZONTAL_SCROLLING_BAR)
                     self.recording_list.draw()
                     imgui.end_child()
-                    imgui.begin_child("###bottombar_frame")
+                    imgui.begin_child("##bottombar_frame")
                     self.recording_list.filter_box_text, self.recording_list.require_sort = \
                         self.draw_bottombar(self.recording_list.filter_box_text, self.recording_list.require_sort)
                     imgui.end_child()
                     imgui.end_child()
 
                     imgui.same_line(spacing=self.scaled(4))
-                    imgui.begin_child("###sidebar_frame", width=sidebar_size - 1, height=-text_size.y)
+                    imgui.begin_child("##sidebar_frame", width=sidebar_size - 1, height=-text_size.y)
                     self.draw_sidebar()
                     imgui.end_child()
                 else:
                     self.draw_unopened_interface()
 
                 imgui.set_cursor_screen_pos((text_x - _3, text_y))
-                if imgui.invisible_button("###watermark_btn", width=text_size.x + _6, height=text_size.y + _3):
+                if imgui.invisible_button("##watermark_btn", width=text_size.x + _6, height=text_size.y + _3):
                     utils.push_popup(self.draw_about_popup)
                 imgui.set_cursor_screen_pos((text_x, text_y))
                 imgui.text(text)
@@ -1391,7 +1391,7 @@ class MainGUI():
         full_width = imgui.get_content_region_available_width()
         imgui.push_item_width(full_width*.4)
         imgui.set_cursor_pos_x(full_width*.3)
-        changed, combo_value = imgui.combo("###select_eye_tracker", combo_value, eye_tracker_names)
+        changed, combo_value = imgui.combo("##select_eye_tracker", combo_value, eye_tracker_names)
         imgui.pop_item_width()
         imgui.dummy(0,2*imgui.style.item_spacing.y)
 
@@ -1436,11 +1436,11 @@ class MainGUI():
         imgui.text_unformatted("Select which recordings you would like to import.")
         imgui.dummy(0,1*imgui.style.item_spacing.y)
 
-        imgui.begin_child("###main_frame_adder", height=min(self.scaled(300),(len(recording_list.recordings)+2)*imgui.get_frame_height_with_spacing()), width=self.scaled(800))
-        imgui.begin_child("###recording_list_frame_adder", height=-imgui.get_frame_height_with_spacing(), flags=imgui.WINDOW_HORIZONTAL_SCROLLING_BAR)
+        imgui.begin_child("##main_frame_adder", height=min(self.scaled(300),(len(recording_list.recordings)+2)*imgui.get_frame_height_with_spacing()), width=self.scaled(800))
+        imgui.begin_child("##recording_list_frame_adder", height=-imgui.get_frame_height_with_spacing(), flags=imgui.WINDOW_HORIZONTAL_SCROLLING_BAR)
         recording_list.draw()
         imgui.end_child()
-        imgui.begin_child("###bottombar_frame_adder")
+        imgui.begin_child("##bottombar_frame_adder")
         recording_list.filter_box_text, recording_list.require_sort = \
             self.draw_bottombar(recording_list.filter_box_text, recording_list.require_sort, in_adder_popup=True)
         imgui.end_child()
@@ -1517,7 +1517,7 @@ class MainGUI():
             imgui.spacing()
             
             imgui.text(globals.reference)
-            if imgui.begin_popup_context_item(f"###refresh_context"):
+            if imgui.begin_popup_context_item(f"##refresh_context"):
                 # Right click = more options context menu
                 if imgui.selectable("󱓷 APA", False)[0]:
                     glfw.set_clipboard_string(self.window, globals.reference)
@@ -1541,8 +1541,8 @@ class MainGUI():
             if self.input_chars:
                 self.repeat_chars = True
             imgui.set_keyboard_focus_here()
-        _, value = imgui.input_text_with_hint(f"###bottombar{extra}", "Start typing to filter the list", filter_box_text, flags=imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
-        if imgui.begin_popup_context_item(f"###bottombar_context{extra}"):
+        _, value = imgui.input_text_with_hint(f"##bottombar{extra}", "Start typing to filter the list", filter_box_text, flags=imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
+        if imgui.begin_popup_context_item(f"##bottombar_context{extra}"):
             # Right click = more options context menu
             if imgui.selectable("󰆒 Paste", False)[0]:
                 value += str(glfw.get_clipboard_string(self.window) or b"", encoding="utf-8")
@@ -1565,10 +1565,10 @@ class MainGUI():
             header = imgui.collapsing_header(name)[0]
         else:
             header = True
-        opened = header and imgui.begin_table(f"###settings_{name}", column=2, flags=imgui.TABLE_NO_CLIP)
+        opened = header and imgui.begin_table(f"##settings_{name}", column=2, flags=imgui.TABLE_NO_CLIP)
         if opened:
-            imgui.table_setup_column(f"###settings_{name}_left", imgui.TABLE_COLUMN_WIDTH_STRETCH)
-            imgui.table_setup_column(f"###settings_{name}_right", imgui.TABLE_COLUMN_WIDTH_FIXED)
+            imgui.table_setup_column(f"##settings_{name}_left", imgui.TABLE_COLUMN_WIDTH_STRETCH)
+            imgui.table_setup_column(f"##settings_{name}_right", imgui.TABLE_COLUMN_WIDTH_FIXED)
             imgui.table_next_row()
             imgui.table_set_column_index(1)  # Right
             imgui.dummy(right_width, 1)
@@ -1643,7 +1643,7 @@ class MainGUI():
             if len(text)>1:
                 ht += ("\n\n" if hover_text[-1] else "") + "Right click for more options"
             draw_hover_text(ht,text='')
-        if len(text)>1 and imgui.begin_popup_context_item(f"###big_button_context"):
+        if len(text)>1 and imgui.begin_popup_context_item(f"##big_button_context"):
             # Right click = more options context menu
             for i in reversed(range(len(text)-1)):
                 if imgui.selectable(text[i], False)[0]:
@@ -1671,7 +1671,7 @@ class MainGUI():
             imgui.align_text_to_frame_padding()
             imgui.text("Add filter:")
             imgui.table_next_column()
-            changed, value = imgui.combo("###add_filter", 0, filter_mode_names)
+            changed, value = imgui.combo("##add_filter", 0, filter_mode_names)
             if changed and value > 0:
                 flt = Filter(FilterMode(filter_mode_names[value]))
                 match flt.mode.value:
@@ -1690,7 +1690,7 @@ class MainGUI():
                 imgui.align_text_to_frame_padding()
                 imgui.text(f"{flt.mode.value} filter:")
                 imgui.table_next_column()
-                if imgui.button(f"Remove###filter_{flt.id}_remove", width=right_width):
+                if imgui.button(f"Remove##filter_{flt.id}_remove", width=right_width):
                     self.recording_list.remove_filter(flt.id)
                     
                 if flt.mode is FilterMode.Task_State:
@@ -1699,7 +1699,7 @@ class MainGUI():
                     imgui.align_text_to_frame_padding()
                     imgui.text("  Task state:")
                     imgui.table_next_column()
-                    changed, value = imgui.combo(f"###filter_{flt.id}_value", simplified_task_names.index(flt.match.value), simplified_task_names)
+                    changed, value = imgui.combo(f"##filter_{flt.id}_value", simplified_task_names.index(flt.match.value), simplified_task_names)
                     if changed:
                         flt.match = TaskSimplified(simplified_task_names[value])
                         self.recording_list.require_sort = True
@@ -1710,7 +1710,7 @@ class MainGUI():
                     imgui.align_text_to_frame_padding()
                     imgui.text("  Eye Tracker:")
                     imgui.table_next_column()
-                    changed, value = imgui.combo(f"###filter_{flt.id}_value", eye_tracker_names.index(flt.match.value), eye_tracker_names)
+                    changed, value = imgui.combo(f"##filter_{flt.id}_value", eye_tracker_names.index(flt.match.value), eye_tracker_names)
                     if changed:
                         flt.match = EyeTracker(eye_tracker_names[value])
                         self.recording_list.require_sort = True
@@ -1721,7 +1721,7 @@ class MainGUI():
                 imgui.text("  Invert filter:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.checkbox(f"###filter_{flt.id}_invert", flt.invert)
+                changed, value = imgui.checkbox(f"##filter_{flt.id}_invert", flt.invert)
                 if changed:
                     flt.invert = value
                     self.recording_list.require_sort = True
@@ -1760,7 +1760,7 @@ class MainGUI():
                 imgui.text("Show advanced options:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.checkbox("###show_advanced_options", set.show_advanced_options)
+                changed, value = imgui.checkbox("##show_advanced_options", set.show_advanced_options)
                 if changed:
                     set.show_advanced_options = value
                     async_thread.run(db.update_settings("show_advanced_options"))
@@ -1771,7 +1771,7 @@ class MainGUI():
                 imgui.align_text_to_frame_padding()
                 imgui.text("Config folder:")
                 imgui.table_next_column()
-                changed, value = imgui.input_text("###config_dir", set.config_dir)
+                changed, value = imgui.input_text("##config_dir", set.config_dir)
                 if changed:
                     set.config_dir = value
                     async_thread.run(db.update_settings("config_dir"))
@@ -1791,7 +1791,7 @@ class MainGUI():
                 imgui.text("Show remove button:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.checkbox("###show_remove_btn", set.show_remove_btn)
+                changed, value = imgui.checkbox("##show_remove_btn", set.show_remove_btn)
                 if changed:
                     set.show_remove_btn = value
                     async_thread.run(db.update_settings("show_remove_btn"))
@@ -1802,7 +1802,7 @@ class MainGUI():
                 imgui.text("Confirm when removing:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.checkbox("###confirm_on_remove", set.confirm_on_remove)
+                changed, value = imgui.checkbox("##confirm_on_remove", set.confirm_on_remove)
                 if changed:
                     set.confirm_on_remove = value
                     async_thread.run(db.update_settings("confirm_on_remove"))
@@ -1823,7 +1823,7 @@ class MainGUI():
                     " number of workers will only be changed once all have completed or are cancelled."
                 )
                 imgui.table_next_column()
-                changed, value = imgui.drag_int("###process_workers", set.process_workers, change_speed=0.5, min_value=1, max_value=100)
+                changed, value = imgui.drag_int("##process_workers", set.process_workers, change_speed=0.5, min_value=1, max_value=100)
                 set.process_workers = min(max(value, 1), 100)
                 if changed:
                     async_thread.run(db.update_settings("process_workers"))
@@ -1857,7 +1857,7 @@ class MainGUI():
                 )
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###dq_use_viewdist_vidpos_homography", set.dq_use_viewdist_vidpos_homography)
+            changed, value = imgui.checkbox("##dq_use_viewdist_vidpos_homography", set.dq_use_viewdist_vidpos_homography)
             if changed:
                 set.dq_use_viewdist_vidpos_homography = value
                 async_thread.run(db.update_settings("dq_use_viewdist_vidpos_homography"))
@@ -1874,7 +1874,7 @@ class MainGUI():
                 )
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###dq_use_pose_vidpos_homography", set.dq_use_pose_vidpos_homography)
+            changed, value = imgui.checkbox("##dq_use_pose_vidpos_homography", set.dq_use_pose_vidpos_homography)
             if changed:
                 set.dq_use_pose_vidpos_homography = value
                 async_thread.run(db.update_settings("dq_use_pose_vidpos_homography"))
@@ -1893,7 +1893,7 @@ class MainGUI():
                 )
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###dq_use_pose_vidpos_ray", set.dq_use_pose_vidpos_ray)
+            changed, value = imgui.checkbox("##dq_use_pose_vidpos_ray", set.dq_use_pose_vidpos_ray)
             if changed:
                 set.dq_use_pose_vidpos_ray = value
                 async_thread.run(db.update_settings("dq_use_pose_vidpos_ray"))
@@ -1912,7 +1912,7 @@ class MainGUI():
                 )
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###dq_use_pose_left_eye", set.dq_use_pose_left_eye)
+            changed, value = imgui.checkbox("##dq_use_pose_left_eye", set.dq_use_pose_left_eye)
             if changed:
                 set.dq_use_pose_left_eye = value
                 async_thread.run(db.update_settings("dq_use_pose_left_eye"))
@@ -1935,7 +1935,7 @@ class MainGUI():
                 )
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###dq_use_pose_right_eye", set.dq_use_pose_right_eye)
+            changed, value = imgui.checkbox("##dq_use_pose_right_eye", set.dq_use_pose_right_eye)
             if changed:
                 set.dq_use_pose_right_eye = value
                 async_thread.run(db.update_settings("dq_use_pose_right_eye"))
@@ -1959,7 +1959,7 @@ class MainGUI():
                 )
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###dq_use_pose_left_right_avg", set.dq_use_pose_left_right_avg)
+            changed, value = imgui.checkbox("##dq_use_pose_left_right_avg", set.dq_use_pose_left_right_avg)
             if changed:
                 set.dq_use_pose_left_right_avg = value
                 async_thread.run(db.update_settings("dq_use_pose_left_right_avg"))
@@ -1980,7 +1980,7 @@ class MainGUI():
             imgui.text("Show advanced options:")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###show_advanced_options", set.show_advanced_options)
+            changed, value = imgui.checkbox("##show_advanced_options", set.show_advanced_options)
             if changed:
                 set.show_advanced_options = value
                 async_thread.run(db.update_settings("show_advanced_options"))
@@ -1991,7 +1991,7 @@ class MainGUI():
             imgui.text("Smooth scrolling:")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###scroll_smooth", set.scroll_smooth)
+            changed, value = imgui.checkbox("##scroll_smooth", set.scroll_smooth)
             if changed:
                 set.scroll_smooth = value
                 async_thread.run(db.update_settings("scroll_smooth"))
@@ -2008,7 +2008,7 @@ class MainGUI():
                 "How fast or slow the smooth scrolling animation is. Default is 8."
             )
             imgui.table_next_column()
-            changed, value = imgui.drag_float("###scroll_smooth_speed", set.scroll_smooth_speed, change_speed=0.25, min_value=0.1, max_value=50)
+            changed, value = imgui.drag_float("##scroll_smooth_speed", set.scroll_smooth_speed, change_speed=0.25, min_value=0.1, max_value=50)
             set.scroll_smooth_speed = min(max(value, 0.1), 50)
             if changed:
                 async_thread.run(db.update_settings("scroll_smooth_speed"))
@@ -2025,7 +2025,7 @@ class MainGUI():
                 "Multiplier for how much a single scroll event should actually scroll. Default is 1."
             )
             imgui.table_next_column()
-            changed, value = imgui.drag_float("###scroll_amount", set.scroll_amount, change_speed=0.05, min_value=0.1, max_value=10, format="%.2fx")
+            changed, value = imgui.drag_float("##scroll_amount", set.scroll_amount, change_speed=0.05, min_value=0.1, max_value=10, format="%.2fx")
             set.scroll_amount = min(max(value, 0.1), 10)
             if changed:
                 async_thread.run(db.update_settings("scroll_amount"))
@@ -2041,7 +2041,7 @@ class MainGUI():
                 "For example a ratio of 1:2 means the app refreshes every 2nd monitor frame, resulting in half the framerate."
             )
             imgui.table_next_column()
-            changed, value = imgui.drag_int("###vsync_ratio", set.vsync_ratio, change_speed=0.05, min_value=0, max_value=10, format="1:%d")
+            changed, value = imgui.drag_int("##vsync_ratio", set.vsync_ratio, change_speed=0.05, min_value=0, max_value=10, format="1:%d")
             set.vsync_ratio = min(max(value, 0), 10)
             if changed:
                 glfw.swap_interval(set.vsync_ratio)
@@ -2061,7 +2061,7 @@ class MainGUI():
             )
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("###render_when_unfocused", set.render_when_unfocused)
+            changed, value = imgui.checkbox("##render_when_unfocused", set.render_when_unfocused)
             if changed:
                 set.render_when_unfocused = value
                 async_thread.run(db.update_settings("render_when_unfocused"))
@@ -2081,7 +2081,7 @@ class MainGUI():
                 imgui.align_text_to_frame_padding()
                 imgui.text("Corner radius:")
                 imgui.table_next_column()
-                changed, value = imgui.drag_int("###style_corner_radius", set.style_corner_radius, change_speed=0.04, min_value=0, max_value=20, format="%d px")
+                changed, value = imgui.drag_int("##style_corner_radius", set.style_corner_radius, change_speed=0.04, min_value=0, max_value=20, format="%d px")
                 set.style_corner_radius = min(max(value, 0), 20)
                 if changed:
                     imgui.style.window_rounding = imgui.style.frame_rounding = imgui.style.tab_rounding = \
@@ -2095,7 +2095,7 @@ class MainGUI():
                 imgui.text("Accent:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.color_edit3("###style_accent", *set.style_accent[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
+                changed, value = imgui.color_edit3("##style_accent", *set.style_accent[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
                 if changed:
                     set.style_accent = (*value, 1.0)
                     self.refresh_styles()
@@ -2111,7 +2111,7 @@ class MainGUI():
                 )
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.checkbox("###style_color_recording_name", set.style_color_recording_name)
+                changed, value = imgui.checkbox("##style_color_recording_name", set.style_color_recording_name)
                 if changed:
                     set.style_color_recording_name = value
                     async_thread.run(db.update_settings("style_color_recording_name"))
@@ -2122,7 +2122,7 @@ class MainGUI():
                 imgui.text("Background:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.color_edit3("###style_bg", *set.style_bg[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
+                changed, value = imgui.color_edit3("##style_bg", *set.style_bg[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
                 if changed:
                     set.style_bg = (*value, 1.0)
                     self.refresh_styles()
@@ -2134,7 +2134,7 @@ class MainGUI():
                 imgui.text("Alt background:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.color_edit3("###style_alt_bg", *set.style_alt_bg[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
+                changed, value = imgui.color_edit3("##style_alt_bg", *set.style_alt_bg[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
                 if changed:
                     set.style_alt_bg = (*value, 1.0)
                     self.refresh_styles()
@@ -2146,7 +2146,7 @@ class MainGUI():
                 imgui.text("Border:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.color_edit3("###style_border", *set.style_border[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
+                changed, value = imgui.color_edit3("##style_border", *set.style_border[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
                 if changed:
                     set.style_border = (*value, 1.0)
                     self.refresh_styles()
@@ -2158,7 +2158,7 @@ class MainGUI():
                 imgui.text("Text:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.color_edit3("###style_text", *set.style_text[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
+                changed, value = imgui.color_edit3("##style_text", *set.style_text[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
                 if changed:
                     set.style_text = (*value, 1.0)
                     self.refresh_styles()
@@ -2170,7 +2170,7 @@ class MainGUI():
                 imgui.text("Text dim:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.color_edit3("###style_text_dim", *set.style_text_dim[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
+                changed, value = imgui.color_edit3("##style_text_dim", *set.style_text_dim[:3], flags=imgui.COLOR_EDIT_NO_INPUTS)
                 if changed:
                     set.style_text_dim = (*value, 1.0)
                     self.refresh_styles()
