@@ -25,7 +25,7 @@ done_callback: typing.Callable = None
 _pool: pebble.pool.process.ProcessPool = None
 _work_items: dict[int,pebble.ProcessFuture] = None
 _work_id_provider: CounterContext = CounterContext()
-_lock: threading.Lock = None
+_lock: threading.Lock = threading.Lock()
 
 def _cleanup():
     global _pool
@@ -84,9 +84,6 @@ def run(fn: typing.Callable, *args, **kwargs):
     global _work_items
     global _work_id_provider
     global _lock
-
-    if _lock is None:
-        _lock = threading.Lock()
 
     with _lock:
         if _pool is None or not _pool.active:
