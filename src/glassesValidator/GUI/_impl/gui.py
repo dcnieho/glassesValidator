@@ -1819,7 +1819,8 @@ class MainGUI():
                     "the program and your whole program. Since much of the processing utilizes more "
                     "than one processor thread, set this value to signficantly less than the number "
                     "of threads available in your system. In most cases 2--3 workers should provide "
-                    "a good experience."
+                    "a good experience. NB: If you currently have running or enqueued jobs, the "
+                    " number of workers will only be changed once all have completed or are cancelled."
                 )
                 imgui.table_next_column()
                 changed, value = imgui.drag_int("###process_workers", set.process_workers, change_speed=0.5, min_value=1, max_value=100)
