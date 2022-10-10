@@ -113,6 +113,7 @@ class MsgBox(Enum):
 class Settings:
     config_dir                  : str
     confirm_on_remove           : bool
+    continue_process_after_code : bool
     dq_use_viewdist_vidpos_homography : bool
     dq_use_pose_vidpos_homography : bool
     dq_use_pose_vidpos_ray      : bool

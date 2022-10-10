@@ -99,6 +99,7 @@ async def connect():
         "_":                           f'INTEGER PRIMARY KEY CHECK (_=0)',
         "config_dir":                  f'INTEGER DEFAULT "config"',
         "confirm_on_remove":           f'INTEGER DEFAULT {int(True)}',
+        "continue_process_after_code": f'INTEGER DEFAULT {int(True)}',
         "dq_use_viewdist_vidpos_homography":    f'INTEGER DEFAULT {int(False)}',
         "dq_use_pose_vidpos_homography":        f'INTEGER DEFAULT {int(False)}',
         "dq_use_pose_vidpos_ray":      f'INTEGER DEFAULT {int(True)}',

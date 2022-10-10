@@ -501,10 +501,10 @@ class RecordingTable():
                 self.draw_recording_process_button(not_imported_ids, label="󰼛 Import", selectable=True, action=Task.Imported)
                 # after stage 1
                 imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Imported]
-                self.draw_recording_process_button(imported_ids, label="󰼛 Code validation intervals", selectable=True, action=Task.Coded)
+                self.draw_recording_process_button(imported_ids, label="󰼛 Code validation intervals", selectable=True, action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
                 # already coded, recode
                 recoded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task) in [TaskSimplified.Coded, TaskSimplified.Processed]]
-                self.draw_recording_process_button(recoded_ids, label="󰑐 Edit validation intervals", selectable=True, action=Task.Coded)
+                self.draw_recording_process_button(recoded_ids, label="󰑐 Edit validation intervals", selectable=True, action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
                 # after stage 2 / during stage 3
                 coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Coded]
                 # NB: don't send action, so that callback code figures out where we we left off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
@@ -705,7 +705,10 @@ class MainGUI():
                     if job.should_chain_next:
                         match job.task:
                             case Task.Coded:
-                                task = Task.Markers_Detected
+                                if globals.settings.continue_process_after_code:
+                                    task = Task.Markers_Detected
+                                else:
+                                    task = None
                             case Task.Markers_Detected:
                                 task = Task.Gaze_Tranformed_To_World
                             case Task.Gaze_Tranformed_To_World:
@@ -1617,13 +1620,13 @@ class MainGUI():
                 imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Imported]
                 if imported_ids:
                     text.append("󰼛 Code validation intervals")
-                    action.append(lambda: async_thread.run(callbacks.process_recordings(imported_ids, task=Task.Coded, chain=False)))
+                    action.append(lambda: async_thread.run(callbacks.process_recordings(imported_ids, task=Task.Coded, chain=set.continue_process_after_code)))
                     hover_text.append("Code validation intervals for the selected recordings.")
                 # already coded, recode
                 recoded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task) in [TaskSimplified.Coded, TaskSimplified.Processed]]
                 if recoded_ids:
                     text.append("󰑐 Edit validation intervals")
-                    action.append(lambda: async_thread.run(callbacks.process_recordings(recoded_ids, task=Task.Coded, chain=False)))
+                    action.append(lambda: async_thread.run(callbacks.process_recordings(recoded_ids, task=Task.Coded, chain=set.continue_process_after_code)))
                     hover_text.append("Edit validation interval coding for the selected recordings.")
                 # after stage 2 / during stage 3
                 coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Coded]
@@ -1815,6 +1818,17 @@ class MainGUI():
                 if changed:
                     set.confirm_on_remove = value
                     async_thread.run(db.update_settings("confirm_on_remove"))
+
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
+                imgui.text("Continue processing after\ninterval coding:")
+                imgui.table_next_column()
+                imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                changed, value = imgui.checkbox("##continue_process_after_code", set.continue_process_after_code)
+                if changed:
+                    set.continue_process_after_code = value
+                    async_thread.run(db.update_settings("continue_process_after_code"))
 
                 imgui.table_next_row()
                 imgui.table_next_column()
