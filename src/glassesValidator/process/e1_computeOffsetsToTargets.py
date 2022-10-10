@@ -73,8 +73,8 @@ def process(inputDir, configDir=None):
                 match dq_types[e]:
                     case DataQualityType.viewdist_vidpos_homography | DataQualityType.pose_vidpos_homography:
                         # from camera perspective, using homography
-                        # 3: using pose info
-                        # 4: using assumed viewing distance
+                        # pose_vidpos_homography    : using pose info
+                        # viewdist_vidpos_homography: using assumed viewing distance
                         ori         = np.zeros(3)
                         gaze        = gaze3DHomography[s,:]
                         gazeBoard   = gaze2DHomography[s,:]
