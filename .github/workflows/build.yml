@@ -177,6 +177,17 @@ jobs:
         --wheel
         --outdir dist/
 
+    - name: "Zip artifact"
+      run: |
+        7z a -r ./${{ github.event.repository.name }}-Wheels.zip ./dist/*
+
+    - name: "Upload release artifact"
+      uses: "softprops/action-gh-release@v1"
+      env:
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      with:
+        files: "./${{ github.event.repository.name }}-Wheels.zip"
+
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
