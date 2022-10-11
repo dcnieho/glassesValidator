@@ -22,6 +22,7 @@
     <Compile Include="buildGUI.py" />
     <Compile Include="main.py" />
     <Compile Include="setup.py" />
+    <Compile Include=".github\workflow_data\release.py" />
     <Compile Include="src\glassesValidator\__init__.py" />
     <Compile Include="src\glassesValidator\version.py" />
     <Compile Include="src\glassesValidator\config\__init__.py" />
@@ -67,6 +68,8 @@
     <Content Include="MANIFEST.in" />
     <Content Include="pyproject.toml" />
     <Content Include="requirements.txt" />
+    <Content Include=".github\images\screenshot.png" />
+    <Content Include=".github\workflows\build.yml" />
     <Content Include="src\glassesValidator\config\markerPositions.csv" />
     <Content Include="src\glassesValidator\config\targetPositions.csv" />
     <Content Include="src\glassesValidator\config\validationSetup.txt" />
@@ -78,6 +81,10 @@
     <Content Include="src\glassesValidator\resources\icons\icon.png" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include=".github\" />
+    <Folder Include=".github\images\" />
+    <Folder Include=".github\workflows\" />
+    <Folder Include=".github\workflow_data\" />
     <Folder Include="src\" />
     <Folder Include="src\glassesValidator\" />
     <Folder Include="src\glassesValidator\config" />

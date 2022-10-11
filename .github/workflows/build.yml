@@ -1,0 +1,208 @@
+﻿name: Build executables and publish Python 🐍 distributions 📦 to PyPI
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - "published"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - "windows-latest"
+          - "ubuntu-latest"
+          - "macos-latest"
+        python:
+          - "3.10.x"
+        cx-freeze:
+          - "v6.11.1"
+    name: "${{ matrix.os }}"
+    runs-on: "${{ matrix.os }}"
+    steps:
+
+      # === SETUP ===
+
+      - name: "Setup python"
+        uses: "actions/setup-python@v2"
+        with:
+          python-version: "${{ matrix.python }}"
+
+      - name: "Install cx_Freeze bootloader"
+        run: |
+          python -m pip install cx_Freeze==${{ matrix.cx-freeze }}
+
+      # === BUILD ===
+
+      - name: "Clone repo"
+        uses: "actions/checkout@v2"
+        with:
+          path: "./src/"
+
+      - name: "Install requirements"
+        run: |
+          cd ./src/
+          python -m pip install -U -r ./requirements.txt
+
+      - name: "Build"
+        if: "runner.os != 'macOS'"
+        run: |
+          cd ./src/
+          python ./buildGUI.py build
+          mv ./build/*/ ./dist/
+
+      - name: "Build macOS"
+        if: "runner.os == 'macOS'"
+        run: |
+          cd ./src/
+          python ./buildGUI.py bdist_mac
+          mkdir ./dist/
+          mv ./build/*.app/ ./dist/
+
+      - name: "Resolve symlinks"
+        if: "runner.os != 'Windows'"
+        run: |
+          cd ./src/dist/
+          find ./ -type l -exec echo Resolving {} \; -exec sed -i '' {} \;
+
+      - name: "Import macOS codesign certificate"
+        if: "runner.os == 'macOS'"
+        uses: "apple-actions/import-codesign-certs@v1"
+        with:
+          p12-file-base64: "${{ secrets.CODESIGN_P12_BASE64 }}"
+          p12-password: "${{ secrets.CODESIGN_P12_PASSWORD }}"
+
+      - name: "Codesign macOS"
+        if: "runner.os == 'macOS'"
+        run: |
+          cd ./src/dist/
+          find ./ -type f -empty -delete
+          codesign -s "${{ secrets.CODESIGN_P12_NAME }}" --deep ./*.app
+
+      # === ARTIFACT ===
+
+      - name: "Zip artifact"
+        run: |
+          7z a -r ./${{ github.event.repository.name }}-${{ runner.os }}.zip ./src/dist/*
+
+      - name: "Upload release artifact"
+        uses: "softprops/action-gh-release@v1"
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          files: "./${{ github.event.repository.name }}-${{ runner.os }}.zip"
+
+  source:
+    name: "source"
+    runs-on: "ubuntu-latest"
+    steps:
+
+      # === SETUP ===
+
+      - name: "Set git to use lf"
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      # === PACKAGE ===
+
+      - name: "Clone repo"
+        uses: "actions/checkout@v2"
+        with:
+          path: "./src"
+
+      - name: "Mark as release"
+        if: "github.event_name == 'release'"
+        run: |
+          cd ./src/
+          sed "s/is_release = False/is_release = True/g" ./modules/globals.py > ./modules/globals.py.new
+          rm ./modules/globals.py
+          mv ./modules/globals.py.new ./modules/globals.py
+
+      - name: "Mark build number"
+        if: "github.event_name != 'release'"
+        run: |
+          cd ./src/
+          sed "s/build_number = 0/build_number = ${{ github.run_number }}/g" ./modules/globals.py > ./modules/globals.py.new
+          rm ./modules/globals.py
+          mv ./modules/globals.py.new ./modules/globals.py
+
+      - name: "Package"
+        run: |
+          cd    ./src/
+          mkdir ./dist/
+          cp -r ./modules/         ./dist/
+          cp -r ./resources/       ./dist/
+          cp    ./LICENSE          ./dist/
+          cp    ./main.py          ./dist/
+          cp    ./requirements.txt ./dist/
+
+      # === ARTIFACT ===
+
+      - name: "Zip artifact"
+        run: |
+          7z a -r ./${{ github.event.repository.name }}-Source.zip ./src/dist/*
+
+      - name: "Upload release artifact"
+        uses: "softprops/action-gh-release@v1"
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          files: "./${{ github.event.repository.name }}-Source.zip"
+
+  release:
+    name: "release"
+    runs-on: "ubuntu-latest"
+    needs:
+      - build
+      - source
+    steps:
+
+      - name: "Clone repo"
+        uses: "actions/checkout@v2"
+        with:
+          path: "./src"
+
+      - name: "Update release"
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        run: |
+          cd ./src/
+          python ./.github/workflow_data/release.py
+
+  build-n-publish:
+    name: Package and publish Python 🐍 distributions 📦 to PyPI
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: "Clone repo"
+      uses: "actions/checkout@v2"
+      with:
+        path: "./src/"
+
+    - name: "Setup python"
+      uses: "actions/setup-python@v2"
+      with:
+        python-version: "3.10.x"
+
+    - name: Install pypa/build
+      run: >-
+        python -m
+        pip install
+        build
+        --user
+
+    - name: Build a binary wheel and a source tarball
+      run: >-
+        python -m
+        build
+        --sdist
+        --wheel
+        --outdir dist/
+
+    - name: Publish distribution 📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
