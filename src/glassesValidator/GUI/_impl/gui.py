@@ -15,7 +15,7 @@ import sys
 import datetime
 import io
 import fnmatch
-from importlib.resources import files, as_file
+import importlib.resources
 
 
 from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, SortSpec, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
@@ -846,8 +846,8 @@ class MainGUI():
         self.screen_pos = glfw.get_window_pos(self.window)
         self.screen_size= glfw.get_window_size(self.window)
 
-        icon_path = files('glassesValidator.resources.icons') / 'icon.png'
-        with as_file(icon_path) as icon_file:
+        icon_path = importlib.resources.files('glassesValidator.resources.icons') / 'icon.png'
+        with importlib.resources.as_file(icon_path) as icon_file:
             self.icon_texture = imagehelper.ImageHelper(icon_file)
             self.icon_texture.reload()
             glfw.set_window_icon(self.window, 1, Image.open(icon_file))
@@ -1020,9 +1020,9 @@ class MainGUI():
         fb_w, fb_h = glfw.get_framebuffer_size(self.window)
         font_scaling_factor = max(fb_w / win_w, fb_h / win_h)
         imgui.io.font_global_scale = 1 / font_scaling_factor
-        karla_font = files('glassesValidator.resources.fonts') / 'Karla-Regular.ttf'
-        noto_font = files('glassesValidator.resources.fonts') / 'NotoSans-Regular.ttf'
-        mdi_font = [f for f in files('glassesValidator.resources.fonts').iterdir() if fnmatch.fnmatch(str(f),"*materialdesignicons-webfont*.ttf")][0]
+        karla_font = importlib.resources.files('glassesValidator.resources.fonts') / 'Karla-Regular.ttf'
+        noto_font = importlib.resources.files('glassesValidator.resources.fonts') / 'NotoSans-Regular.ttf'
+        mdi_font = [f for f in importlib.resources.files('glassesValidator.resources.fonts').iterdir() if fnmatch.fnmatch(str(f),"*materialdesignicons-webfont*.ttf")][0]
         karla_config = imgui.core.FontConfig(oversample_h=3, oversample_v=3)
         noto_config = imgui.core.FontConfig(merge_mode=True, oversample_h=3, oversample_v=3)
         mdi_config = imgui.core.FontConfig(merge_mode=True, glyph_offset_y=1*self.size_mult)
@@ -1035,9 +1035,9 @@ class MainGUI():
         size_69 = 69 * font_scaling_factor * self.size_mult
         # Default font + more glyphs + icons
         with (
-            as_file(karla_font) as karla_path,
-            as_file(noto_font) as noto_path,
-            as_file(mdi_font) as mdi_path
+            importlib.resources.as_file(karla_font) as karla_path,
+            importlib.resources.as_file(noto_font) as noto_path,
+            importlib.resources.as_file(mdi_font) as mdi_path
         ):
             imgui.io.fonts.add_font_from_file_ttf(str(karla_path), size_18, font_config=karla_config, glyph_ranges=karla_range)
             imgui.io.fonts.add_font_from_file_ttf(str(noto_path),  size_18, font_config=noto_config,  glyph_ranges=noto_range)
