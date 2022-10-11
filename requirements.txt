@@ -3,7 +3,7 @@ git+https://github.com/pyimgui/pyimgui.git@dev/version-2.0#egg=imgui
 glfw
 PyOpenGL==3.1.6
 numpy
-scipy
+scipy==1.9.1
 pandas
 matplotlib
 opencv-contrib-python>=4.6.0
