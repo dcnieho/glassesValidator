@@ -72,6 +72,9 @@ class ProcessWaiter(object):
             if _work_items is not None and future in _work_items.values():
                 id = list(_work_items.keys())[list(_work_items.values()).index(future)]
 
+            if id is None:
+                return
+
             # clean up the work item since we're done with it
             del _work_items[id]
 
