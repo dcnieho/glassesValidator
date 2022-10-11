@@ -156,8 +156,6 @@ jobs:
 
     - name: "Clone repo"
       uses: "actions/checkout@v2"
-      with:
-        path: "./src/"
 
     - name: "Setup python"
       uses: "actions/setup-python@v2"
