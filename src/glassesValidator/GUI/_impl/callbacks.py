@@ -150,7 +150,7 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
         recordings_to_add[id] = rec
         recordings_selected_to_add[id] = True
 
-    recording_list = gui.RecordingTable(recordings_to_add, recordings_selected_to_add, True)
+    recording_list = gui.RecordingTable(recordings_to_add, recordings_selected_to_add, is_adder_popup=True)
     def list_recs_popup():
         nonlocal recording_list
         globals.gui.draw_select_recordings_to_import(recording_list)

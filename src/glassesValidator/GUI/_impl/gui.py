@@ -44,11 +44,11 @@ class RecordingTable():
     def __init__(self,
                  recordings: dict[int, Recording],
         selected_recordings: dict[int, bool],
-        in_adder_popup: bool = False):
+        is_adder_popup: bool = False):
         
         self.recordings = recordings
         self.selected_recordings = selected_recordings
-        self.in_adder_popup = in_adder_popup
+        self.in_adder_popup = is_adder_popup
 
         self.sorted_recordings_ids: list[int] = []
         self.require_sort: bool = True
