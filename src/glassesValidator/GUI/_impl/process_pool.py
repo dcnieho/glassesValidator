@@ -162,20 +162,26 @@ if __name__ == "__main__":
     from glassesValidator.GUI._impl import async_thread, process_pool, utils
 
     async_thread.setup()
-    process_pool.setup()
 
     # example user callback
     def worker_process_done_hook(future: pebble.ProcessFuture, id: int, state: ProcessState):
-        if state==ProcessState.Failed:
-            exc = future.exception()    # should not throw exception since CancelledError is already encoded in state and future is done
-            tb = utils.get_traceback(type(exc), exc, exc.__traceback__)
-            print(f"Something went wrong in a worker process for work item {id}:\n\n{tb}")
+        match state:
+            case ProcessState.Canceled:
+                print(f'{id}: {state.name}')
+            case ProcessState.Completed:
+                print(f'{id}: {state.name}')
+            case ProcessState.Failed:
+                print(f'{id}: {state.name}')
+                exc = future.exception()    # should not throw exception since CancelledError is already encoded in state and future is done
+                tb = utils.get_traceback(type(exc), exc, exc.__traceback__)
+                print(f"Something went wrong in a worker process for work item {id}:\n\n{tb}")
     process_pool.done_callback = worker_process_done_hook
 
     async def my_main():
         def print_job_states(work_ids):
             for id in work_ids:
-                print(f'{id}: {process_pool.get_job_state(id).name}')
+                if (state:=process_pool.get_job_state(id)) is not None:
+                    print(f'{id}: {state.name}')
             print('-----')
 
         work_ids = []
@@ -192,8 +198,6 @@ if __name__ == "__main__":
         print('cancelling jobs')
         for id in reversed(work_ids):
             process_pool.cancel_job(id)
-        await asyncio.sleep(.2)  # little bit of time to make jobs have been canceled before we check their state
-        print_job_states(work_ids)
     
         # 3. enqueue some more work, see what states we have
         work_ids = []   # NB: even though we dump the work_ids from the previous jobs here, there state is still kept in process_pool internally. Use process_pool.clear_job_state() to clear that out if you really think its needed
@@ -207,10 +211,8 @@ if __name__ == "__main__":
         # 4. cancel everything, and see what states we have then
         print('cancelling all jobs')
         process_pool.cancel_all_jobs()
-        await asyncio.sleep(.2)  # little bit of time to make jobs have been canceled before we check their state
-        print_job_states(work_ids)
 
-        # 5. make sure you clean up before exiting, else you'll get some nasty crashes as process
+        # 5. make sure you clean up before exiting, else you may get some nasty crashes as process
         # scaffolding dissappears before all tasks are done
         print('exiting...')
         process_pool.cleanup()
