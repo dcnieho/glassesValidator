@@ -14,6 +14,7 @@ import time
 import sys
 import datetime
 import io
+import fnmatch
 from importlib.resources import files, as_file
 
 
@@ -1021,7 +1022,7 @@ class MainGUI():
         imgui.io.font_global_scale = 1 / font_scaling_factor
         karla_font = files('glassesValidator.resources.fonts') / 'Karla-Regular.ttf'
         noto_font = files('glassesValidator.resources.fonts') / 'NotoSans-Regular.ttf'
-        mdi_font = [f for f in files('glassesValidator.resources.fonts').iterdir() if pathlib.PurePath(f).match("materialdesignicons-webfont*.ttf")][0]
+        mdi_font = [f for f in files('glassesValidator.resources.fonts').iterdir() if fnmatch.fnmatch(str(f),"*materialdesignicons-webfont*.ttf")][0]
         karla_config = imgui.core.FontConfig(oversample_h=3, oversample_v=3)
         noto_config = imgui.core.FontConfig(merge_mode=True, oversample_h=3, oversample_v=3)
         mdi_config = imgui.core.FontConfig(merge_mode=True, glyph_offset_y=1*self.size_mult)
