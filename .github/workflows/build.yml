@@ -111,8 +111,7 @@ jobs:
         run: |
           cd    ./src/
           mkdir ./dist/
-          cp -r ./modules/         ./dist/
-          cp -r ./resources/       ./dist/
+          cp -r ./src/             ./dist/
           cp    ./LICENSE          ./dist/
           cp    ./main.py          ./dist/
           cp    ./requirements.txt ./dist/
