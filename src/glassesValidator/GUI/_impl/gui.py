@@ -20,6 +20,7 @@ from importlib.resources import files, as_file
 from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, SortSpec, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
 from . import globals, async_thread, callbacks, db, filepicker, imagehelper, msgbox, process_pool, utils
 from ...utils import EyeTracker, Recording, Task, Status, hex_to_rgba_0_1, eye_tracker_names, get_task_name_friendly, task_names, update_recording_status
+from ...process import DataQualityType, get_DataQualityType_explanation
 
 imgui.io = None
 imgui.style = None
@@ -515,6 +516,10 @@ class RecordingTable():
             if any(has_job):
                 self.draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label="󱠮 Cancel job", selectable=True)
 
+            # if any fully done, offer export
+            processed_ids = [id for id in ids if get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Processed]
+            self.draw_recording_export_button(processed_ids, label="󱎻 Export data quality", selectable=True)
+
             if len(ids)==1:
                 self.draw_recording_open_folder_button(ids, label="󰷏 Open Working Folder", selectable=True)
             work_dir_ids = [id for id in ids if (pd:=self.recordings[id].proc_directory_name) and (globals.project_path / pd).is_dir()]
@@ -541,11 +546,24 @@ class RecordingTable():
             async_thread.run(callbacks.process_recordings(ids, task=action, chain=should_chain_next))
         return clicked
 
+    def draw_recording_export_button(self, ids: list[int], label="", selectable=False, *args, **kwargs):
+        if not ids:
+            return False
+
+        id = f"{label}##{ids[0]}_export_button"
+        if selectable:
+            clicked = imgui.selectable(id, False, *args, **kwargs)[0]
+        else:
+            clicked = imgui.button(id, *args, **kwargs)
+        if clicked:
+            async_thread.run(callbacks.export_data_quality(ids))
+        return clicked
+
     def draw_recording_process_cancel_button(self, ids: list[int], label="", selectable=False, *args, **kwargs):
         if not ids:
             return False
 
-        id = f"{label}##{ids[0]}_process_button"
+        id = f"{label}##{ids[0]}_cancel_button"
         if selectable:
             clicked = imgui.selectable(id, False, *args, **kwargs)[0]
         else:
@@ -1451,8 +1469,97 @@ class MainGUI():
             self.draw_bottombar(recording_list.filter_box_text, recording_list.require_sort, in_adder_popup=True)
         imgui.end_child()
         imgui.end_child()
+        
+        imgui.same_line(spacing=spacing)
+        imgui.dummy(0,6*imgui.style.item_spacing.y)
+
+    def draw_dq_export_config_popup(self, pop_data):
+        spacing = 2 * imgui.style.item_spacing.x
+        right_width = self.scaled(90)
+        frame_height = imgui.get_frame_height()
+        checkbox_offset = right_width - frame_height
+
+        imgui.same_line(spacing=spacing)
+        
+        imgui.begin_group()
+        imgui.text_unformatted("Configure what you would like to export.")
+        imgui.dummy(0,1*imgui.style.item_spacing.y)
+
+        name = 'Data quality types'
+        header = imgui.collapsing_header(name)[0]
+        if header:
+            imgui.text_unformatted("Indicates which type(s) of\ndata quality to export.")
+            if imgui.begin_table(f"##export_popup_{name}", column=2, flags=imgui.TABLE_NO_CLIP):
+                imgui.table_setup_column(f"##settings_{name}_left", imgui.TABLE_COLUMN_WIDTH_STRETCH)
+                imgui.table_setup_column(f"##settings_{name}_right", imgui.TABLE_COLUMN_WIDTH_FIXED)
+                imgui.table_next_row()
+                imgui.table_set_column_index(1)  # Right
+                imgui.dummy(right_width, 1)
+                imgui.push_item_width(right_width)
+
+                for i,dq in enumerate(pop_data['dq_types']):
+                    imgui.table_next_row()
+                    imgui.table_next_column()
+                    imgui.align_text_to_frame_padding()
+                    t,ht = get_DataQualityType_explanation(dq)
+                    imgui.text(t)
+                    draw_hover_text(ht, text="")
+                    imgui.table_next_column()
+                    imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                    _, pop_data['dq_types_sel'][i] = imgui.checkbox(f"##{dq.name}", pop_data['dq_types_sel'][i])
+                
+                imgui.end_table()
+                imgui.spacing()
 
         
+        name = 'Targets'
+        header = imgui.collapsing_header(name)[0]
+        if header:
+            imgui.text_unformatted("Indicate for which target(s) you\nwant to export data quality metrics.")
+            if imgui.begin_table(f"##export_popup_{name}", column=2, flags=imgui.TABLE_NO_CLIP):
+                imgui.table_setup_column(f"##settings_{name}_left", imgui.TABLE_COLUMN_WIDTH_STRETCH)
+                imgui.table_setup_column(f"##settings_{name}_right", imgui.TABLE_COLUMN_WIDTH_FIXED)
+                imgui.table_next_row()
+                imgui.table_set_column_index(1)  # Right
+                imgui.dummy(right_width, 1)
+                imgui.push_item_width(right_width)
+
+                for i,t in enumerate(pop_data['targets']):
+                    imgui.table_next_row()
+                    imgui.table_next_column()
+                    imgui.align_text_to_frame_padding()
+                    imgui.text(f"target {t}:")
+                    imgui.table_next_column()
+                    imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                    _, pop_data['targets_sel'][i] = imgui.checkbox(f"##target_{t}", pop_data['targets_sel'][i])
+
+                
+                imgui.end_table()
+                imgui.spacing()
+                
+        name = 'targets_avg'
+        if imgui.begin_table(f"##export_popup_{name}", column=2, flags=imgui.TABLE_NO_CLIP):
+            imgui.table_setup_column(f"##settings_{name}_left", imgui.TABLE_COLUMN_WIDTH_STRETCH)
+            imgui.table_setup_column(f"##settings_{name}_right", imgui.TABLE_COLUMN_WIDTH_FIXED)
+            imgui.table_next_row()
+            imgui.table_set_column_index(1)  # Right
+            imgui.dummy(right_width, 1)
+            imgui.push_item_width(right_width)
+
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
+            imgui.text("Average over selected targets:")
+            imgui.table_next_column()
+            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+            _, pop_data['targets_avg'] = imgui.checkbox("##average_over_targets", pop_data['targets_avg'])
+
+                
+            imgui.end_table()
+            imgui.spacing()
+        
+        imgui.end_group()
+
         imgui.same_line(spacing=spacing)
         imgui.dummy(0,6*imgui.style.item_spacing.y)
 
@@ -1599,12 +1706,18 @@ class MainGUI():
                       "to select which of the found recordings you wish to import. You can\n"\
                       "also start importing recordings by drag-dropping one or multiple\n"\
                       "folders onto glassesValidator."]
-        # 1b. if any jobs running, we have the cancel all action regardless of selection
+        # 1b. if any fully done, offer export
+        processed_ids_all = [id for id in globals.recordings if get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
+        if processed_ids_all:
+            text.append("󱎻 Export all data quality")
+            action.append(lambda: async_thread.run(callbacks.export_data_quality(processed_ids_all)))
+            hover_text.append("Export data quality values of the all processed recordings into a single excel file.")
+        # 1c. if any jobs running, we have the cancel all action regardless of selection
         if globals.jobs or globals.coding_job_queue:
             text.append("󱠮 Cancel all jobs")
             action.append(lambda: async_thread.run(callbacks.cancel_processing_recordings(list(globals.jobs.keys())+list(globals.coding_job_queue.keys()))))
             hover_text.append("Stop processing all pending and running jobs.")
-        # 1c. if there is a selection, we have some actions for the selection. In order of priority (highest priority last)
+        # 1d. if there is a selection, we have some actions for the selection. In order of priority (highest priority last)
         ids = [rid for rid in globals.selected_recordings if globals.selected_recordings[rid]]
         if ids:
             has_job = [(id in globals.jobs or id in globals.coding_job_queue) for id in ids]
@@ -1616,7 +1729,7 @@ class MainGUI():
                     text.append("󰑐 Edit validation intervals")
                     action.append(lambda: async_thread.run(callbacks.process_recordings(recoded_ids, task=Task.Coded, chain=set.continue_process_after_code)))
                     hover_text.append("Edit validation interval coding for the selected recordings.")
-                # already fully done, recompute
+                # already fully done, recompute or export results
                 processed_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
                 if processed_ids:
                     text.append("󰑐 Recalculate data quality")
@@ -1641,6 +1754,14 @@ class MainGUI():
                     # NB: don't send action, so that callback code figures out where we we left off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
                     action.append(lambda: async_thread.run(callbacks.process_recordings(coded_ids, chain=True)))
                     hover_text.append("Run processing to determine data quality for the selected recordings.")
+
+            # if any fully done, offer export
+            processed_ids_sel = [id for id in ids if get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
+            if processed_ids_sel:
+                text.append("󱎻 Export data quality")
+                action.append(lambda: async_thread.run(callbacks.export_data_quality(processed_ids_sel)))
+                hover_text.append("Export data quality values of the selected recordings into a single excel file.")
+
             if any(has_job):
                 text.append("󱠮 Cancel selected jobs")
                 action.append(lambda: async_thread.run(callbacks.cancel_processing_recordings([id for id,q in zip(ids,has_job) if q])))
@@ -1871,13 +1992,9 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            imgui.text("Homography + view distance")
-            draw_hover_text(
-                    "Use homography to map gaze position from the scene video to "
-                    "the marker board, and use an assumed viewing distance (see "
-                    "the project's configuration) to compute data quality measures "
-                    "in degrees visual angle.", text=""
-                )
+            t,ht = get_DataQualityType_explanation(DataQualityType.viewdist_vidpos_homography)
+            imgui.text(t)
+            draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             changed, value = imgui.checkbox("##dq_use_viewdist_vidpos_homography", set.dq_use_viewdist_vidpos_homography)
@@ -1888,13 +2005,9 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            imgui.text("Homography + pose")
-            draw_hover_text(
-                    "Use homography to map gaze position from the scene video to "
-                    "the marker board, and use the determined pose of the scene "
-                    "camera (requires a calibrated camera) to compute data quality "
-                    "measures in degrees visual angle.", text=""
-                )
+            t,ht = get_DataQualityType_explanation(DataQualityType.pose_vidpos_homography)
+            imgui.text(t)
+            draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             changed, value = imgui.checkbox("##dq_use_pose_vidpos_homography", set.dq_use_pose_vidpos_homography)
@@ -1905,15 +2018,9 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            imgui.text("Video ray + pose")
-            draw_hover_text(
-                    "Use camera calibration to turn gaze position from the scene "
-                    "video into a direction vector, and determine gaze position on "
-                    "the marker board by intersecting this vector with the marker "
-                    "board. Then, use the determined pose of the scene camera "
-                    "(requires a calibrated camera) to compute data quality "
-                    "measures in degrees visual angle.", text=""
-                )
+            t,ht = get_DataQualityType_explanation(DataQualityType.pose_vidpos_ray)
+            imgui.text(t)
+            draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             changed, value = imgui.checkbox("##dq_use_pose_vidpos_ray", set.dq_use_pose_vidpos_ray)
@@ -1924,15 +2031,9 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            imgui.text("Left eye ray + pose")
-            draw_hover_text(
-                    "Use the gaze direction vector for the left eye provided by "
-                    "the eye tracker to determine gaze position on the marker "
-                    "board by intersecting this vector with the marker board. "
-                    "Then, use the determined pose of the scene camera "
-                    "(requires a camera calibration) to compute data quality "
-                    "measures in degrees visual angle.", text=""
-                )
+            t,ht = get_DataQualityType_explanation(DataQualityType.pose_left_eye)
+            imgui.text(t)
+            draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             changed, value = imgui.checkbox("##dq_use_pose_left_eye", set.dq_use_pose_left_eye)
@@ -1947,15 +2048,9 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            imgui.text("Right eye ray + pose")
-            draw_hover_text(
-                    "Use the gaze direction vector for the right eye provided by "
-                    "the eye tracker to determine gaze position on the marker "
-                    "board by intersecting this vector with the marker board. "
-                    "Then, use the determined pose of the scene camera "
-                    "(requires a camera calibration) to compute data quality "
-                    "measures in degrees visual angle.", text=""
-                )
+            t,ht = get_DataQualityType_explanation(DataQualityType.pose_right_eye)
+            imgui.text(t)
+            draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             changed, value = imgui.checkbox("##dq_use_pose_right_eye", set.dq_use_pose_right_eye)
@@ -1970,16 +2065,9 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            imgui.text("Average eye ray + pose")
-            draw_hover_text(
-                    "Take the average gaze position as determined by the "
-                    "intersection of the left and right gaze direction vectors "
-                    "with the markr board. Then, use the determined pose of "
-                    "the scene camera (requires a camera calibration) to compute "
-                    "data quality measures in degrees visual angle. Requires "
-                    "'Left eye ray + pose' and 'Right eye ray + pose' to be "
-                    "enabled.", text=""
-                )
+            t,ht = get_DataQualityType_explanation(DataQualityType.pose_left_right_avg)
+            imgui.text(t)
+            draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             changed, value = imgui.checkbox("##dq_use_pose_left_right_avg", set.dq_use_pose_left_right_avg)

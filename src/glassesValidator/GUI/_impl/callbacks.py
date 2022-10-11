@@ -4,6 +4,7 @@ import asyncio
 import natsort
 import os
 import shutil
+import pandas as pd
 
 
 from .structs import JobDescription, MsgBox, Os
@@ -277,3 +278,74 @@ async def cancel_processing_recordings(ids: list[int]):
             process_pool.cancel_job(globals.jobs[rec_id].id)
         if rec_id in globals.coding_job_queue:
             del globals.coding_job_queue[rec_id]
+
+async def export_data_quality(ids: list[int]):
+    # 1. collect all data quality from the selected recordings
+    recs  = [globals.recordings[id] for id in ids]
+    files = [globals.project_path / rec.proc_directory_name / 'dataQuality.tsv' for rec in recs]
+    df = pd.concat((pd.read_csv(f, delimiter='\t').assign(recording=r.proc_directory_name) for f,r in zip(files,recs)), ignore_index=True)
+    if df.empty:
+        return
+    # set indices
+    df = df.set_index(['recording','marker_interval','type','target'])
+    # change type index into enum
+    typeIdx = df.index.names.index('type')
+    df.index = df.index.set_levels(pd.CategoricalIndex([getattr(DataQualityType,x) for x in df.index.levels[typeIdx]]),level='type')
+    
+    # 2. prep popup
+    pop_data = {}
+    # inspect what we have
+    pop_data['dq_types'] = sorted(list(df.index.levels[typeIdx]), key=lambda dq: dq.value)
+    pop_data['targets']  = list(df.index.levels[df.index.names.index('target')])
+    
+    pop_data['dq_types_sel'] = [False for i in pop_data['dq_types']]
+    pop_data['targets_sel'] = [True for i in pop_data['targets']]
+    pop_data['targets_avg'] = False
+
+    # good default selection of dq type to export
+    if globals.settings.dq_use_viewdist_vidpos_homography and DataQualityType.viewdist_vidpos_homography in pop_data['dq_types']:
+        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.viewdist_vidpos_homography)] = True
+    if globals.settings.dq_use_pose_vidpos_homography and DataQualityType.pose_vidpos_homography in pop_data['dq_types']:
+        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_vidpos_homography)] = True
+    if globals.settings.dq_use_pose_vidpos_ray and DataQualityType.pose_vidpos_ray in pop_data['dq_types']:
+        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_vidpos_ray)] = True
+    if globals.settings.dq_use_pose_left_eye and DataQualityType.pose_left_eye in pop_data['dq_types']:
+        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_left_eye)] = True
+    if globals.settings.dq_use_pose_right_eye and DataQualityType.pose_right_eye in pop_data['dq_types']:
+        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_right_eye)] = True
+    if globals.settings.dq_use_pose_left_right_avg and DataQualityType.pose_left_right_avg in pop_data['dq_types']:
+        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_left_right_avg)] = True
+
+    if not any(pop_data['dq_types_sel']):
+        if DataQualityType.pose_vidpos_ray in pop_data['dq_types']:
+            pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_vidpos_ray)] = True
+        elif DataQualityType.pose_vidpos_homography in pop_data['dq_types']:
+            pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_vidpos_homography)] = True
+        else:
+            # ultimate fallback, just set first available as the one to export
+            pop_data['dq_types_sel'][0] = True
+
+    # 3. show popup
+    def show_config_popup():
+        nonlocal pop_data
+        globals.gui.draw_dq_export_config_popup(pop_data)
+
+    buttons = {
+        "󰄬 Continue": lambda: async_thread.run(_export_data_quality(df,pop_data)),
+        "󰜺 Cancel": None
+    }
+    utils.push_popup(lambda: utils.popup("Data Quality Export", show_config_popup, buttons = buttons, closable=True, outside=False))
+
+async def _export_data_quality(df: pd.DataFrame, pop_data: dict):
+    # remove unwanted types of data quality
+    if not all(pop_data['dq_types_sel']):
+        df = df.drop(index=[dq for i,dq in enumerate(pop_data['dq_types']) if not pop_data['dq_types_sel'][i]], level='type')
+    # remove unwanted targets
+    if not all(pop_data['targets_sel']):
+        df = df.drop(index=[t for i,t in enumerate(pop_data['targets']) if not pop_data['targets_sel'][i]], level='target')
+    # average data if wanted
+    if pop_data['targets_avg']:
+        df = df.drop(columns='order').groupby(['recording', 'marker_interval', 'type'],observed=True).mean()
+
+    # store
+    df.to_csv(str(globals.project_path / 'dataQuality.tsv'), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.3f")
