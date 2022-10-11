@@ -53,6 +53,9 @@
     <Compile Include="src\glassesValidator\process\e1_computeOffsetsToTargets.py" />
     <Compile Include="src\glassesValidator\process\e2_determineFixationIntervals.py" />
     <Compile Include="src\glassesValidator\process\f_calculateDataQuality.py" />
+    <Compile Include="src\glassesValidator\resources\__init__.py" />
+    <Compile Include="src\glassesValidator\resources\fonts\__init__.py" />
+    <Compile Include="src\glassesValidator\resources\icons\__init__.py" />
     <Compile Include="src\glassesValidator\utils\__init__.py" />
     <Compile Include="src\glassesValidator\utils\makeMarkerGazeVideo.py" />
     <Compile Include="src\glassesValidator\utils\mp4analyser\__init__.py" />
