@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 import sys
-import pathlib
 
-frozen = getattr(sys, "frozen", False)
-
-if frozen:
-    self_path = pathlib.Path(sys.executable).parent
+if getattr(sys, "frozen", False):
+    # need to call this so that code in __init__ of ffpyplayer
+    # doesn't encounter a None in site.USER_BASE
+    import site
+    site.getuserbase()  
 else:
-    self_path = pathlib.Path(__file__).parent
-    src_path  = str(self_path/"src")
+    import pathlib
+    src_path = str(pathlib.Path(__file__).parent/"src")
     if not src_path in sys.path:
         sys.path.append(src_path)
 
