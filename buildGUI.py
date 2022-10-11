@@ -16,7 +16,7 @@ def get_include_files():
         d=pathlib.Path(d)/'scipy'/'.libs'
         if d.is_dir():
             for f in d.iterdir():
-                if f.is_file() and f.suffix=='' or f.suffix in ['.dll','.so']:
+                if f.is_file() and f.suffix=='' or f.suffix in ['.dll', '.so', '.dylib']:
                     files.append((f,pathlib.Path('lib')/f.name))
     # ffpyplayer bin deps
     for d in site.getsitepackages():
@@ -25,7 +25,7 @@ def get_include_files():
             d2 = d/lib/'bin'
             if d2.is_dir():
                 for f in d2.iterdir():
-                    if f.is_file() and f.suffix=='' or f.suffix in ['.dll', '.so', '.exe']:
+                    if f.is_file() and f.suffix=='' or f.suffix in ['.dll', '.so', '.dylib', '.exe']:
                         files.append((f,pathlib.Path('lib')/f.name))
     return files
 
