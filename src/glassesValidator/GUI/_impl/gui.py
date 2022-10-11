@@ -1485,31 +1485,32 @@ class MainGUI():
         imgui.text_unformatted("Configure what you would like to export.")
         imgui.dummy(0,1*imgui.style.item_spacing.y)
 
-        name = 'Data quality types'
-        header = imgui.collapsing_header(name)[0]
-        if header:
-            imgui.text_unformatted("Indicates which type(s) of\ndata quality to export.")
-            if imgui.begin_table(f"##export_popup_{name}", column=2, flags=imgui.TABLE_NO_CLIP):
-                imgui.table_setup_column(f"##settings_{name}_left", imgui.TABLE_COLUMN_WIDTH_STRETCH)
-                imgui.table_setup_column(f"##settings_{name}_right", imgui.TABLE_COLUMN_WIDTH_FIXED)
-                imgui.table_next_row()
-                imgui.table_set_column_index(1)  # Right
-                imgui.dummy(right_width, 1)
-                imgui.push_item_width(right_width)
-
-                for i,dq in enumerate(pop_data['dq_types']):
+        if len(pop_data['dq_types'])>1:
+            name = 'Data quality types'
+            header = imgui.collapsing_header(name)[0]
+            if header:
+                imgui.text_unformatted("Indicates which type(s) of\ndata quality to export.")
+                if imgui.begin_table(f"##export_popup_{name}", column=2, flags=imgui.TABLE_NO_CLIP):
+                    imgui.table_setup_column(f"##settings_{name}_left", imgui.TABLE_COLUMN_WIDTH_STRETCH)
+                    imgui.table_setup_column(f"##settings_{name}_right", imgui.TABLE_COLUMN_WIDTH_FIXED)
                     imgui.table_next_row()
-                    imgui.table_next_column()
-                    imgui.align_text_to_frame_padding()
-                    t,ht = get_DataQualityType_explanation(dq)
-                    imgui.text(t)
-                    draw_hover_text(ht, text="")
-                    imgui.table_next_column()
-                    imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                    _, pop_data['dq_types_sel'][i] = imgui.checkbox(f"##{dq.name}", pop_data['dq_types_sel'][i])
+                    imgui.table_set_column_index(1)  # Right
+                    imgui.dummy(right_width, 1)
+                    imgui.push_item_width(right_width)
+
+                    for i,dq in enumerate(pop_data['dq_types']):
+                        imgui.table_next_row()
+                        imgui.table_next_column()
+                        imgui.align_text_to_frame_padding()
+                        t,ht = get_DataQualityType_explanation(dq)
+                        imgui.text(t)
+                        draw_hover_text(ht, text="")
+                        imgui.table_next_column()
+                        imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                        _, pop_data['dq_types_sel'][i] = imgui.checkbox(f"##{dq.name}", pop_data['dq_types_sel'][i])
                 
-                imgui.end_table()
-                imgui.spacing()
+                    imgui.end_table()
+                    imgui.spacing()
 
         
         name = 'Targets'
