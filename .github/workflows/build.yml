@@ -99,13 +99,6 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
 
-      # === SETUP ===
-
-      - name: "Set git to use lf"
-        run: |
-          git config --global core.autocrlf false
-          git config --global core.eol lf
-
       # === PACKAGE ===
 
       - name: "Clone repo"
