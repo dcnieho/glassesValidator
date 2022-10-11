@@ -63,7 +63,7 @@ cx_Freeze.setup(
             "optimize": 1,
             "packages": [
                 'numpy','matplotlib','scipy','pandas','glassesValidator','OpenGL','cv2',
-                'ffpyplayer.player','ffpyplayer.threading','OpenGL_accelerate.numpy_formathandler'  # some specific subpackages that need to be mentioned to be picked up correctly
+                'ffpyplayer.player','ffpyplayer.threading'      # some specific subpackages that need to be mentioned to be picked up correctly
             ],
             "excludes":["tkinter"],
             "include_files": get_include_files(),
