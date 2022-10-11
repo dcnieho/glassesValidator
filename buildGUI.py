@@ -2,12 +2,46 @@ from ctypes.util import find_library
 import cx_Freeze
 import pathlib
 import sys
+import site
 from distutils.util import convert_path
-
-sys.setrecursionlimit(1500)
 
 path = pathlib.Path(__file__).absolute().parent
 sys.path.append(str(path/'src'))
+
+def get_include_files():
+    files = [path / "LICENSE"]
+
+    # scipy dlls
+    for d in site.getsitepackages():
+        d=pathlib.Path(d)/'scipy'/'.libs'
+        if d.is_dir():
+            for f in d.iterdir():
+                if f.is_file() and f.suffix=='' or f.suffix in ['.dll','.so']:
+                    files.append((f,pathlib.Path('lib')/f.name))
+    # ffpyplayer bin deps
+    for d in site.getsitepackages():
+        d=pathlib.Path(d)/'share'/'ffpyplayer'
+        for lib in ('ffmpeg', 'sdl'):
+            d2 = d/lib/'bin'
+            if d2.is_dir():
+                for f in d2.iterdir():
+                    if f.is_file() and f.suffix=='' or f.suffix in ['.dll', '.so', '.exe']:
+                        files.append((f,pathlib.Path('lib')/f.name))
+    return files
+
+def get_zip_include_files():
+    files = []
+    todo = ['src/glassesValidator/config','src/glassesValidator/resources']
+    for d in todo:
+        d = pathlib.Path(convert_path(d))
+        for d2 in d.iterdir():
+            if d2.is_file() and d2.suffix not in ['.py','.pyc']:
+                files.append((d2, pathlib.Path(*pathlib.Path(d2).parts[-3:])))
+            elif not d2.name.startswith('__'):
+                for f in d2.iterdir():
+                    if f.is_file() and f.suffix not in ['.py','.pyc']:
+                        files.append((f, pathlib.Path(*pathlib.Path(f).parts[-4:])))
+    return files
 
 main_ns = {}
 ver_path = convert_path('src/glassesValidator/version.py')
@@ -28,18 +62,17 @@ cx_Freeze.setup(
         "build_exe": {
             "optimize": 1,
             "packages": [
-                'numpy','matplotlib','scipy','pandas','glassesValidator'
+                'numpy','matplotlib','scipy','pandas','glassesValidator','OpenGL','cv2',
+                'ffpyplayer.player','ffpyplayer.threading','OpenGL_accelerate.numpy_formathandler'  # some specific subpackages that need to be mentioned to be picked up correctly
             ],
-            #"includes": ["glassesValidator"],
-            "include_files": [
-                path / "resources",
-                path / "LICENSE"
-            ],
+            "excludes":["tkinter"],
+            "include_files": get_include_files(),
+            "zip_includes": get_zip_include_files(),
             "zip_include_packages": "*",
             "zip_exclude_packages": [
                 "OpenGL_accelerate",
-                "PyQt6",
-                "glfw"
+                "glfw",
+                "cv2"
             ],
             "silent_level": 1,
             "include_msvcr": True
