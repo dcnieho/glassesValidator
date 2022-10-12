@@ -330,7 +330,7 @@ class RecordingTable():
             if not self.in_adder_popup and imgui.io.mouse_pos.y>last_y and imgui.begin_popup_context_item("##recording_list_context",mouse_button=imgui.POPUP_MOUSE_BUTTON_RIGHT | imgui.POPUP_NO_OPEN_OVER_EXISTING_POPUP):
                 utils.set_all(self.selected_recordings, False)  # deselect on right mouse click as well
                 if imgui.selectable("󱃩 Add recordings##context_menu", False)[0]:
-                    utils.push_popup(globals.gui.get_folder_picker(select_for_add=True))
+                    utils.push_popup(globals.gui.get_folder_picker(reason='add_recordings'))
                 imgui.end_popup()
 
     def handle_recording_hitbox_events(self, id: int):
@@ -1368,7 +1368,7 @@ class MainGUI():
         except Exception:
             pass    # already saved with imgui.save_ini_settings_to_disk above
 
-    def get_folder_picker(self, reason='loading', select_for_add=False):
+    def get_folder_picker(self, reason='loading'):
         def select_callback(selected):
             match reason:
                 case 'loading' | 'creating':
