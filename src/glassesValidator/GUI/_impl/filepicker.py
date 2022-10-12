@@ -6,9 +6,17 @@ import imgui
 import glfw
 import sys
 import os
+import dataclasses
+import natsort
 
 from . import globals, utils
+from .structs import SortSpec
 
+@dataclasses.dataclass
+class DirEntry:
+    name: str
+    is_dir: bool
+    full_path: pathlib.Path
 
 class FilePicker:
     flags = (
@@ -20,15 +28,20 @@ class FilePicker:
     )
 
     def __init__(self, title="File picker", dir_picker=False, start_dir: str | pathlib.Path = None, callback: typing.Callable = None, custom_popup_flags=0):
-        self.current = 0
         self.title = title
         self.active = True
         self.elapsed = 0.0
         self.dir_icon = "󰉋  "
         self.file_icon = "󰈔  "
         self.callback = callback
-        self.selected: str = None
-        self.items: list[str] = []
+
+        self.items: dict[int, DirEntry] = {}
+        self.selected: dict[int, bool] = {}
+        self.msg: str = None
+        self.require_sort = False
+        self.sorted_items: list[int] = []
+        self.last_clicked_id: int = None
+
         self.dir: pathlib.Path = None
         self.dir_picker = dir_picker
         self.show_only_dirs = True
@@ -48,31 +61,39 @@ class FilePicker:
         elif self.dir is None:
             self.dir = pathlib.Path(os.getcwd())
         self.dir = self.dir.absolute()
-        self.current = -1
+        self.selected = {}
         self.refresh()
 
     def refresh(self):
-        if self.current != -1:
-            selected = self.items[self.current]
-        else:
-            selected = ""
+        selected = [self.items[id] for id in self.items if id in self.selected and self.selected[id]]
         self.items.clear()
+        self.selected.clear()
+        self.msg = None
         try:
             items = list(self.dir.iterdir())
             if self.dir_picker and self.show_only_dirs:
                 items = [i for i in items if i.is_dir()]
             if len(items) > 0:
-                items.sort(key=lambda item: item.name.lower())  # Sort alphabetically
-                items.sort(key=lambda item: item.is_dir(), reverse=True)  # Sort dirs first
-                for item in items:
-                    self.items.append((self.dir_icon if item.is_dir() else self.file_icon) + item.name)
+                for i,item in enumerate(items):
+                    self.items[i] = DirEntry(item.name,item.is_dir(),item)
+                    self.selected[i] = False
             else:
                 if self.dir_picker and self.show_only_dirs:
-                    self.items.append("This folder does not contain any folders!")
+                    self.msg = "This folder does not contain any folders!"
                 else:
-                    self.items.append("This folder is empty!")
+                    self.msg = "This folder is empty!"
         except Exception:
-            self.items.append("Cannot open this folder!")
+            self.msg = "Cannot open this folder!"
+            
+        for old in selected:
+            for id in self.items:
+                entry = self.items[id]
+                if entry.name==old.name:
+                    self.selected[id] = True
+                    break
+
+        self.require_sort = True
+
         if self.windows:
             self.drives.clear()
             i = -1
@@ -83,20 +104,18 @@ class FilePicker:
                     self.drives.append(drive)
                     if str(self.dir).startswith(drive):
                         self.current_drive = i
-        if selected in self.items:
-            self.current = self.items.index(selected)
-        else:
-            self.current = -1
 
     def tick(self):
         if not self.active:
             return 0, True
         io = imgui.get_io()
+
         # Auto refresh
         self.elapsed += io.delta_time
         if self.elapsed > 2:
             self.elapsed = 0.0
             self.refresh()
+
         # Setup popup
         if not imgui.is_popup_open(self.title):
             imgui.open_popup(self.title)
@@ -133,85 +152,236 @@ class FilePicker:
             if imgui.button("󰑐"):
                 self.refresh()
             imgui.end_group()
-            width = imgui.get_item_rect_size().x
 
-            # Main list
-            imgui.set_next_item_width(width)
-            _, value = imgui.listbox(f"##file_list", self.current, self.items, (size.y * 0.65) / imgui.get_frame_height())
-            if value != -1:
-                self.current = min(max(value, 0), len(self.items) - 1)
-                item = self.items[self.current]
-                is_dir = item.startswith(self.dir_icon)
-                is_file = item.startswith(self.file_icon)
-                if imgui.is_item_hovered() and imgui.is_mouse_double_clicked():
-                    if is_dir:
-                        self.goto(self.dir / item[len(self.dir_icon):])
-                    elif is_file and not self.dir_picker:
-                        self.selected = str(self.dir / item[len(self.file_icon):])
-                        imgui.close_current_popup()
-                        closed = True
+            # entry list
+            num_selected = 0
+            imgui.begin_child("##folder_contents", height=size.y * 0.65, width=imgui.get_item_rect_size().x)
+            if self.msg:
+                imgui.text_unformatted(self.msg)
             else:
-                is_dir = True
-                is_file = False
+                table_flags = (
+                    imgui.TABLE_SCROLL_Y |
+                    imgui.TABLE_SCROLL_X |
+                    imgui.TABLE_SORTABLE |
+                    imgui.TABLE_SORT_MULTI |
+                    imgui.TABLE_ROW_BACKGROUND |
+                    imgui.TABLE_SIZING_FIXED_FIT |
+                    imgui.TABLE_NO_HOST_EXTEND_Y
+                )
+                if imgui.begin_table(f"##folder_list",column=2,flags=table_flags):
+                    frame_height = imgui.get_frame_height()
+
+                    # Setup
+                    checkbox_width = frame_height
+                    imgui.table_setup_column("󰄵 Selector", imgui.TABLE_COLUMN_NO_HIDE | imgui.TABLE_COLUMN_NO_SORT | imgui.TABLE_COLUMN_NO_RESIZE | imgui.TABLE_COLUMN_NO_REORDER, init_width_or_weight=checkbox_width)  # 0
+                    imgui.table_setup_column("󰌖 Name", imgui.TABLE_COLUMN_DEFAULT_SORT | imgui.TABLE_COLUMN_NO_HIDE | imgui.TABLE_COLUMN_NO_RESIZE)  # 3
+                    imgui.table_setup_scroll_freeze(1, 1)  # Sticky column headers and selector row
+
+                    sort_specs = imgui.table_get_sort_specs()
+                    self.sort_items(sort_specs)
+
+                    # Headers
+                    imgui.table_next_row(imgui.TABLE_ROW_HEADERS)
+                    imgui.table_set_column_index(0) # checkbox column: reflects whether all, some or none of visible recordings are selected, and allows selecting all or none
+                    # get state
+                    num_selected = sum([self.selected[id] for id in self.selected])
+                    if num_selected==0:
+                        # none selected
+                        multi_selected_state = -1
+                    elif num_selected==len(self.items):
+                        # all selected
+                        multi_selected_state = 1
+                    else:
+                        # some selected
+                        multi_selected_state = 0
+
+                    if multi_selected_state==0:
+                        imgui.internal.push_item_flag(imgui.internal.ITEM_MIXED_VALUE,True)
+                    clicked, new_state = imgui.checkbox(f"##header_checkbox", multi_selected_state==1, frame_size=(0,0), do_vertical_align=False)
+                    if multi_selected_state==0:
+                        imgui.internal.pop_item_flag()
+
+                    imgui.table_set_column_index(1)
+                    imgui.table_header(imgui.table_get_column_name(1)[2:])
+
+                    if clicked:
+                        utils.set_all(self.selected, new_state, subset = self.sorted_items)
+                    
+                    # Loop rows
+                    a=.4
+                    style_selected_row = (*tuple(a*x+(1-a)*y for x,y in zip(globals.settings.style_accent[:3],globals.settings.style_bg[:3])), 1.)
+                    a=.2
+                    style_hovered_row  = (*tuple(a*x+(1-a)*y for x,y in zip(globals.settings.style_accent[:3],globals.settings.style_bg[:3])), 1.)
+                    any_selectable_clicked = False
+                    if self.sorted_items and self.last_clicked_id not in self.sorted_items:
+                        # default to topmost if last_clicked unknown, or no longer on screen due to filter
+                        self.last_clicked_id = self.sorted_items[0]
+                    self.sorted_items
+                    for idx,id in enumerate(self.sorted_items):
+                        imgui.table_next_row()
+                
+                        selectable_clicked = False
+                        checkbox_clicked, checkbox_hovered = False, False
+                        has_drawn_hitbox = False
+                        for ci in range(2):
+                            if not (imgui.table_get_column_flags(ci) & imgui.TABLE_COLUMN_IS_ENABLED):
+                                continue
+                            imgui.table_set_column_index(ci)
+
+                            # Row hitbox
+                            if not has_drawn_hitbox:
+                                # hitbox needs to be drawn before anything else on the row so that, together with imgui.set_item_allow_overlap(), hovering button
+                                # or checkbox on the row will still be correctly lead detected.
+                                # this is super finicky, but works. The below together with using a height of frame_height+cell_padding_y
+                                # makes the table row only cell_padding_y/2 longer. The whole row is highlighted correctly
+                                cell_padding_y = imgui.style.cell_padding.y
+                                cur_pos_y = imgui.get_cursor_pos_y()
+                                imgui.set_cursor_pos_y(cur_pos_y - cell_padding_y/2)
+                                imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 0.)
+                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0.,0.))
+                                imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0.,cell_padding_y))
+                                # make selectable completely transparent
+                                imgui.push_style_color(imgui.COLOR_HEADER_ACTIVE, 0., 0., 0., 0.)
+                                imgui.push_style_color(imgui.COLOR_HEADER       , 0., 0., 0., 0.)
+                                imgui.push_style_color(imgui.COLOR_HEADER_HOVERED, 0., 0., 0., 0.)
+                                selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox", self.selected[id], flags=imgui.SELECTABLE_SPAN_ALL_COLUMNS|imgui.internal.SELECTABLE_SELECT_ON_CLICK, height=frame_height+cell_padding_y)
+                                # instead override table row background color
+                                if selectable_out:
+                                    imgui.table_set_background_color(imgui.TABLE_BACKGROUND_TARGET_ROW_BG0, imgui.color_convert_float4_to_u32(*style_selected_row))
+                                elif imgui.is_item_hovered():
+                                    imgui.table_set_background_color(imgui.TABLE_BACKGROUND_TARGET_ROW_BG0, imgui.color_convert_float4_to_u32(*style_hovered_row))
+                                imgui.set_cursor_pos_y(cur_pos_y)   # instead of imgui.same_line(), we just need this part of its effect
+                                imgui.set_item_allow_overlap()
+                                imgui.pop_style_color(3)
+                                imgui.pop_style_var(3)
+                                has_drawn_hitbox = True
+                        
+                            if ci==1:
+                                # (Invisible) button because it aligns the following draw calls to center vertically
+                                imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 0.)
+                                imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0.,imgui.style.frame_padding.y))
+                                imgui.push_style_var(imgui.STYLE_ITEM_SPACING, (0.,imgui.style.item_spacing.y))
+                                imgui.push_style_color(imgui.COLOR_BUTTON, 0.,0.,0.,0.)
+                                imgui.button(f"##{id}_id", width=imgui.FLOAT_MIN)
+                                imgui.pop_style_color()
+                                imgui.pop_style_var(3)
+                        
+                                imgui.same_line()
+
+                            match ci:
+                                case 0:
+                                    # Selector
+                                    checkbox_clicked, checkbox_out = imgui.checkbox(f"##{id}_selected", self.selected[id], frame_size=(0,0))
+                                    checkbox_hovered = imgui.is_item_hovered()
+                                case 1:
+                                    # Name
+                                    prefix = self.dir_icon if self.items[id].is_dir else self.file_icon
+                                    imgui.text(prefix+self.items[id].name)
+
+                        # handle selection logic
+                        # NB: any_selectable_clicked is just for handling clicks not on any recording
+                        any_selectable_clicked = any_selectable_clicked or selectable_clicked
+                        if checkbox_clicked:
+                            self.selected[id] = checkbox_out
+                            self.last_clicked_id = id
+                        elif selectable_clicked and not checkbox_hovered: # don't enter this branch if interaction is with checkbox on the table row
+                            if not imgui.io.key_ctrl and not imgui.io.key_shift and imgui.is_mouse_double_clicked():
+                                if self.items[id].is_dir:
+                                    self.goto(self.items[id].full_path)
+                                    break
+                                elif not self.dir_picker:
+                                    utils.set_all(self.selected, False)
+                                    self.selected[id] = True
+                                    imgui.close_current_popup()
+                                    closed = True
+                            else:
+                                if not imgui.io.key_ctrl:
+                                    # deselect all, below we'll either select all, or range between last and current clicked
+                                    utils.set_all(self.selected, False)
+
+                                if imgui.io.key_shift:
+                                    # select range between last clicked and just clicked item
+                                    last_clicked_idx = self.sorted_items.index(self.last_clicked_id)
+                                    idxs = sorted([idx, last_clicked_idx])
+                                    for rid in range(idxs[0],idxs[1]+1):
+                                        self.selected[self.sorted_items[rid]] = True
+                                else:
+                                    self.selected[id] = selectable_out
+
+                                # consistent with Windows behavior, only update last clicked when shift not pressed
+                                if not imgui.io.key_shift:
+                                    self.last_clicked_id = id
+
+                    last_y = imgui.get_cursor_screen_pos().y
+                    imgui.end_table()
+                    
+                    # handle click in table area outside header+contents:
+                    # deselect all, and if right click, show popup
+                    # check mouse is below bottom of last drawn row so that clicking on the one pixel empty space between selectables
+                    # does not cause everything to unselect or popup to open
+                    if imgui.is_item_clicked() and not any_selectable_clicked and imgui.io.mouse_pos.y>last_y:  # left mouse click (NB: table header is not signalled by is_item_clicked(), so this works correctly)
+                        utils.set_all(self.selected, False)
+                        
+                    # show menu when right-clicking the empty space
+                    if imgui.io.mouse_pos.y>last_y and imgui.begin_popup_context_item("##list_context",mouse_button=imgui.POPUP_MOUSE_BUTTON_RIGHT | imgui.POPUP_NO_OPEN_OVER_EXISTING_POPUP):
+                        utils.set_all(self.selected, False)  # deselect on right mouse click as well
+                        #if imgui.selectable("󱃩 Add recordings##context_menu", False)[0]:
+                        #    utils.push_popup(globals.gui.get_folder_picker(select_for_add=True))
+                        imgui.text_unformatted('todo')
+                        imgui.end_popup()
+                        
+            imgui.end_child()
 
             # Cancel button
             if imgui.button("󰜺 Cancel"):
                 imgui.close_current_popup()
-                self.selected = None
                 cancelled = closed = True
             # Ok button
             imgui.same_line()
-            if not (is_file and not self.dir_picker) and not (is_dir and self.dir_picker):
+            disable_ok = not num_selected
+            if disable_ok:
                 imgui.internal.push_item_flag(imgui.internal.ITEM_DISABLED, True)
                 imgui.push_style_var(imgui.STYLE_ALPHA, imgui.get_style().alpha *  0.5)
             if imgui.button("󰄬 Ok"):
-                if value == -1:
-                    self.selected = str(self.dir)
-                else:
-                    self.selected = str(self.dir / item[len(self.dir_icon if self.dir_picker else self.file_icon):])
                 imgui.close_current_popup()
                 closed = True
-            if not (is_file and not self.dir_picker) and not (is_dir and self.dir_picker):
+            if disable_ok:
                 imgui.internal.pop_item_flag()
                 imgui.pop_style_var()
             # Selected text
-            if (is_file and not self.dir_picker) or (is_dir and self.dir_picker):
-                imgui.same_line()
-                if value == -1:
-                    imgui.text(f"  Selected:  {self.dir.name}")
-                else:
-                    imgui.text(f"  Selected:  {item[len(self.dir_icon if self.dir_picker else self.file_icon):]}")
+            imgui.same_line()
+            imgui.text(f"  Selected {num_selected} items")
         else:
             opened = 0
             cancelled = closed = True
         if closed:
             if not cancelled and self.callback:
-                self.callback([pathlib.Path(self.selected)] if self.selected is not None else None)
+                selected = [self.items[id].full_path for id in self.items if id in self.selected and self.selected[id]]
+                self.callback(selected if selected else None)
             self.active = False
         return opened, closed
+
+    
+
+    def sort_items(self, sort_specs_in: imgui.core._ImGuiTableSortSpecs):
+        if sort_specs_in.specs_dirty or self.require_sort:
+            ids = list(self.items)
+            for sort_spec in sort_specs_in.specs:
+                sort_spec = SortSpec(index=sort_spec.column_index, reverse=bool(sort_spec.sort_direction - 1))
+                match sort_spec.index:
+                    case _:     # Name and all others
+                        key = natsort.os_sort_keygen(key=lambda id: self.items[id].full_path)
+
+                ids.sort(key=key, reverse=sort_spec.reverse)
+            
+            # finally, always sort dirs first
+            ids.sort(key=lambda id: self.items[id].is_dir, reverse=True)
+            self.sorted_items = ids
+            sort_specs_in.specs_dirty = False
+            self.require_sort = False
 
 
 class DirPicker(FilePicker):
     def __init__(self, title="Directory picker", start_dir: str | pathlib.Path = None, callback: typing.Callable = None, custom_popup_flags=0):
         super().__init__(title=title, dir_picker=True, start_dir=start_dir, callback=callback, custom_popup_flags=custom_popup_flags)
 
-
-# Example usage
-if __name__ == "__main__":
-    global path
-    path = ""
-    current_filepicker = None
-    while True:  # Your main window draw loop
-        with imgui.begin("Example filepicker"):
-            imgui.text("Path: " + path)
-            if imgui.button("Pick a new file"):
-                # Create the filepicker
-                def callback(selected):
-                    global path
-                    path = selected
-                current_filepicker = FilePicker("Select a file!", callback=callback)
-            if current_filepicker:
-                # Draw filepicker every frame
-                current_filepicker.tick()
-                if not current_filepicker.active:
-                    current_filepicker = None
