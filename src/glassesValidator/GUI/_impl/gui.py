@@ -297,6 +297,7 @@ class RecordingTable():
                 any_selectable_clicked = any_selectable_clicked or selectable_clicked or selectable_right_clicked
                 if checkbox_clicked:
                     self.selected_recordings[id] = checkbox_out
+                    self.last_clicked_id = id
                 elif selectable_clicked and not (checkbox_hovered or remove_button_hovered): # don't enter this branch if interaction is with checkbox or button on the table row
                     if not imgui.io.key_ctrl:
                         # deselect all, below we'll either select all, or range between last and current clicked
@@ -313,7 +314,7 @@ class RecordingTable():
 
                     # consistent with Windows behavior, only update last clicked when shift not pressed
                     if not imgui.io.key_shift:
-                        self.last_clicked_id = self.sorted_recordings_ids[idx]
+                        self.last_clicked_id = id
 
             last_y = imgui.get_cursor_pos_y()
             imgui.end_table()
