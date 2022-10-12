@@ -328,14 +328,6 @@ class FilePicker:
                     if imgui.is_item_clicked() and not any_selectable_clicked and imgui.io.mouse_pos.y>last_y:  # left mouse click (NB: table header is not signalled by is_item_clicked(), so this works correctly)
                         utils.set_all(self.selected, False)
                         
-                    # show menu when right-clicking the empty space
-                    if imgui.io.mouse_pos.y>last_y and imgui.begin_popup_context_item("##list_context",mouse_button=imgui.POPUP_MOUSE_BUTTON_RIGHT | imgui.POPUP_NO_OPEN_OVER_EXISTING_POPUP):
-                        utils.set_all(self.selected, False)  # deselect on right mouse click as well
-                        #if imgui.selectable("󱃩 Add recordings##context_menu", False)[0]:
-                        #    utils.push_popup(globals.gui.get_folder_picker(select_for_add=True))
-                        imgui.text_unformatted('todo')
-                        imgui.end_popup()
-                        
             imgui.end_child()
 
             # Cancel button
