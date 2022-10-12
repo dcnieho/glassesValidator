@@ -671,6 +671,7 @@ class MainGUI():
         self.new_screen_size = (0, 0)
         self.monitor = 0
         self.repeat_chars = False
+        self.escape_handled = False
         self.prev_any_hovered = None
         self.refresh_ratio_smooth = 0.0
         self.project_to_load: pathlib.Path|str = None
@@ -1217,9 +1218,11 @@ class MainGUI():
                     self.prev_any_hovered = any_hovered
 
                 # check selection should be cancelled
-                if imgui.io.keys_down[glfw.KEY_ESCAPE] and not globals.popup_stack:
+                self.escape_handled = False
+                if imgui.is_key_pressed(glfw.KEY_ESCAPE, repeat=False) and not globals.popup_stack:
                     for r in globals.selected_recordings:
                         globals.selected_recordings[r] = False
+                    self.escape_handled = True
 
                 # delete should issue delete for selected recordings, if any
                 if imgui.is_key_pressed(glfw.KEY_DELETE) and not globals.popup_stack:
@@ -1649,14 +1652,20 @@ class MainGUI():
         extra = "_adder" if in_adder_popup else ""
         imgui.set_next_item_width(-imgui.FLOAT_MIN)
         changed = False
-        if (not globals.popup_stack or in_adder_popup) and not imgui.is_any_item_active() and (self.input_chars or any(imgui.io.keys_down)):
-            if imgui.is_key_pressed(glfw.KEY_BACKSPACE):
-                filter_box_text = filter_box_text[:-1]
-                changed = True
+        if (not globals.popup_stack or in_adder_popup) and not imgui.is_any_item_active():
             # some character was input while bottom bar didn't have input focus, route to bottom bar
             if self.input_chars:
                 self.repeat_chars = True
-            imgui.set_keyboard_focus_here()
+                imgui.set_keyboard_focus_here()
+            # check for backspace, should work even when not have focus
+            if imgui.is_key_pressed(glfw.KEY_BACKSPACE, repeat=False):
+                filter_box_text = filter_box_text[:-1]
+                changed = True
+                imgui.set_keyboard_focus_here()
+            # check for escape, should work even when not have focus
+            if imgui.is_key_pressed(glfw.KEY_ESCAPE, repeat=False) and not self.escape_handled and sum([globals.selected_recordings[id] for id in globals.selected_recordings])==0:
+                filter_box_text = ""
+                changed = True
         _, value = imgui.input_text_with_hint(f"##bottombar{extra}", "Start typing to filter the list", filter_box_text, flags=imgui.INPUT_TEXT_ENTER_RETURNS_TRUE)
         if imgui.begin_popup_context_item(f"##bottombar_context{extra}"):
             # Right click = more options context menu
