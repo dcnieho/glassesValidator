@@ -155,7 +155,7 @@ class RecordingTable():
 
                     if multi_selected_state==0:
                         imgui.internal.push_item_flag(imgui.internal.ITEM_MIXED_VALUE,True)
-                    clicked, new_state = imgui.checkbox(f"##test_selected{extra}", multi_selected_state==1, frame_size=(0,0), do_vertical_align=False)
+                    clicked, new_state = imgui.checkbox(f"##header_checkbox{extra}", multi_selected_state==1, frame_size=(0,0), do_vertical_align=False)
                     if multi_selected_state==0:
                         imgui.internal.pop_item_flag()
 
