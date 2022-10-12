@@ -100,12 +100,12 @@ class FilePicker:
         # Setup popup
         if not imgui.is_popup_open(self.title):
             imgui.open_popup(self.title)
-        closed = False
+        cancelled = closed = False
         opened = 1
         size = io.display_size
         imgui.set_next_window_position(size.x / 2, size.y / 2, pivot_x=0.5, pivot_y=0.5)
         if imgui.begin_popup_modal(self.title, True, flags=self.flags)[0]:
-            closed = utils.close_weak_popup()
+            cancelled = closed = utils.close_weak_popup()
             imgui.begin_group()
             # Up button
             if imgui.button("󰁞"):
@@ -158,7 +158,7 @@ class FilePicker:
             if imgui.button("󰜺 Cancel"):
                 imgui.close_current_popup()
                 self.selected = None
-                closed = True
+                cancelled = closed = True
             # Ok button
             imgui.same_line()
             if not (is_file and not self.dir_picker) and not (is_dir and self.dir_picker):
@@ -185,7 +185,7 @@ class FilePicker:
             opened = 0
             closed = True
         if closed:
-            if self.callback:
+            if not cancelled and self.callback:
                 self.callback([pathlib.Path(self.selected)] if self.selected is not None else None)
             self.active = False
         return opened, closed
