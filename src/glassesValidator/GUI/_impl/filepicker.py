@@ -336,7 +336,7 @@ class FilePicker:
                 cancelled = closed = True
             # Ok button
             imgui.same_line()
-            disable_ok = not num_selected
+            disable_ok = not num_selected and not self.dir_picker
             if disable_ok:
                 imgui.internal.push_item_flag(imgui.internal.ITEM_DISABLED, True)
                 imgui.push_style_var(imgui.STYLE_ALPHA, imgui.get_style().alpha *  0.5)
@@ -348,13 +348,18 @@ class FilePicker:
                 imgui.pop_style_var()
             # Selected text
             imgui.same_line()
-            imgui.text(f"  Selected {num_selected} items")
+            if self.dir_picker and not num_selected:
+                imgui.text(f"  Selected the current directory ({self.dir.name})")
+            else:
+                imgui.text(f"  Selected {num_selected} items")
         else:
             opened = 0
             cancelled = closed = True
         if closed:
             if not cancelled and self.callback:
                 selected = [self.items[id].full_path for id in self.items if id in self.selected and self.selected[id]]
+                if self.dir_picker and not selected:
+                    selected = [self.dir]
                 self.callback(selected if selected else None)
             self.active = False
         return opened, closed
