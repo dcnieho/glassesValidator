@@ -40,7 +40,7 @@ async def _deploy_config(conf_dir: pathlib.Path):
 
 async def deploy_config(project_path: str|pathlib.Path, config_dir: str):
     if not config_dir:
-        utils.push_popup(msgbox.msgbox, "Cannot deploy", "Configuration directory cannot be an empty value", MsgBox.error)
+        utils.push_popup(msgbox.msgbox, "Cannot deploy", "Configuration directory name cannot be an empty value", MsgBox.error)
         return
 
     conf_dir = pathlib.Path(project_path) / config_dir
@@ -54,6 +54,8 @@ async def deploy_config(project_path: str|pathlib.Path, config_dir: str):
         }
         utils.push_popup(msgbox.msgbox, "Deploy configuration", f"The folder {conf_dir} already exist. Do you want to deploy a configuration to this folder,\npotentially overwriting any configuration that is already there?", MsgBox.warn, buttons)
 
+async def deploy_markerboard_pdf(dir: str|pathlib.Path):
+    config.markerBoard.deployPdf(dir)
 
 async def remove_recording_working_dir(rec: Recording, project_path: pathlib.Path = None):
     if rec.proc_directory_name:

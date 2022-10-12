@@ -1363,6 +1363,8 @@ class MainGUI():
                     self.try_load_project(selected,action=reason)
                 case 'add_recordings':
                     callbacks.add_recordings(selected)
+                case 'deploy_pdf':
+                    async_thread.run(callbacks.deploy_markerboard_pdf(selected[0]))
                     
         match reason:
             case 'loading' | 'creating':
@@ -1371,6 +1373,9 @@ class MainGUI():
             case 'add_recordings':
                 header = "Select or drop recording folders"
                 allow_multiple = True
+            case 'deploy_pdf':
+                header = "Select folder to put poster pdf in"
+                allow_multiple = False
         picker = filepicker.DirPicker(header, callback=select_callback, allow_multiple=allow_multiple)
         return picker
 
@@ -1398,6 +1403,15 @@ class MainGUI():
         imgui.same_line(spacing=10*imgui.style.item_spacing.x)
         if imgui.button("󰷏 Open project", width=but_width, height=but_height):
             utils.push_popup(self.get_folder_picker())
+
+        but_width  = self.scaled(150)
+        but_height = self.scaled(50)
+        but_x = (avail.x - but_width) / 2
+        but_y = avail.y/4*3 - but_height / 2
+        imgui.set_cursor_pos_x(but_x)
+        imgui.set_cursor_pos_y(but_y)
+        if imgui.button("󰈦 Get poster pdf", width=but_width, height=but_height):
+            utils.push_popup(self.get_folder_picker(reason='deploy_pdf'))
 
     def draw_select_eye_tracker_popup(self, combo_value, eye_tracker):
         spacing = 2 * imgui.style.item_spacing.x
