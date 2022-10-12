@@ -1384,7 +1384,6 @@ class MainGUI():
             case 'add_recordings':
                 header = "Select or drop recording folders"
         picker = filepicker.DirPicker(header, callback=select_callback)
-        picker.show_only_dirs = True
         return picker
 
     def draw_unopened_interface(self):

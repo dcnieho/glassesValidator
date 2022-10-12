@@ -232,12 +232,11 @@ def push_popup(*args, bottom=False, **kwargs):
     return popup_func
 
 
-def set_all(input: dict[int, bool], value, subset: list[int] = None):
-    if subset is not None:
-        for r in subset:
-            input[r] = value
-    else:
-        for r in input:
+def set_all(input: dict[int, bool], value, subset: list[int] = None, predicate: typing.Callable = None):
+    if subset is None:
+        subset = (r for r in input)
+    for r in subset:
+        if not predicate or predicate(r):
             input[r] = value
 
 def calc_circle_auto_segment_count(radius, max_error=0.3):
