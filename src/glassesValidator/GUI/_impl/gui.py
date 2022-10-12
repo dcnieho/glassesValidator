@@ -1381,9 +1381,11 @@ class MainGUI():
         match reason:
             case 'loading' | 'creating':
                 header = "Select or drop project folder"
+                allow_multiple = False
             case 'add_recordings':
                 header = "Select or drop recording folders"
-        picker = filepicker.DirPicker(header, callback=select_callback)
+                allow_multiple = True
+        picker = filepicker.DirPicker(header, callback=select_callback, allow_multiple=allow_multiple)
         return picker
 
     def draw_unopened_interface(self):

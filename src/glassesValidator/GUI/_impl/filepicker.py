@@ -27,7 +27,7 @@ class FilePicker:
         imgui.WINDOW_ALWAYS_AUTO_RESIZE
     )
 
-    def __init__(self, title="File picker", dir_picker=False, start_dir: str | pathlib.Path = None, callback: typing.Callable = None, custom_popup_flags=0):
+    def __init__(self, title="File picker", dir_picker=False, start_dir: str | pathlib.Path = None, callback: typing.Callable = None, allow_multiple = True, custom_popup_flags=0):
         self.title = title
         self.active = True
         self.elapsed = 0.0
@@ -37,6 +37,7 @@ class FilePicker:
 
         self.items: dict[int, DirEntry] = {}
         self.selected: dict[int, bool] = {}
+        self.allow_multiple = allow_multiple
         self.msg: str = None
         self.require_sort = False
         self.sorted_items: list[int] = []
@@ -312,6 +313,9 @@ class FilePicker:
                                     self.selected[id] = True
                                     imgui.close_current_popup()
                                     closed = True
+                            elif not self.allow_multiple:
+                                utils.set_all(self.selected, False)
+                                self.selected[id] = selectable_out
                             else:
                                 if not imgui.io.key_ctrl:
                                     # deselect all, below we'll either select all, or range between last and current clicked
@@ -398,6 +402,6 @@ class FilePicker:
 
 
 class DirPicker(FilePicker):
-    def __init__(self, title="Directory picker", start_dir: str | pathlib.Path = None, callback: typing.Callable = None, custom_popup_flags=0):
-        super().__init__(title=title, dir_picker=True, start_dir=start_dir, callback=callback, custom_popup_flags=custom_popup_flags)
+    def __init__(self, title="Directory picker", start_dir: str | pathlib.Path = None, callback: typing.Callable = None, allow_multiple = True, custom_popup_flags=0):
+        super().__init__(title=title, dir_picker=True, start_dir=start_dir, callback=callback, allow_multiple=allow_multiple, custom_popup_flags=custom_popup_flags)
 
