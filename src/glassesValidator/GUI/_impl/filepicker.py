@@ -226,7 +226,7 @@ class FilePicker:
                     if self.sorted_items and self.last_clicked_id not in self.sorted_items:
                         # default to topmost if last_clicked unknown, or no longer on screen due to filter
                         self.last_clicked_id = self.sorted_items[0]
-                    for idx,id in enumerate(self.sorted_items):
+                    for id in self.sorted_items:
                         imgui.table_next_row()
                 
                         selectable_clicked = False
@@ -298,12 +298,16 @@ class FilePicker:
                             imgui.pop_style_var()
 
                         # handle selection logic
-                        # NB: any_selectable_clicked is just for handling clicks not on any recording
+                        # NB: any_selectable_clicked is just for handling clicks not on any item
                         any_selectable_clicked = any_selectable_clicked or selectable_clicked
-                        if checkbox_clicked:
-                            self.selected[id] = checkbox_out
-                            self.last_clicked_id = id
-                        elif selectable_clicked and not checkbox_hovered: # don't enter this branch if interaction is with checkbox on the table row
+                        self.last_clicked_id = utils.selectable_item_logic(
+                            id, self.selected, self.last_clicked_id, self.sorted_items,
+                            selectable_clicked, selectable_out, allow_multiple=self.allow_multiple,
+                            overlayed_hovered=checkbox_hovered, overlayed_clicked=checkbox_clicked, new_overlayed_state=checkbox_out
+                            )
+
+                        # further deal with doubleclick on item
+                        if selectable_clicked and not checkbox_hovered: # don't enter this branch if interaction is with checkbox on the table row
                             if not imgui.io.key_ctrl and not imgui.io.key_shift and imgui.is_mouse_double_clicked():
                                 if self.items[id].is_dir:
                                     self.goto(self.items[id].full_path)
@@ -313,26 +317,6 @@ class FilePicker:
                                     self.selected[id] = True
                                     imgui.close_current_popup()
                                     closed = True
-                            elif not self.allow_multiple:
-                                utils.set_all(self.selected, False)
-                                self.selected[id] = selectable_out
-                            else:
-                                if not imgui.io.key_ctrl:
-                                    # deselect all, below we'll either select all, or range between last and current clicked
-                                    utils.set_all(self.selected, False)
-
-                                if imgui.io.key_shift:
-                                    # select range between last clicked and just clicked item
-                                    last_clicked_idx = self.sorted_items.index(self.last_clicked_id)
-                                    idxs = sorted([idx, last_clicked_idx])
-                                    for rid in range(idxs[0],idxs[1]+1):
-                                        self.selected[self.sorted_items[rid]] = True
-                                else:
-                                    self.selected[id] = True if num_selected>1 and not imgui.io.key_ctrl else selectable_out
-
-                                # consistent with Windows behavior, only update last clicked when shift not pressed
-                                if not imgui.io.key_shift:
-                                    self.last_clicked_id = id
 
                     last_y = imgui.get_cursor_screen_pos().y
                     imgui.end_table()

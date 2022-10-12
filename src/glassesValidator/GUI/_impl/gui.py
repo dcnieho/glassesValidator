@@ -175,7 +175,7 @@ class RecordingTable():
             if self.sorted_recordings_ids and self.last_clicked_id not in self.sorted_recordings_ids:
                 # default to topmost if last_clicked unknown, or no longer on screen due to filter
                 self.last_clicked_id = self.sorted_recordings_ids[0]
-            for idx,id in enumerate(self.sorted_recordings_ids):
+            for id in self.sorted_recordings_ids:
                 imgui.table_next_row()
                 
                 recording = self.recordings[id]
@@ -295,26 +295,12 @@ class RecordingTable():
                 # NB: the part of this logic that has to do with right-clicks is in handle_recording_hitbox_events()
                 # NB: any_selectable_clicked is just for handling clicks not on any recording
                 any_selectable_clicked = any_selectable_clicked or selectable_clicked or selectable_right_clicked
-                if checkbox_clicked:
-                    self.selected_recordings[id] = checkbox_out
-                    self.last_clicked_id = id
-                elif selectable_clicked and not (checkbox_hovered or remove_button_hovered): # don't enter this branch if interaction is with checkbox or button on the table row
-                    if not imgui.io.key_ctrl:
-                        # deselect all, below we'll either select all, or range between last and current clicked
-                        utils.set_all(self.selected_recordings, False)
 
-                    if imgui.io.key_shift:
-                        # select range between last clicked and just clicked item
-                        last_clicked_idx = self.sorted_recordings_ids.index(self.last_clicked_id)
-                        idxs = sorted([idx, last_clicked_idx])
-                        for rid in range(idxs[0],idxs[1]+1):
-                            self.selected_recordings[self.sorted_recordings_ids[rid]] = True
-                    else:
-                        self.selected_recordings[id] = True if num_selected>1 and not imgui.io.key_ctrl else selectable_out
-
-                    # consistent with Windows behavior, only update last clicked when shift not pressed
-                    if not imgui.io.key_shift:
-                        self.last_clicked_id = id
+                self.last_clicked_id = utils.selectable_item_logic(
+                    id, self.selected_recordings, self.last_clicked_id, self.sorted_recordings_ids,
+                    selectable_clicked, selectable_out, overlayed_hovered=checkbox_hovered or remove_button_hovered,
+                    overlayed_clicked=checkbox_clicked, new_overlayed_state=checkbox_out
+                    )
 
             last_y = imgui.get_cursor_screen_pos().y
             imgui.end_table()
