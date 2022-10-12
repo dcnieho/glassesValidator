@@ -45,7 +45,7 @@ class FilePicker:
         self.dir: pathlib.Path = None
         self.dir_picker = dir_picker
         self.show_only_dirs = self.dir_picker   # by default, a dir picker only shows dirs
-        self.use_predicate = self.dir_picker    # use predicate that disallows selecting entries that are not dirctories
+        self.predicate = None
         self.flags = custom_popup_flags or self.flags
         self.windows = sys.platform.startswith("win")
         if self.windows:
@@ -71,6 +71,8 @@ class FilePicker:
         self.items.clear()
         self.selected.clear()
         self.msg = None
+        if self.dir_picker and self.show_only_dirs and not self.predicate:
+            self.predicate = lambda id: self.items[id].is_dir
         try:
             items = list(self.dir.iterdir())
             if not items:
@@ -188,8 +190,8 @@ class FilePicker:
                     imgui.table_set_column_index(0) # checkbox column: reflects whether all, some or none of visible recordings are selected, and allows selecting all or none
                     # get state
                     num_selected = sum([self.selected[id] for id in self.selected])
-                    if self.use_predicate:
-                        num_items = sum([self.items[id].is_dir for id in self.items])
+                    if self.predicate:
+                        num_items = sum([self.predicate(id) for id in self.items])
                     else:
                         num_items = len(self.items)
                     if num_selected==0:
@@ -212,7 +214,7 @@ class FilePicker:
                     imgui.table_header(imgui.table_get_column_name(1)[2:])
 
                     if clicked:
-                        utils.set_all(self.selected, new_state, subset = self.sorted_items, predicate=lambda id: self.items[id].is_dir)
+                        utils.set_all(self.selected, new_state, subset = self.sorted_items, predicate=self.predicate)
                     
                     # Loop rows
                     a=.4
@@ -229,6 +231,12 @@ class FilePicker:
                         selectable_clicked = False
                         checkbox_clicked, checkbox_hovered = False, False
                         has_drawn_hitbox = False
+
+                        disable_item = self.predicate and not self.predicate(id)
+                        if disable_item:
+                            imgui.internal.push_item_flag(imgui.internal.ITEM_DISABLED, True)
+                            imgui.push_style_var(imgui.STYLE_ALPHA, imgui.get_style().alpha *  0.5)
+
                         for ci in range(2):
                             if not (imgui.table_get_column_flags(ci) & imgui.TABLE_COLUMN_IS_ENABLED):
                                 continue
@@ -283,41 +291,44 @@ class FilePicker:
                                     # Name
                                     prefix = self.dir_icon if self.items[id].is_dir else self.file_icon
                                     imgui.text(prefix+self.items[id].name)
+                                    
+                        if disable_item:
+                            imgui.internal.pop_item_flag()
+                            imgui.pop_style_var()
 
                         # handle selection logic
                         # NB: any_selectable_clicked is just for handling clicks not on any recording
                         any_selectable_clicked = any_selectable_clicked or selectable_clicked
-                        if self.items[id].is_dir or not self.dir_picker:
-                            if checkbox_clicked:
-                                self.selected[id] = checkbox_out
-                                self.last_clicked_id = id
-                            elif selectable_clicked and not checkbox_hovered: # don't enter this branch if interaction is with checkbox on the table row
-                                if not imgui.io.key_ctrl and not imgui.io.key_shift and imgui.is_mouse_double_clicked():
-                                    if self.items[id].is_dir:
-                                        self.goto(self.items[id].full_path)
-                                        break
-                                    elif not self.dir_picker:
-                                        utils.set_all(self.selected, False)
-                                        self.selected[id] = True
-                                        imgui.close_current_popup()
-                                        closed = True
+                        if checkbox_clicked:
+                            self.selected[id] = checkbox_out
+                            self.last_clicked_id = id
+                        elif selectable_clicked and not checkbox_hovered: # don't enter this branch if interaction is with checkbox on the table row
+                            if not imgui.io.key_ctrl and not imgui.io.key_shift and imgui.is_mouse_double_clicked():
+                                if self.items[id].is_dir:
+                                    self.goto(self.items[id].full_path)
+                                    break
+                                elif not self.dir_picker:
+                                    utils.set_all(self.selected, False)
+                                    self.selected[id] = True
+                                    imgui.close_current_popup()
+                                    closed = True
+                            else:
+                                if not imgui.io.key_ctrl:
+                                    # deselect all, below we'll either select all, or range between last and current clicked
+                                    utils.set_all(self.selected, False)
+
+                                if imgui.io.key_shift:
+                                    # select range between last clicked and just clicked item
+                                    last_clicked_idx = self.sorted_items.index(self.last_clicked_id)
+                                    idxs = sorted([idx, last_clicked_idx])
+                                    for rid in range(idxs[0],idxs[1]+1):
+                                        self.selected[self.sorted_items[rid]] = True
                                 else:
-                                    if not imgui.io.key_ctrl:
-                                        # deselect all, below we'll either select all, or range between last and current clicked
-                                        utils.set_all(self.selected, False)
+                                    self.selected[id] = True if num_selected>1 else selectable_out
 
-                                    if imgui.io.key_shift:
-                                        # select range between last clicked and just clicked item
-                                        last_clicked_idx = self.sorted_items.index(self.last_clicked_id)
-                                        idxs = sorted([idx, last_clicked_idx])
-                                        for rid in range(idxs[0],idxs[1]+1):
-                                            self.selected[self.sorted_items[rid]] = True
-                                    else:
-                                        self.selected[id] = True if num_selected>1 else selectable_out
-
-                                    # consistent with Windows behavior, only update last clicked when shift not pressed
-                                    if not imgui.io.key_shift:
-                                        self.last_clicked_id = id
+                                # consistent with Windows behavior, only update last clicked when shift not pressed
+                                if not imgui.io.key_shift:
+                                    self.last_clicked_id = id
 
                     last_y = imgui.get_cursor_screen_pos().y
                     imgui.end_table()
