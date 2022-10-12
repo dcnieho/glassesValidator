@@ -243,6 +243,8 @@ def selectable_item_logic(id: int, selected: dict[int,typing.Any], last_clicked_
                           selectable_clicked: bool, new_selectable_state: bool,
                           allow_multiple=True, overlayed_hovered=False, overlayed_clicked=False, new_overlayed_state=False):
     if overlayed_clicked:
+        if not allow_multiple:
+            set_all(selected, False)
         selected[id] = new_overlayed_state
         last_clicked_id = id
     elif selectable_clicked and not overlayed_hovered: # don't enter this branch if interaction is with another overlaid actionable item
