@@ -1088,7 +1088,7 @@ class MainGUI():
                     if self.size_mult != self.last_size_mult:
                         self.new_screen_size = int(self.screen_size[0]/self.last_size_mult*self.size_mult), int(self.screen_size[1]/self.last_size_mult*self.size_mult)
 
-    def try_load_project(self, path: str | pathlib.Path, creating = False):
+    def try_load_project(self, path: str | pathlib.Path, action = 'loading'):
         if isinstance(path,list):
             if not path:
                 utils.push_popup(msgbox.msgbox, "Project opening error", "A single project directory should be provided. None provided so cannot open.", MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in path])))
@@ -1099,7 +1099,7 @@ class MainGUI():
         path = pathlib.Path(path)
         
         if utils.is_project_folder(path):
-            if creating:
+            if action=='creating':
                 buttons = {
                     "󰄬 Yes": lambda: self.load_project(path),
                     "󰜺 No": None
@@ -1108,7 +1108,7 @@ class MainGUI():
             else:
                 self.load_project(path)
         elif any(path.iterdir()):
-            if creating:
+            if action=='creating':
                 utils.push_popup(msgbox.msgbox, "Project creation error", "The selected folder is not empty. Cannot be used to create a project folder.", MsgBox.error)
             else:
                 utils.push_popup(msgbox.msgbox, "Project opening error", "The selected folder is not a project folder. Cannot open.", MsgBox.error)
@@ -1120,7 +1120,7 @@ class MainGUI():
                     "󰜺 No": None
                 }
                 utils.push_popup(msgbox.msgbox, "Open new project", "Do you want to open the new project folder?", MsgBox.question, buttons)
-            if creating:
+            if action=='creating':
                 init_project_and_ask()
             else:
                 buttons = {
@@ -1367,14 +1367,20 @@ class MainGUI():
         except Exception:
             pass    # already saved with imgui.save_ini_settings_to_disk above
 
-    def get_folder_picker(self, creating=False, select_for_add=False):
+    def get_folder_picker(self, reason='loading', select_for_add=False):
         def select_callback(selected):
-            if selected:
-                if select_for_add:
+            match reason:
+                case 'loading' | 'creating':
+                    self.try_load_project(selected,action=reason)
+                case 'add_recordings':
                     callbacks.add_recordings(selected)
-                else:
-                    self.try_load_project(selected,creating=creating)
-        picker = filepicker.DirPicker("Select or drop project folder", callback=select_callback)
+                    
+        match reason:
+            case 'loading' | 'creating':
+                header = "Select or drop project folder"
+            case 'add_recordings':
+                header = "Select or drop recording folders"
+        picker = filepicker.DirPicker(header, callback=select_callback)
         picker.show_only_dirs = True
         return picker
 
@@ -1398,7 +1404,7 @@ class MainGUI():
         imgui.set_cursor_pos_y(but_y)
         
         if imgui.button("󰮝 New project", width=but_width, height=but_height):
-            utils.push_popup(self.get_folder_picker(creating=True))
+            utils.push_popup(self.get_folder_picker(reason='creating'))
         imgui.same_line(spacing=10*imgui.style.item_spacing.x)
         if imgui.button("󰷏 Open project", width=but_width, height=but_height):
             utils.push_popup(self.get_folder_picker())
@@ -1712,7 +1718,7 @@ class MainGUI():
         # 1. see what actions are available
         # 1a. we always have the add recordings option
         text = ["󱃩 Add recordings"]
-        action = [lambda: utils.push_popup(self.get_folder_picker(select_for_add=True))]
+        action = [lambda: utils.push_popup(self.get_folder_picker(reason='add_recordings'))]
         hover_text = ["Press the \"󱃩 Add recordings\" button to select a folder or folders\n" \
                       "that will be searched for importable recordings. You will then be able\n"\
                       "to select which of the found recordings you wish to import. You can\n"\
@@ -1884,7 +1890,7 @@ class MainGUI():
             btn_width = right_width*1.5
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󰮝 New project", width=btn_width):
-                utils.push_popup(self.get_folder_picker(creating=True))
+                utils.push_popup(self.get_folder_picker(reason='creating'))
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󰷏 Open project", width=btn_width):
                 utils.push_popup(self.get_folder_picker())
