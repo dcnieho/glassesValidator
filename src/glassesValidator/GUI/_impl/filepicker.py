@@ -183,7 +183,7 @@ class FilePicker:
                     imgui.text(f"  Selected:  {item[len(self.dir_icon if self.dir_picker else self.file_icon):]}")
         else:
             opened = 0
-            closed = True
+            cancelled = closed = True
         if closed:
             if not cancelled and self.callback:
                 self.callback([pathlib.Path(self.selected)] if self.selected is not None else None)
