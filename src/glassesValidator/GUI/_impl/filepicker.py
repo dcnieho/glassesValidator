@@ -8,6 +8,9 @@ import sys
 import os
 import dataclasses
 import natsort
+import mimetypes
+import datetime
+import re
 
 from . import globals, utils
 from .structs import SortSpec
@@ -17,6 +20,11 @@ class DirEntry:
     name: str
     is_dir: bool
     full_path: pathlib.Path
+    ctime: float
+    mtime: float
+    size: int
+    mime_type: str
+
 
 class FilePicker:
     flags = (
@@ -103,7 +111,10 @@ class FilePicker:
                     items = [i for i in items if i.is_dir()]
                 if items:
                     for i,item in enumerate(items):
-                        self.items[i] = DirEntry(item.name,item.is_dir(),item)
+                        stat = item.stat()
+                        self.items[i] = DirEntry(item.name,item.is_dir(),item,
+                                                 stat.st_ctime,stat.st_mtime,stat.st_size,
+                                                 mimetypes.guess_type(item)[0])
                         self.selected[i] = False
                 else:
                     self.msg = "This folder does not contain any folders!"
@@ -184,22 +195,30 @@ class FilePicker:
                 imgui.text_unformatted(self.msg)
             else:
                 table_flags = (
-                    imgui.TABLE_SCROLL_Y |
                     imgui.TABLE_SCROLL_X |
+                    imgui.TABLE_SCROLL_Y |
+                    imgui.TABLE_HIDEABLE |
                     imgui.TABLE_SORTABLE |
+                    imgui.TABLE_RESIZABLE |
                     imgui.TABLE_SORT_MULTI |
+                    imgui.TABLE_REORDERABLE |
                     imgui.TABLE_ROW_BACKGROUND |
                     imgui.TABLE_SIZING_FIXED_FIT |
-                    imgui.TABLE_NO_HOST_EXTEND_Y
+                    imgui.TABLE_NO_HOST_EXTEND_Y |
+                    imgui.TABLE_NO_BORDERS_IN_BODY_UTIL_RESIZE
                 )
-                if imgui.begin_table(f"##folder_list",column=1+self.allow_multiple,flags=table_flags):
+                if imgui.begin_table(f"##folder_list",column=5+self.allow_multiple,flags=table_flags):
                     frame_height = imgui.get_frame_height()
 
                     # Setup
                     checkbox_width = frame_height
                     if self.allow_multiple:
-                        imgui.table_setup_column("󰄵 Selector", imgui.TABLE_COLUMN_NO_HIDE | imgui.TABLE_COLUMN_NO_SORT | imgui.TABLE_COLUMN_NO_RESIZE | imgui.TABLE_COLUMN_NO_REORDER, init_width_or_weight=checkbox_width)  # 0
-                    imgui.table_setup_column("󰌖 Name", imgui.TABLE_COLUMN_DEFAULT_SORT | imgui.TABLE_COLUMN_NO_HIDE | imgui.TABLE_COLUMN_NO_RESIZE)  # 3
+                        imgui.table_setup_column("Selector", imgui.TABLE_COLUMN_NO_HIDE | imgui.TABLE_COLUMN_NO_SORT | imgui.TABLE_COLUMN_NO_RESIZE | imgui.TABLE_COLUMN_NO_REORDER, init_width_or_weight=checkbox_width)  # 0
+                    imgui.table_setup_column("Name", imgui.TABLE_COLUMN_DEFAULT_SORT | imgui.TABLE_COLUMN_NO_HIDE)  # 1
+                    imgui.table_setup_column("Date created", imgui.TABLE_COLUMN_DEFAULT_HIDE)  # 2
+                    imgui.table_setup_column("Date modified")  # 3
+                    imgui.table_setup_column("Type")  # 4
+                    imgui.table_setup_column("Size")  # 5
                     imgui.table_setup_scroll_freeze(int(self.allow_multiple), 1)  # Sticky column headers and selector row
 
                     sort_specs = imgui.table_get_sort_specs()
@@ -235,8 +254,9 @@ class FilePicker:
                         if clicked:
                             utils.set_all(self.selected, new_state, subset = self.sorted_items, predicate=self.predicate)
 
-                    imgui.table_set_column_index(0+self.allow_multiple)
-                    imgui.table_header(imgui.table_get_column_name(0+self.allow_multiple)[2:])
+                    for i in range(5):
+                        imgui.table_set_column_index(i+self.allow_multiple)
+                        imgui.table_header(imgui.table_get_column_name(i+self.allow_multiple))
 
                     
                     # Loop rows
@@ -260,7 +280,7 @@ class FilePicker:
                             imgui.internal.push_item_flag(imgui.internal.ITEM_DISABLED, True)
                             imgui.push_style_var(imgui.STYLE_ALPHA, imgui.get_style().alpha *  0.5)
 
-                        for ci in range(1+self.allow_multiple):
+                        for ci in range(5+self.allow_multiple):
                             if not (imgui.table_get_column_flags(ci) & imgui.TABLE_COLUMN_IS_ENABLED):
                                 continue
                             imgui.table_set_column_index(ci)
@@ -314,6 +334,29 @@ class FilePicker:
                                     # Name
                                     prefix = self.dir_icon if self.items[id].is_dir else self.file_icon
                                     imgui.text(prefix+self.items[id].name)
+                                case 2:
+                                    # Date created
+                                    dt = datetime.datetime.fromtimestamp(self.items[id].ctime).strftime("%Y-%m-%d %H:%M:%S")
+                                    imgui.text(dt)
+                                case 3:
+                                    # Date modified
+                                    dt = datetime.datetime.fromtimestamp(self.items[id].mtime).strftime("%Y-%m-%d %H:%M:%S")
+                                    imgui.text(dt)
+                                case 4:
+                                    # Type
+                                    if self.items[id].mime_type:
+                                        imgui.text(self.items[id].mime_type)
+                                case 5:
+                                    # Size
+                                    if not self.items[id].is_dir:
+                                        unit = 1024**2
+                                        orig = "%.1f KiB" % ((1024 * self.items[id].size / unit))
+                                        while True:
+                                            new = re.sub(r"^(-?\d+)(\d{3})", r"\g<1>,\g<2>", orig)
+                                            if orig == new:
+                                                break
+                                            orig = new
+                                        imgui.text(new)
                                     
                         if disable_item:
                             imgui.internal.pop_item_flag()
@@ -394,7 +437,16 @@ class FilePicker:
             ids = list(self.items)
             for sort_spec in sort_specs_in.specs:
                 sort_spec = SortSpec(index=sort_spec.column_index, reverse=bool(sort_spec.sort_direction - 1))
-                match sort_spec.index:
+                match sort_spec.index+int(not self.allow_multiple):
+                    case 2:     # Date created
+                        key = lambda id: self.items[id].ctime
+                    case 3:     # Date modified
+                        key = lambda id: self.items[id].mtime
+                    case 4:     # Type
+                        key = lambda id: m if (m:=self.items[id].mime_type) else ''
+                    case 5:     # Size
+                        key = lambda id: self.items[id].size
+
                     case _:     # Name and all others
                         key = natsort.os_sort_keygen(key=lambda id: self.items[id].full_path)
 
