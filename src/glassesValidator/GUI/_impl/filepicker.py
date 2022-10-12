@@ -328,7 +328,7 @@ class FilePicker:
                                     for rid in range(idxs[0],idxs[1]+1):
                                         self.selected[self.sorted_items[rid]] = True
                                 else:
-                                    self.selected[id] = True if num_selected>1 else selectable_out
+                                    self.selected[id] = True if num_selected>1 and not imgui.io.key_ctrl else selectable_out
 
                                 # consistent with Windows behavior, only update last clicked when shift not pressed
                                 if not imgui.io.key_shift:
