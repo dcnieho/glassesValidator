@@ -316,7 +316,7 @@ class RecordingTable():
                     if not imgui.io.key_shift:
                         self.last_clicked_id = id
 
-            last_y = imgui.get_cursor_pos_y()
+            last_y = imgui.get_cursor_screen_pos().y
             imgui.end_table()
 
             # handle click in table area outside header+contents:
