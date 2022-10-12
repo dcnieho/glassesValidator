@@ -192,48 +192,52 @@ class FilePicker:
                     imgui.TABLE_SIZING_FIXED_FIT |
                     imgui.TABLE_NO_HOST_EXTEND_Y
                 )
-                if imgui.begin_table(f"##folder_list",column=2,flags=table_flags):
+                if imgui.begin_table(f"##folder_list",column=1+self.allow_multiple,flags=table_flags):
                     frame_height = imgui.get_frame_height()
 
                     # Setup
                     checkbox_width = frame_height
-                    imgui.table_setup_column("󰄵 Selector", imgui.TABLE_COLUMN_NO_HIDE | imgui.TABLE_COLUMN_NO_SORT | imgui.TABLE_COLUMN_NO_RESIZE | imgui.TABLE_COLUMN_NO_REORDER, init_width_or_weight=checkbox_width)  # 0
+                    if self.allow_multiple:
+                        imgui.table_setup_column("󰄵 Selector", imgui.TABLE_COLUMN_NO_HIDE | imgui.TABLE_COLUMN_NO_SORT | imgui.TABLE_COLUMN_NO_RESIZE | imgui.TABLE_COLUMN_NO_REORDER, init_width_or_weight=checkbox_width)  # 0
                     imgui.table_setup_column("󰌖 Name", imgui.TABLE_COLUMN_DEFAULT_SORT | imgui.TABLE_COLUMN_NO_HIDE | imgui.TABLE_COLUMN_NO_RESIZE)  # 3
-                    imgui.table_setup_scroll_freeze(1, 1)  # Sticky column headers and selector row
+                    imgui.table_setup_scroll_freeze(int(self.allow_multiple), 1)  # Sticky column headers and selector row
 
                     sort_specs = imgui.table_get_sort_specs()
                     self.sort_items(sort_specs)
 
                     # Headers
                     imgui.table_next_row(imgui.TABLE_ROW_HEADERS)
-                    imgui.table_set_column_index(0) # checkbox column: reflects whether all, some or none of visible recordings are selected, and allows selecting all or none
-                    # get state
+                    # checkbox column: reflects whether all, some or none of visible recordings are selected, and allows selecting all or none
                     num_selected = sum([self.selected[id] for id in self.selected])
-                    if self.predicate:
-                        num_items = sum([self.predicate(id) for id in self.items])
-                    else:
-                        num_items = len(self.items)
-                    if num_selected==0:
-                        # none selected
-                        multi_selected_state = -1
-                    elif num_selected==num_items:
-                        # all selected
-                        multi_selected_state = 1
-                    else:
-                        # some selected
-                        multi_selected_state = 0
+                    if self.allow_multiple:
+                        imgui.table_set_column_index(0)
+                        # determine state
+                        if self.predicate:
+                            num_items = sum([self.predicate(id) for id in self.items])
+                        else:
+                            num_items = len(self.items)
+                        if num_selected==0:
+                            # none selected
+                            multi_selected_state = -1
+                        elif num_selected==num_items:
+                            # all selected
+                            multi_selected_state = 1
+                        else:
+                            # some selected
+                            multi_selected_state = 0
 
-                    if multi_selected_state==0:
-                        imgui.internal.push_item_flag(imgui.internal.ITEM_MIXED_VALUE,True)
-                    clicked, new_state = imgui.checkbox(f"##header_checkbox", multi_selected_state==1, frame_size=(0,0), do_vertical_align=False)
-                    if multi_selected_state==0:
-                        imgui.internal.pop_item_flag()
+                        if multi_selected_state==0:
+                            imgui.internal.push_item_flag(imgui.internal.ITEM_MIXED_VALUE,True)
+                        clicked, new_state = imgui.checkbox(f"##header_checkbox", multi_selected_state==1, frame_size=(0,0), do_vertical_align=False)
+                        if multi_selected_state==0:
+                            imgui.internal.pop_item_flag()
 
-                    imgui.table_set_column_index(1)
-                    imgui.table_header(imgui.table_get_column_name(1)[2:])
+                        if clicked:
+                            utils.set_all(self.selected, new_state, subset = self.sorted_items, predicate=self.predicate)
 
-                    if clicked:
-                        utils.set_all(self.selected, new_state, subset = self.sorted_items, predicate=self.predicate)
+                    imgui.table_set_column_index(0+self.allow_multiple)
+                    imgui.table_header(imgui.table_get_column_name(0+self.allow_multiple)[2:])
+
                     
                     # Loop rows
                     a=.4
@@ -248,7 +252,7 @@ class FilePicker:
                         imgui.table_next_row()
                 
                         selectable_clicked = False
-                        checkbox_clicked, checkbox_hovered = False, False
+                        checkbox_clicked, checkbox_hovered, checkbox_out = False, False, False
                         has_drawn_hitbox = False
 
                         disable_item = self.predicate and not self.predicate(id)
@@ -256,7 +260,7 @@ class FilePicker:
                             imgui.internal.push_item_flag(imgui.internal.ITEM_DISABLED, True)
                             imgui.push_style_var(imgui.STYLE_ALPHA, imgui.get_style().alpha *  0.5)
 
-                        for ci in range(2):
+                        for ci in range(1+self.allow_multiple):
                             if not (imgui.table_get_column_flags(ci) & imgui.TABLE_COLUMN_IS_ENABLED):
                                 continue
                             imgui.table_set_column_index(ci)
@@ -289,7 +293,7 @@ class FilePicker:
                                 imgui.pop_style_var(3)
                                 has_drawn_hitbox = True
                         
-                            if ci==1:
+                            if ci==int(self.allow_multiple):
                                 # (Invisible) button because it aligns the following draw calls to center vertically
                                 imgui.push_style_var(imgui.STYLE_FRAME_BORDERSIZE, 0.)
                                 imgui.push_style_var(imgui.STYLE_FRAME_PADDING, (0.,imgui.style.frame_padding.y))
@@ -301,7 +305,7 @@ class FilePicker:
                         
                                 imgui.same_line()
 
-                            match ci:
+                            match ci+int(not self.allow_multiple):
                                 case 0:
                                     # Selector
                                     checkbox_clicked, checkbox_out = imgui.checkbox(f"##{id}_selected", self.selected[id], frame_size=(0,0))
