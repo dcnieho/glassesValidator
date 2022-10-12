@@ -370,8 +370,8 @@ class FilePicker:
             if self.dir_picker and not num_selected:
                 imgui.text(f"  Selected the current directory ({self.dir.name})")
             elif num_selected==1:
-                selected = [self.items[id].name for id in self.items if id in self.selected and self.selected[id]]
-                imgui.text(f"  Selected {num_selected} item ({selected[0]})")
+                selected = [self.items[id] for id in self.items if id in self.selected and self.selected[id]]
+                imgui.text(f"  Selected {num_selected} item ({'directory' if selected[0].is_dir else 'file'} '{selected[0].name}')")
             else:
                 imgui.text(f"  Selected {num_selected} items")
         else:
