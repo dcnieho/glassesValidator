@@ -53,6 +53,7 @@ class RecordingTable():
         self.in_adder_popup = is_adder_popup
 
         self.sorted_recordings_ids: list[int] = []
+        self.last_clicked_id: int = None
         self.require_sort: bool = True
         self.filters: list[Filter] = []
         self.filter_box_text: str = ""
@@ -171,6 +172,9 @@ class RecordingTable():
             a=.2
             style_hovered_row  = (*tuple(a*x+(1-a)*y for x,y in zip(globals.settings.style_accent[:3],globals.settings.style_bg[:3])), 1.)
             any_selectable_clicked = False
+            if self.sorted_recordings_ids and self.last_clicked_id not in self.sorted_recordings_ids:
+                # default to topmost if last_clicked unknown, or no longer on screen due to filter
+                self.last_clicked_id = self.sorted_recordings_ids[0]
             for idx,id in enumerate(self.sorted_recordings_ids):
                 imgui.table_next_row()
                 
@@ -289,30 +293,27 @@ class RecordingTable():
                     
                 # handle selection logic
                 # NB: the part of this logic that has to do with right-clicks is in handle_recording_hitbox_events()
+                # NB: any_selectable_clicked is just for handling clicks not on any recording
                 any_selectable_clicked = any_selectable_clicked or selectable_clicked or selectable_right_clicked
                 if checkbox_clicked:
                     self.selected_recordings[id] = checkbox_out
                 elif selectable_clicked and not (checkbox_hovered or remove_button_hovered): # don't enter this branch if interaction is with checkbox or button on the table row
-                    if imgui.get_io().key_ctrl:
-                        self.selected_recordings[id] = selectable_out
-                    elif imgui.get_io().key_shift:
-                        if num_selected in [0,1]:
-                            # select range between already selected and just clicked item
-                            if num_selected==0:
-                                id_other = self.sorted_recordings_ids[0]
-                            else:
-                                id_other = [id for id in self.selected_recordings if self.selected_recordings[id]][0]
-                            idx_other = self.sorted_recordings_ids.index(id_other)
-                            if idx<idx_other:
-                                i1,i2 = idx,idx_other
-                            else:
-                                i1,i2 = idx_other,idx
-                            for rid in range(i1,i2+1):
-                                self.selected_recordings[self.sorted_recordings_ids[rid]] = True
-                    else:
-                        # deselect all other ones except clicked
+                    if not imgui.get_io().key_ctrl:
+                        # deselect all, below we'll either select all, or range between last and current clicked
                         utils.set_all(self.selected_recordings, False)
-                        self.selected_recordings[id] = True if num_selected>1 else selectable_out
+
+                    if imgui.get_io().key_shift:
+                        # select range between last clicked and just clicked item
+                        last_clicked_idx = self.sorted_recordings_ids.index(self.last_clicked_id)
+                        idxs = sorted([idx, last_clicked_idx])
+                        for rid in range(idxs[0],idxs[1]+1):
+                            self.selected_recordings[self.sorted_recordings_ids[rid]] = True
+                    else:
+                        self.selected_recordings[id] = selectable_out
+
+                    # consistent with Windows behavior, only update last clicked when shift not pressed
+                    if not imgui.get_io().key_shift:
+                        self.last_clicked_id = self.sorted_recordings_ids[idx]
 
             last_y = imgui.get_cursor_pos_y()
             imgui.end_table()
