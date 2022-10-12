@@ -29,7 +29,6 @@ class FilePicker:
 
     def __init__(self, title="File picker", dir_picker=False, start_dir: str | pathlib.Path = None, callback: typing.Callable = None, allow_multiple = True, custom_popup_flags=0):
         self.title = title
-        self.active = True
         self.elapsed = 0.0
         self.dir_icon = "󰉋  "
         self.file_icon = "󰈔  "
@@ -54,6 +53,27 @@ class FilePicker:
             self.current_drive = 0
 
         self.goto(start_dir or os.getcwd())
+
+    def set_dir(self, paths: pathlib.Path | list[pathlib.Path]):
+        if not isinstance(paths,list):
+            paths = [paths]
+        paths = [pathlib.Path(p) for p in paths]
+
+        if len(paths)==1 and paths[0].is_dir():
+            self.goto(paths[0])
+        else:
+            self.goto(paths[0].parent)
+            # update selected
+            got_one = False
+            for p in paths:
+                for id in self.items:
+                    entry = self.items[id]
+                    if entry.full_path==p and (not self.predicate or self.predicate(id)):
+                        self.selected[id] = True
+                        got_one = True
+                        break
+                if not self.allow_multiple and got_one:
+                    break
 
     def goto(self, dir: str | pathlib.Path):
         dir = pathlib.Path(dir)
@@ -112,8 +132,6 @@ class FilePicker:
                         self.current_drive = i
 
     def tick(self):
-        if not self.active:
-            return 0, True
         io = imgui.get_io()
 
         # Auto refresh
@@ -365,7 +383,6 @@ class FilePicker:
                 if self.dir_picker and not selected:
                     selected = [self.dir]
                 self.callback(selected if selected else None)
-            self.active = False
         return opened, closed
 
     def sort_items(self, sort_specs_in: imgui.core._ImGuiTableSortSpecs):

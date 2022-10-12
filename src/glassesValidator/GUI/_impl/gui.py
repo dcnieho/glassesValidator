@@ -1121,12 +1121,7 @@ class MainGUI():
     def drop_callback(self, window: glfw._GLFWwindow, items: list[str]):
         paths = [pathlib.Path(item) for item in items]
         if globals.popup_stack and isinstance(picker := globals.popup_stack[-1], filepicker.FilePicker):
-            path = paths[0]
-            if (picker.dir_picker and path.is_dir()) or (not picker.dir_picker and path.is_file()):
-                picker.selected = str(path)
-                if picker.callback:
-                    picker.callback(picker.selected)
-                picker.active = False
+            picker.set_dir(paths)
         else:
             if globals.project_path is not None:
                 callbacks.add_recordings(paths)
