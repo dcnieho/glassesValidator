@@ -336,6 +336,7 @@ class FilePicker:
                 cancelled = closed = True
             # Ok button
             imgui.same_line()
+            num_selected = sum([self.selected[id] for id in self.selected])
             disable_ok = not num_selected and not self.dir_picker
             if disable_ok:
                 imgui.internal.push_item_flag(imgui.internal.ITEM_DISABLED, True)
@@ -350,6 +351,9 @@ class FilePicker:
             imgui.same_line()
             if self.dir_picker and not num_selected:
                 imgui.text(f"  Selected the current directory ({self.dir.name})")
+            elif num_selected==1:
+                selected = [self.items[id].name for id in self.items if id in self.selected and self.selected[id]]
+                imgui.text(f"  Selected {num_selected} item ({selected[0]})")
             else:
                 imgui.text(f"  Selected {num_selected} items")
         else:
