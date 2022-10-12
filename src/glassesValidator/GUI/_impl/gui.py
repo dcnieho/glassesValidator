@@ -298,11 +298,11 @@ class RecordingTable():
                 if checkbox_clicked:
                     self.selected_recordings[id] = checkbox_out
                 elif selectable_clicked and not (checkbox_hovered or remove_button_hovered): # don't enter this branch if interaction is with checkbox or button on the table row
-                    if not imgui.get_io().key_ctrl:
+                    if not imgui.io.key_ctrl:
                         # deselect all, below we'll either select all, or range between last and current clicked
                         utils.set_all(self.selected_recordings, False)
 
-                    if imgui.get_io().key_shift:
+                    if imgui.io.key_shift:
                         # select range between last clicked and just clicked item
                         last_clicked_idx = self.sorted_recordings_ids.index(self.last_clicked_id)
                         idxs = sorted([idx, last_clicked_idx])
@@ -312,7 +312,7 @@ class RecordingTable():
                         self.selected_recordings[id] = selectable_out
 
                     # consistent with Windows behavior, only update last clicked when shift not pressed
-                    if not imgui.get_io().key_shift:
+                    if not imgui.io.key_shift:
                         self.last_clicked_id = self.sorted_recordings_ids[idx]
 
             last_y = imgui.get_cursor_pos_y()
@@ -343,7 +343,7 @@ class RecordingTable():
             # 2a. if control is down pop up right-click menu for the selected recordings.
             # 2b. if control not down, deselect everything except clicked item (if any)
             # NB: popup not shown when shift or control are down, do not know why...
-            if not self.selected_recordings[id] and not imgui.get_io().key_ctrl:
+            if not self.selected_recordings[id] and not imgui.io.key_ctrl:
                 utils.set_all(self.selected_recordings, False)
                 self.selected_recordings[id] = True
 
