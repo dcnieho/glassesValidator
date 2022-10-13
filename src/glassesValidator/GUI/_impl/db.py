@@ -102,7 +102,7 @@ async def connect():
         "continue_process_after_code": f'INTEGER DEFAULT {int(True)}',
         "dq_use_viewdist_vidpos_homography":    f'INTEGER DEFAULT {int(False)}',
         "dq_use_pose_vidpos_homography":        f'INTEGER DEFAULT {int(False)}',
-        "dq_use_pose_vidpos_ray":      f'INTEGER DEFAULT {int(True)}',
+        "dq_use_pose_vidpos_ray":      f'INTEGER DEFAULT {int(False)}',
         "dq_use_pose_left_eye":        f'INTEGER DEFAULT {int(False)}',
         "dq_use_pose_right_eye":       f'INTEGER DEFAULT {int(False)}',
         "dq_use_pose_left_right_avg":  f'INTEGER DEFAULT {int(False)}',
