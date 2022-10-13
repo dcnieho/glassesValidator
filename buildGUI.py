@@ -16,7 +16,7 @@ def get_include_files():
         d=pathlib.Path(d)/'scipy'/'.libs'
         if d.is_dir():
             for f in d.iterdir():
-                if f.is_file() and f.suffix=='' or f.suffix in ['.dll', '.so', '.dylib']:
+                if f.is_file() and f.suffix=='' or f.suffix in ['.dll']:
                     files.append((f,pathlib.Path('lib')/f.name))
     # ffpyplayer bin deps
     for d in site.getsitepackages():
@@ -25,7 +25,7 @@ def get_include_files():
             d2 = d/lib/'bin'
             if d2.is_dir():
                 for f in d2.iterdir():
-                    if f.is_file() and f.suffix=='' or f.suffix in ['.dll', '.so', '.dylib', '.exe']:
+                    if f.is_file() and f.suffix=='' or f.suffix in ['.dll', '.exe']:
                         files.append((f,pathlib.Path('lib')/f.name))
     return files
 
@@ -48,6 +48,39 @@ ver_path = convert_path('src/glassesValidator/version.py')
 with open(ver_path) as ver_file:
     exec(ver_file.read(), main_ns)
 
+build_options = {
+    "build_exe": {
+        "optimize": 1,
+        "packages": [
+            'numpy','matplotlib','scipy','pandas','glassesValidator','OpenGL','cv2',
+            'ffpyplayer.player','ffpyplayer.threading'      # some specific subpackages that need to be mentioned to be picked up correctly
+        ],
+        "excludes":["tkinter"],
+        "zip_includes": get_zip_include_files(),
+        "zip_include_packages": "*",
+        "zip_exclude_packages": [
+            "OpenGL_accelerate",
+            "glfw",
+            "cv2"
+        ],
+        "silent_level": 1,
+        "include_msvcr": True
+    },
+    "bdist_mac": {
+        "bundle_name": "glassesValidator",
+        "plist_items": [
+            ("CFBundleName", "glassesValidator"),
+            ("CFBundleDisplayName", "glassesValidator"),
+            ("CFBundleIdentifier", "com.github.dcnieho.glassesValidator"),
+            ("CFBundleVersion", main_ns['__version__']),
+            ("CFBundlePackageType", "APPL"),
+            ("CFBundleSignature", "????"),
+        ]
+    }
+}
+if sys.platform.startswith("win"):
+	build_options["build_exe"]["include_files"] = get_include_files()
+
 cx_Freeze.setup(
     name="glassesValidator",
     version=main_ns['__version__'],
@@ -58,36 +91,6 @@ cx_Freeze.setup(
             target_name="glassesValidator",
         )
     ],
-    options={
-        "build_exe": {
-            "optimize": 1,
-            "packages": [
-                'numpy','matplotlib','scipy','pandas','glassesValidator','OpenGL','cv2',
-                'ffpyplayer.player','ffpyplayer.threading'      # some specific subpackages that need to be mentioned to be picked up correctly
-            ],
-            "excludes":["tkinter"],
-            "include_files": get_include_files(),
-            "zip_includes": get_zip_include_files(),
-            "zip_include_packages": "*",
-            "zip_exclude_packages": [
-                "OpenGL_accelerate",
-                "glfw",
-                "cv2"
-            ],
-            "silent_level": 1,
-            "include_msvcr": True
-        },
-        "bdist_mac": {
-            "bundle_name": "glassesValidator",
-            "plist_items": [
-                ("CFBundleName", "glassesValidator"),
-                ("CFBundleDisplayName", "glassesValidator"),
-                ("CFBundleIdentifier", "com.github.dcnieho.glassesValidator"),
-                ("CFBundleVersion", main_ns['__version__']),
-                ("CFBundlePackageType", "APPL"),
-                ("CFBundleSignature", "????"),
-            ]
-        }
-    },
+    options=build_options,
     py_modules=[]
 )
