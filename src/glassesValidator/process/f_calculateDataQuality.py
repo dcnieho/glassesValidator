@@ -9,7 +9,7 @@ import warnings
 from .. import utils
 
 
-def process(inputDir, configDir=None, dq_types=[], allow_dq_fallback=False):
+def process(inputDir, configDir=None, dq_types=[], allow_dq_fallback=False, include_data_loss=False):
     from . import DataQualityType
     inputDir  = pathlib.Path(inputDir)
     if configDir is not None:
@@ -122,7 +122,8 @@ def process(inputDir, configDir=None, dq_types=[], allow_dq_fallback=False):
                     df.loc[(i,e,t),'std_y'] = np.nanstd(data['offset_y'],ddof=1)
                     df.loc[(i,e,t),'std'  ] = np.hypot(df.loc[(i,e,t),'std_x'], df.loc[(i,e,t),'std_y'])
 
-                    df.loc[(i,e,t),'dataLoss'] = np.sum(np.isnan(data['offset_x']))/len(data)
+                    if include_data_loss:
+                        df.loc[(i,e,t),'dataLoss'] = np.sum(np.isnan(data['offset_x']))/len(data)
     
 
     df.to_csv(str(inputDir / 'dataQuality.tsv'), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.3f")

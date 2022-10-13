@@ -2097,6 +2097,22 @@ class MainGUI():
                     async_thread.run(db.update_settings("dq_use_pose_left_eye"))
                     set.dq_use_pose_right_eye = value
                     async_thread.run(db.update_settings("dq_use_pose_right_eye"))
+                    
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
+            imgui.text("Report data loss on\nvalidation poster:")
+            draw_hover_text("If selected, the data quality report will include data quality during "
+                            "the episode selected for each target on the validation poster. This is "
+                            "NOT the data loss of the whole recording and thus not what you want "
+                            "to report in your paper.", text="")
+            imgui.table_next_column()
+            imgui.dummy(1,imgui.calc_text_size('').y/2)
+            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+            changed, value = imgui.checkbox("##dq_report_data_loss", set.dq_report_data_loss)
+            if changed:
+                set.dq_report_data_loss = value
+                async_thread.run(db.update_settings("dq_report_data_loss"))
                 
             imgui.end_table()
             imgui.spacing()

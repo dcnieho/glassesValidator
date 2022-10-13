@@ -106,6 +106,7 @@ async def connect():
         "dq_use_pose_left_eye":        f'INTEGER DEFAULT {int(False)}',
         "dq_use_pose_right_eye":       f'INTEGER DEFAULT {int(False)}',
         "dq_use_pose_left_right_avg":  f'INTEGER DEFAULT {int(False)}',
+        "dq_report_data_loss":         f'INTEGER DEFAULT {int(False)}',
         "process_workers":             f'INTEGER DEFAULT 2',
         "render_when_unfocused":       f'INTEGER DEFAULT {int(True)}',
         "scroll_amount":               f'REAL    DEFAULT 1.0',

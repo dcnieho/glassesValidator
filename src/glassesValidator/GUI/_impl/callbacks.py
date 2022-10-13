@@ -244,6 +244,7 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
                         kwargs['dq_types'].append(DataQualityType.pose_right_eye)
                     if globals.settings.dq_use_pose_left_right_avg:
                         kwargs['dq_types'].append(DataQualityType.pose_left_right_avg)
+                    kwargs['include_data_loss'] = globals.settings.dq_report_data_loss
             args = (working_dir,)
             if globals.settings.config_dir and (config_dir := globals.project_path / globals.settings.config_dir).is_dir():
                 kwargs['configDir'] = config_dir
@@ -327,6 +328,8 @@ async def export_data_quality(ids: list[int]):
             # ultimate fallback, just set first available as the one to export
             pop_data['dq_types_sel'][0] = True
 
+    pop_data['include_data_loss'] = globals.settings.dq_report_data_loss
+
     # 3. show popup
     def show_config_popup():
         nonlocal pop_data
@@ -345,6 +348,9 @@ async def _export_data_quality(df: pd.DataFrame, pop_data: dict):
     # remove unwanted targets
     if not all(pop_data['targets_sel']):
         df = df.drop(index=[t for i,t in enumerate(pop_data['targets']) if not pop_data['targets_sel'][i]], level='target')
+    # remove unwanted data loss
+    if not pop_data['include_data_loss'] and 'dataLoss' in df.columns:
+        df = df.drop(columns='dataLoss')
     # average data if wanted
     if pop_data['targets_avg']:
         df = df.drop(columns='order').groupby(['recording', 'marker_interval', 'type'],observed=True).mean()
