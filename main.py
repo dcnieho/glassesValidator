@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys
+import multiprocessing
 
 if getattr(sys, "frozen", False):
     # need to call this so that code in __init__ of ffpyplayer
@@ -13,6 +14,8 @@ else:
         sys.path.append(src_path)
 
 if __name__=="__main__":
+    multiprocessing.freeze_support()
+
     import glassesValidator
     
     glassesValidator.GUI.run()

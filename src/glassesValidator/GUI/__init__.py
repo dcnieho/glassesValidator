@@ -1,9 +1,7 @@
 import sys
-import multiprocessing
 import pathlib
 
 def run(project: str | pathlib.Path = None):
-    multiprocessing.freeze_support()
 
     from ._impl import globals
     from ._impl.structs import Os
