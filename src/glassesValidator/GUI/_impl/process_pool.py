@@ -90,12 +90,11 @@ def run(fn: typing.Callable, *args, **kwargs):
 
     with _lock:
         if _pool is None or not _pool.active:
-            context = multiprocessing.get_context("spawn")  # ensure consistent behavior on Windows (where this is default) and Unix (where fork is default, but that may bring complications)
             if globals.settings is None:
                 max_workers = 2
             else:
                 max_workers = globals.settings.process_workers
-            _pool = pebble.ProcessPool(max_workers=max_workers, context=context)
+            _pool = pebble.ProcessPool(max_workers=max_workers)
 
         if _work_items is None:
             _work_items = {}
