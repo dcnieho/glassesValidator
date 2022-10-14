@@ -79,7 +79,7 @@ build_options = {
     }
 }
 if sys.platform.startswith("win"):
-	build_options["build_exe"]["include_files"] = get_include_files()
+    build_options["build_exe"]["include_files"] = get_include_files()
 
 cx_Freeze.setup(
     name="glassesValidator",
