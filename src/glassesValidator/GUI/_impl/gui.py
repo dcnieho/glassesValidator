@@ -844,7 +844,6 @@ class MainGUI():
     def setup_imgui_impl(self):
         self.impl = GlfwRenderer(self.window)
         glfw.set_char_callback(self.window, self.char_callback)
-        glfw.set_window_close_callback(self.window, self.close_callback)
         glfw.set_window_focus_callback(self.window, self.focus_callback)
         glfw.set_window_pos_callback(self.window, self.pos_callback)
         glfw.set_drop_callback(self.window, self.drop_callback)
@@ -1052,9 +1051,6 @@ class MainGUI():
     def char_callback(self, window: glfw._GLFWwindow, char: int):
         self.impl.char_callback(window, char)
         self.input_chars.append(char)
-
-    def close_callback(self, window: glfw._GLFWwindow):
-        globals.should_exit = True
 
     def focus_callback(self, window: glfw._GLFWwindow, focused: int):
         self.focused = focused

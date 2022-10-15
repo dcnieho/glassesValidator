@@ -40,5 +40,6 @@ def run(project: str | pathlib.Path = None):
 
     # cleanup
     async_thread.cleanup()
+    globals.cleanup()
 
 
