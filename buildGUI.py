@@ -51,7 +51,7 @@ icon = convert_path('src/glassesValidator/resources/icons')
 if sys.platform.startswith("win"):
     icon += ".ico"
 elif sys.platform.startswith("darwin"):
-    icon = None # todo icon += ".icns"
+    icon += ".icns"
 else:
     icon += ".png"
 

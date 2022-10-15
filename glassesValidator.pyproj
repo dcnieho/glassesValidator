@@ -81,6 +81,7 @@
     <Content Include="src\glassesValidator\resources\fonts\Karla-Regular.ttf" />
     <Content Include="src\glassesValidator\resources\fonts\materialdesignicons-webfont.7.0.96.ttf" />
     <Content Include="src\glassesValidator\resources\fonts\NotoSans-Regular.ttf" />
+    <Content Include="src\glassesValidator\resources\icons\icon.icns" />
     <Content Include="src\glassesValidator\resources\icons\icon.ico" />
     <Content Include="src\glassesValidator\resources\icons\icon.png" />
   </ItemGroup>
