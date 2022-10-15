@@ -1,4 +1,3 @@
-from ctypes.util import find_library
 import cx_Freeze
 import pathlib
 import sys
@@ -47,6 +46,14 @@ main_ns = {}
 ver_path = convert_path('src/glassesValidator/version.py')
 with open(ver_path) as ver_file:
     exec(ver_file.read(), main_ns)
+
+icon = convert_path('src/glassesValidator/resources/icons')
+if sys.platform.startswith("win"):
+    icon += ".ico"
+elif sys.platform.startswith("darwin"):
+    icon = None # todo icon += ".icns"
+else:
+    icon += ".png"
 
 build_options = {
     "build_exe": {
