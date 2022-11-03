@@ -283,7 +283,7 @@ def dataReaderHelper(entry,lbl,N=3,type='float32'):
 
 def allNanIfNone(vals,numel):
     if vals is None:
-        return [math.nan for x in range(numel)]
+        return np.array([math.nan for x in range(numel)])
     else:
         return vals
 
@@ -460,7 +460,10 @@ def estimateHomography(known, detectedCorners, detectedIDs):
         raise ValueError('unexpected number of IDs (%d) given number of corner arrays (%d)' % (len(detectedIDs),len(detectedCorners)))
     for i in range(0, len(detectedIDs)):
         if detectedIDs[i] in known:
-            pts_src.extend( [x.flatten() for x in detectedCorners[i]] )
+            dc = detectedCorners[i]
+            if dc.shape[0]==1 and dc.shape[1]==4:
+                dc = np.reshape(dc,(4,1,2))
+            pts_src.extend( [x.flatten() for x in dc] )
             pts_dst.extend( known[detectedIDs[i]].corners )
 
     if len(pts_src) < 4:
@@ -1014,9 +1017,9 @@ class BoardPose:
     def getWriteData(self):
         writeData = [self.frameIdx, self.nMarkers]
         # in camera space
-        writeData.extend(allNanIfNone(self.rVec.flatten(),3))
-        writeData.extend(allNanIfNone(self.tVec.flatten(),3))
-        writeData.extend(allNanIfNone(self.hMat.flatten(),9))
+        writeData.extend(allNanIfNone(self.rVec,3).flatten())
+        writeData.extend(allNanIfNone(self.tVec,3).flatten())
+        writeData.extend(allNanIfNone(self.hMat,9).flatten())
 
         return writeData
     

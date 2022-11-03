@@ -65,8 +65,11 @@ def process(inputDir, configDir=None):
         for s in range(oriLeft.shape[0]):
             if frameIdxs[s] not in poses:
                 continue
-            RBoard  = cv2.Rodrigues(poses[frameIdxs[s]].rVec)[0]
-            RtBoard = np.hstack((RBoard, poses[frameIdxs[s]].tVec.reshape(3,1)))
+            if poses[frameIdxs[s]].rVec is not None:
+                RBoard  = cv2.Rodrigues(poses[frameIdxs[s]].rVec)[0]
+                RtBoard = np.hstack((RBoard, poses[frameIdxs[s]].tVec.reshape(3,1)))
+            else:
+                RtBoard = np.full([3,4], np.nan)
 
             # all based on pose info
             for e in range(len(dq_types)):
