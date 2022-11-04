@@ -104,26 +104,36 @@ def process(inputDir, configDir=None, dq_types=[], allow_dq_fallback=False, incl
 
                 # per type (e.g. eye, using pose or viewing distance)
                 for e in dq_types:
-                    if e==DataQualityType.pose_left_right_avg:
-                        # binocular average
-                        data = offset.loc[idx[i,qData,[DataQualityType.pose_left_eye,DataQualityType.pose_right_eye],t],:].mean(level=['marker_interval','timestamp','target'],skipna=True)
-                    else:
-                        data = offset.loc[idx[i,qData,                                e                             ,t],:]
+                    hasData = True
+                    try:
+                        if e==DataQualityType.pose_left_right_avg:
+                            # binocular average
+                            data = offset.loc[idx[i,qData,[DataQualityType.pose_left_eye,DataQualityType.pose_right_eye],t],:].mean(level=['marker_interval','timestamp','target'],skipna=True)
+                        else:
+                            data = offset.loc[idx[i,qData,                                e                             ,t],:]
+                    except KeyError:
+                        # this happens when data for the given type is not available (e.g. no binocular data, only individual eye data)
+                        hasData = False
+                        for k in ('acc_x','acc_y','acc','rms_x','rms_y','rms','std_x','std_y','std'):
+                            df.loc[(i,e,t),k] = np.nan
+                        if include_data_loss:
+                            df.loc[(i,e,t),'dataLoss'] = np.nan
                     
-                    df.loc[(i,e,t),'acc_x'] = np.nanmean(data['offset_x'])
-                    df.loc[(i,e,t),'acc_y'] = np.nanmean(data['offset_y'])
-                    df.loc[(i,e,t),'acc'  ] = np.nanmean(np.hypot(data['offset_x'],data['offset_y']))
+                    if hasData:
+                        df.loc[(i,e,t),'acc_x'] = np.nanmean(data['offset_x'])
+                        df.loc[(i,e,t),'acc_y'] = np.nanmean(data['offset_y'])
+                        df.loc[(i,e,t),'acc'  ] = np.nanmean(np.hypot(data['offset_x'],data['offset_y']))
                     
-                    df.loc[(i,e,t),'rms_x'] = np.sqrt(np.nanmean(np.diff(data['offset_x'])**2))
-                    df.loc[(i,e,t),'rms_y'] = np.sqrt(np.nanmean(np.diff(data['offset_y'])**2))
-                    df.loc[(i,e,t),'rms'  ] = np.hypot(df.loc[(i,e,t),'rms_x'], df.loc[(i,e,t),'rms_y'])
+                        df.loc[(i,e,t),'rms_x'] = np.sqrt(np.nanmean(np.diff(data['offset_x'])**2))
+                        df.loc[(i,e,t),'rms_y'] = np.sqrt(np.nanmean(np.diff(data['offset_y'])**2))
+                        df.loc[(i,e,t),'rms'  ] = np.hypot(df.loc[(i,e,t),'rms_x'], df.loc[(i,e,t),'rms_y'])
                     
-                    df.loc[(i,e,t),'std_x'] = np.nanstd(data['offset_x'],ddof=1)
-                    df.loc[(i,e,t),'std_y'] = np.nanstd(data['offset_y'],ddof=1)
-                    df.loc[(i,e,t),'std'  ] = np.hypot(df.loc[(i,e,t),'std_x'], df.loc[(i,e,t),'std_y'])
+                        df.loc[(i,e,t),'std_x'] = np.nanstd(data['offset_x'],ddof=1)
+                        df.loc[(i,e,t),'std_y'] = np.nanstd(data['offset_y'],ddof=1)
+                        df.loc[(i,e,t),'std'  ] = np.hypot(df.loc[(i,e,t),'std_x'], df.loc[(i,e,t),'std_y'])
 
-                    if include_data_loss:
-                        df.loc[(i,e,t),'dataLoss'] = np.sum(np.isnan(data['offset_x']))/len(data)
+                        if include_data_loss:
+                            df.loc[(i,e,t),'dataLoss'] = np.sum(np.isnan(data['offset_x']))/len(data)
     
 
     df.to_csv(str(inputDir / 'dataQuality.tsv'), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.3f")
