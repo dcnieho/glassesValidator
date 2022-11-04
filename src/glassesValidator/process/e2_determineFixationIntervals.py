@@ -78,6 +78,7 @@ def process(inputDir, configDir=None):
         data = {}
         data['time'] = np.array([s.ts for v in gazeWorldToAnal.values() for s in v])
         if qHasLeft and qHasRight:
+            # prefer using separate left and right eye signals, if available. Better I2MC robustness
             data['L_X']  = np.array([s.lGaze2D[0] for v in gazeWorldToAnal.values() for s in v])
             data['L_Y']  = np.array([s.lGaze2D[1] for v in gazeWorldToAnal.values() for s in v])
             data['R_X']  = np.array([s.rGaze2D[0] for v in gazeWorldToAnal.values() for s in v])
