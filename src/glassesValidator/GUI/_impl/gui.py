@@ -1367,7 +1367,7 @@ class MainGUI():
             case 'deploy_pdf':
                 header = "Select folder to put poster pdf in"
                 allow_multiple = False
-        picker = filepicker.DirPicker(header, callback=select_callback, allow_multiple=allow_multiple)
+        picker = filepicker.DirPicker(header, start_dir=globals.project_path, callback=select_callback, allow_multiple=allow_multiple)
         return picker
 
     def draw_unopened_interface(self):
