@@ -360,4 +360,4 @@ async def _export_data_quality(df: pd.DataFrame, pop_data: dict):
         df.insert(0,'num_targets',count['acc'])
 
     # store
-    df.to_csv(str(globals.project_path / 'dataQuality.tsv'), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.3f")
+    df.to_csv(str(globals.project_path / 'dataQuality.tsv'), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.6f")
