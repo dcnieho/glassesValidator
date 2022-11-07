@@ -132,6 +132,11 @@ def process(inputDir, configDir=None):
         f.savefig(str(inputDir / 'targetSelection_I2MC_interval_{}.png'.format(ival)))
         plt.close(f)
 
+        # also make timseries plot of gaze data with fixations
+        f = I2MC.plot.data_and_fixations(data, fix, fix_as_line=True, unit='mm', res=[[reference.bbox[0]-2*markerHalfSizeMm, reference.bbox[2]+2*markerHalfSizeMm], [reference.bbox[1]-2*markerHalfSizeMm, reference.bbox[3]+2*markerHalfSizeMm]])
+        f.savefig(str(inputDir / 'targetSelection_I2MC_interval_{}_fixations.png'.format(ival)))
+        plt.close(f)
+
         # store selected intervals
         df = pd.DataFrame()
         df.index.name = 'target'
