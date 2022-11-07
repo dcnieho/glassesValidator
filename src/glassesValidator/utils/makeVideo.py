@@ -1,36 +1,37 @@
 #!/usr/bin/python3
-# NB: this is a combination of the c_ and d_ steps, not actively maintained.
-# Not guaranteed to provide the same output as c_ and d_ steps, or to work at all
+# NB: this is a combination of the c_ and d_ steps. Since it is maintained separately and honestly a bit of an
+# after-thought, it may not be in sync with the c_ and d_ steps.
 
 import shutil
 import os
-from pathlib import Path
+import pathlib
 
 import cv2
 import numpy as np
 
-import utils
+from .. import config
+from .. import utils
 
 from ffpyplayer.writer import MediaWriter
 from ffpyplayer.pic import Image
 import ffpyplayer.tools
 from fractions import Fraction
 
-gShowVisualization      = False     # if true, draw each frame and overlay info about detected markers and board
-gAddAudioToBoardVideo   = False     # if true, audio will be added to reference board video, not only to the scene video
 
-
-def process(inputDir,basePath):
-    global gShowVisualization
-    global gAddAudioToBoardVideo
+def process(inputDir, configDir=None, showRejectedMarkers=False, addAudioToBoardVideo=False, showVisualization=False):
+    # if showRejectedMarkers, rejected marker candidates are also drawn on frame. Possibly useful for debug
+    # if addAudioToBoardVideo, audio will be added to reference board video, not only to the scene video
+    # if showVisualization, draw each frame and overlay info about detected markers and board
+    inputDir  = pathlib.Path(inputDir)
+    if configDir is not None:
+        configDir = pathlib.Path(configDir)
 
     print('processing: {}'.format(inputDir.name))
-    
-    configDir = basePath / "config"
-    # open file with information about Aruco marker and Gaze target locations
-    validationSetup = utils.getValidationSetup(configDir)
 
-    if gShowVisualization:
+    # open file with information about Aruco marker and Gaze target locations
+    validationSetup = config.getValidationSetup(configDir)
+
+    if showVisualization:
         cv2.namedWindow("frame")
         cv2.namedWindow("reference")
     
@@ -73,6 +74,8 @@ def process(inputDir,basePath):
 
     # get camera calibration info
     cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(inputDir / "calibration.xml")
+    hasCameraMatrix = cameraMatrix is not None
+    hasDistCoeff    = distCoeff is not None
 
     # Read gaze data
     gazes,maxFrameIdx = utils.Gaze.readDataFromFile(inputDir / 'gazeData.tsv')
@@ -99,14 +102,14 @@ def process(inputDir,basePath):
             if len(ids) >= validationSetup['minNumMarkers']:
                 pose = utils.BoardPose(frame_idx)
                 # get camera pose
-                if (cameraMatrix is not None) and (distCoeff is not None):
+                if hasCameraMatrix and hasDistCoeff:
                     # Refine detected markers (eliminates markers not part of our board, adds missing markers to the board)
                     corners, ids, rejectedImgPoints, recoveredIds = utils.arucoRefineDetectedMarkers(
                             image = frame, board = referenceBoard,
                             detectedCorners = corners, detectedIds = ids, rejectedCorners = rejectedImgPoints,
                             cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
 
-                    pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff)
+                    pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
                     
                     # draw axis indicating board pose (origin and orientation)
                     if pose.nMarkers>0:
@@ -117,7 +120,7 @@ def process(inputDir,basePath):
                         gotPose = True
 
                 # also get homography (direct image plane to plane in world transform). Use undistorted marker corners
-                if (cameraMatrix is not None) and (distCoeff is not None):
+                if hasCameraMatrix and hasDistCoeff:
                     cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
                 else:
                     cornersU = corners
@@ -128,7 +131,7 @@ def process(inputDir,basePath):
                     # find where target is expected to be in the image
                     iH = np.linalg.inv(pose.hMat)
                     target = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
-                    if (cameraMatrix is not None) and (distCoeff is not None):
+                    if hasCameraMatrix and hasDistCoeff:
                         target = utils.distortPoint(*target, cameraMatrix, distCoeff)
                     # draw target location on image
                     if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
@@ -136,11 +139,14 @@ def process(inputDir,basePath):
 
             # if any markers were detected, draw where on the frame
             utils.drawArucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac, specialHighlight=[recoveredIds,(255,255,0)])
+
+        # for debug, can draw rejected markers on frame
+        if showRejectedMarkers:
+            cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
         
         # process gaze
         if frame_idx in gazes:
             for gaze in gazes[frame_idx]:
-
                 # draw gaze point on scene video
                 gaze.draw(frame, subPixelFac=subPixelFac, camRot=cameraRotation, camPos=cameraPosition, cameraMatrix=cameraMatrix, distCoeff=distCoeff)
                 
@@ -149,7 +155,7 @@ def process(inputDir,basePath):
                 # (the projection of which coincides with 2D gaze provided by
                 # the eye tracker)
                 if gotPose:
-                    gazeWorld = utils.gazeToPlane(gaze,pose,cameraRotation,cameraPosition)
+                    gazeWorld = utils.gazeToPlane(gaze,pose,cameraRotation,cameraPosition, cameraMatrix, distCoeff)
 
                     # draw gazes on video and reference image
                     gazeWorld.drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
@@ -167,7 +173,7 @@ def process(inputDir,basePath):
         vidOutBoard.write_frame(img=img, pts=frame_idx/fps)
 
 
-        if gShowVisualization:
+        if showVisualization:
             cv2.imshow('frame',frame)
             cv2.imshow('reference',refImg)
             key = cv2.waitKey(1) & 0xFF
@@ -191,7 +197,7 @@ def process(inputDir,basePath):
     # if ffmpeg is on path, add audio to scene and optionally board video
     if shutil.which('ffmpeg') is not None:
         todo = [inputDir / 'detectOutput_scene.mp4']
-        if gAddAudioToBoardVideo:
+        if addAudioToBoardVideo:
             todo.append(inputDir / 'detectOutput_board.mp4')
 
         for f in todo:
@@ -206,12 +212,3 @@ def process(inputDir,basePath):
             tempName.unlink(missing_ok=True)
 
     return stopAllProcessing
-
-
-
-if __name__ == '__main__':
-    basePath = Path(__file__).resolve().parent
-    for d in (basePath / 'data' / 'preprocced').iterdir():
-        if d.is_dir():
-            if process(d,basePath):
-                break

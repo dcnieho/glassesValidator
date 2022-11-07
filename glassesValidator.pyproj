@@ -57,7 +57,7 @@
     <Compile Include="src\glassesValidator\resources\fonts\__init__.py" />
     <Compile Include="src\glassesValidator\resources\icons\__init__.py" />
     <Compile Include="src\glassesValidator\utils\__init__.py" />
-    <Compile Include="src\glassesValidator\utils\makeMarkerGazeVideo.py" />
+    <Compile Include="src\glassesValidator\utils\makeVideo.py" />
     <Compile Include="src\glassesValidator\utils\mp4analyser\__init__.py" />
     <Compile Include="src\glassesValidator\utils\mp4analyser\core.py" />
     <Compile Include="src\glassesValidator\utils\mp4analyser\iso.py" />

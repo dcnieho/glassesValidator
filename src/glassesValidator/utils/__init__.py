@@ -18,6 +18,8 @@ import typing
 
 from .mp4analyser import iso
 from .. import config as gv_config
+
+from .makeVideo import process as makeVideo
         
 
 class Timestamp:
