@@ -116,11 +116,11 @@ def process(inputDir, configDir=None):
         # make plot of data overlaid on board, and show for each target which fixation
         # was selected
         f       = plt.figure(dpi=300)
-        imgplot = plt.imshow(reference.getImgCopy(asRGB=True),extent=(np.array(reference.bbox)[[0,2,3,1]]),alpha=.5)
+        imgplot = plt.imshow(reference.getImgCopy(asRGB=True),extent=(np.array(reference.bbox)[[0,2,1,3]]),alpha=.5)
         plt.plot(fix['xpos'],fix['ypos'],'b-')
         plt.plot(fix['xpos'],fix['ypos'],'go')
         plt.xlim([reference.bbox[0]-markerHalfSizeMm, reference.bbox[2]+markerHalfSizeMm])
-        plt.ylim([reference.bbox[3]-markerHalfSizeMm, reference.bbox[1]+markerHalfSizeMm])
+        plt.ylim([reference.bbox[1]-markerHalfSizeMm, reference.bbox[3]+markerHalfSizeMm])
         for i,t in zip(range(len(targets)),targets):
             if selected[i]==-999:
                 continue
