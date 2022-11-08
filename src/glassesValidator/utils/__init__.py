@@ -109,6 +109,8 @@ class Task(AutoName):
     Target_Offsets_Computed         = auto()
     Fixation_Intervals_Determined   = auto()
     Data_Quality_Calculated         = auto()
+    # special task that is separate from status
+    Make_Video                      = auto()
     Unknown                         = auto()
 
 def get_task_name_friendly(name: str | Task):
@@ -130,6 +132,8 @@ def get_task_name_friendly(name: str | Task):
             return 'Determine Fixation Intervals'
         case 'Data_Quality_Calculated':
             return 'Calculate Data Quality'
+        case 'Make_Video':
+            return 'Make Video'
     return '' # 'Not_Imported', 'Unknown'
 
 task_names = [x.value for x in Task]
@@ -145,7 +149,7 @@ status_names = [x.value for x in Status]
 
 _status_file = 'glassesValidator.recording'
 def _create_recording_status_file(file: pathlib.Path):
-    task_status_dict = {str(getattr(Task,x)): Status.Not_Started for x in Task.__members__ if x not in ['Not_Imported', 'Unknown']}
+    task_status_dict = {str(getattr(Task,x)): Status.Not_Started for x in Task.__members__ if x not in ['Not_Imported', 'Make_Video', 'Unknown']}
 
     with open(file, 'w') as f:
         json.dump(task_status_dict, f, cls=CustomTypeEncoder)

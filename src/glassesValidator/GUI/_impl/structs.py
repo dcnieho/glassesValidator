@@ -83,7 +83,7 @@ def get_simplified_task_state(task: Task):
         case Task.Data_Quality_Calculated:
             return TaskSimplified.Processed
         # other
-        case _: # includes Task.Unknown
+        case _: # includes Task.Unknown, Task.Make_Video
             return TaskSimplified.Unknown
 
 @dataclasses.dataclass

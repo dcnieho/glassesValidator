@@ -10,7 +10,7 @@ import pandas as pd
 from .structs import JobDescription, MsgBox, Os
 from . import globals, async_thread, db, gui, msgbox, process_pool, utils
 from ...utils import EyeTracker, Recording, Task, eye_tracker_names, make_fs_dirname
-from ... import config, preprocess, process
+from ... import config, preprocess, process, utils as gv_utils
 from ...process import DataQualityType
 
 
@@ -216,7 +216,7 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
             fun = preprocess.do_import
             args = (globals.project_path,)
             kwargs['rec_info'] = rec
-        case Task.Coded | Task.Markers_Detected | Task.Gaze_Tranformed_To_World | Task.Target_Offsets_Computed | Task.Fixation_Intervals_Determined | Task.Data_Quality_Calculated:
+        case Task.Coded | Task.Markers_Detected | Task.Gaze_Tranformed_To_World | Task.Target_Offsets_Computed | Task.Fixation_Intervals_Determined | Task.Data_Quality_Calculated | Task.Make_Video:
             match task:
                 case Task.Coded:
                     fun = process.codeMarkerInterval
@@ -245,6 +245,8 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
                     if globals.settings.dq_use_pose_left_right_avg:
                         kwargs['dq_types'].append(DataQualityType.pose_left_right_avg)
                     kwargs['include_data_loss'] = globals.settings.dq_report_data_loss
+                case Task.Make_Video:
+                    fun = gv_utils.makeVideo
             args = (working_dir,)
             if globals.settings.config_dir and (config_dir := globals.project_path / globals.settings.config_dir).is_dir():
                 kwargs['configDir'] = config_dir
@@ -258,6 +260,7 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
         return
 
     # special case if its a marker coding task, of which we can have only one at a time. If we already have a marker coding task
+    # store this task in a separate task queue instead of launching it now
     should_launch_task = task!=Task.Coded or not any((globals.jobs[j].task==Task.Coded for j in globals.jobs))
     
     job = JobDescription(None, rec, globals.project_path, task, chain)

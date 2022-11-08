@@ -502,6 +502,9 @@ class RecordingTable():
                 # already fully done, recompute
                 processed_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Processed]
                 self.draw_recording_process_button(processed_ids, label="󰑐 Recalculate data quality", selectable=True, action=Task.Markers_Detected, should_chain_next=True)
+                # make video, always possible
+                video_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)!=TaskSimplified.Not_Imported]
+                self.draw_recording_process_button(video_ids, label="󰯜 Export scene video", selectable=True, action=Task.Make_Video)
             if any(has_job):
                 self.draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label="󱠮 Cancel job", selectable=True)
 
@@ -707,8 +710,9 @@ class MainGUI():
                     pass
                 case ProcessState.Completed:
                     # update recording state
-                    rec.task = job.task
-                    async_thread.run(db.update_recording(rec, "task"))
+                    if job.task != Task.Make_Video:
+                        rec.task = job.task
+                        async_thread.run(db.update_recording(rec, "task"))
                     # start next step, if wanted
                     if job.should_chain_next:
                         match job.task:
@@ -1767,6 +1771,12 @@ class MainGUI():
                     # NB: don't send action, so that callback code figures out where we we left off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
                     action.append(lambda: async_thread.run(callbacks.process_recordings(coded_ids, chain=True)))
                     hover_text.append("Run processing to determine data quality for the selected recordings.")
+                # make video, always possible
+                video_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)!=TaskSimplified.Not_Imported]
+                if video_ids:
+                    text.append("󰯜 Export scene video")
+                    action.append(lambda: async_thread.run(callbacks.process_recordings(video_ids, task=Task.Make_Video)))
+                    hover_text.append("Export scene video with gaze overlay and showing detected fiducial markers.")
 
             # if any fully done, offer export
             processed_ids_sel = [id for id in ids if get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
