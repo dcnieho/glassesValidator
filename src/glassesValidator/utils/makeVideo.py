@@ -79,6 +79,11 @@ def process(inputDir, configDir=None, showRejectedMarkers=False, addAudioToBoard
 
     # Read gaze data
     gazes,maxFrameIdx = utils.Gaze.readDataFromFile(inputDir / 'gazeData.tsv')
+
+    # get interval coded to be analyzed, if available
+    analyzeFrames = utils.readMarkerIntervalsFile(inputDir / "markerInterval.tsv")
+    if analyzeFrames is None:
+        analyzeFrames = []
     
     frame_idx = 0
     armLength = reference.markerSize/2 # arms of axis are half a marker long
@@ -162,9 +167,17 @@ def process(inputDir, configDir=None, showRejectedMarkers=False, addAudioToBoard
                     gazeWorld.drawOnReferencePlane(refImg, reference, subPixelFac)
         
         # annotate frame
+        analysisIntervalIdx = None
+        for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't try incomplete intervals
+            if frame_idx>=analyzeFrames[f] and frame_idx<=analyzeFrames[f+1]:
+                analysisIntervalIdx = f
+        frameClr = (0,0,255) if analysisIntervalIdx is not None else (0,0,0)
+
         frame_ts  = i2t.get(frame_idx)
-        cv2.rectangle(frame,(0,int(height)),(int(0.25*width),int(height)-30),(0,0,0),-1)
-        cv2.putText(frame, '%6.3f [%6d]' % (frame_ts/1000.,frame_idx), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255))
+        text = '%6.3f [%6d]' % (frame_ts/1000.,frame_idx)
+        textSize,baseline = cv2.getTextSize(text,cv2.FONT_HERSHEY_PLAIN,2,2)
+        cv2.rectangle(frame,(0,int(height)),(textSize[0]+2,int(height)-textSize[1]-baseline-5), frameClr, -1)
+        cv2.putText(frame, (text), (2, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
 
         # store to file
         img = Image(plane_buffers=[frame.flatten().tobytes()], pix_fmt='bgr24', size=(int(width), int(height)))
