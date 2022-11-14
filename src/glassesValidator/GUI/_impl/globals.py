@@ -14,7 +14,7 @@ from ... import __version__
 version           = __version__
 pypi_page         = "https://pypi.org/project/glassesValidator/"
 github_page       = "https://github.com/dcnieho/glassesValidator"
-developer_page    = "https://www.humlab.lu.se/person/DiederickCNiehorster/"
+developer_page    = "https://scholar.google.se/citations?user=uRUYoVgAAAAJ&hl=en"
 reference         = "Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. & Hooge, I.T.C. (in prep). GlassesValidator: Data quality tool for eye tracking glasses."
 reference_bibtex  = "<bibtex here>"
 
