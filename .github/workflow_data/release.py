@@ -21,7 +21,7 @@ if __name__ == "__main__":
         for asset in release["assets"]:
             if asset_type.lower() in asset["name"].lower():
                 asset_url = asset["browser_download_url"]
-        body += f">### [{asset_type} {asset_icon}]({asset_url})\n\n"
+                body += f">### [{asset_type} {asset_icon}]({asset_url})\n\n"
     body += (
         "## 🚀 Changelog\n" +
         release["body"]
