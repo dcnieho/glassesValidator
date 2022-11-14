@@ -67,7 +67,7 @@ def deployValidationConfig(outDir):
         with importlib.resources.path(__package__, r) as p:
             shutil.copyfile(p, str(outDir/r))
 
-    # copy over markerBoard text file
+    # copy over markerBoard tex file
     boardDir = outDir / 'markerBoard'
     if not boardDir.is_dir():
         boardDir.mkdir()
