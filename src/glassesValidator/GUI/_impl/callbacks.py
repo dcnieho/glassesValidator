@@ -55,7 +55,7 @@ async def deploy_config(project_path: str|pathlib.Path, config_dir: str):
         utils.push_popup(msgbox.msgbox, "Deploy configuration", f"The folder {conf_dir} already exist. Do you want to deploy a configuration to this folder,\npotentially overwriting any configuration that is already there?", MsgBox.warn, buttons)
 
 async def deploy_markerboard_pdf(dir: str|pathlib.Path):
-    config.markerBoard.deployPdf(dir)
+    config.markerBoard.deployDefaultPdf(dir)
 
 async def remove_recording_working_dir(rec: Recording, project_path: pathlib.Path = None):
     if rec.proc_directory_name:

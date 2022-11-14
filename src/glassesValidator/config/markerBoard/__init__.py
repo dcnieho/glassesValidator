@@ -38,7 +38,7 @@ def deployMarkerImages(outDir):
 
         cv2.imwrite(str(outDir / "{}.png".format(i)), markerImage)
 
-def deployPdf(outFile):
+def deployDefaultPdf(outFile):
     outFile = Path(outFile)
     if outFile.is_dir():
         outFile = outFile / 'board.pdf'
