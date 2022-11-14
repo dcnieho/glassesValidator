@@ -4,6 +4,7 @@ __pycache__
 # other
 *.png
 *.swp
+/JSON
 
 # tex
 *.synctex.gz

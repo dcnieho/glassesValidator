@@ -70,6 +70,7 @@
   <ItemGroup>
     <Content Include="MANIFEST.in" />
     <Content Include="pyproject.toml" />
+    <Content Include="README.md" />
     <Content Include="requirements.txt" />
     <Content Include=".github\images\screenshot.png" />
     <Content Include=".github\workflows\build.yml" />
