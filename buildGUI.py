@@ -47,7 +47,7 @@ ver_path = convert_path('src/glassesValidator/version.py')
 with open(ver_path) as ver_file:
     exec(ver_file.read(), main_ns)
 
-icon = convert_path('src/glassesValidator/resources/icons')
+icon = convert_path('src/glassesValidator/resources/icons/icon')
 if sys.platform.startswith("win"):
     icon += ".ico"
 elif sys.platform.startswith("darwin"):
