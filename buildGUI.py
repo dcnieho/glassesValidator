@@ -75,6 +75,7 @@ build_options = {
     },
     "bdist_mac": {
         "bundle_name": "glassesValidator",
+        "iconfile": icon,
         "plist_items": [
             ("CFBundleName", "glassesValidator"),
             ("CFBundleDisplayName", "glassesValidator"),
@@ -96,6 +97,7 @@ cx_Freeze.setup(
         cx_Freeze.Executable(
             script=path / "main.py",
             target_name="glassesValidator",
+            icon=icon
         )
     ],
     options=build_options,
