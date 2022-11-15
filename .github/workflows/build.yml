@@ -17,7 +17,7 @@ jobs:
         python:
           - "3.10.x"
         cx-freeze:
-          - "v6.12"
+          - "v6.13.1"
     name: "Build exe for ${{ matrix.os }}"
     runs-on: "${{ matrix.os }}"
     steps:
@@ -53,11 +53,18 @@ jobs:
           python ./buildGUI.py build
           mv ./build/*/ ./dist/
 
+      - name: "Import macOS codesign certificate"
+        if: "runner.os == 'macOS'"
+        uses: "apple-actions/import-codesign-certs@v1"
+        with:
+          p12-file-base64: "${{ secrets.CODESIGN_P12_BASE64 }}"
+          p12-password: "${{ secrets.CODESIGN_P12_PASSWORD }}"
+
       - name: "Build macOS"
         if: "runner.os == 'macOS'"
         run: |
           cd ./src/
-          python ./buildGUI.py bdist_mac
+          python ./buildGUI.py bdist_mac --codesign_identity "${{ secrets.CODESIGN_P12_NAME }}" --codesign_deep 1
           mkdir ./dist/
           mv ./build/*.app/ ./dist/
 
@@ -66,20 +73,6 @@ jobs:
         run: |
           cd ./src/dist/
           find ./ -type l -exec echo Resolving {} \; -exec sed -i '' {} \;
-
-      #- name: "Import macOS codesign certificate"
-      #  if: "runner.os == 'macOS'"
-      #  uses: "apple-actions/import-codesign-certs@v1"
-      #  with:
-      #    p12-file-base64: "${{ secrets.CODESIGN_P12_BASE64 }}"
-      #    p12-password: "${{ secrets.CODESIGN_P12_PASSWORD }}"
-
-      #- name: "Codesign macOS"
-      #  if: "runner.os == 'macOS'"
-      #  run: |
-      #    cd ./src/dist/
-      #    find ./ -type f -empty -delete
-      #    codesign -s "${{ secrets.CODESIGN_P12_NAME }}" --deep ./*.app
 
       # === ARTIFACT ===
 
