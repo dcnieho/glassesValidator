@@ -76,6 +76,7 @@ build_options = {
     "bdist_mac": {
         "bundle_name": "glassesValidator",
         "iconfile": icon,
+        "codesign_identity": None,
         "plist_items": [
             ("CFBundleName", "glassesValidator"),
             ("CFBundleDisplayName", "glassesValidator"),
