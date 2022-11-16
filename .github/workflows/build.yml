@@ -64,7 +64,7 @@ jobs:
         if: "runner.os == 'macOS'"
         run: |
           cd ./src/
-          python ./buildGUI.py bdist_mac --codesign_identity "${{ secrets.CODESIGN_P12_NAME }}" --codesign_deep 1
+          python ./buildGUI.py bdist_mac --codesign-identity "${{ secrets.CODESIGN_P12_NAME }}" --codesign-deep 1
           mkdir ./dist/
           mv ./build/*.app/ ./dist/
 
