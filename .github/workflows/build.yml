@@ -67,6 +67,8 @@ jobs:
           cd ./src/dist/
           find ./ -type l -exec echo Resolving {} \; -exec sed -i '' {} \;
 
+      # export Apple development certificate from Xcode: https://help.apple.com/xcode/mac/current/#/dev154b28f09
+      # base64 CERTIFICATE.p12 | pbcopy -> secrets.CODESIGN_P12_BASE64
       - name: "Import macOS codesign certificate"
         if: "runner.os == 'macOS'"
         uses: "apple-actions/import-codesign-certs@v1"
@@ -74,6 +76,9 @@ jobs:
           p12-file-base64: "${{ secrets.CODESIGN_P12_BASE64 }}"
           p12-password: "${{ secrets.CODESIGN_P12_PASSWORD }}"
 
+      # security find-identity, returns something like:
+      # A30C8432FADE0B3E7D5BA54034EF2ECA39A0BDD0 "Apple Development: dcnieho@gmail.com (6LR9J7UR6F)"
+      # the first hex string is your identity -> secrets.CODESIGN_P12_NAME
       - name: "Codesign macOS"
         if: "runner.os == 'macOS'"
         run: |
