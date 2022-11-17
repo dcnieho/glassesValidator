@@ -1,16 +1,16 @@
 import typing
-import imgui
+from imgui_bundle import imgui as imgui
 
 from .structs import MsgBox
 from . import globals, utils
 
 icon_font = None
 popup_flags: int = (
-    imgui.WINDOW_NO_MOVE |
-    imgui.WINDOW_NO_RESIZE |
-    imgui.WINDOW_NO_COLLAPSE |
-    imgui.WINDOW_NO_SAVED_SETTINGS |
-    imgui.WINDOW_ALWAYS_AUTO_RESIZE
+    imgui.ImGuiWindowFlags_.no_move |
+    imgui.ImGuiWindowFlags_.no_resize |
+    imgui.ImGuiWindowFlags_.no_collapse |
+    imgui.ImGuiWindowFlags_.no_saved_settings |
+    imgui.ImGuiWindowFlags_.always_auto_resize
 )
 
 
@@ -46,13 +46,13 @@ def msgbox(title: str, msg: str, type: MsgBox = None, buttons: dict[str, typing.
         imgui.text_unformatted(msg)
         if more:
             imgui.text("")
-            if imgui.tree_node("More info", flags=imgui.TREE_NODE_SPAN_AVAILABLE_WIDTH):
+            if imgui.tree_node("More info", flags=imgui.ImGuiTreeNodeFlags_.span_avail_width):
                 size = imgui.io.display_size
                 more_size = imgui.calc_text_size(more)
                 _36 = globals.gui.scaled(26) + imgui.style.scrollbar_size
                 width = min(more_size.x + _36, size.x * 0.8 - icon_size.x)
                 height = min(more_size.y + _36, size.y * 0.7 - msg_size_y)
-                imgui.input_text_multiline(f"###more_info_{title}", more,  width=width, height=height, flags=imgui.INPUT_TEXT_READ_ONLY)
+                imgui.input_text_multiline(f"###more_info_{title}", more,  width=width, height=height, flags=imgui.ImGuiInputTextFlags_.read_only)
                 imgui.tree_pop()
         imgui.end_group()
         imgui.same_line(spacing=spacing)

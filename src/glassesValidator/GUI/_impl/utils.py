@@ -4,7 +4,7 @@ import functools
 import traceback
 import typing
 import random
-import imgui
+from imgui_bundle import imgui as imgui, imgui_internal as imgui_internal
 import math
 import glfw
 import sys
@@ -142,13 +142,13 @@ def get_current_monitor(wx, wy, ww, wh):
 
 def push_disabled(block_interaction=True):
     if block_interaction:
-        imgui.internal.push_item_flag(imgui.internal.ITEM_DISABLED, True)
-    imgui.push_style_var(imgui.STYLE_ALPHA, imgui.style.alpha *  0.5)
+        imgui_internal.push_item_flag(imgui_internal.ImGuiItemFlags_.disabled, True)
+    imgui.push_style_var(imgui.ImGuiStyleVar_.alpha, imgui.get_style().alpha *  0.5)
 
 
 def pop_disabled(block_interaction=True):
     if block_interaction:
-        imgui.internal.pop_item_flag()
+        imgui_internal.pop_item_flag()
     imgui.pop_style_var()
 
 
@@ -163,7 +163,7 @@ def constrain_next_window():
 
 
 def close_weak_popup():
-    if not imgui.is_popup_open("", imgui.POPUP_ANY_POPUP_ID):
+    if not imgui.is_popup_open("", imgui.ImGuiPopupFlags_.any_popup_id):
         # This is the topmost popup
         if imgui.io.keys_down[glfw.KEY_ESCAPE]:
             # Escape is pressed
@@ -316,7 +316,7 @@ def draw_spinner(label: str, radius1: float, radius2: float, radius3: float, thi
                 a = start + (k * angle_offset)
                 path.append((center[0] + math.cos(neg*a) * r, center[1] + math.sin(neg*a) * r))
 
-            draw_list.add_polyline(path, colors[i], flags=imgui.DRAW_NONE, thickness=thickness)
+            draw_list.add_polyline(path, colors[i], flags=imgui.ImDrawFlags_.none, thickness=thickness)
 
 def bounce_dots(label: str, thickness: float, color = 0xffffffff, speed = 2.8, dots=3):
     # based on ImSpinner::SpinnerBounceDots from https://github.com/dalerank/imspinner

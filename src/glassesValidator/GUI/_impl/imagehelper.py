@@ -2,7 +2,7 @@
 from PIL import Image, ImageSequence, UnidentifiedImageError
 import OpenGL.GL as gl
 import pathlib
-import imgui
+from imgui_bundle import imgui as imgui
 import numpy
 
 
@@ -136,7 +136,7 @@ class ImageHelper:
             if "rounding" in kwargs:
                 flags = kwargs.pop("flags", None)
                 if flags is None:
-                    flags = imgui.DRAW_ROUND_CORNERS_ALL
+                    flags = imgui.ImDrawFlags_.round_corners_all
                 pos = imgui.get_cursor_screen_pos()
                 pos2 = (pos.x + width, pos.y + height)
                 draw_list = imgui.get_window_draw_list()
