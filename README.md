@@ -118,24 +118,24 @@ over the setting. Nonetheless, the specific group of advanced settings for confi
 glassesValidator can compute data quality in multiple ways. 
 When deciding how to determine accuracy and precision, several decisions have to be made. By default the most appropriate decisions for standard use are selected and most users can skip this section, but another configuration might be more suited for some advanced use cases.
 The following decisions are made:
-1) Determining location of the participant:
-    a) The researcher can assume a fixed viewing distance and provide this to glassesValidator in the project configuration.
-    b) If the scene camera is calibrated (i.e. its properties such as focal length and distortion parameters have been estimated by a calibration procedure), it is possible to use the array of ArUco markers to estimate the position of the participant relative to the poster at each time point during a validation.
+1. Determining location of the participant:
+   1. The researcher can assume a fixed viewing distance and provide this to glassesValidator in the project configuration.
+   2. If the scene camera is calibrated (i.e. its properties such as focal length and distortion parameters have been estimated by a calibration procedure), it is possible to use the array of ArUco markers to estimate the position of the participant relative to the poster at each time point during a validation.
 
-   When a scene camera calibration is available, glassesValidator will by default use mode b, otherwise mode a will be used. Five of the six wearable eye trackers supported by glassesValidator provide the calibration of their scene camera, and glassesValidator will by default use this calibration for these eye
-   trackers (mode b). Currently, only the SeeTrue does not provide a camera calibration, and glassesValidator therefore by default uses an assumed fixed viewing distance for this eye tracker.
+   When a scene camera calibration is available, glassesValidator will by default use mode ii, otherwise mode i will be used. Five of the six wearable eye trackers supported by glassesValidator provide the calibration of their scene camera, and glassesValidator will by default use this calibration for these eye
+   trackers (mode ii). Currently, only the SeeTrue does not provide a camera calibration, and glassesValidator therefore by default uses an assumed fixed viewing distance for this eye tracker.
 
 2) Transforming gaze positions from the scene camera reference frame to positions on the validation poster:
-    a) Performed by means of homography.
-    b) Performed using recovered camera pose and gaze direction vector, by means of intersection of gaze vector with the validation poster plane.
+   1. Performed by means of homography.
+   2. Performed using recovered camera pose and gaze direction vector, by means of intersection of gaze vector with the validation poster plane.
 
-   Mode b is used by default. However, like for decision 1, mode b requires that a camera calibration is available. If a camera calibration is not available, mode a will be used instead.
+   Mode ii is used by default. However, like for decision 1, mode ii requires that a camera calibration is available. If a camera calibration is not available, mode i will be used instead.
 
 3) Which data is used for determining gaze position on the validation poster:
-    a) The gaze position in the scene camera image.
-    b) Gaze direction vectors in a head reference frame.
+   1. The gaze position in the scene camera image.
+   2. Gaze direction vectors in a head reference frame.
 
-   When operating in mode a, the eye tracker's estimate of the (binocular) gaze point in the scene camera image is used. This is the appropriate choice for most wearable eye tracking research, as it is this gaze point that is normally used for further analysis. However, in some settings and when the eye tracker provides gaze direction vectors for the individual eyes along with their origin, a different mode of operation may be more appropriate. Specifically, when using the wearable eye tracker's gaze vectors instead of the gaze point in the scene video in their analysis, the researcher should compute the accuracy and precision of these gaze vectors.
+   When operating in mode i, the eye tracker's estimate of the (binocular) gaze point in the scene camera image is used. This is the appropriate choice for most wearable eye tracking research, as it is this gaze point that is normally used for further analysis. However, in some settings and when the eye tracker provides gaze direction vectors for the individual eyes along with their origin, a different mode of operation may be more appropriate. Specifically, when using the wearable eye tracker's gaze vectors instead of the gaze point in the scene video in their analysis, the researcher should compute the accuracy and precision of these gaze vectors.
 
 Altogether, combining these decisions, the following six types of data quality can be calculated using glassesValidator. NB: All API types are members of the `enum.Enum` `glassesValidator.process.DataQualityType`
 
