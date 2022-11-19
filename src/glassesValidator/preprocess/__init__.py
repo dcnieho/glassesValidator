@@ -3,10 +3,10 @@ import pathlib
 
 from .. import utils as _utils
 
+from .SeeTrue import preprocessData as SeeTrue
+from .SMI_ETG import preprocessData as SMI_ETG
 from .tobii_G2 import preprocessData as tobii_G2
 from .tobii_G3 import preprocessData as tobii_G3
-from .SMI_ETG import preprocessData as SMI_ETG
-from .SeeTrue import preprocessData as SeeTrue
 
 def pupil_core(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = None, recInfo: _utils.Recording = None):
     from .pupilLabs import preprocessData
@@ -30,11 +30,11 @@ def get_recording_info(source_dir: str | pathlib.Path, device: str | _utils.EyeT
         case _utils.EyeTracker.Pupil_Invisible:
             from .pupilLabs import getRecordingInfo
             rec_info = getRecordingInfo(source_dir, device)
-        case _utils.EyeTracker.SMI_ETG:
-            from .SMI_ETG import getRecordingInfo
-            rec_info = getRecordingInfo(source_dir)
         case _utils.EyeTracker.SeeTrue:
             from .SeeTrue import getRecordingInfo
+            rec_info = getRecordingInfo(source_dir)
+        case _utils.EyeTracker.SMI_ETG:
+            from .SMI_ETG import getRecordingInfo
             rec_info = getRecordingInfo(source_dir)
         case _utils.EyeTracker.Tobii_Glasses_2:
             from .tobii_G2 import getRecordingInfo
@@ -92,10 +92,10 @@ def do_import(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = N
             rec_info = pupil_core(output_dir, source_dir, rec_info)
         case _utils.EyeTracker.Pupil_Invisible:
             rec_info = pupil_invisible(output_dir, source_dir, rec_info)
-        case _utils.EyeTracker.SMI_ETG:
-            rec_info = SMI_ETG(output_dir, source_dir, rec_info)
         case _utils.EyeTracker.SeeTrue:
             rec_info = SeeTrue(output_dir, source_dir, rec_info)
+        case _utils.EyeTracker.SMI_ETG:
+            rec_info = SMI_ETG(output_dir, source_dir, rec_info)
         case _utils.EyeTracker.Tobii_Glasses_2:
             rec_info = tobii_G2(output_dir, source_dir, rec_info)
         case _utils.EyeTracker.Tobii_Glasses_3:
@@ -106,5 +106,5 @@ def do_import(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = N
     return rec_info
 
 
-__all__ = ['tobii_G2','tobii_G3','SMI_ETG','SeeTrue','pupil_core','pupil_invisible',
+__all__ = ['pupil_core','pupil_invisible','SeeTrue','SMI_ETG','tobii_G2','tobii_G3',
            'get_recording_info','do_import']
