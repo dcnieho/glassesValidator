@@ -37,7 +37,7 @@ def process(inputDir, configDir=None, showReference=False):
     utils.update_recording_status(inputDir, utils.Task.Coded, utils.Status.Running)
     
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = config.getValidationSetup(configDir)
+    validationSetup = config.get_validation_setup(configDir)
     reference = utils.Reference(configDir, validationSetup)
 
     # Read gaze data

@@ -20,7 +20,7 @@ def process(inputDir, configDir=None, visualizeDetection=False, showRejectedMark
     utils.update_recording_status(inputDir, utils.Task.Markers_Detected, utils.Status.Running)
 
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = config.getValidationSetup(configDir)
+    validationSetup = config.get_validation_setup(configDir)
     
     # open video file, query it for size
     inVideo = inputDir / 'worldCamera.mp4'

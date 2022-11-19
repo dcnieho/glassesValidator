@@ -36,7 +36,7 @@ def open_folder(path: pathlib.Path):
 
 
 async def _deploy_config(conf_dir: pathlib.Path):
-    config.deployValidationConfig(conf_dir)
+    config.deploy_validation_config(conf_dir)
 
 async def deploy_config(project_path: str|pathlib.Path, config_dir: str):
     if not config_dir:
@@ -219,17 +219,17 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
         case Task.Coded | Task.Markers_Detected | Task.Gaze_Tranformed_To_World | Task.Target_Offsets_Computed | Task.Fixation_Intervals_Determined | Task.Data_Quality_Calculated | Task.Make_Video:
             match task:
                 case Task.Coded:
-                    fun = process.codeMarkerInterval
+                    fun = process.code_marker_interval
                 case Task.Markers_Detected:
-                    fun = process.detectMarkers
+                    fun = process.detect_markers
                 case Task.Gaze_Tranformed_To_World:
-                    fun = process.gazeToBoard
+                    fun = process.gaze_to_board
                 case Task.Target_Offsets_Computed:
-                    fun = process.computeOffsetsToTargets
+                    fun = process.compute_offsets_to_targets
                 case Task.Fixation_Intervals_Determined:
-                    fun = process.determineFixationIntervals
+                    fun = process.determine_fixation_intervals
                 case Task.Data_Quality_Calculated:
-                    fun = process.calculateDataQuality
+                    fun = process.calculate_data_quality
                     kwargs['allow_dq_fallback'] = True
                     kwargs['dq_types'] = []
                     if globals.settings.dq_use_viewdist_vidpos_homography:
@@ -246,7 +246,7 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
                         kwargs['dq_types'].append(DataQualityType.pose_left_right_avg)
                     kwargs['include_data_loss'] = globals.settings.dq_report_data_loss
                 case Task.Make_Video:
-                    fun = gv_utils.makeVideo
+                    fun = gv_utils.make_video
             args = (working_dir,)
             if globals.settings.config_dir and (config_dir := globals.project_path / globals.settings.config_dir).is_dir():
                 kwargs['configDir'] = config_dir

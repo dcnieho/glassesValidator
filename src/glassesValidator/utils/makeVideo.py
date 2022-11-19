@@ -29,7 +29,7 @@ def process(inputDir, configDir=None, showRejectedMarkers=False, addAudioToBoard
     print('processing: {}'.format(inputDir.name))
 
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = config.getValidationSetup(configDir)
+    validationSetup = config.get_validation_setup(configDir)
 
     if showVisualization:
         cv2.namedWindow("frame")

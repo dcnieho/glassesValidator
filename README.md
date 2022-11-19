@@ -73,7 +73,7 @@ a png image showing the poster will be generated in the configuration folder whe
    `glassesValidator.config.deployValidationConfig()` call from Python.
 2. Edit the `validationSetup.txt` configuration file and the `markerPositions.csv` and `targetPositions.csv` files in the
    configuration folder to design the layout and look of the poster that you want.
-3. Compile the `markerBoard/board.tex` LaTeX file with `pdfTex`, such as provided in the TeX Live distribution.
+3. Compile the `markerBoard/board.tex` LaTeX file with `pdfTex`, such as provided in the [TeX Live distribution](https://www.tug.org/texlive/).
 4. Done, you should now have a pdf file with the poster as you defined.
 
 
@@ -164,22 +164,52 @@ public API:
 ### glassesValidator.config
 |function|description|
 | --- | --- |
-|`getValidationSetup`|z|
-|`getTargets`|z|
-|`getMarkers`|z|
-|`deployValidationConfig`|z|
+|`get_validation_setup()`|z|
+|`get_targets()`|z|
+|`get_markers()`|z|
+|`deploy_validation_config()`|z|
 
 #### glassesValidator.config.markerBoard
 |function|description|
 | --- | --- |
-|`deployMaker`|z|
-|`deployMarkerImages`|z|
-|`deployDefaultPdf`|z|
+|`deploy_maker()`|z|
+|`deploy_marker_images()`|z|
+|`deploy_default_pdf()`|z|
 
 ### glassesValidator.GUI
+|function|description|
+| --- | --- |
+|`run()`|z|
+
 ### glassesValidator.preprocess
+|function|description|
+| --- | --- |
+|`get_recording_info()`|z|
+|`do_import()`|z|
+|`pupil_core()`|z|
+|`pupil_invisible()`|z|
+|`SeeTrue()`|z|
+|`SMI_ETG()`|z|
+|`tobii_G2()`|z|
+|`tobii_G3()`|z|
+
 ### glassesValidator.process
+|function|description|
+| --- | --- |
+|`code_marker_interval()`|z|
+|`detect_markers()`|z|
+|`gaze_to_board()`|z|
+|`compute_offsets_to_targets()`|z|
+|`determine_fixation_intervals()`|z|
+|`calculate_data_quality()`|z|
+|`do_coding()`|z|
+|`do_process()`|z|
+|`DataQualityType`|z|
+
 ### glassesValidator.utils
 |function|description|
 | --- | --- |
-|`makeVideo`|z|
+|`make_video()`|z|
+|`EyeTracker`|z|
+|`Recording`|z|
+

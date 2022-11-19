@@ -2,25 +2,25 @@
 import pathlib
 from enum import Enum, auto
 
-from .b_codeMarkerInterval import process as codeMarkerInterval
-from .c_detectMarkers import process as detectMarkers
-from .d_gazeToBoard import process as gazeToBoard
-from .e1_computeOffsetsToTargets import process as computeOffsetsToTargets
-from .e2_determineFixationIntervals import process as determineFixationIntervals
-from .f_calculateDataQuality import process as calculateDataQuality
+from .b_codeMarkerInterval import process as code_marker_interval
+from .c_detectMarkers import process as detect_markers
+from .d_gazeToBoard import process as gaze_to_board
+from .e1_computeOffsetsToTargets import process as compute_offsets_to_targets
+from .e2_determineFixationIntervals import process as determine_fixation_intervals
+from .f_calculateDataQuality import process as calculate_data_quality
 
-# expose codeMarkerInterval (stage 2 in our 3-step process) under a simpler name
+# expose code_marker_interval (stage 2 in our 3-step process) under a simpler name
 # NB: not a simple alias as we're hiding the third input argument for simple use
 def do_coding(folder: str | pathlib.Path, config_dir=None):
-    return codeMarkerInterval(folder, config_dir)
+    return code_marker_interval(folder, config_dir)
 
 # package the further steps in a single function to simplify using this (i.e. group into a single step 3)
 def do_process(folder: str | pathlib.Path, config_dir=None):
-    detectMarkers(folder, config_dir)
-    gazeToBoard(folder, config_dir)
-    computeOffsetsToTargets(folder, config_dir)
-    determineFixationIntervals(folder, config_dir)
-    calculateDataQuality(folder, config_dir)
+    detect_markers(folder, config_dir)
+    gaze_to_board(folder, config_dir)
+    compute_offsets_to_targets(folder, config_dir)
+    determine_fixation_intervals(folder, config_dir)
+    calculate_data_quality(folder, config_dir)
 
 
 # NB: using pose information requires a calibrated scene camera
@@ -84,6 +84,6 @@ def get_DataQualityType_explanation(dq: DataQualityType):
                    f"'{ler_name}' and '{rer_name}' to be enabled."
 
 
-__all__ = ['codeMarkerInterval','detectMarkers','gazeToBoard',
-           'computeOffsetsToTargets','determineFixationIntervals','calculateDataQuality',
+__all__ = ['code_marker_interval','detect_markers','gaze_to_board',
+           'compute_offsets_to_targets','determine_fixation_intervals','calculate_data_quality',
            'do_coding','do_process','DataQualityType']

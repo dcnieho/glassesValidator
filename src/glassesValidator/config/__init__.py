@@ -16,7 +16,7 @@ def _readValidationSetupFile(file):
     lexer.commenters = '%'
     return dict(zip(lexer, lexer))
 
-def getValidationSetup(configDir=None, setupFile='validationSetup.txt'):
+def get_validation_setup(configDir=None, setupFile='validationSetup.txt'):
     if configDir is not None:
         with (pathlib.Path(configDir) / setupFile).open() as f:
             validationSetup = _readValidationSetupFile(f)
@@ -49,15 +49,15 @@ def _getCoordFile(configDir, file):
         with importlib.resources.path(__package__, file) as p:
             return _readCoordFile(p)
 
-def getTargets(configDir=None, file='targetPositions.csv'):
+def get_targets(configDir=None, file='targetPositions.csv'):
     return _getCoordFile(configDir, file)
 
-def getMarkers(configDir=None, file='markerPositions.csv'):
+def get_markers(configDir=None, file='markerPositions.csv'):
     return _getCoordFile(configDir, file)
 
             
 
-def deployValidationConfig(outDir):
+def deploy_validation_config(outDir):
     outDir = pathlib.Path(outDir)
     if not outDir.is_dir():
         raise RuntimeError('the requested directory "%s" does not exist' % outDir)
@@ -72,4 +72,4 @@ def deployValidationConfig(outDir):
     if not boardDir.is_dir():
         boardDir.mkdir()
 
-    markerBoard.deployMaker(boardDir)
+    markerBoard.deploy_maker(boardDir)

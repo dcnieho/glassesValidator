@@ -22,7 +22,7 @@ def process(inputDir, configDir=None, showVisualization=False, showReference=Tru
     utils.update_recording_status(inputDir, utils.Task.Gaze_Tranformed_To_World, utils.Status.Running)
     
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = config.getValidationSetup(configDir)
+    validationSetup = config.get_validation_setup(configDir)
 
     if showVisualization:
         cv2.namedWindow("frame")

@@ -5,7 +5,7 @@ import importlib.resources
 import shutil
 
 
-def deployMaker(outDir):
+def deploy_maker(outDir):
     outDir = Path(outDir)
     if not outDir.is_dir():
         raise RuntimeError('the requested directory "%s" does not exist' % outDir)
@@ -15,17 +15,17 @@ def deployMaker(outDir):
         with importlib.resources.path(__package__, r) as p:
             shutil.copyfile(p, str(outDir/r))
 
-    deployMarkerImages(outDir)
+    deploy_marker_images(outDir)
 
-def deployMarkerImages(outDir):
-    from .. import getValidationSetup
+def deploy_marker_images(outDir):
+    from .. import get_validation_setup
 
     outDir = Path(outDir) / "all-markers"
     if not outDir.is_dir():
         outDir.mkdir()
 
     # get validation setup
-    validationSetup = getValidationSetup()
+    validationSetup = get_validation_setup()
 
     # Load the predefined dictionary
     dictionary = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)

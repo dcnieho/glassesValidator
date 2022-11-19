@@ -19,7 +19,7 @@ import typing
 from .mp4analyser import iso
 from .. import config as gv_config
 
-from .makeVideo import process as makeVideo
+from .makeVideo import process as make_video
         
 
 class Timestamp:
@@ -722,7 +722,7 @@ class Reference:
 
         # read in target positions   
         self.targets = {}
-        targets = gv_config.getTargets()
+        targets = gv_config.get_targets()
         if targets is not None:
             center  = targets.loc[validationSetup['centerTarget'],['x','y']]
             targets.x = self.cellSizeMm * (targets.x.astype('float32') - center.x)
@@ -737,7 +737,7 @@ class Reference:
         markerHalfSizeMm  = self.markerSize/2.
         self.knownMarkers = {}
         self.bbox         = []
-        markerPos = gv_config.getMarkers()
+        markerPos = gv_config.get_markers()
         if markerPos is not None:
             markerPos.x = self.cellSizeMm * (markerPos.x.astype('float32') - center.x)
             markerPos.y = self.cellSizeMm * (markerPos.y.astype('float32') - center.y)
@@ -1256,3 +1256,6 @@ def gazeToPlane(gaze,boardPose,cameraRotation,cameraPosition, cameraMatrix=None,
 
 def selectDictRange(theDict,start,end):
     return {k: theDict[k] for k in theDict if k>=start and k<=end}
+
+
+__all__ = ['make_video','EyeTracker','Recording']
