@@ -7,11 +7,11 @@ GlassesValidator: A data quality tool for eye tracking glasses.
 
 # How to acquire
 The glassesValidator is available from `https://github.com/dcnieho/glassesValidator`, and supports Windows, MacOS and Linux.
-For Windows and MacOS users who wish to use the glassesValidator GUI, the easiest way to acquire glassesValidator is to [download
+For Windows ~~and MacOS users~~ who wish to use the glassesValidator GUI, the easiest way to acquire glassesValidator is to [download
 a standalone executable](https://github.com/dcnieho/glassesValidator/releases/latest).
 
-For users who wish to use glassesValidator in their Python code, the package can be installed directly from Python using the command
-`python -m pip install glassesValidator`. Should that fail, this repository is pip-installable as well:
+For users who wish to use glassesValidator in their Python code, ~~the package can be installed directly from Python using the command
+`python -m pip install glassesValidator`. Should that fail,~~ this repository is pip-installable as well:
 `python -m pip install git+https://github.com/dcnieho/glassesValidator.git#egg=glassesValidator`.
 
 # Usage
@@ -24,13 +24,13 @@ and all further processing is done inside it. The source directories containing 
 glassesValidator. The glassesValidator project folder can furthermore contain a folder specifying the configuration of the project.
 Such a configuration should be made if you used a poster different from the default (if no configuration folder is present, the default
 settings are automatically used), and can be deployed with the `Deploy config` button in the GUI, or the
-`glassesValidator.config.deployValidationConfig()` call from Python.
+`glassesValidator.config.deploy_validation_config()` call from Python.
 
 
 ## The poster
 The default poster is available 1) [here](/src/glassesValidator/config/markerBoard/board.pdf), 2) from the GUI with the `Get poster
 pdf` button, and 3) can also be acquired from a Python script by calling
-`glassesValidator.config.markerBoard.deployDefaultPdf()`.
+`glassesValidator.config.markerBoard.deploy_default_pdf()`.
 The default poster should be printed at A2 size, as defined
 in the pdf file, and is designed to cover a reasonable field of view when participants view it at armslength (i.e., 20 x 17.5 deg
 at 60 cm). In order to check that the poster was printed at the correct scale, one should measure the sides of the ArUco markers.
@@ -70,7 +70,7 @@ a png image showing the poster will be generated in the configuration folder whe
 
 ### Steps for making your own poster
 1. Deploy the default configuration using the `Deploy config` button in the GUI, or the
-   `glassesValidator.config.deployValidationConfig()` call from Python.
+   `glassesValidator.config.deploy_validation_config()` call from Python.
 2. Edit the `validationSetup.txt` configuration file and the `markerPositions.csv` and `targetPositions.csv` files in the
    configuration folder to design the layout and look of the poster that you want.
 3. Compile the `markerBoard/board.tex` LaTeX file with `pdfTex`, such as provided in the [TeX Live distribution](https://www.tug.org/texlive/).
