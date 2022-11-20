@@ -11,9 +11,9 @@ from .. import utils
 
 
 def process(working_dir, config_dir=None, show_visualization=False, show_poster=True, show_only_intervals=True, fps_fac=1):
-    # if show_visualization, draw each frame + gaze and overlay info about detected markers and poster
+    # if show_visualization, each frame is shown in a viewer, overlaid with info about detected markers and poster
     # if show_poster, gaze in poster space is also drawn in a separate window
-    # if show_only_intervals, shows only frames in the marker intervals (if available)
+    # if show_only_intervals, only the coded validation episodes (if available) are shown in the viewer while the rest of the scene video is skipped past
     working_dir  = pathlib.Path(working_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)

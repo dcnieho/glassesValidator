@@ -19,9 +19,9 @@ from fractions import Fraction
 
 
 def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio_to_poster_video=False, show_visualization=False):
-    # if show_rejected_markers, rejected marker candidates are also drawn on frame. Possibly useful for debug
-    # if add_audio_to_poster_video, audio will be added to poster video, not only to the scene video
-    # if show_visualization, draw each frame and overlay info about detected markers and poster
+    # if show_rejected_markers, rejected ArUco marker candidates are also drawn on the video. Possibly useful for debug
+    # if add_audio_to_poster_video, audio is added to poster video, not only to the scene video
+    # if show_visualization, the generated video is shown as it is created in a viewer
     working_dir  = pathlib.Path(working_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)

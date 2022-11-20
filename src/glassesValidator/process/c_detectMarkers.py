@@ -9,9 +9,9 @@ from .. import config
 from .. import utils
 
 
-def process(working_dir, config_dir=None, visualize_detection=False, show_rejected_markers=False, fps_fac=1):
-    # if visualize_detection, draw each frame and overlay info about detected markers and poster
-    # if show_rejected_markers, rejected marker candidates are also drawn on frame. Possibly useful for debug
+def process(working_dir, config_dir=None, show_visualization=False, show_rejected_markers=False, fps_fac=1):
+    # if show_visualization, each frame is shown in a viewer, overlaid with info about detected markers and poster
+    # if show_rejected_markers, rejected ArUco marker candidates are also shown in the viewer. Possibly useful for debug
     working_dir  = pathlib.Path(working_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)
@@ -110,7 +110,7 @@ def process(working_dir, config_dir=None, visualize_detection=False, show_reject
                         # set pose
                         pose.setPose(rVec,tVec)
                         # and draw if wanted
-                        if visualize_detection:
+                        if show_visualization:
                             # draw axis indicating poster pose (origin and orientation)
                             utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, pose.rVec, pose.tVec, armLength, 3, subPixelFac)
 
@@ -123,7 +123,7 @@ def process(working_dir, config_dir=None, visualize_detection=False, show_reject
 
                 if status:
                     pose.hMat = H
-                    if visualize_detection:
+                    if show_visualization:
                         # find where target is expected to be in the image
                         iH = np.linalg.inv(pose.hMat)
                         target = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
@@ -137,14 +137,14 @@ def process(working_dir, config_dir=None, visualize_detection=False, show_reject
                     csv_writer.writerow( pose.getWriteData() )
 
             # if any markers were detected, draw where on the frame
-            if visualize_detection:
+            if show_visualization:
                 utils.drawArucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac, specialHighlight=[recoveredIds,(255,255,0)])
 
         # for debug, can draw rejected markers on frame
-        if visualize_detection and show_rejected_markers:
+        if show_visualization and show_rejected_markers:
             cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
                 
-        if visualize_detection:
+        if show_visualization:
             cv2.imshow(working_dir.name,frame)
             key = cv2.waitKey(max(1,int(round(ifi-(time.perf_counter()-startTime)*1000)))) & 0xFF
             if key == ord('q'):
