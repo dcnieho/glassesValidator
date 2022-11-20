@@ -739,7 +739,7 @@ class MainGUI():
                     if isinstance(exc, concurrent.futures.TimeoutError):
                         utils.push_popup(msgbox.msgbox, "Processing error", f"A worker process has failed for recording '{rec.name}' (work item {job_id}):\n{type(exc).__name__}: {str(exc) or 'No further details'}\n\nPossible causes include:\n - You are running with too many workers, try lowering them in settings", MsgBox.warn, more=tb)
                         return
-                    utils.push_popup(msgbox.msgbox, "Processing error", f"Something went wrong in a worker process for recording '{rec.name}' (work item {job_id}):\n\n{tb}", MsgBox.error)
+                    utils.push_popup(msgbox.msgbox, "Processing error", f"Something went wrong in a worker process for recording '{rec.name}' (work item {job_id}, task {get_task_name_friendly(job.task)}):\n\n{tb}", MsgBox.error)
 
             # clean up when a task failed or was canceled
             if state in [ProcessState.Canceled, ProcessState.Failed]:
