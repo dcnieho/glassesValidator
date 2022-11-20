@@ -722,7 +722,7 @@ class Poster:
 
         # read in target positions   
         self.targets = {}
-        targets = gv_config.get_targets()
+        targets = gv_config.get_targets(config_dir)
         if targets is not None:
             center  = targets.loc[validationSetup['centerTarget'],['x','y']]
             targets.x = self.cellSizeMm * (targets.x.astype('float32') - center.x)
@@ -737,7 +737,7 @@ class Poster:
         markerHalfSizeMm  = self.markerSize/2.
         self.knownMarkers = {}
         self.bbox         = []
-        markerPos = gv_config.get_markers()
+        markerPos = gv_config.get_markers(config_dir)
         if markerPos is not None:
             markerPos.x = self.cellSizeMm * (markerPos.x.astype('float32') - center.x)
             markerPos.y = self.cellSizeMm * (markerPos.y.astype('float32') - center.y)
