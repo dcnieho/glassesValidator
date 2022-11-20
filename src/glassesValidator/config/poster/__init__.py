@@ -1,12 +1,12 @@
 import cv2
 import numpy as np
-from pathlib import Path
+import pathlib
 import importlib.resources
 import shutil
 
 
 def deploy_maker(output_dir):
-    output_dir = Path(output_dir)
+    output_dir = pathlib.Path(output_dir)
     if not output_dir.is_dir():
         raise RuntimeError('the requested directory "%s" does not exist' % output_dir)
 
@@ -20,7 +20,7 @@ def deploy_maker(output_dir):
 def deploy_marker_images(output_dir):
     from .. import get_validation_setup
 
-    output_dir = Path(output_dir) / "all-markers"
+    output_dir = pathlib.Path(output_dir) / "all-markers"
     if not output_dir.is_dir():
         output_dir.mkdir()
 
@@ -39,7 +39,7 @@ def deploy_marker_images(output_dir):
         cv2.imwrite(str(output_dir / "{}.png".format(i)), markerImage)
 
 def deploy_default_pdf(output_file_or_dir):
-    output_file_or_dir = Path(output_file_or_dir)
+    output_file_or_dir = pathlib.Path(output_file_or_dir)
     if output_file_or_dir.is_dir():
         output_file_or_dir = output_file_or_dir / 'poster.pdf'
 
