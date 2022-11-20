@@ -11,7 +11,7 @@ def deploy_maker(output_dir):
         raise RuntimeError('the requested directory "%s" does not exist' % output_dir)
 
     # copy over all files
-    for r in ['board.tex']:
+    for r in ['poster.tex']:
         with importlib.resources.path(__package__, r) as p:
             shutil.copyfile(p, str(output_dir/r))
 
@@ -38,10 +38,10 @@ def deploy_marker_images(output_dir):
 
         cv2.imwrite(str(output_dir / "{}.png".format(i)), markerImage)
 
-def deployDefaultPdf(output_file):
+def deploy_default_pdf(output_file):
     output_file = Path(output_file)
     if output_file.is_dir():
-        output_file = output_file / 'board.pdf'
+        output_file = output_file / 'poster.pdf'
 
-    with importlib.resources.path(__package__,'board.pdf') as p:
+    with importlib.resources.path(__package__,'poster.pdf') as p:
         shutil.copyfile(p, str(output_file))

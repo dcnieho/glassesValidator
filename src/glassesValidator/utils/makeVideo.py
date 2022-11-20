@@ -19,9 +19,9 @@ from fractions import Fraction
 
 
 def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_to_poster_video=False, show_visualization=False):
-    # if showRejectedMarkers, rejected marker candidates are also drawn on frame. Possibly useful for debug
-    # if addAudioToBoardVideo, audio will be added to reference board video, not only to the scene video
-    # if showVisualization, draw each frame and overlay info about detected markers and board
+    # if show_rejected_markers, rejected marker candidates are also drawn on frame. Possibly useful for debug
+    # if add_audio_to_poster_video, audio will be added to poster video, not only to the scene video
+    # if show_visualization, draw each frame and overlay info about detected markers and poster
     input_dir  = pathlib.Path(input_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)
@@ -46,11 +46,11 @@ def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_t
     height = vidIn.get(cv2.CAP_PROP_FRAME_HEIGHT)
     fps    = vidIn.get(cv2.CAP_PROP_FPS)
 
-    # get info about markers on our board
-    reference       = utils.Reference(config_dir, validationSetup)
-    centerTarget    = reference.targets[validationSetup['centerTarget']].center
+    # get info about markers on our poster
+    poster      = utils.Poster(config_dir, validationSetup)
+    centerTarget= poster.targets[validationSetup['centerTarget']].center
     # turn into aruco board object to be used for pose estimation
-    referenceBoard  = reference.getArucoBoard()
+    arucoBoard  = poster.getArucoBoard()
     
     # prep output video files
     # get which pixel format
@@ -59,10 +59,10 @@ def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_t
     fpsFrac  = Fraction(fps).limit_denominator(10000).as_integer_ratio()
     # scene video
     out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(      width    ), 'height_in':int(      height    ),'frame_rate':fpsFrac}
-    vidOutScene = MediaWriter(str(input_dir / 'detectOutput_scene.mp4'), [out_opts], overwrite=True)
-    # reference board video
-    out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(reference.width), 'height_in':int(reference.height),'frame_rate':fpsFrac}
-    vidOutBoard = MediaWriter(str(input_dir / 'detectOutput_poster.mp4'), [out_opts], overwrite=True)
+    vidOutScene  = MediaWriter(str(input_dir / 'detectOutput_scene.mp4') , [out_opts], overwrite=True)
+    # poster video
+    out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(poster.width), 'height_in':int(poster.height),'frame_rate':fpsFrac}
+    vidOutPoster = MediaWriter(str(input_dir / 'detectOutput_poster.mp4'), [out_opts], overwrite=True)
 
     # setup aruco marker detection
     parameters = cv2.aruco.DetectorParameters_create()
@@ -86,7 +86,7 @@ def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_t
         analyzeFrames = []
     
     frame_idx = 0
-    armLength = reference.markerSize/2 # arms of axis are half a marker long
+    armLength = poster.markerSize/2 # arms of axis are half a marker long
     subPixelFac = 8   # for sub-pixel positioning
     stopAllProcessing = False
     while True:
@@ -94,29 +94,29 @@ def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_t
         ret, frame = vidIn.read()
         if not ret:
             break
-        refImg = reference.getImgCopy()
+        refImg = poster.getImgCopy()
 
         # detect markers, undistort
         corners, ids, rejectedImgPoints = \
-            cv2.aruco.detectMarkers(frame, reference.aruco_dict, parameters=parameters)
+            cv2.aruco.detectMarkers(frame, poster.aruco_dict, parameters=parameters)
         recoveredIds = None
 
-        # get board pose, draw marker and board pose
+        # get camera pose w.r.t. poster, draw marker and poster pose
         gotPose = False
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
-                pose = utils.BoardPose(frame_idx)
+                pose = utils.PosterPose(frame_idx)
                 # get camera pose
                 if hasCameraMatrix and hasDistCoeff:
-                    # Refine detected markers (eliminates markers not part of our board, adds missing markers to the board)
+                    # Refine detected markers (eliminates markers not part of our poster, adds missing markers to the poster)
                     corners, ids, rejectedImgPoints, recoveredIds = utils.arucoRefineDetectedMarkers(
-                            image = frame, board = referenceBoard,
+                            image = frame, arucoBoard = arucoBoard,
                             detectedCorners = corners, detectedIds = ids, rejectedCorners = rejectedImgPoints,
                             cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
 
-                    pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
+                    pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, arucoBoard, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
                     
-                    # draw axis indicating board pose (origin and orientation)
+                    # draw axis indicating poster pose (origin and orientation)
                     if pose.nMarkers>0:
                         # set pose
                         pose.setPose(rVec,tVec)
@@ -129,7 +129,7 @@ def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_t
                     cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
                 else:
                     cornersU = corners
-                H, status = utils.estimateHomography(reference.knownMarkers, cornersU, ids)
+                H, status = utils.estimateHomography(poster.knownMarkers, cornersU, ids)
 
                 if status:
                     pose.hMat = H
@@ -156,15 +156,15 @@ def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_t
                 gaze.draw(frame, subPixelFac=subPixelFac, camRot=cameraRotation, camPos=cameraPosition, cameraMatrix=cameraMatrix, distCoeff=distCoeff)
                 
                 # if we have pose information, figure out where gaze vectors
-                # intersect with reference board. Do same for 3D gaze point
+                # intersect with poster. Do same for 3D gaze point
                 # (the projection of which coincides with 2D gaze provided by
                 # the eye tracker)
                 if gotPose:
-                    gazeWorld = utils.gazeToPlane(gaze,pose,cameraRotation,cameraPosition, cameraMatrix, distCoeff)
+                    gazePoster = utils.gazeToPlane(gaze,pose,cameraRotation,cameraPosition, cameraMatrix, distCoeff)
 
-                    # draw gazes on video and reference image
-                    gazeWorld.drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
-                    gazeWorld.drawOnReferencePlane(refImg, reference, subPixelFac)
+                    # draw gazes on video and poster
+                    gazePoster.drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
+                    gazePoster.drawOnPoster(refImg, poster, subPixelFac)
         
         # annotate frame
         analysisIntervalIdx = None
@@ -182,8 +182,8 @@ def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_t
         # store to file
         img = Image(plane_buffers=[frame.flatten().tobytes()], pix_fmt='bgr24', size=(int(width), int(height)))
         vidOutScene.write_frame(img=img, pts=frame_idx/fps)
-        img = Image(plane_buffers=[refImg.flatten().tobytes()], pix_fmt='bgr24', size=(reference.width, reference.height))
-        vidOutBoard.write_frame(img=img, pts=frame_idx/fps)
+        img = Image(plane_buffers=[refImg.flatten().tobytes()], pix_fmt='bgr24', size=(poster.width, poster.height))
+        vidOutPoster.write_frame(img=img, pts=frame_idx/fps)
 
 
         if show_visualization:
@@ -204,10 +204,10 @@ def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_t
         
     vidIn.release()
     vidOutScene.close()
-    vidOutBoard.close()
+    vidOutPoster.close()
     cv2.destroyAllWindows()
 
-    # if ffmpeg is on path, add audio to scene and optionally board video
+    # if ffmpeg is on path, add audio to scene and optionally poster video
     if shutil.which('ffmpeg') is not None:
         todo = [input_dir / 'detectOutput_scene.mp4']
         if add_audio_to_poster_video:

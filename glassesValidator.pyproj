@@ -26,7 +26,7 @@
     <Compile Include="src\glassesValidator\__init__.py" />
     <Compile Include="src\glassesValidator\version.py" />
     <Compile Include="src\glassesValidator\config\__init__.py" />
-    <Compile Include="src\glassesValidator\config\markerBoard\__init__.py" />
+    <Compile Include="src\glassesValidator\config\poster\__init__.py" />
     <Compile Include="src\glassesValidator\GUI\__init__.py" />
     <Compile Include="src\glassesValidator\GUI\_impl\__init__.py" />
     <Compile Include="src\glassesValidator\GUI\_impl\async_thread.py" />
@@ -49,7 +49,7 @@
     <Compile Include="src\glassesValidator\process\__init__.py" />
     <Compile Include="src\glassesValidator\process\b_codeMarkerInterval.py" />
     <Compile Include="src\glassesValidator\process\c_detectMarkers.py" />
-    <Compile Include="src\glassesValidator\process\d_gazeToBoard.py" />
+    <Compile Include="src\glassesValidator\process\d_gazeToPoster.py" />
     <Compile Include="src\glassesValidator\process\e1_computeOffsetsToTargets.py" />
     <Compile Include="src\glassesValidator\process\e2_determineFixationIntervals.py" />
     <Compile Include="src\glassesValidator\process\f_calculateDataQuality.py" />
@@ -77,8 +77,8 @@
     <Content Include="src\glassesValidator\config\markerPositions.csv" />
     <Content Include="src\glassesValidator\config\targetPositions.csv" />
     <Content Include="src\glassesValidator\config\validationSetup.txt" />
-    <Content Include="src\glassesValidator\config\markerBoard\board.tex" />
-    <Content Include="src\glassesValidator\config\markerBoard\board.pdf" />
+    <Content Include="src\glassesValidator\config\poster\poster.tex" />
+    <Content Include="src\glassesValidator\config\poster\poster.pdf" />
     <Content Include="src\glassesValidator\resources\fonts\Karla-Regular.ttf" />
     <Content Include="src\glassesValidator\resources\fonts\materialdesignicons-webfont.7.0.96.ttf" />
     <Content Include="src\glassesValidator\resources\fonts\NotoSans-Regular.ttf" />
@@ -94,7 +94,7 @@
     <Folder Include="src\" />
     <Folder Include="src\glassesValidator\" />
     <Folder Include="src\glassesValidator\config" />
-    <Folder Include="src\glassesValidator\config\markerBoard" />
+    <Folder Include="src\glassesValidator\config\poster" />
     <Folder Include="src\glassesValidator\GUI" />
     <Folder Include="src\glassesValidator\GUI\_impl" />
     <Folder Include="src\glassesValidator\preprocess" />

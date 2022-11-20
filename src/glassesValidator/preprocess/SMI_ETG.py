@@ -206,7 +206,7 @@ def getCameraFromFile(inputDir, outputDir):
     camera['focalLength'] = np.array([fl, fl])
     # 2. sensor offsets seem to be relative to center of sensor
     camera['principalPoint'] = camera['resolution']/2.+camera['sensorOffsets']
-    # 3. turn euler angles into rotation matrix (180-Rz because board space has positive X rightward and positive Y downward)
+    # 3. turn euler angles into rotation matrix (180-Rz because poster space has positive X rightward and positive Y downward)
     camera['rotation'] = Rotation.from_euler('XYZ', [camera['eulerAngles'][0], camera['eulerAngles'][1], 180-camera['eulerAngles'][2]], degrees=True).as_matrix()
 
     # turn into camera matrix and distortion coefficients as used by OpenCV

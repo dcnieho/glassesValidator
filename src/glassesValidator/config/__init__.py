@@ -6,7 +6,7 @@ import numpy as np
 import pathlib
 import importlib.resources
 
-from . import markerBoard
+from . import poster
 
 def _readValidationSetupFile(file):
     # read key=value pairs into dict
@@ -67,9 +67,9 @@ def deploy_validation_config(output_dir):
         with importlib.resources.path(__package__, r) as p:
             shutil.copyfile(p, str(output_dir/r))
 
-    # copy over markerBoard tex file
-    boardDir = output_dir / 'markerBoard'
-    if not boardDir.is_dir():
-        boardDir.mkdir()
+    # copy over poster tex file
+    poster_dir = output_dir / 'poster'
+    if not poster_dir.is_dir():
+        poster_dir.mkdir()
 
-    markerBoard.deploy_maker(boardDir)
+    poster.deploy_maker(poster_dir)

@@ -30,15 +30,15 @@ def process(input_dir, config_dir=None):
         print('  no marker intervals defined for this recording, skipping')
         return
 
-    # Read gaze on board data
-    gazeWorld = utils.GazeWorld.readDataFromFile(input_dir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
+    # Read gaze on poster data
+    gazePoster = utils.GazePoster.readDataFromFile(input_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
-    # get info about markers on our board
-    reference = utils.Reference(config_dir, validationSetup, imHeight=-1)
-    targets   = {ID: reference.targets[ID].center for ID in reference.targets}   # get centers of targets
-    markerHalfSizeMm = reference.markerSize/2.
+    # get info about markers on our poster
+    poster    = utils.Poster(config_dir, validationSetup, imHeight=-1)
+    targets   = {ID: poster.targets[ID].center for ID in poster.targets}   # get centers of targets
+    markerHalfSizeMm = poster.markerSize/2.
     
-    # run I2MC on data in board space
+    # run I2MC on data in poster space
     # set I2MC options
     opt = {'xres': None, 'yres': None}  # dummy values for required options
     opt['missingx']         = math.nan
@@ -53,7 +53,7 @@ def process(input_dir, config_dir=None):
     # uses sampling frequency for converting some of the time units to samples, other things are taken directly
     # from the time signal. So, we have working I2MC settings for a few sampling frequencies, and just choose
     # the nearest based on empirically determined sampling frequency.
-    ts          = np.array([s.ts for v in gazeWorld.values() for s in v])
+    ts          = np.array([s.ts for v in gazePoster.values() for s in v])
     recFreq     = np.round(np.mean(1000./np.diff(ts)))    # Hz
     knownFreqs  = [30., 50., 60., 90., 120.]
     opt['freq'] = knownFreqs[np.abs(knownFreqs - recFreq).argmin()]
@@ -69,26 +69,26 @@ def process(input_dir, config_dir=None):
         opt['downsampFilter']   = False
 
     # collect data
-    qHasLeft        = np.any(np.logical_not(np.isnan([s.lGaze2D          for v in gazeWorld.values() for s in v])))
-    qHasRight       = np.any(np.logical_not(np.isnan([s.rGaze2D          for v in gazeWorld.values() for s in v])))
-    qHasRay         = np.any(np.logical_not(np.isnan([s.gaze2DRay        for v in gazeWorld.values() for s in v])))
-    qHasHomography  = np.any(np.logical_not(np.isnan([s.gaze2DHomography for v in gazeWorld.values() for s in v])))
+    qHasLeft        = np.any(np.logical_not(np.isnan([s.lGaze2D          for v in gazePoster.values() for s in v])))
+    qHasRight       = np.any(np.logical_not(np.isnan([s.rGaze2D          for v in gazePoster.values() for s in v])))
+    qHasRay         = np.any(np.logical_not(np.isnan([s.gaze2DRay        for v in gazePoster.values() for s in v])))
+    qHasHomography  = np.any(np.logical_not(np.isnan([s.gaze2DHomography for v in gazePoster.values() for s in v])))
     for ival in range(0,len(analyzeFrames)//2):
-        gazeWorldToAnal = {k:v for (k,v) in gazeWorld.items() if k>=analyzeFrames[ival*2] and k<=analyzeFrames[ival*2+1]}
+        gazePosterToAnal = {k:v for (k,v) in gazePoster.items() if k>=analyzeFrames[ival*2] and k<=analyzeFrames[ival*2+1]}
         data = {}
-        data['time'] = np.array([s.ts for v in gazeWorldToAnal.values() for s in v])
+        data['time'] = np.array([s.ts for v in gazePosterToAnal.values() for s in v])
         if qHasLeft and qHasRight:
             # prefer using separate left and right eye signals, if available. Better I2MC robustness
-            data['L_X']  = np.array([s.lGaze2D[0] for v in gazeWorldToAnal.values() for s in v])
-            data['L_Y']  = np.array([s.lGaze2D[1] for v in gazeWorldToAnal.values() for s in v])
-            data['R_X']  = np.array([s.rGaze2D[0] for v in gazeWorldToAnal.values() for s in v])
-            data['R_Y']  = np.array([s.rGaze2D[1] for v in gazeWorldToAnal.values() for s in v])
+            data['L_X']  = np.array([s.lGaze2D[0] for v in gazePosterToAnal.values() for s in v])
+            data['L_Y']  = np.array([s.lGaze2D[1] for v in gazePosterToAnal.values() for s in v])
+            data['R_X']  = np.array([s.rGaze2D[0] for v in gazePosterToAnal.values() for s in v])
+            data['R_Y']  = np.array([s.rGaze2D[1] for v in gazePosterToAnal.values() for s in v])
         elif qHasRay:
-            data['average_X']  = np.array([s.gaze2DRay[0] for v in gazeWorldToAnal.values() for s in v])
-            data['average_Y']  = np.array([s.gaze2DRay[1] for v in gazeWorldToAnal.values() for s in v])
+            data['average_X']  = np.array([s.gaze2DRay[0] for v in gazePosterToAnal.values() for s in v])
+            data['average_Y']  = np.array([s.gaze2DRay[1] for v in gazePosterToAnal.values() for s in v])
         elif qHasHomography:
-            data['average_X']  = np.array([s.gaze2DHomography[0] for v in gazeWorldToAnal.values() for s in v])
-            data['average_Y']  = np.array([s.gaze2DHomography[1] for v in gazeWorldToAnal.values() for s in v])
+            data['average_X']  = np.array([s.gaze2DHomography[0] for v in gazePosterToAnal.values() for s in v])
+            data['average_Y']  = np.array([s.gaze2DHomography[1] for v in gazePosterToAnal.values() for s in v])
         else:
             raise RuntimeError('No data available to process')
         
@@ -113,14 +113,14 @@ def process(input_dir, config_dir=None):
             selected[i] = iFix
             used[iFix]  = True
 
-        # make plot of data overlaid on board, and show for each target which fixation
+        # make plot of data overlaid on poster, and show for each target which fixation
         # was selected
         f       = plt.figure(dpi=300)
-        imgplot = plt.imshow(reference.getImgCopy(asRGB=True),extent=(np.array(reference.bbox)[[0,2,1,3]]),alpha=.5)
+        imgplot = plt.imshow(poster.getImgCopy(asRGB=True),extent=(np.array(poster.bbox)[[0,2,1,3]]),alpha=.5)
         plt.plot(fix['xpos'],fix['ypos'],'b-')
         plt.plot(fix['xpos'],fix['ypos'],'go')
-        plt.xlim([reference.bbox[0]-markerHalfSizeMm, reference.bbox[2]+markerHalfSizeMm])
-        plt.ylim([reference.bbox[1]-markerHalfSizeMm, reference.bbox[3]+markerHalfSizeMm])
+        plt.xlim([poster.bbox[0]-markerHalfSizeMm, poster.bbox[2]+markerHalfSizeMm])
+        plt.ylim([poster.bbox[1]-markerHalfSizeMm, poster.bbox[3]+markerHalfSizeMm])
         for i,t in zip(range(len(targets)),targets):
             if selected[i]==-999:
                 continue
@@ -133,7 +133,7 @@ def process(input_dir, config_dir=None):
         plt.close(f)
 
         # also make timseries plot of gaze data with fixations
-        f = I2MC.plot.data_and_fixations(data, fix, fix_as_line=True, unit='mm', res=[[reference.bbox[0]-2*markerHalfSizeMm, reference.bbox[2]+2*markerHalfSizeMm], [reference.bbox[1]-2*markerHalfSizeMm, reference.bbox[3]+2*markerHalfSizeMm]])
+        f = I2MC.plot.data_and_fixations(data, fix, fix_as_line=True, unit='mm', res=[[poster.bbox[0]-2*markerHalfSizeMm, poster.bbox[2]+2*markerHalfSizeMm], [poster.bbox[1]-2*markerHalfSizeMm, poster.bbox[3]+2*markerHalfSizeMm]])
         f.savefig(str(input_dir / 'targetSelection_I2MC_interval_{}_fixations.png'.format(ival)))
         plt.close(f)
 

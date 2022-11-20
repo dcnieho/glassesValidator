@@ -10,27 +10,27 @@ from .. import config
 from .. import utils
 
 
-def process(input_dir, config_dir=None, show_visualization=False, show_reference=True, show_only_intervals=True, fps_fac=1):
-    # if showVisualization, draw each frame + gaze and overlay info about detected markers and board
-    # if showReference, gaze in board space is also drawn in a separate window
-    # if showOnlyIntervals, shows only frames in the marker intervals (if available)
+def process(input_dir, config_dir=None, show_visualization=False, show_poster=True, show_only_intervals=True, fps_fac=1):
+    # if show_visualization, draw each frame + gaze and overlay info about detected markers and poster
+    # if show_poster, gaze in poster space is also drawn in a separate window
+    # if show_only_intervals, shows only frames in the marker intervals (if available)
     input_dir  = pathlib.Path(input_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)
 
     print('processing: {}'.format(input_dir.name))
-    utils.update_recording_status(input_dir, utils.Task.Gaze_Tranformed_To_World, utils.Status.Running)
+    utils.update_recording_status(input_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Running)
     
-    # open file with information about Aruco marker and Gaze target locations
+    # open file with information about ArUco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
 
     if show_visualization:
         cv2.namedWindow("frame")
-        if show_reference:
-            cv2.namedWindow("reference")
+        if show_poster:
+            cv2.namedWindow("poster")
 
-        reference   = utils.Reference(config_dir, validationSetup)
-        centerTarget= reference.targets[validationSetup['centerTarget']].center
+        poster      = utils.Poster(config_dir, validationSetup)
+        centerTarget= poster.targets[validationSetup['centerTarget']].center
         i2t         = utils.Idx2Timestamp(input_dir / 'frameTimestamps.tsv')
     
     # get camera calibration info
@@ -53,14 +53,14 @@ def process(input_dir, config_dir=None, show_visualization=False, show_reference
     print('  gazeData')
     gazes,maxFrameIdx = utils.Gaze.readDataFromFile(input_dir / 'gazeData.tsv')
 
-    # Read pose of marker board
-    print('  boardPose')
-    poses = utils.BoardPose.readDataFromFile(input_dir / 'boardPose.tsv')
+    # Read camera pose w.r.t. poster
+    print('  posterPose')
+    poses = utils.PosterPose.readDataFromFile(input_dir / 'posterPose.tsv')
 
-    csv_file = open(input_dir / 'gazeWorldPos.tsv', 'w', newline='')
+    csv_file = open(input_dir / 'gazePosterPos.tsv', 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
     header = ['frame_idx']
-    header.extend(utils.GazeWorld.getWriteHeader())
+    header.extend(utils.GazePoster.getWriteHeader())
     csv_writer.writerow(header)
     
     subPixelFac = 8   # for sub-pixel positioning
@@ -86,8 +86,8 @@ def process(input_dir, config_dir=None, show_visualization=False, show_reference
                 if not inIval:
                     # no need to show this frame
                     continue
-            if show_reference:
-                refImg = reference.getImgCopy()
+            if show_poster:
+                refImg = poster.getImgCopy()
             
 
         if frame_idx in gazes:
@@ -98,30 +98,30 @@ def process(input_dir, config_dir=None, show_visualization=False, show_reference
                     gaze.draw(frame, subPixelFac=subPixelFac, camRot=cameraRotation, camPos=cameraPosition, cameraMatrix=cameraMatrix, distCoeff=distCoeff)
                 
                 # if we have pose information, figure out where gaze vectors
-                # intersect with reference board. Do same for 3D gaze point
+                # intersect with poster. Do same for 3D gaze point
                 # (the projection of which coincides with 2D gaze provided by
                 # the eye tracker)
-                # store positions on marker board plane in camera coordinate frame to
+                # store positions on poster plane in camera coordinate frame to
                 # file, along with gaze vector origins in same coordinate frame
                 writeData = [frame_idx]
                 if frame_idx in poses:
-                    gazeWorld = utils.gazeToPlane(gaze,poses[frame_idx],cameraRotation,cameraPosition, cameraMatrix, distCoeff)
+                    gazePoster = utils.gazeToPlane(gaze,poses[frame_idx],cameraRotation,cameraPosition, cameraMatrix, distCoeff)
                     
-                    # draw gazes on video and reference image
+                    # draw gazes on video and poster
                     if show_visualization:
-                        gazeWorld.drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
-                        if show_reference:
-                            gazeWorld.drawOnReferencePlane(refImg, reference, subPixelFac)
+                        gazePoster.drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
+                        if show_poster:
+                            gazePoster.drawOnPoster(refImg, poster, subPixelFac)
 
-                    # store gaze-on-plane to csv
-                    writeData.extend(gazeWorld.getWriteData())
+                    # store gaze-on-poster to csv
+                    writeData.extend(gazePoster.getWriteData())
                     csv_writer.writerow( writeData )
 
         if show_visualization:
-            if show_reference:
-                cv2.imshow("reference", refImg)
+            if show_poster:
+                cv2.imshow("poster", refImg)
 
-            # if we have board pose, draw board origin on video
+            # if we have poster pose, draw poster origin on video
             if frame_idx in poses:
                 if poses[frame_idx] is not None and hasCameraMatrix and hasDistCoeff:
                     a = cv2.projectPoints(np.zeros((1,3)),poses[frame_idx].rVec,poses[frame_idx].tVec,cameraMatrix,distCoeff)[0].flatten()
@@ -157,6 +157,6 @@ def process(input_dir, config_dir=None, show_visualization=False, show_reference
         cap.release()
         cv2.destroyAllWindows()
 
-    utils.update_recording_status(input_dir, utils.Task.Gaze_Tranformed_To_World, utils.Status.Finished)
+    utils.update_recording_status(input_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Finished)
 
     return stopAllProcessing

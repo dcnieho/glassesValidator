@@ -54,8 +54,8 @@ async def deploy_config(project_path: str|pathlib.Path, config_dir: str):
         }
         utils.push_popup(msgbox.msgbox, "Deploy configuration", f"The folder {conf_dir} already exist. Do you want to deploy a configuration to this folder,\npotentially overwriting any configuration that is already there?", MsgBox.warn, buttons)
 
-async def deploy_markerboard_pdf(dir: str|pathlib.Path):
-    config.markerBoard.deployDefaultPdf(dir)
+async def deploy_poster_pdf(dir: str|pathlib.Path):
+    config.poster.deploy_default_pdf(dir)
 
 async def remove_recording_working_dir(rec: Recording, project_path: pathlib.Path = None):
     if rec.proc_directory_name:
@@ -196,8 +196,8 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
             case Task.Coded:
                 task = Task.Markers_Detected
             case Task.Markers_Detected:
-                task = Task.Gaze_Tranformed_To_World
-            case Task.Gaze_Tranformed_To_World:
+                task = Task.Gaze_Tranformed_To_Poster
+            case Task.Gaze_Tranformed_To_Poster:
                 task = Task.Target_Offsets_Computed
             case Task.Target_Offsets_Computed:
                 task = Task.Fixation_Intervals_Determined
@@ -216,14 +216,14 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
             fun = preprocess.do_import
             args = (globals.project_path,)
             kwargs['rec_info'] = rec
-        case Task.Coded | Task.Markers_Detected | Task.Gaze_Tranformed_To_World | Task.Target_Offsets_Computed | Task.Fixation_Intervals_Determined | Task.Data_Quality_Calculated | Task.Make_Video:
+        case Task.Coded | Task.Markers_Detected | Task.Gaze_Tranformed_To_Poster | Task.Target_Offsets_Computed | Task.Fixation_Intervals_Determined | Task.Data_Quality_Calculated | Task.Make_Video:
             match task:
                 case Task.Coded:
                     fun = process.code_marker_interval
                 case Task.Markers_Detected:
                     fun = process.detect_markers
-                case Task.Gaze_Tranformed_To_World:
-                    fun = process.gaze_to_board
+                case Task.Gaze_Tranformed_To_Poster:
+                    fun = process.gaze_to_poster
                 case Task.Target_Offsets_Computed:
                     fun = process.compute_offsets_to_targets
                 case Task.Fixation_Intervals_Determined:

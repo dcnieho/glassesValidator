@@ -105,7 +105,7 @@ class Task(AutoName):
     Imported                        = auto()
     Coded                           = auto()
     Markers_Detected                = auto()
-    Gaze_Tranformed_To_World        = auto()
+    Gaze_Tranformed_To_Poster       = auto()
     Target_Offsets_Computed         = auto()
     Fixation_Intervals_Determined   = auto()
     Data_Quality_Calculated         = auto()
@@ -124,8 +124,8 @@ def get_task_name_friendly(name: str | Task):
             return 'Code'
         case 'Markers_Detected':
             return 'Detect Markers'
-        case 'Gaze_Tranformed_To_World':
-            return 'Tranform Gaze To World'
+        case 'Gaze_Tranformed_To_Poster':
+            return 'Tranform Gaze To Poster'
         case 'Target_Offsets_Computed':
             return 'Compute Target Offsets'
         case 'Fixation_Intervals_Determined':
@@ -420,7 +420,7 @@ def corners_intersection(corners):
 
 def toNormPos(x,y,bbox):
     # transforms input (x,y) which is on a plane in world units
-    # (e.g. mm on an aruco board) to a normalized position
+    # (e.g. mm on an aruco poster) to a normalized position
     # in an image of the plane, given the image's bounding box in
     # world units
     # for input (0,0) is bottom left, for output (0,0) is top left
@@ -432,7 +432,7 @@ def toNormPos(x,y,bbox):
 
 def toImagePos(x,y,bbox,imSize,margin=[0,0]):
     # transforms input (x,y) which is on a plane in world units
-    # (e.g. mm on an aruco board) to a pixel position in the
+    # (e.g. mm on an aruco poster) to a pixel position in the
     # image, given the image's bounding box in world units
     # imSize should be active image area in pixels, excluding margin
 
@@ -442,9 +442,9 @@ def toImagePos(x,y,bbox,imSize,margin=[0,0]):
     pos = [p*s+m for p,s,m in zip(pos,imSize,margin)]
     return pos
 
-def arucoRefineDetectedMarkers(image, board, detectedCorners, detectedIds, rejectedCorners, cameraMatrix = None, distCoeffs= None):
+def arucoRefineDetectedMarkers(image, arucoBoard, detectedCorners, detectedIds, rejectedCorners, cameraMatrix = None, distCoeffs= None):
     corners, ids, rejectedImgPoints, recoveredIds = cv2.aruco.refineDetectedMarkers(
-                            image = image, board = board,
+                            image = image, board = arucoBoard,
                             detectedCorners = detectedCorners, detectedIds = detectedIds, rejectedCorners = rejectedCorners,
                             cameraMatrix = cameraMatrix, distCoeffs = distCoeffs)
     if corners and corners[0].shape[0]==4:
@@ -662,8 +662,8 @@ def getMarkerUnrotated(cornerPoints, rot):
 
     return cornerPoints
 
-class Reference:
-    boardImageFilename = 'referenceBoard.png'
+class Poster:
+    posterImageFilename= 'referencePoster.png'
     aruco_dict         = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
 
     def __init__(self, configDir, validationSetup, imHeight = 400):
@@ -677,21 +677,21 @@ class Reference:
             self.cellSizeMm = 10 # 1cm
         self.markerSize = self.cellSizeMm*validationSetup['markerSide']
 
-        # get information about marker board
+        # get information about poster
         self._getTargetsAndKnownMarkers(configDir, validationSetup)
 
-        # get image of markerboard
+        # get image of poster
         useTempDir = configDir is None
         if useTempDir:
             tempDir = tempfile.TemporaryDirectory()
             configDir = pathlib.Path(tempDir.name)
 
-        boardImage = configDir / self.boardImageFilename
+        posterImage = configDir / self.posterImageFilename
         # 1 if doesn't exist, create
-        if not boardImage.is_file():
-            self._storeReferenceBoard(boardImage, validationSetup)
+        if not posterImage.is_file():
+            self._storeReferencePoster(posterImage, validationSetup)
         # 2. read image
-        self.img = cv2.imread(str(boardImage), cv2.IMREAD_COLOR)
+        self.img = cv2.imread(str(posterImage), cv2.IMREAD_COLOR)
         
         if useTempDir:
             tempDir.cleanup()
@@ -717,8 +717,8 @@ class Reference:
                 color = (0,0,0)
             drawOpenCVCircle(img, xy, size, color, -1, subPixelFac)
 
-    def _getTargetsAndKnownMarkers(self, configDir, validationSetup):
-        """ board space: (0,0) is at center target, (-,-) bottom left """
+    def _getTargetsAndKnownMarkers(self, config_dir, validationSetup):
+        """ poster space: (0,0) is at center target, (-,-) bottom left """
 
         # read in target positions   
         self.targets = {}
@@ -758,7 +758,7 @@ class Reference:
                 self.knownMarkers[idx] = Marker(idx, c, corners=[ tl, tr, br, bl ], rot=rot)
     
             # determine bounding box of markers ([left, top, right, bottom])
-            # NB: this assumes that board has an outer edge of markers, i.e.,
+            # NB: this assumes that poster has an outer edge of markers, i.e.,
             # that it does not have targets at its edges. Also assumes markers
             # are rotated by multiples of 90 degrees
             self.bbox.append(markerPos.x.min()-markerHalfSizeMm)
@@ -782,12 +782,12 @@ class Reference:
         boardCornerPoints = np.pad(boardCornerPoints,((0,0),(0,0),(0,1)),'constant', constant_values=(0.,0.)) # Nx4x2 -> Nx4x3
         return cv2.aruco.Board_create(boardCornerPoints, self.aruco_dict, np.array(ids))
             
-    def _storeReferenceBoard(self, boardImage, validationSetup):
+    def _storeReferencePoster(self, posterImage, validationSetup):
         referenceBoard = self.getArucoBoard(unRotateMarkers = True)
         # get image with markers
         bboxExtents    = [self.bbox[2]-self.bbox[0], math.fabs(self.bbox[3]-self.bbox[1])]  # math.fabs to deal with bboxes where (-,-) is bottom left
         aspectRatio    = bboxExtents[0]/bboxExtents[1]
-        refBoardWidth  = validationSetup['referenceBoardWidth']
+        refBoardWidth  = validationSetup['referencePosterWidth']
         refBoardHeight = math.ceil(refBoardWidth/aspectRatio)
         margin         = 1  # always 1 pixel, anything else behaves strangely (markers are drawn over margin as well)
         refBoardImage  = cv2.cvtColor(
@@ -860,12 +860,12 @@ class Reference:
             clr = tuple([int(i*255) for i in colors.to_rgb(self.targets[key].color)[::-1]])  # need BGR color ordering
             drawOpenCVCircle(refBoardImage, circlePos, 15, clr, -1, subPixelFac)
 
-        cv2.imwrite(str(boardImage), refBoardImage)
+        cv2.imwrite(str(posterImage), refBoardImage)
 
-class GazeWorld:
+class GazePoster:
     def __init__(self, ts, gaze3DRay=None, gaze3DHomography=None, lGazeOrigin=None, lGaze3D=None, rGazeOrigin=None, rGaze3D=None, gaze2DRay=None, gaze2DHomography=None, lGaze2D=None, rGaze2D=None):
         # 3D gaze is in world space, w.r.t. scene camera
-        # 2D gaze is on the reference board
+        # 2D gaze is on the poster
         self.ts = ts
 
         # in camera space
@@ -876,11 +876,11 @@ class GazeWorld:
         self.rGazeOrigin      = rGazeOrigin
         self.rGaze3D          = rGaze3D             # 3D gaze point on plane (right eye gaze vector intersected with plane)
 
-        # in board space
-        self.gaze2DRay        = gaze2DRay           # gaze3DRay in board space
-        self.gaze2DHomography = gaze2DHomography    # Video gaze point directly mapped to board through homography transformation
-        self.lGaze2D          = lGaze2D             # lGaze3D in board space
-        self.rGaze2D          = rGaze2D             # rGaze3D in board space
+        # in poster space
+        self.gaze2DRay        = gaze2DRay           # gaze3DRay in poster space
+        self.gaze2DHomography = gaze2DHomography    # Video gaze point directly mapped to poster through homography transformation
+        self.lGaze2D          = lGaze2D             # lGaze3D in poster space
+        self.rGaze2D          = rGaze2D             # rGaze3D in poster space
 
     @staticmethod
     def getWriteHeader():
@@ -888,10 +888,10 @@ class GazeWorld:
         header.extend(getXYZLabels(['gazePosCam_vidPos_ray','gazePosCam_vidPos_homography']))
         header.extend(getXYZLabels(['gazeOriCamLeft','gazePosCamLeft']))
         header.extend(getXYZLabels(['gazeOriCamRight','gazePosCamRight']))
-        header.extend(getXYZLabels('gazePosBoard2D_vidPos_ray',2))
-        header.extend(getXYZLabels('gazePosBoard2D_vidPos_homography',2))
-        header.extend(getXYZLabels('gazePosBoard2DLeft',2))
-        header.extend(getXYZLabels('gazePosBoard2DRight',2))
+        header.extend(getXYZLabels('gazePosPoster2D_vidPos_ray',2))
+        header.extend(getXYZLabels('gazePosPoster2D_vidPos_homography',2))
+        header.extend(getXYZLabels('gazePosPoster2DLeft',2))
+        header.extend(getXYZLabels('gazePosPoster2DRight',2))
         return header
 
     @staticmethod
@@ -907,7 +907,7 @@ class GazeWorld:
         writeData.extend(allNanIfNone(self.lGaze3D,3))
         writeData.extend(allNanIfNone(self.rGazeOrigin,3))
         writeData.extend(allNanIfNone(self.rGaze3D,3))
-        # in board space
+        # in poster space
         writeData.extend(allNanIfNone(self.gaze2DRay,2))
         writeData.extend(allNanIfNone(self.gaze2DHomography,2))
         writeData.extend(allNanIfNone(self.lGaze2D,2))
@@ -936,11 +936,11 @@ class GazeWorld:
                 lGaze3D         = dataReaderHelper(entry,'gazePosCamLeft')
                 rGazeOrigin     = dataReaderHelper(entry,'gazeOriCamRight')
                 rGaze3D         = dataReaderHelper(entry,'gazePosCamRight')
-                gaze2DRay       = dataReaderHelper(entry,'gazePosBoard2D_vidPos_ray',2)
-                gaze2DHomography= dataReaderHelper(entry,'gazePosBoard2D_vidPos_homography',2)
-                lGaze2D         = dataReaderHelper(entry,'gazePosBoard2DLeft',2)
-                rGaze2D         = dataReaderHelper(entry,'gazePosBoard2DRight',2)
-                gaze = GazeWorld(ts, gaze3DRay, gaze3DHomography, lGazeOrigin, lGaze3D, rGazeOrigin, rGaze3D, gaze2DRay, gaze2DHomography, lGaze2D, rGaze2D)
+                gaze2DRay       = dataReaderHelper(entry,'gazePosPoster2D_vidPos_ray',2)
+                gaze2DHomography= dataReaderHelper(entry,'gazePosPoster2D_vidPos_homography',2)
+                lGaze2D         = dataReaderHelper(entry,'gazePosPoster2DLeft',2)
+                rGaze2D         = dataReaderHelper(entry,'gazePosPoster2DRight',2)
+                gaze = GazePoster(ts, gaze3DRay, gaze3DHomography, lGazeOrigin, lGaze3D, rGazeOrigin, rGaze3D, gaze2DRay, gaze2DHomography, lGaze2D, rGaze2D)
 
                 if frame_idx in gazes:
                     gazes[frame_idx].append(gaze)
@@ -970,7 +970,7 @@ class GazeWorld:
             if not math.isnan(pPointCam[0]):
                 drawOpenCVCircle(img, pPointCam, 6, (255,0,255), -1, subPixelFac)
 
-    def drawOnReferencePlane(self, img, reference, subPixelFac=1):
+    def drawOnPoster(self, img, reference, subPixelFac=1):
         # left eye
         if self.lGaze2D is not None:
             reference.draw(img, self.lGaze2D[0],self.lGaze2D[1], subPixelFac, (0,0,255), 3)
@@ -988,7 +988,7 @@ class GazeWorld:
         if self.gaze2DRay is not None:
             reference.draw(img, self.gaze2DRay[0],self.gaze2DRay[1], subPixelFac, (0,0,0), 3)
 
-class BoardPose:
+class PosterPose:
     def __init__(self, frameIdx, nMarkers=0, rVec=None, tVec=None, hMat=None):
         self.frameIdx   = frameIdx
         
@@ -1051,7 +1051,7 @@ class BoardPose:
             
             # insert if any non-None
             if not np.all([x is None for x in args]):   # check for not all isNone
-                poses[frame_idx] = BoardPose(frame_idx,int(row['poseNMarker']),*args)
+                poses[frame_idx] = PosterPose(frame_idx,int(row['poseNMarker']),*args)
 
         return poses
 
@@ -1101,16 +1101,16 @@ class BoardPose:
                     self._RMat = cv2.Rodrigues(self.rVec)[0]
                 self._RtMat = np.hstack((self._RMat, self.tVec.reshape(3,1)))
                 
-            # get board normal
+            # get poster normal
             self._planeNormal = np.matmul(self._RMat, np.array([0., 0., 1.]))
-            # get point on board (just use origin)
+            # get point on poster (just use origin)
             self._planePoint  = np.matmul(self._RtMat, np.array([0., 0., 0., 1.]))
 
 
         # normalize vector
         vector /= np.sqrt((vector**2).sum())
 
-        # find intersection of 3D gaze with board
+        # find intersection of 3D gaze with poster
         return intersect_plane_ray(self._planeNormal, self._planePoint, vector.flatten(), origin.flatten())
 
 class Idx2Timestamp:
@@ -1182,10 +1182,10 @@ def readMarkerIntervalsFile(fileName):
 
     return None if len(analyzeFrames)==0 else analyzeFrames
 
-def gazeToPlane(gaze,boardPose,cameraRotation,cameraPosition, cameraMatrix=None, distCoeffs=None):
+def gazeToPlane(gaze,posterPose,cameraRotation,cameraPosition, cameraMatrix=None, distCoeffs=None):
 
-    hasCameraPose = (boardPose.rVec is not None) and (boardPose.tVec is not None)
-    gazeWorld   = GazeWorld(gaze.ts)
+    hasCameraPose = (posterPose.rVec is not None) and (posterPose.tVec is not None)
+    gazePoster    = GazePoster(gaze.ts)
     if hasCameraPose:
         # get transform from ET data's coordinate frame to camera's coordinate frame
         if cameraRotation is None:
@@ -1195,7 +1195,7 @@ def gazeToPlane(gaze,boardPose,cameraRotation,cameraPosition, cameraMatrix=None,
             cameraPosition = np.zeros((3,1))
         RtCam = np.hstack((RCam, cameraPosition))
 
-        # project gaze to reference board using camera pose
+        # project gaze to reference poster using camera pose
         if gaze.world3D is not None:
             # turn 3D gaze point provided by eye tracker into ray from camera
             g3D = np.matmul(RCam,np.array(gaze.world3D).reshape(3,1))
@@ -1203,30 +1203,30 @@ def gazeToPlane(gaze,boardPose,cameraRotation,cameraPosition, cameraMatrix=None,
             # turn observed gaze position on video into position on tangent plane
             g3D = unprojectPoint(gaze.vid2D[0],gaze.vid2D[1],cameraMatrix,distCoeffs)
         
-        # find intersection of 3D gaze with board, draw
-        gazeWorld.gaze3DRay = boardPose.vectorIntersect(g3D)   # default vec origin (0,0,0) because we use g3D from camera's view point
+        # find intersection of 3D gaze with poster, draw
+        gazePoster.gaze3DRay = posterPose.vectorIntersect(g3D)   # default vec origin (0,0,0) because we use g3D from camera's view point
         
-        # above intersection is in camera space, turn into board space to get position on board
-        (x,y,z)   = boardPose.camToWorld(gazeWorld.gaze3DRay)  # z should be very close to zero
-        gazeWorld.gaze2DRay = [x, y]
+        # above intersection is in camera space, turn into poster space to get position on poster
+        (x,y,z)   = posterPose.camToWorld(gazePoster.gaze3DRay)  # z should be very close to zero
+        gazePoster.gaze2DRay = [x, y]
 
-    # unproject 2D gaze point on video to point on board (should yield values very close to
-    # the above method of intersecting 3D gaze point ray with board)
-    if boardPose.hMat is not None:
+    # unproject 2D gaze point on video to point on poster (should yield values very close to
+    # the above method of intersecting 3D gaze point ray with poster)
+    if posterPose.hMat is not None:
         ux, uy   = gaze.vid2D
         if (cameraMatrix is not None) and (distCoeffs is not None):
             ux, uy   = undistortPoint( ux, uy, cameraMatrix, distCoeffs)
-        (xW, yW) = applyHomography(boardPose.hMat, ux, uy)
-        gazeWorld.gaze2DHomography = [xW, yW]
+        (xW, yW) = applyHomography(posterPose.hMat, ux, uy)
+        gazePoster.gaze2DHomography = [xW, yW]
 
         # get this point in camera space
         if hasCameraPose:
-            gazeWorld.gaze3DHomography = boardPose.worldToCam(np.array([xW,yW,0.]))
+            gazePoster.gaze3DHomography = posterPose.worldToCam(np.array([xW,yW,0.]))
 
-    # project gaze vectors to reference board (and draw on video)
+    # project gaze vectors to reference poster (and draw on video)
     if not hasCameraPose:
         # nothing to do anymore
-        return gazeWorld
+        return gazePoster
 
     gazeVecs    = [gaze.lGazeVec   , gaze.rGazeVec]
     gazeOrigins = [gaze.lGazeOrigin, gaze.rGazeOrigin]
@@ -1238,21 +1238,21 @@ def gazeToPlane(gaze,boardPose,cameraRotation,cameraPosition, cameraMatrix=None,
         # transform from ET data coordinate frame into camera coordinate frame
         gVec    = np.matmul(RCam ,          gVec    )
         gOri    = np.matmul(RtCam,np.append(gOri,1.))
-        setattr(gazeWorld,attr[0],gOri)
+        setattr(gazePoster,attr[0],gOri)
 
-        # intersect with board -> yield point on board in camera reference frame
-        gBoard  = boardPose.vectorIntersect(gVec, gOri)
-        setattr(gazeWorld,attr[1],gBoard)
+        # intersect with poster -> yield point on poster in camera reference frame
+        gPoster = posterPose.vectorIntersect(gVec, gOri)
+        setattr(gazePoster,attr[1],gPoster)
                         
-        # transform intersection with board from camera space to board space
-        if not math.isnan(gBoard[0]):
-            (x,y,z)   = boardPose.camToWorld(gBoard)  # z should be very close to zero
-            pgBoard = [x, y]
+        # transform intersection with poster from camera space to poster space
+        if not math.isnan(gPoster[0]):
+            (x,y,z)  = posterPose.camToWorld(gPoster)  # z should be very close to zero
+            pgPoster = [x, y]
         else:
-            pgBoard = [np.nan, np.nan]
-        setattr(gazeWorld,attr[2],pgBoard)
+            pgPoster = [np.nan, np.nan]
+        setattr(gazePoster,attr[2],pgPoster)
 
-    return gazeWorld
+    return gazePoster
 
 def selectDictRange(theDict,start,end):
     return {k: theDict[k] for k in theDict if k>=start and k<=end}

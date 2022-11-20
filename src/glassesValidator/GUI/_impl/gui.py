@@ -722,8 +722,8 @@ class MainGUI():
                                 else:
                                     task = None
                             case Task.Markers_Detected:
-                                task = Task.Gaze_Tranformed_To_World
-                            case Task.Gaze_Tranformed_To_World:
+                                task = Task.Gaze_Tranformed_To_Poster
+                            case Task.Gaze_Tranformed_To_Poster:
                                 task = Task.Target_Offsets_Computed
                             case Task.Target_Offsets_Computed:
                                 task = Task.Fixation_Intervals_Determined
@@ -1359,7 +1359,7 @@ class MainGUI():
                 case 'add_recordings':
                     callbacks.add_recordings(selected)
                 case 'deploy_pdf':
-                    async_thread.run(callbacks.deploy_markerboard_pdf(selected[0]))
+                    async_thread.run(callbacks.deploy_poster_pdf(selected[0]))
                     
         match reason:
             case 'loading' | 'creating':

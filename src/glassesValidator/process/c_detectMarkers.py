@@ -10,8 +10,8 @@ from .. import utils
 
 
 def process(input_dir, config_dir=None, visualize_detection=False, show_rejected_markers=False, fps_fac=1):
-    # if visualizeDetection, draw each frame and overlay info about detected markers and board
-    # if showRejectedMarkers, rejected marker candidates are also drawn on frame. Possibly useful for debug
+    # if visualize_detection, draw each frame and overlay info about detected markers and poster
+    # if show_rejected_markers, rejected marker candidates are also drawn on frame. Possibly useful for debug
     input_dir  = pathlib.Path(input_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)
@@ -33,11 +33,11 @@ def process(input_dir, config_dir=None, visualize_detection=False, show_rejected
     height = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     ifi    = 1000./cap.get(cv2.CAP_PROP_FPS)/fps_fac
     
-    # get info about markers on our board
-    reference       = utils.Reference(config_dir, validationSetup)
-    centerTarget    = reference.targets[validationSetup['centerTarget']].center
+    # get info about markers on our poster
+    poster          = utils.Poster(config_dir, validationSetup)
+    centerTarget    = poster.targets[validationSetup['centerTarget']].center
     # turn into aruco board object to be used for pose estimation
-    referenceBoard  = reference.getArucoBoard()
+    arucoBoard      = poster.getArucoBoard()
     
     # setup aruco marker detection
     parameters = cv2.aruco.DetectorParameters_create()
@@ -54,14 +54,14 @@ def process(input_dir, config_dir=None, visualize_detection=False, show_rejected
     hasAnalyzeFrames= analyzeFrames is not None
 
     # prep output file
-    csv_file = open(input_dir / 'boardPose.tsv', 'w', newline='')
+    csv_file = open(input_dir / 'posterPose.tsv', 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
-    header = utils.BoardPose.getWriteHeader()
+    header = utils.PosterPose.getWriteHeader()
     csv_writer.writerow(header)
 
     frame_idx = -1
     stopAllProcessing = False
-    armLength = reference.markerSize/2 # arms of axis are half a marker long
+    armLength = poster.markerSize/2 # arms of axis are half a marker long
     subPixelFac = 8   # for sub-pixel positioning
     while True:
         startTime = time.perf_counter()
@@ -89,29 +89,29 @@ def process(input_dir, config_dir=None, visualize_detection=False, show_rejected
 
         # detect markers, undistort
         corners, ids, rejectedImgPoints = \
-            cv2.aruco.detectMarkers(frame, reference.aruco_dict, parameters=parameters)
+            cv2.aruco.detectMarkers(frame, poster.aruco_dict, parameters=parameters)
         recoveredIds = None
         
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
-                pose = utils.BoardPose(frame_idx)
+                pose = utils.PosterPose(frame_idx)
                 
                 # get camera pose
                 if hasCameraMatrix and hasDistCoeff:
-                    # Refine detected markers (eliminates markers not part of our board, adds missing markers to the board)
+                    # Refine detected markers (eliminates markers not part of our poster, adds missing markers to the poster)
                     corners, ids, rejectedImgPoints, recoveredIds = utils.arucoRefineDetectedMarkers(
-                            image = frame, board = referenceBoard,
+                            image = frame, arucoBoard = arucoBoard,
                             detectedCorners = corners, detectedIds = ids, rejectedCorners = rejectedImgPoints,
                             cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
 
-                    pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, referenceBoard, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
+                    pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, arucoBoard, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
                 
                     if pose.nMarkers>0:
                         # set pose
                         pose.setPose(rVec,tVec)
                         # and draw if wanted
                         if visualize_detection:
-                            # draw axis indicating board pose (origin and orientation)
+                            # draw axis indicating poster pose (origin and orientation)
                             utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, pose.rVec, pose.tVec, armLength, 3, subPixelFac)
 
                 # also get homography (direct image plane to plane in world transform). Use undistorted marker corners
@@ -119,7 +119,7 @@ def process(input_dir, config_dir=None, visualize_detection=False, show_rejected
                     cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
                 else:
                     cornersU = corners
-                H, status = utils.estimateHomography(reference.knownMarkers, cornersU, ids)
+                H, status = utils.estimateHomography(poster.knownMarkers, cornersU, ids)
 
                 if status:
                     pose.hMat = H

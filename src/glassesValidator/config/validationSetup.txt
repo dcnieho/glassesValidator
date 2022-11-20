@@ -20,5 +20,5 @@ showAnnotations = 0
 
 % options only used for Python code
 minNumMarkers = 3
-centerTarget = 5                % ID of marker in targetPosFile that is origin of board
-referenceBoardWidth = 1920      % pixels
+centerTarget = 5                % ID of marker in targetPosFile that is origin of poster
+referencePosterWidth = 1920     % pixels

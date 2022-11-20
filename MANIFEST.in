@@ -2,6 +2,6 @@ include requirements.txt
 include src/glassesValidator/config/markerPositions.csv
 include src/glassesValidator/config/targetPositions.csv
 include src/glassesValidator/config/validationSetup.txt
-include src/glassesValidator/config/markerBoard/board.pdf
-include src/glassesValidator/config/markerBoard/board.tex
+include src/glassesValidator/config/poster/poster.pdf
+include src/glassesValidator/config/poster/poster.tex
 recursive-include src/glassesValidator/resources *

@@ -4,7 +4,7 @@ from enum import Enum, auto
 
 from .b_codeMarkerInterval import process as code_marker_interval
 from .c_detectMarkers import process as detect_markers
-from .d_gazeToBoard import process as gaze_to_board
+from .d_gazeToPoster import process as gaze_to_poster
 from .e1_computeOffsetsToTargets import process as compute_offsets_to_targets
 from .e2_determineFixationIntervals import process as determine_fixation_intervals
 from .f_calculateDataQuality import process as calculate_data_quality
@@ -17,7 +17,7 @@ def do_coding(folder: str | pathlib.Path, config_dir=None):
 # package the further steps in a single function to simplify using this (i.e. group into a single step 3)
 def do_process(folder: str | pathlib.Path, config_dir=None):
     detect_markers(folder, config_dir)
-    gaze_to_board(folder, config_dir)
+    gaze_to_poster(folder, config_dir)
     compute_offsets_to_targets(folder, config_dir)
     determine_fixation_intervals(folder, config_dir)
     calculate_data_quality(folder, config_dir)
@@ -25,11 +25,11 @@ def do_process(folder: str | pathlib.Path, config_dir=None):
 
 # NB: using pose information requires a calibrated scene camera
 class DataQualityType(Enum):
-    viewdist_vidpos_homography  = auto()    # use homography to map gaze from video to marker board, and viewing distance defined in config to compute angular measures
-    pose_vidpos_homography      = auto()    # use homography to map gaze from video to marker board, and pose information w.r.t. marker board to compute angular measures
-    pose_vidpos_ray             = auto()    # use camera calibration to map gaze postion in scene video to cyclopean gaze vector, and pose information w.r.t. marker board to compute angular measures
-    pose_left_eye               = auto()    # use provided left eye gaze vector, and pose information w.r.t. marker board to compute angular measures
-    pose_right_eye              = auto()    # use provided right eye gaze vector, and pose information w.r.t. marker board to compute angular measures
+    viewdist_vidpos_homography  = auto()    # use homography to map gaze from video to poster, and viewing distance defined in config to compute angular measures
+    pose_vidpos_homography      = auto()    # use homography to map gaze from video to poster, and pose information w.r.t. poster to compute angular measures
+    pose_vidpos_ray             = auto()    # use camera calibration to map gaze postion in scene video to cyclopean gaze vector, and pose information w.r.t. poster to compute angular measures
+    pose_left_eye               = auto()    # use provided left eye gaze vector, and pose information w.r.t. poster to compute angular measures
+    pose_right_eye              = auto()    # use provided right eye gaze vector, and pose information w.r.t. poster to compute angular measures
     pose_left_right_avg         = auto()    # report average of left (pose_left_eye) and right (pose_right_eye) eye angular values
     
     # so this get serialized in a user-friendly way by pandas..
@@ -84,6 +84,6 @@ def get_DataQualityType_explanation(dq: DataQualityType):
                    f"'{ler_name}' and '{rer_name}' to be enabled."
 
 
-__all__ = ['code_marker_interval','detect_markers','gaze_to_board',
+__all__ = ['code_marker_interval','detect_markers','gaze_to_poster',
            'compute_offsets_to_targets','determine_fixation_intervals','calculate_data_quality',
            'do_coding','do_process','DataQualityType']

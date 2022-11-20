@@ -17,18 +17,18 @@ from .. import config
 from .. import utils
 
 # This script shows a video player that is used to indicate the interval(s)
-# during which the marker board should be found in the video and in later
+# during which the poster should be found in the video and in later
 # steps data quality computed. So this interval/these intervals would for
 # instance be the exact interval during which the subject performs the 
 # validation task.
 # This script can be run directly on recordings converted to the common format
-# with the a_* scripts, but output from steps c_detectMarkers and d_gazeToBoard
+# with the a_* scripts, but output from steps c_detectMarkers and d_gazeToPoster
 # (which can be run before this script, they will just process the whole video)
 # will also be shown if available.
 
 
-def process(input_dir, config_dir=None, show_reference=False):
-    # if showReference, also draw reference board with gaze overlaid on it (if available)
+def process(input_dir, config_dir=None, show_poster=False):
+    # if show_poster, also draw poster with gaze overlaid on it (if available)
     input_dir  = pathlib.Path(input_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)
@@ -38,27 +38,27 @@ def process(input_dir, config_dir=None, show_reference=False):
     
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
-    reference = utils.Reference(config_dir, validationSetup)
+    poster = utils.Poster(config_dir, validationSetup)
 
     # Read gaze data
     gazes,maxFrameIdx = utils.Gaze.readDataFromFile(input_dir / 'gazeData.tsv')
 
-    # Read pose of marker board, if available
-    hasBoardPose = False
-    if (input_dir / 'boardPose.tsv').is_file():
+    # Read pose of poster, if available
+    hasPosterPose = False
+    if (input_dir / 'posterPose.tsv').is_file():
         try:
-            poses = utils.BoardPose.readDataFromFile(input_dir / 'boardPose.tsv')
-            hasBoardPose = True
+            poses = utils.PosterPose.readDataFromFile(input_dir / 'poasterPose.tsv')
+            hasPosterPose = True
         except:
             # ignore when file can't be read or is empty
             pass
 
-    # Read gaze on board data, if available
-    hasWorldGaze = False
-    if (input_dir / 'gazeWorldPos.tsv').is_file():
+    # Read gaze on poster data, if available
+    hasPosterGaze = False
+    if (input_dir / 'gazePosterPos.tsv').is_file():
         try:
-            gazesWorld = utils.GazeWorld.readDataFromFile(input_dir / 'gazeWorldPos.tsv')
-            hasWorldGaze = True
+            gazesPoster = utils.GazePoster.readDataFromFile(input_dir / 'gazePosterPos.tsv')
+            hasPosterGaze = True
         except:
             # ignore when file can't be read or is empty
             pass
@@ -75,10 +75,10 @@ def process(input_dir, config_dir=None, show_reference=False):
     # set up video playback
     # 1. OpenCV window for scene video
     cv2.namedWindow("code validation intervals",cv2.WINDOW_NORMAL)
-    # 2. if wanted and available, second OpenCV window for reference board with gaze on that plane
-    show_reference &= hasWorldGaze  # no reference board if we don't have world gaze, it'd be empty and pointless
-    if show_reference:
-        cv2.namedWindow("reference")
+    # 2. if wanted and available, second OpenCV window for poster with gaze on that plane
+    show_poster &= hasPosterGaze  # no poster if we don't have poster gaze, it'd be empty and pointless
+    if show_poster:
+        cv2.namedWindow("poster")
     # 3. timestamp info for relating audio to video frames
     t2i = utils.Timestamp2Index( input_dir / 'frameTimestamps.tsv' )
     i2t = utils.Idx2Timestamp( input_dir / 'frameTimestamps.tsv' )
@@ -91,7 +91,7 @@ def process(input_dir, config_dir=None, show_reference=False):
 
     # show
     subPixelFac = 8   # for sub-pixel positioning
-    armLength = reference.markerSize/2 # arms of axis are half a marker long
+    armLength = poster.markerSize/2 # arms of axis are half a marker long
     stopAllProcessing = False
     hasResized = False
     hasRequestedFocus = not isMacOS # False only if on Mac OS, else True since its a no-op
@@ -109,11 +109,11 @@ def process(input_dir, config_dir=None, show_reference=False):
         if frame is not None:
             # the audio is my shepherd and nothing shall I lack :-)
             frame_idx = t2i.find(pts*1000)  # pts is in seconds, our frame timestamps are in ms
-            if show_reference:
-                refImg = reference.getImgCopy()
+            if show_poster:
+                refImg = poster.getImgCopy()
 
-            # if we have board pose, draw board origin on video
-            if hasBoardPose and frame_idx in poses and hasCamCal:
+            # if we have poster pose, draw poster origin on video
+            if hasPosterPose and frame_idx in poses and hasCamCal:
                 utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, poses[frame_idx].rVec, poses[frame_idx].tVec, armLength, 3, subPixelFac)
 
             # if have gaze for this frame, draw it
@@ -122,11 +122,11 @@ def process(input_dir, config_dir=None, show_reference=False):
                 gazes[frame_idx][0].draw(frame, subPixelFac)
                
             # if have gaze in world info, draw it too (also only first)
-            if hasWorldGaze and frame_idx in gazesWorld:
+            if hasPosterGaze and frame_idx in gazesPoster:
                 if hasCamCal:
-                    gazesWorld[frame_idx][0].drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
-                if show_reference:
-                    gazesWorld[frame_idx][0].drawOnReferencePlane(refImg, reference, subPixelFac)
+                    gazesPoster[frame_idx][0].drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
+                if show_poster:
+                    gazesPoster[frame_idx][0].drawOnPoster(refImg, poster, subPixelFac)
 
             analysisIntervalIdx = None
             analysisLbl = ''
@@ -176,8 +176,8 @@ def process(input_dir, config_dir=None, show_reference=False):
                         cv2.resizeWindow('code validation intervals', width, height)
                     hasResized = True
                         
-            if show_reference:
-                cv2.imshow("reference", refImg)
+            if show_poster:
+                cv2.imshow("poster", refImg)
 
         if not hasRequestedFocus:
             AppKit.NSApplication.sharedApplication().activateIgnoringOtherApps_(1)

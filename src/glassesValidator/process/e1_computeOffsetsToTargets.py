@@ -29,15 +29,15 @@ def process(input_dir, config_dir=None):
         print('  no marker intervals defined for this recording, skipping')
         return
 
-    # Read pose of marker board
-    poses = utils.BoardPose.readDataFromFile(input_dir / 'boardPose.tsv',analyzeFrames[0],analyzeFrames[-1],True)
+    # Read camera pose w.r.t. poster
+    poses = utils.PosterPose.readDataFromFile(input_dir / 'posterPose.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
-    # Read gaze on board data
-    gazeWorld = utils.GazeWorld.readDataFromFile(input_dir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
+    # Read gaze on poster data
+    gazesPoster = utils.GazePoster.readDataFromFile(input_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
-    # get info about markers on our board
-    reference = utils.Reference(config_dir, validationSetup)
-    targets = {ID: reference.targets[ID].center for ID in reference.targets}   # get centers of targets
+    # get info about markers on our poster
+    poster  = utils.Poster(config_dir, validationSetup)
+    targets = {ID: poster.targets[ID].center for ID in poster.targets}   # get centers of targets
 
     # get types of data quality to compute
     dq_types = [DataQualityType.viewdist_vidpos_homography,DataQualityType.pose_vidpos_homography,DataQualityType.pose_vidpos_ray,DataQualityType.pose_left_eye,DataQualityType.pose_right_eye]
@@ -45,19 +45,19 @@ def process(input_dir, config_dir=None):
     # for each frame during analysis interval, determine offset
     # (angle) of gaze (each eye) to each of the targets
     for ival in range(0,len(analyzeFrames)//2):
-        gazeWorldToAnal = {k:v for (k,v) in gazeWorld.items() if k>=analyzeFrames[ival*2] and k<=analyzeFrames[ival*2+1]}
-        frameIdxs       =           [k                for k,v in gazeWorldToAnal.items()  for s in v]
-        ts              = np.vstack([s.ts               for v in gazeWorldToAnal.values() for s in v])
-        oriLeft         = np.vstack([s.lGazeOrigin      for v in gazeWorldToAnal.values() for s in v])
-        oriRight        = np.vstack([s.rGazeOrigin      for v in gazeWorldToAnal.values() for s in v])
-        gaze3DLeft      = np.vstack([s.lGaze3D          for v in gazeWorldToAnal.values() for s in v])
-        gaze3DRight     = np.vstack([s.rGaze3D          for v in gazeWorldToAnal.values() for s in v])
-        gaze2DLeft      = np.vstack([s.lGaze2D          for v in gazeWorldToAnal.values() for s in v])
-        gaze2DRight     = np.vstack([s.rGaze2D          for v in gazeWorldToAnal.values() for s in v])
-        gaze3DRay       = np.vstack([s.gaze3DRay        for v in gazeWorldToAnal.values() for s in v])
-        gaze2DRay       = np.vstack([s.gaze2DRay        for v in gazeWorldToAnal.values() for s in v])
-        gaze3DHomography= np.vstack([s.gaze3DHomography for v in gazeWorldToAnal.values() for s in v])
-        gaze2DHomography= np.vstack([s.gaze2DHomography for v in gazeWorldToAnal.values() for s in v])
+        gazesPosterToAnal= {k:v for (k,v) in gazesPoster.items() if k>=analyzeFrames[ival*2] and k<=analyzeFrames[ival*2+1]}
+        frameIdxs        =           [k                for k,v in gazesPosterToAnal.items()  for s in v]
+        ts               = np.vstack([s.ts               for v in gazesPosterToAnal.values() for s in v])
+        oriLeft          = np.vstack([s.lGazeOrigin      for v in gazesPosterToAnal.values() for s in v])
+        oriRight         = np.vstack([s.rGazeOrigin      for v in gazesPosterToAnal.values() for s in v])
+        gaze3DLeft       = np.vstack([s.lGaze3D          for v in gazesPosterToAnal.values() for s in v])
+        gaze3DRight      = np.vstack([s.rGaze3D          for v in gazesPosterToAnal.values() for s in v])
+        gaze2DLeft       = np.vstack([s.lGaze2D          for v in gazesPosterToAnal.values() for s in v])
+        gaze2DRight      = np.vstack([s.rGaze2D          for v in gazesPosterToAnal.values() for s in v])
+        gaze3DRay        = np.vstack([s.gaze3DRay        for v in gazesPosterToAnal.values() for s in v])
+        gaze2DRay        = np.vstack([s.gaze2DRay        for v in gazesPosterToAnal.values() for s in v])
+        gaze3DHomography = np.vstack([s.gaze3DHomography for v in gazesPosterToAnal.values() for s in v])
+        gaze2DHomography = np.vstack([s.gaze2DHomography for v in gazesPosterToAnal.values() for s in v])
 
         offset = np.empty((oriLeft.shape[0],len(dq_types),len(targets),2))
         offset[:] = np.nan
@@ -66,10 +66,10 @@ def process(input_dir, config_dir=None):
             if frameIdxs[s] not in poses:
                 continue
             if poses[frameIdxs[s]].rVec is not None:
-                RBoard  = cv2.Rodrigues(poses[frameIdxs[s]].rVec)[0]
-                RtBoard = np.hstack((RBoard, poses[frameIdxs[s]].tVec.reshape(3,1)))
+                RPoster  = cv2.Rodrigues(poses[frameIdxs[s]].rVec)[0]
+                RtPoster = np.hstack((RPoster, poses[frameIdxs[s]].tVec.reshape(3,1)))
             else:
-                RtBoard = np.full([3,4], np.nan)
+                RtPoster = np.full([3,4], np.nan)
 
             # all based on pose info
             for e in range(len(dq_types)):
@@ -80,31 +80,31 @@ def process(input_dir, config_dir=None):
                         # viewdist_vidpos_homography: using assumed viewing distance
                         ori         = np.zeros(3)
                         gaze        = gaze3DHomography[s,:]
-                        gazeBoard   = gaze2DHomography[s,:]
+                        gazePoster  = gaze2DHomography[s,:]
                     case DataQualityType.pose_vidpos_ray:
                         # from camera perspective, using 3D gaze point ray
                         ori         = np.zeros(3)
                         gaze        = gaze3DRay[s,:]
-                        gazeBoard   = gaze2DRay[s,:]
+                        gazePoster  = gaze2DRay[s,:]
                     case DataQualityType.pose_left_eye:
                         ori         = oriLeft[s,:]
                         gaze        = gaze3DLeft[s,:]
-                        gazeBoard   = gaze2DLeft[s,:]
+                        gazePoster  = gaze2DLeft[s,:]
                     case DataQualityType.pose_right_eye:
                         ori         = oriRight[s,:]
                         gaze        = gaze3DRight[s,:]
-                        gazeBoard   = gaze2DRight[s,:]
+                        gazePoster  = gaze2DRight[s,:]
                     
 
                 for ti,t in enumerate(targets):
                     if dq_types[e]==DataQualityType.viewdist_vidpos_homography:
                         # get vectors based on assumed viewing distance (from config), without using pose info
                         distMm  = validationSetup['distance']*10.
-                        vGaze   = np.array([gazeBoard[0] , gazeBoard[1] , distMm])
+                        vGaze   = np.array([gazePoster[0], gazePoster[1], distMm])
                         vTarget = np.array([targets[t][0], targets[t][1], distMm])
                     else:
                         # use 3D vectors known given pose information
-                        target  = np.matmul(RtBoard,np.array([targets[t][0], targets[t][1], 0., 1.]))
+                        target  = np.matmul(RtPoster,np.array([targets[t][0], targets[t][1], 0., 1.]))
             
                         # get vectors from origin to target and to gaze point
                         vGaze   = gaze  -ori
@@ -112,9 +112,9 @@ def process(input_dir, config_dir=None):
         
                     # get offset
                     ang2D           = utils.angle_between(vTarget,vGaze)
-                    # decompose in horizontal/vertical (in board space)
-                    onBoardAngle    = math.atan2(gazeBoard[1]-targets[t][1],gazeBoard[0]-targets[t][0])
-                    offset[s,e,ti,:]= ang2D*np.array([math.cos(onBoardAngle), math.sin(onBoardAngle)])
+                    # decompose in horizontal/vertical (in poster space)
+                    onPosterAngle   = math.atan2(gazePoster[1]-targets[t][1], gazePoster[0]-targets[t][0])
+                    offset[s,e,ti,:]= ang2D*np.array([math.cos(onPosterAngle), math.sin(onPosterAngle)])
 
         # organize for output and write to file
         # 1. create cartesian product of sample index, eye and target indices
