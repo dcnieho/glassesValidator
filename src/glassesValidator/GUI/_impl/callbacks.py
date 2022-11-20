@@ -11,7 +11,7 @@ from .structs import JobDescription, MsgBox, Os
 from . import globals, async_thread, db, gui, msgbox, process_pool, utils
 from ...utils import EyeTracker, Recording, Task, eye_tracker_names, make_fs_dirname
 from ... import config, preprocess, process, utils as gv_utils
-from ...process import DataQualityType
+from ...process import DataQualityType, _collect_data_quality, _summarize_and_store_data_quality
 
 
 
@@ -290,28 +290,16 @@ async def cancel_processing_recordings(ids: list[int]):
 
 async def export_data_quality(ids: list[int]):
     # 1. collect all data quality from the selected recordings
-    recs  = [globals.recordings[id] for id in ids]
-    files = [globals.project_path / rec.proc_directory_name / 'dataQuality.tsv' for rec in recs]
-    df = pd.concat((pd.read_csv(f, delimiter='\t').assign(recording=r.proc_directory_name) for f,r in zip(files,recs)), ignore_index=True)
-    if df.empty:
-        return
-    # set indices
-    df = df.set_index(['recording','marker_interval','type','target'])
-    # change type index into enum
-    typeIdx = df.index.names.index('type')
-    df.index = df.index.set_levels(pd.CategoricalIndex([getattr(DataQualityType,x) for x in df.index.levels[typeIdx]]),level='type')
+    rec_dirs = [globals.project_path / globals.recordings[id].proc_directory_name for id in ids]
+    df, default_dq_type, targets = _collect_data_quality(rec_dirs)
     
     # 2. prep popup
     pop_data = {}
-    # inspect what we have
-    pop_data['dq_types'] = sorted(list(df.index.levels[typeIdx]), key=lambda dq: dq.value)
-    pop_data['targets']  = list(df.index.levels[df.index.names.index('target')])
     
+    # data wuality type
+    typeIdx = df.index.names.index('type')
+    pop_data['dq_types'] = sorted(list(df.index.levels[typeIdx]), key=lambda dq: dq.value)
     pop_data['dq_types_sel'] = [False for i in pop_data['dq_types']]
-    pop_data['targets_sel'] = [True for i in pop_data['targets']]
-    pop_data['targets_avg'] = False
-
-    # good default selection of dq type to export
     if globals.settings.dq_use_viewdist_vidpos_homography and DataQualityType.viewdist_vidpos_homography in pop_data['dq_types']:
         pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.viewdist_vidpos_homography)] = True
     if globals.settings.dq_use_pose_vidpos_homography and DataQualityType.pose_vidpos_homography in pop_data['dq_types']:
@@ -326,14 +314,14 @@ async def export_data_quality(ids: list[int]):
         pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_left_right_avg)] = True
 
     if not any(pop_data['dq_types_sel']):
-        if DataQualityType.pose_vidpos_ray in pop_data['dq_types']:
-            pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_vidpos_ray)] = True
-        elif DataQualityType.pose_vidpos_homography in pop_data['dq_types']:
-            pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_vidpos_homography)] = True
-        else:
-            # ultimate fallback, just set first available as the one to export
-            pop_data['dq_types_sel'][0] = True
+        pop_data['dq_types_sel'][pop_data['dq_types'].index(default_dq_type)] = True
+        
+    # targets
+    pop_data['targets']     = targets
+    pop_data['targets_sel'] = [True for i in pop_data['targets']]
+    pop_data['targets_avg'] = False
 
+    # other settings
     pop_data['include_data_loss'] = globals.settings.dq_report_data_loss
 
     # 3. show popup
@@ -348,22 +336,6 @@ async def export_data_quality(ids: list[int]):
     utils.push_popup(lambda: utils.popup("Data Quality Export", show_config_popup, buttons = buttons, closable=True, outside=False))
 
 async def _export_data_quality(df: pd.DataFrame, pop_data: dict):
-    # remove unwanted types of data quality
-    if not all(pop_data['dq_types_sel']):
-        df = df.drop(index=[dq for i,dq in enumerate(pop_data['dq_types']) if not pop_data['dq_types_sel'][i]], level='type')
-    # remove unwanted targets
-    if not all(pop_data['targets_sel']):
-        df = df.drop(index=[t for i,t in enumerate(pop_data['targets']) if not pop_data['targets_sel'][i]], level='target')
-    # remove unwanted data loss
-    if not pop_data['include_data_loss'] and 'dataLoss' in df.columns:
-        df = df.drop(columns='dataLoss')
-    # average data if wanted
-    if pop_data['targets_avg']:
-        gb = df.drop(columns='order').groupby(['recording', 'marker_interval', 'type'],observed=True)
-        count = gb.count()
-        df = gb.mean()
-        # add number of targets count (there may be some missing data)
-        df.insert(0,'num_targets',count['acc'])
-
-    # store
-    df.to_csv(str(globals.project_path / 'dataQuality.tsv'), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.6f")
+    dq_types = [dq for i,dq in enumerate(pop_data['dq_types']) if pop_data['dq_types_sel'][i]]
+    targets  = [t for i,t in enumerate(pop_data['targets']) if pop_data['targets_sel'][i]]
+    _summarize_and_store_data_quality(df, globals.project_path, dq_types, targets, pop_data['targets_avg'], pop_data['include_data_loss'])

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import pathlib
 from enum import Enum, auto
+import pandas as pd
 
 from .b_codeMarkerInterval import process as code_marker_interval
 from .c_detectMarkers import process as detect_markers
@@ -21,6 +22,7 @@ def do_process(working_dir: str | pathlib.Path, config_dir=None):
     compute_offsets_to_targets(working_dir, config_dir)
     determine_fixation_intervals(working_dir, config_dir)
     calculate_data_quality(working_dir, config_dir)
+    
 
 
 # NB: using pose information requires a calibrated scene camera
@@ -82,8 +84,73 @@ def get_DataQualityType_explanation(dq: DataQualityType):
                    "right gaze positions and the fixation target and average them " \
                    "to compute data quality measures in degrees. Requires " \
                    f"'{ler_name}' and '{rer_name}' to be enabled."
+        
+
+def _collect_data_quality(rec_dirs: list[str | pathlib.Path]):
+    # 1. collect all data quality from the selected 
+    rec_dirs = [pathlib.Path(rec) for rec in rec_dirs]
+    df = pd.concat((pd.read_csv(rec/'dataQuality.tsv', delimiter='\t').assign(recording=rec.name) for rec in rec_dirs), ignore_index=True)
+    if df.empty:
+        return
+    # set indices
+    df = df.set_index(['recording','marker_interval','type','target'])
+    # change type index into enum
+    typeIdx = df.index.names.index('type')
+    df.index = df.index.set_levels(pd.CategoricalIndex([getattr(DataQualityType,x) for x in df.index.levels[typeIdx]]),level='type')
+
+    # see what we have
+    dq_types = sorted(list(df.index.levels[typeIdx]), key=lambda dq: dq.value)
+    targets  = list(df.index.levels[df.index.names.index('target')])
+
+    # good default selection of dq type to export
+    if DataQualityType.pose_vidpos_ray in dq_types:
+        default_dq_type = DataQualityType.pose_vidpos_ray
+    elif DataQualityType.pose_vidpos_homography in dq_types:
+        default_dq_type = DataQualityType.pose_vidpos_homography
+    else:
+        # ultimate fallback, just set first available as the one to export
+        default_dq_type = dq_types[0]
+
+    return df, default_dq_type, targets
+
+def _summarize_and_store_data_quality(df: pd.DataFrame, output_file_or_dir: str | pathlib.Path, dq_types: list[DataQualityType], targets: list[int], average_over_targets = False, include_data_loss = False):
+    dq_types_have = sorted(list(df.index.levels[df.index.names.index('type')]), key=lambda dq: dq.value)
+    targets_have  = list(df.index.levels[df.index.names.index('target')])
+
+    # remove unwanted types of data quality
+    dq_types_sel = [dq in dq_types for dq in dq_types_have]
+    if not all(dq_types_sel):
+        df = df.drop(index=[dq for i,dq in enumerate(dq_types_have) if not dq_types_sel[i]], level='type')
+    # remove unwanted targets
+    targets_sel = [t in targets for t in targets_have]
+    if not all(targets_sel):
+        df = df.drop(index=[t for i,t in enumerate(targets_have) if not targets_sel[i]], level='target')
+    # remove unwanted data loss
+    if not include_data_loss and 'data_loss' in df.columns:
+        df = df.drop(columns='data_loss')
+    # average data if wanted
+    if average_over_targets:
+        gb = df.drop(columns='order').groupby(['recording', 'marker_interval', 'type'],observed=True)
+        count = gb.count()
+        df = gb.mean()
+        # add number of targets count (there may be some missing data)
+        df.insert(0,'num_targets',count['acc'])
+
+    # store
+    output_file_or_dir = pathlib.Path(output_file_or_dir)
+    if output_file_or_dir.is_dir():
+        output_file_or_dir = output_file_or_dir / 'dataQuality.tsv'
+    df.to_csv(str(output_file_or_dir), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.6f")
+
+def export_data_quality(rec_dirs: list[str | pathlib.Path], output_file_or_dir: str | pathlib.Path, dq_types: list[DataQualityType] = None, targets: list[int] = None, average_over_targets = False, include_data_loss = False):
+    df, default_dq_type, targets_have = _collect_data_quality(rec_dirs)
+    if not dq_types:
+        dq_types = [default_dq_type]
+    if not targets:
+        targets = targets_have
+    _summarize_and_store_data_quality(df, output_file_or_dir, dq_types, targets, average_over_targets, include_data_loss)
 
 
 __all__ = ['code_marker_interval','detect_markers','gaze_to_poster',
            'compute_offsets_to_targets','determine_fixation_intervals','calculate_data_quality',
-           'do_coding','do_process','DataQualityType']
+           'do_coding','do_process','DataQualityType','export_data_quality']

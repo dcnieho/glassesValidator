@@ -115,7 +115,7 @@ def process(working_dir, dq_types=[], allow_dq_fallback=False, include_data_loss
                         for k in ('acc_x','acc_y','acc','rms_x','rms_y','rms','std_x','std_y','std'):
                             df.loc[(i,e,t),k] = np.nan
                         if include_data_loss:
-                            df.loc[(i,e,t),'dataLoss'] = np.nan
+                            df.loc[(i,e,t),'data_loss'] = np.nan
                     
                     if hasData:
                         df.loc[(i,e,t),'acc_x'] = np.nanmean(data['offset_x'])
@@ -131,7 +131,7 @@ def process(working_dir, dq_types=[], allow_dq_fallback=False, include_data_loss
                         df.loc[(i,e,t),'std'  ] = np.hypot(df.loc[(i,e,t),'std_x'], df.loc[(i,e,t),'std_y'])
 
                         if include_data_loss:
-                            df.loc[(i,e,t),'dataLoss'] = np.sum(np.isnan(data['offset_x']))/len(data)
+                            df.loc[(i,e,t),'data_loss'] = np.sum(np.isnan(data['offset_x']))/len(data)
     
 
     df.to_csv(str(working_dir / 'dataQuality.tsv'), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.3f")
