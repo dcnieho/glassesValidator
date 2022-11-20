@@ -1740,6 +1740,12 @@ class MainGUI():
             has_job = [(id in globals.jobs or id in globals.coding_job_queue) for id in ids]
             has_no_job = [not x for x in has_job]
             if any(has_no_job):
+                # make video, always possible (if imported)
+                video_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)!=TaskSimplified.Not_Imported]
+                if video_ids:
+                    text.append("󰯜 Export scene video")
+                    action.append(lambda: async_thread.run(callbacks.process_recordings(video_ids, task=Task.Make_Video)))
+                    hover_text.append("Export scene video with gaze overlay and showing detected fiducial markers.")
                 # already coded, recode
                 recoded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task) in [TaskSimplified.Coded, TaskSimplified.Processed]]
                 if recoded_ids:
@@ -1771,12 +1777,6 @@ class MainGUI():
                     # NB: don't send action, so that callback code figures out where we we left off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
                     action.append(lambda: async_thread.run(callbacks.process_recordings(coded_ids, chain=True)))
                     hover_text.append("Run processing to determine data quality for the selected recordings.")
-                # make video, always possible
-                video_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)!=TaskSimplified.Not_Imported]
-                if video_ids:
-                    text.append("󰯜 Export scene video")
-                    action.append(lambda: async_thread.run(callbacks.process_recordings(video_ids, task=Task.Make_Video)))
-                    hover_text.append("Export scene video with gaze overlay and showing detected fiducial markers.")
 
             # if any fully done, offer export
             processed_ids_sel = [id for id in ids if get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
