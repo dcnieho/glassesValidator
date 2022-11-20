@@ -1,7 +1,7 @@
 import sys
 import pathlib
 
-def run(project: str | pathlib.Path = None):
+def run(project_dir: str | pathlib.Path = None):
 
     from ._impl import globals
     from ._impl.structs import Os
@@ -19,11 +19,11 @@ def run(project: str | pathlib.Path = None):
         except Exception:
             pass
 
-    if project is not None:
+    if project_dir is not None:
         from ._impl import utils
-        if not utils.is_project_folder(project):
-            raise ValueError(f'Project opening error: The selected folder ({project}) is not a project folder. Cannot open.')
-        globals.project_path = pathlib.Path(project)
+        if not utils.is_project_folder(project_dir):
+            raise ValueError(f'Project opening error: The selected folder ({project_dir}) is not a project folder. Cannot open.')
+        globals.project_path = pathlib.Path(project_dir)
         
     from ._impl import async_thread, gui, process_pool
     async_thread.setup()

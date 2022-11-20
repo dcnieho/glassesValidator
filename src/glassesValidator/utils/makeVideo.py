@@ -18,15 +18,15 @@ import ffpyplayer.tools
 from fractions import Fraction
 
 
-def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_to_poster_video=False, show_visualization=False):
+def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio_to_poster_video=False, show_visualization=False):
     # if show_rejected_markers, rejected marker candidates are also drawn on frame. Possibly useful for debug
     # if add_audio_to_poster_video, audio will be added to poster video, not only to the scene video
     # if show_visualization, draw each frame and overlay info about detected markers and poster
-    input_dir  = pathlib.Path(input_dir)
+    working_dir  = pathlib.Path(working_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)
 
-    print('processing: {}'.format(input_dir.name))
+    print('processing: {}'.format(working_dir.name))
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
@@ -36,9 +36,9 @@ def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_t
         cv2.namedWindow("poster")
     
     # open input video file, query it for size
-    inVideo = input_dir / 'worldCamera.mp4'
+    inVideo = working_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
-        inVideo = input_dir / 'worldCamera.avi'
+        inVideo = working_dir / 'worldCamera.avi'
     vidIn  = cv2.VideoCapture( str(inVideo) )
     if not vidIn.isOpened():
         raise RuntimeError('the file "{}" could not be opened'.format(str(inVideo)))
@@ -59,10 +59,10 @@ def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_t
     fpsFrac  = Fraction(fps).limit_denominator(10000).as_integer_ratio()
     # scene video
     out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(      width    ), 'height_in':int(      height    ),'frame_rate':fpsFrac}
-    vidOutScene  = MediaWriter(str(input_dir / 'detectOutput_scene.mp4') , [out_opts], overwrite=True)
+    vidOutScene  = MediaWriter(str(working_dir / 'detectOutput_scene.mp4') , [out_opts], overwrite=True)
     # poster video
     out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(poster.width), 'height_in':int(poster.height),'frame_rate':fpsFrac}
-    vidOutPoster = MediaWriter(str(input_dir / 'detectOutput_poster.mp4'), [out_opts], overwrite=True)
+    vidOutPoster = MediaWriter(str(working_dir / 'detectOutput_poster.mp4'), [out_opts], overwrite=True)
 
     # setup aruco marker detection
     parameters = cv2.aruco.DetectorParameters_create()
@@ -70,18 +70,18 @@ def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_t
     parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
 
     # get frame timestamps lookup file
-    i2t = utils.Idx2Timestamp(input_dir / 'frameTimestamps.tsv')
+    i2t = utils.Idx2Timestamp(working_dir / 'frameTimestamps.tsv')
 
     # get camera calibration info
-    cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(input_dir / "calibration.xml")
+    cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(working_dir / "calibration.xml")
     hasCameraMatrix = cameraMatrix is not None
     hasDistCoeff    = distCoeff is not None
 
     # Read gaze data
-    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(input_dir / 'gazeData.tsv')
+    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(working_dir / 'gazeData.tsv')
 
     # get interval coded to be analyzed, if available
-    analyzeFrames = utils.readMarkerIntervalsFile(input_dir / "markerInterval.tsv")
+    analyzeFrames = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
     if analyzeFrames is None:
         analyzeFrames = []
     
@@ -209,9 +209,9 @@ def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_t
 
     # if ffmpeg is on path, add audio to scene and optionally poster video
     if shutil.which('ffmpeg') is not None:
-        todo = [input_dir / 'detectOutput_scene.mp4']
+        todo = [working_dir / 'detectOutput_scene.mp4']
         if add_audio_to_poster_video:
-            todo.append(input_dir / 'detectOutput_poster.mp4')
+            todo.append(working_dir / 'detectOutput_poster.mp4')
 
         for f in todo:
             # move file to temp name

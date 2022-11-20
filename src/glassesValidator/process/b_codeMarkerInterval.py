@@ -27,27 +27,27 @@ from .. import utils
 # will also be shown if available.
 
 
-def process(input_dir, config_dir=None, show_poster=False):
+def process(working_dir, config_dir=None, show_poster=False):
     # if show_poster, also draw poster with gaze overlaid on it (if available)
-    input_dir  = pathlib.Path(input_dir)
+    working_dir = pathlib.Path(working_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)
 
-    print('processing: {}'.format(input_dir.name))
-    utils.update_recording_status(input_dir, utils.Task.Coded, utils.Status.Running)
+    print('processing: {}'.format(working_dir.name))
+    utils.update_recording_status(working_dir, utils.Task.Coded, utils.Status.Running)
     
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
     poster = utils.Poster(config_dir, validationSetup)
 
     # Read gaze data
-    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(input_dir / 'gazeData.tsv')
+    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(working_dir / 'gazeData.tsv')
 
     # Read pose of poster, if available
     hasPosterPose = False
-    if (input_dir / 'posterPose.tsv').is_file():
+    if (working_dir / 'posterPose.tsv').is_file():
         try:
-            poses = utils.PosterPose.readDataFromFile(input_dir / 'poasterPose.tsv')
+            poses = utils.PosterPose.readDataFromFile(working_dir / 'poasterPose.tsv')
             hasPosterPose = True
         except:
             # ignore when file can't be read or is empty
@@ -55,20 +55,20 @@ def process(input_dir, config_dir=None, show_poster=False):
 
     # Read gaze on poster data, if available
     hasPosterGaze = False
-    if (input_dir / 'gazePosterPos.tsv').is_file():
+    if (working_dir / 'gazePosterPos.tsv').is_file():
         try:
-            gazesPoster = utils.GazePoster.readDataFromFile(input_dir / 'gazePosterPos.tsv')
+            gazesPoster = utils.GazePoster.readDataFromFile(working_dir / 'gazePosterPos.tsv')
             hasPosterGaze = True
         except:
             # ignore when file can't be read or is empty
             pass
 
     # get camera calibration info
-    cameraMatrix,distCoeff = utils.readCameraCalibrationFile(input_dir / "calibration.xml")[0:2]
+    cameraMatrix,distCoeff = utils.readCameraCalibrationFile(working_dir / "calibration.xml")[0:2]
     hasCamCal = (cameraMatrix is not None) and (distCoeff is not None)
 
     # get interval coded to be analyzed, if available
-    analyzeFrames = utils.readMarkerIntervalsFile(input_dir / "markerInterval.tsv")
+    analyzeFrames = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
     if analyzeFrames is None:
         analyzeFrames = []
 
@@ -80,12 +80,12 @@ def process(input_dir, config_dir=None, show_poster=False):
     if show_poster:
         cv2.namedWindow("poster")
     # 3. timestamp info for relating audio to video frames
-    t2i = utils.Timestamp2Index( input_dir / 'frameTimestamps.tsv' )
-    i2t = utils.Idx2Timestamp( input_dir / 'frameTimestamps.tsv' )
+    t2i = utils.Timestamp2Index( working_dir / 'frameTimestamps.tsv' )
+    i2t = utils.Idx2Timestamp( working_dir / 'frameTimestamps.tsv' )
     # 4. mediaplayer for the actual video playback, with sound if available
-    inVideo = input_dir / 'worldCamera.mp4'
+    inVideo = working_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
-        inVideo = input_dir / 'worldCamera.avi'
+        inVideo = working_dir / 'worldCamera.avi'
     ff_opts = {'volume': 1., 'sync': 'audio', 'framedrop': True}
     player = MediaPlayer(str(inVideo), ff_opts=ff_opts)
 
@@ -264,12 +264,12 @@ def process(input_dir, config_dir=None, show_poster=False):
     cv2.waitKey(1)
 
     # store coded interval to file, if available
-    with open(input_dir / 'markerInterval.tsv', 'w', newline='') as file:
+    with open(working_dir / 'markerInterval.tsv', 'w', newline='') as file:
         csv_writer = csv.writer(file, delimiter='\t')
         csv_writer.writerow(['start_frame', 'end_frame'])
         for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't write out incomplete intervals
             csv_writer.writerow(analyzeFrames[f:f+2])
 
-    utils.update_recording_status(input_dir, utils.Task.Coded, utils.Status.Finished)
+    utils.update_recording_status(working_dir, utils.Task.Coded, utils.Status.Finished)
 
     return stopAllProcessing

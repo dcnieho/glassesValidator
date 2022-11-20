@@ -10,16 +10,16 @@ from .. import config
 from .. import utils
 
 
-def process(input_dir, config_dir=None, show_visualization=False, show_poster=True, show_only_intervals=True, fps_fac=1):
+def process(working_dir, config_dir=None, show_visualization=False, show_poster=True, show_only_intervals=True, fps_fac=1):
     # if show_visualization, draw each frame + gaze and overlay info about detected markers and poster
     # if show_poster, gaze in poster space is also drawn in a separate window
     # if show_only_intervals, shows only frames in the marker intervals (if available)
-    input_dir  = pathlib.Path(input_dir)
+    working_dir  = pathlib.Path(working_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)
 
-    print('processing: {}'.format(input_dir.name))
-    utils.update_recording_status(input_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Running)
+    print('processing: {}'.format(working_dir.name))
+    utils.update_recording_status(working_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Running)
     
     # open file with information about ArUco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
@@ -31,33 +31,33 @@ def process(input_dir, config_dir=None, show_visualization=False, show_poster=Tr
 
         poster      = utils.Poster(config_dir, validationSetup)
         centerTarget= poster.targets[validationSetup['centerTarget']].center
-        i2t         = utils.Idx2Timestamp(input_dir / 'frameTimestamps.tsv')
+        i2t         = utils.Idx2Timestamp(working_dir / 'frameTimestamps.tsv')
     
     # get camera calibration info
-    cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(input_dir / "calibration.xml")
+    cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(working_dir / "calibration.xml")
     hasCameraMatrix = cameraMatrix is not None
     hasDistCoeff    = distCoeff is not None
 
     # get interval coded to be analyzed, if any
-    analyzeFrames   = utils.readMarkerIntervalsFile(input_dir / "markerInterval.tsv")
+    analyzeFrames   = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
     hasAnalyzeFrames= show_only_intervals and analyzeFrames is not None
 
     # open video, if wanted
     if show_visualization:
-        cap         = cv2.VideoCapture(str(input_dir / 'worldCamera.mp4'))
+        cap         = cv2.VideoCapture(str(working_dir / 'worldCamera.mp4'))
         width       = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height      = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         ifi         = 1000./cap.get(cv2.CAP_PROP_FPS)/fps_fac
 
     # Read gaze data
     print('  gazeData')
-    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(input_dir / 'gazeData.tsv')
+    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(working_dir / 'gazeData.tsv')
 
     # Read camera pose w.r.t. poster
     print('  posterPose')
-    poses = utils.PosterPose.readDataFromFile(input_dir / 'posterPose.tsv')
+    poses = utils.PosterPose.readDataFromFile(working_dir / 'posterPose.tsv')
 
-    csv_file = open(input_dir / 'gazePosterPos.tsv', 'w', newline='')
+    csv_file = open(working_dir / 'gazePosterPos.tsv', 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
     header = ['frame_idx']
     header.extend(utils.GazePoster.getWriteHeader())
@@ -148,7 +148,7 @@ def process(input_dir, config_dir=None, show_visualization=False, show_poster=Tr
                 break
             if key == ord('s'):
                 # screenshot
-                cv2.imwrite(str(input_dir / ('calc_frame_%d.png' % frame_idx)), frame)
+                cv2.imwrite(str(working_dir / ('calc_frame_%d.png' % frame_idx)), frame)
         elif (frame_idx)%100==0:
             print('  frame {}'.format(frame_idx))
 
@@ -157,6 +157,6 @@ def process(input_dir, config_dir=None, show_visualization=False, show_poster=Tr
         cap.release()
         cv2.destroyAllWindows()
 
-    utils.update_recording_status(input_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Finished)
+    utils.update_recording_status(working_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Finished)
 
     return stopAllProcessing

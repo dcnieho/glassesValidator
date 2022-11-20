@@ -38,10 +38,10 @@ def deploy_marker_images(output_dir):
 
         cv2.imwrite(str(output_dir / "{}.png".format(i)), markerImage)
 
-def deploy_default_pdf(output_file):
-    output_file = Path(output_file)
-    if output_file.is_dir():
-        output_file = output_file / 'poster.pdf'
+def deploy_default_pdf(output_file_or_dir):
+    output_file_or_dir = Path(output_file_or_dir)
+    if output_file_or_dir.is_dir():
+        output_file_or_dir = output_file_or_dir / 'poster.pdf'
 
     with importlib.resources.path(__package__,'poster.pdf') as p:
-        shutil.copyfile(p, str(output_file))
+        shutil.copyfile(p, str(output_file_or_dir))

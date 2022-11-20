@@ -9,23 +9,23 @@ from .. import config
 from .. import utils
 
 
-def process(input_dir, config_dir=None, visualize_detection=False, show_rejected_markers=False, fps_fac=1):
+def process(working_dir, config_dir=None, visualize_detection=False, show_rejected_markers=False, fps_fac=1):
     # if visualize_detection, draw each frame and overlay info about detected markers and poster
     # if show_rejected_markers, rejected marker candidates are also drawn on frame. Possibly useful for debug
-    input_dir  = pathlib.Path(input_dir)
+    working_dir  = pathlib.Path(working_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)
 
-    print('processing: {}'.format(input_dir.name))
-    utils.update_recording_status(input_dir, utils.Task.Markers_Detected, utils.Status.Running)
+    print('processing: {}'.format(working_dir.name))
+    utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Running)
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
     
     # open video file, query it for size
-    inVideo = input_dir / 'worldCamera.mp4'
+    inVideo = working_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
-        inVideo = input_dir / 'worldCamera.avi'
+        inVideo = working_dir / 'worldCamera.avi'
     cap    = cv2.VideoCapture(str(inVideo))
     if not cap.isOpened():
         raise RuntimeError('the file "{}" could not be opened'.format(str(inVideo)))
@@ -45,16 +45,16 @@ def process(input_dir, config_dir=None, visualize_detection=False, show_rejected
     parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
 
     # get camera calibration info
-    cameraMatrix,distCoeff = utils.readCameraCalibrationFile(input_dir / "calibration.xml")[0:2]
+    cameraMatrix,distCoeff = utils.readCameraCalibrationFile(working_dir / "calibration.xml")[0:2]
     hasCameraMatrix = cameraMatrix is not None
     hasDistCoeff    = distCoeff is not None
 
     # get interval coded to be analyzed, if any
-    analyzeFrames   = utils.readMarkerIntervalsFile(input_dir / "markerInterval.tsv")
+    analyzeFrames   = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
     hasAnalyzeFrames= analyzeFrames is not None
 
     # prep output file
-    csv_file = open(input_dir / 'posterPose.tsv', 'w', newline='')
+    csv_file = open(working_dir / 'posterPose.tsv', 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
     header = utils.PosterPose.getWriteHeader()
     csv_writer.writerow(header)
@@ -145,7 +145,7 @@ def process(input_dir, config_dir=None, visualize_detection=False, show_rejected
             cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
                 
         if visualize_detection:
-            cv2.imshow(input_dir.name,frame)
+            cv2.imshow(working_dir.name,frame)
             key = cv2.waitKey(max(1,int(round(ifi-(time.perf_counter()-startTime)*1000)))) & 0xFF
             if key == ord('q'):
                 # quit fully
@@ -156,7 +156,7 @@ def process(input_dir, config_dir=None, visualize_detection=False, show_rejected
                 break
             if key == ord('s'):
                 # screenshot
-                cv2.imwrite(str(input_dir / ('detect_frame_%d.png' % frame_idx)), frame)
+                cv2.imwrite(str(working_dir / ('detect_frame_%d.png' % frame_idx)), frame)
         elif (frame_idx)%100==0:
             print('  frame {}'.format(frame_idx))
 
@@ -164,6 +164,6 @@ def process(input_dir, config_dir=None, visualize_detection=False, show_rejected
     cap.release()
     cv2.destroyAllWindows()
     
-    utils.update_recording_status(input_dir, utils.Task.Markers_Detected, utils.Status.Finished)
+    utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Finished)
 
     return stopAllProcessing

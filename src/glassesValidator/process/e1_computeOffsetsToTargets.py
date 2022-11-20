@@ -11,29 +11,29 @@ from .. import config
 from .. import utils
 
 
-def process(input_dir, config_dir=None):
+def process(working_dir, config_dir=None):
     from . import DataQualityType
-    input_dir  = pathlib.Path(input_dir)
+    working_dir  = pathlib.Path(working_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)
 
-    print('processing: {}'.format(input_dir.name))
-    utils.update_recording_status(input_dir, utils.Task.Target_Offsets_Computed, utils.Status.Running)
+    print('processing: {}'.format(working_dir.name))
+    utils.update_recording_status(working_dir, utils.Task.Target_Offsets_Computed, utils.Status.Running)
     
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
 
     # get interval coded to be analyzed
-    analyzeFrames = utils.readMarkerIntervalsFile(input_dir / "markerInterval.tsv")
+    analyzeFrames = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
     if analyzeFrames is None:
         print('  no marker intervals defined for this recording, skipping')
         return
 
     # Read camera pose w.r.t. poster
-    poses = utils.PosterPose.readDataFromFile(input_dir / 'posterPose.tsv',analyzeFrames[0],analyzeFrames[-1],True)
+    poses = utils.PosterPose.readDataFromFile(working_dir / 'posterPose.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
     # Read gaze on poster data
-    gazesPoster = utils.GazePoster.readDataFromFile(input_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
+    gazesPoster = utils.GazePoster.readDataFromFile(working_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
     # get info about markers on our poster
     poster  = utils.Poster(config_dir, validationSetup)
@@ -129,6 +129,6 @@ def process(input_dir, config_dir=None):
         df                      = pd.concat([df, pd.DataFrame(np.reshape(offset,(-1,2)),columns=['offset_x','offset_y'])],axis=1)
         df                      = df.dropna(axis=0, subset=['offset_x','offset_y'])  # drop any missing data
         # 3. write to file
-        df.to_csv(str(input_dir / 'gazeTargetOffset.tsv'), mode='w' if ival==0 else 'a', header=ival==0, index=False, sep='\t', na_rep='nan', float_format="%.3f")
+        df.to_csv(str(working_dir / 'gazeTargetOffset.tsv'), mode='w' if ival==0 else 'a', header=ival==0, index=False, sep='\t', na_rep='nan', float_format="%.3f")
 
-    utils.update_recording_status(input_dir, utils.Task.Target_Offsets_Computed, utils.Status.Finished)
+    utils.update_recording_status(working_dir, utils.Task.Target_Offsets_Computed, utils.Status.Finished)

@@ -11,16 +11,16 @@ from .f_calculateDataQuality import process as calculate_data_quality
 
 # expose code_marker_interval (stage 2 in our 3-step process) under a simpler name
 # NB: not a simple alias as we're hiding the third input argument for simple use
-def do_coding(folder: str | pathlib.Path, config_dir=None):
-    return code_marker_interval(folder, config_dir)
+def do_coding(working_dir: str | pathlib.Path, config_dir=None):
+    return code_marker_interval(working_dir, config_dir)
 
 # package the further steps in a single function to simplify using this (i.e. group into a single step 3)
-def do_process(folder: str | pathlib.Path, config_dir=None):
-    detect_markers(folder, config_dir)
-    gaze_to_poster(folder, config_dir)
-    compute_offsets_to_targets(folder, config_dir)
-    determine_fixation_intervals(folder, config_dir)
-    calculate_data_quality(folder, config_dir)
+def do_process(working_dir: str | pathlib.Path, config_dir=None):
+    detect_markers(working_dir, config_dir)
+    gaze_to_poster(working_dir, config_dir)
+    compute_offsets_to_targets(working_dir, config_dir)
+    determine_fixation_intervals(working_dir, config_dir)
+    calculate_data_quality(working_dir, config_dir)
 
 
 # NB: using pose information requires a calibrated scene camera
