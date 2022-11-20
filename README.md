@@ -27,6 +27,13 @@ settings are automatically used), and can be deployed with the `Deploy config` b
 `glassesValidator.config.deploy_validation_config()` call from Python.
 
 
+## Eye trackers
+glassesValidator supports the following eye trackers.
+
+### Required preprocessing outside glassesValidator
+xx
+
+
 ## The poster
 The default poster is available 1) [here](/src/glassesValidator/config/poster/poster.pdf), 2) from the GUI with the `Get poster
 pdf` button, and 3) can also be acquired from a Python script by calling
@@ -160,60 +167,68 @@ The matching between fixations and fixation targets produced by this procedure i
 
 ## API
 All of glassesValidator's functionality is exposed through its API. Below are all functions that are part of the
-public API. Many functions share common input arguments. These are documented [here](#common-input-arguments).
+public API. Many functions share common input arguments. These are documented [here](#common-input-arguments) and linked to in the API overview below.
 ### glassesValidator.config
-|function|description|
-| --- | --- |
-|`get_validation_setup()`|z|
-|`get_targets()`|z|
-|`get_markers()`|z|
-|`deploy_validation_config()`|z|
+|function|inputs|description|
+| --- | --- | --- |
+|`get_validation_setup()`|<ol><li>[`config_dir`](#common-input-arguments)</li><li>`setup_file`: filename of the validation setup file. Default `validationSetup.txt`.</li></ol>|Read and parse the validation setup into a dict. If no `config_dir` is provided, the default configuration is returned.|
+|`get_targets()`|<ol><li>[`config_dir`](#common-input-arguments)</li><li>`file`: filename of the target positions file. Default `targetPositions.csv`.</li></ol>|Read and parse the target positions file into a `pandas.DataFrame`. If no `config_dir` is provided, the target positions are returned.|
+|`get_markers()`|<ol><li>[`config_dir`](#common-input-arguments)</li><li>`file`: filename of the marker positions file. Default `markerPositions.csv`.</li></ol>|Read and parse the marker positions file into a `pandas.DataFrame`. If no `config_dir` is provided, the marker positions are returned.|
+|`deploy_validation_config()`|<ol><li>`output_dir`: Directory to deploy configuration files to.</li></ol>|Deploy the default configuration (including poster maker, see `glassesValidator.config.poster.deploy_maker()`) to the specified directory.|
 
 #### glassesValidator.config.poster
-|function|description|
-| --- | --- |
-|`deploy_maker()`|z|
-|`deploy_marker_images()`|z|
-|`deploy_default_pdf()`|z|
+|function|inputs|description|
+| --- | --- | --- |
+|`deploy_maker()`|<ol><li>`output_dir`: Directory to deploy poster maker LaTeX files to.</li></ol>|Deploy the LaTeX file for making posters (including marker images, see `glassesValidator.config.poster.deploy_marker_images()`) to the specified directory.|
+|`deploy_marker_images()`|<ol><li>`output_dir`: Directory to deploy marker images for use with the LaTeX poster maker to.</li></ol>|Deploy the marker images (all fiducial markers in `cv2.aruco.DICT_4X4_250`) to the specified directory.|
+|`deploy_default_pdf()`|<ol><li>`output_file_or_dir`: Path where to store default poster pdf. If provided path is a directory and not a file, the poster is stored as `poster.pdf` in the provided directory.</li></ol>|Deploy the default poster pdf to the specified path.|
 
 ### glassesValidator.GUI
-|function|description|
-| --- | --- |
-|`run()`|z|
+|function|inputs|description|
+| --- | --- | --- |
+|`run()`|<ol><li>`project_dir`: Path to glassesValidator project to open.</li></ol>|Open the glassesValidator GUI.|
 
 ### glassesValidator.preprocess
-|function|description|
-| --- | --- |
-|`get_recording_info()`|z|
-|`do_import()`|z|
-|`pupil_core()`|z|
-|`pupil_invisible()`|z|
-|`SeeTrue()`|z|
-|`SMI_ETG()`|z|
-|`tobii_G2()`|z|
-|`tobii_G3()`|z|
+|function|inputs|description|
+| --- | --- | --- |
+|`get_recording_info()`|<ol><li>[`source_dir`](#common-input-arguments)</li><li>`device`</li></ol>|z|
+|`do_import()`|<ol><li>[`output_dir`](#common-input-arguments)</li><li>[`source_dir`](#common-input-arguments)</li><li>`device`</li><li>[`rec_info`](#common-input-arguments)</li></ol>|z|
+|  |  |  |
+|`pupil_core()`|<ol><li>[`output_dir`](#common-input-arguments)</li><li>[`source_dir`](#common-input-arguments)</li><li>[`rec_info`](#common-input-arguments)</li></ol>|z|
+|`pupil_invisible()`|<ol><li>[`output_dir`](#common-input-arguments)</li><li>[`source_dir`](#common-input-arguments)</li><li>[`rec_info`](#common-input-arguments)</li></ol>|z|
+|`SeeTrue()`|<ol><li>[`output_dir`](#common-input-arguments)</li><li>[`source_dir`](#common-input-arguments)</li><li>[`rec_info`](#common-input-arguments)</li><li>`cam_cal_file`</li></ol>|z|
+|`SMI_ETG()`|<ol><li>[`output_dir`](#common-input-arguments)</li><li>[`source_dir`](#common-input-arguments)</li><li>[`rec_info`](#common-input-arguments)</li></ol>|z|
+|`tobii_G2()`|<ol><li>[`output_dir`](#common-input-arguments)</li><li>[`source_dir`](#common-input-arguments)</li><li>[`rec_info`](#common-input-arguments)</li></ol>|z|
+|`tobii_G3()`|<ol><li>[`output_dir`](#common-input-arguments)</li><li>[`source_dir`](#common-input-arguments)</li><li>[`rec_info`](#common-input-arguments)</li></ol>|z|
 
 ### glassesValidator.process
-|function|description|
-| --- | --- |
-|`code_marker_interval()`|z|
-|`detect_markers()`|z|
-|`gaze_to_board()`|z|
-|`compute_offsets_to_targets()`|z|
-|`determine_fixation_intervals()`|z|
-|`calculate_data_quality()`|z|
-|`do_coding()`|z|
-|`do_process()`|z|
-|`DataQualityType`|z|
+|function|inputs/members|description|
+| --- | --- | --- |
+|`do_coding()`|<ol><li>[`working_dir`](#common-input-arguments)</li><li>[`config_dir`](#common-input-arguments)</li></ol>|z|
+|`do_process()`|<ol><li>[`working_dir`](#common-input-arguments)</li><li>[`config_dir`](#common-input-arguments)</li></ol>|z|
+|  |  |  |
+|`code_marker_interval()`|<ol><li>[`working_dir`](#common-input-arguments)</li><li>[`config_dir`](#common-input-arguments)</li><li>`show_poster`</li></ol>|z|
+|`detect_markers()`|<ol><li>[`working_dir`](#common-input-arguments)</li><li>[`config_dir`](#common-input-arguments)</li><li>`visualize_detection`</li><li>`show_rejected_markers`</li><li>`fps_fac`</li></ol>|z|
+|`gaze_to_poster()`|<ol><li>[`working_dir`](#common-input-arguments)</li><li>[`config_dir`](#common-input-arguments)</li><li>`show_visualization`</li><li>`show_poster`</li><li>`show_only_intervals`</li><li>`fps_fac`</li></ol>|z|
+|`compute_offsets_to_targets()`|<ol><li>[`working_dir`](#common-input-arguments)</li><li>[`config_dir`](#common-input-arguments)</li></ol>|z|
+|`determine_fixation_intervals()`|<ol><li>[`working_dir`](#common-input-arguments)</li><li>[`config_dir`](#common-input-arguments)</li></ol>|z|
+|`calculate_data_quality()`|<ol><li>[`working_dir`](#common-input-arguments)</li><li>`dq_types`</li><li>`allow_dq_fallback`</li><li>`include_data_loss`</li></ol>|z|
+|  |  |  |
+|`DataQualityType`|-|z|
 
 ### glassesValidator.utils
-|function|description|
-| --- | --- |
-|`make_video()`|z|
-|`EyeTracker`|z|
-|`Recording`|z|
+|function|inputs/members|description|
+| --- | --- | --- |
+|`make_video()`|<ol><li>[`working_dir`](#common-input-arguments)</li><li>[`config_dir`](#common-input-arguments)</li><li>`show_rejected_markers`</li><li>`add_audio_to_poster_video`</li><li>`show_visualization`</li></ol>|z|
+|  |  |  |
+|`EyeTracker`|`enum.Enum`<ol><li>`EyeTracker.Pupil_Core`</li><li>`EyeTracker.Pupil_Invisible`</li><li>`EyeTracker.SMI_ETG`</li><li>`EyeTracker.SeeTrue`</li><li>`EyeTracker.Tobii_Glasses_2`</li><li>`EyeTracker.Tobii_Glasses_3`</li></ol>||
+|`Recording`|`dataclasses.dataclass`<ol><li>`Recording.name`</li><li>`Recording.source_directory`</li><li>`Recording.proc_directory_name`</li><li>`Recording.start_time`</li><li>`Recording.duration`</li><li>`Recording.eye_tracker`</li><li>`Recording.project`</li><li>`Recording.participant`</li><li>`Recording.firmware_version`</li><li>`Recording.glasses_serial`</li><li>`Recording.recording_unit_serial`</li><li>`Recording.recording_software_version`</li><li>`Recording.scene_camera_serial`</li><li>`Recording.id` (internal to GUI)</li><li>`Recording.task` (internal to GUI)</li></ol>|Information about a recording|
 
 ### Common input arguments
 |argument|module(s)|description|
 | --- | --- | --- |
-|`config_dir`||z|
+|`config_dir`|`glassesValidator.config`<br>`glassesValidator.process`<br>`glassesValidator.utils`|Path to directory containing a glassesValidator setup. If `None`, the default setup is used.|
+|`source_dir`|`glassesValidator.preprocess`|Path to directory containing one (or for some eye trackers potentially multiple) eye tracker recording(s) as stored by the eye tracker's recording hardware or software.|
+|`output_dir`|`glassesValidator.preprocess`|Path to the directory to which recordings will be imported. Each recording will be placed in a subdirectory of the specified path.|
+|`working_dir`|`glassesValidator.process`<br>`glassesValidator.utils`|Path to a glassesValidator recording directory.|
+|`rec_info`|`glassesValidator.preprocess`|Recording info (`glassesValidator.utils.Recording`) or list of recording info specifying what is expected to be found in the specified `source_dir`, so that this does not have to be rediscovered and changes can be made e.g. to the recording name that is used for auto-generating the recording's `working_dir`, or even directly specifying the `working_dir` by filling the `proc_directory_name` field before import.|
