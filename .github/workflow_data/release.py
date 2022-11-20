@@ -16,10 +16,10 @@ if __name__ == "__main__":
     ).json()
     print(f"release = {json.dumps(release, indent=4)}")
     body = "## ⬇️ Download\n"
-    for asset_type, asset_icon in [("Windows", "🪟"), ("Linux", "🐧"), ("MacOS", "🍎"), ("Source", "🐍")]:
+    for asset_type, asset_icon in [("Windows", "🪟"), ("Linux", "🐧"), ("MacOS", "🍎"), ("Wheel", "🐍"), ("Source", "🐍")]:
         print(f"Adding {asset_type}")
         for asset in release["assets"]:
-            if asset_type.lower() in asset["name"].lower():
+            if asset_type.lower() in asset["name"].lower() or (asset_type=="Wheel" and asset["name"].endswith('.whl')):
                 asset_url = asset["browser_download_url"]
                 body += f">### [{asset_type} {asset_icon}]({asset_url})\n\n"
     body += (
