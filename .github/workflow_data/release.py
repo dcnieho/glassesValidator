@@ -23,7 +23,7 @@ if __name__ == "__main__":
                 asset_url = asset["browser_download_url"]
                 body += f">### [{asset_type} {asset_icon}]({asset_url})\n\n"
     body += (
-        "## 🚀 Changelog\n" +
+        "## 🚀 Release Notes\n" +
         release["body"]
     )
     print(f"Full body:\n\n{body}")
