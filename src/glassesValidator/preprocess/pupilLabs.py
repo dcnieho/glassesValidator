@@ -28,65 +28,65 @@ from urllib.request import urlopen
 from .. import utils
 
 
-def preprocessData(outputDir, device=None, inputDir=None, recInfo=None):
+def preprocessData(output_dir, device=None, input_dir=None, rec_info=None):
     """
     Run all preprocessing steps on pupil data
     """
-    outputDir = pathlib.Path(outputDir)
-    if inputDir is not None:
-        inputDir  = pathlib.Path(inputDir)
-        if recInfo is not None and pathlib.Path(recInfo.source_directory) != inputDir:
-            raise ValueError(f"The provided source_dir ({inputDir}) does not equal the source directory set in recInfo ({recInfo.source_directory}).")
-    elif recInfo is None:
-        raise RuntimeError('Either the "inputDir" or the "recInfo" input argument should be set.')
+    output_dir = pathlib.Path(output_dir)
+    if input_dir is not None:
+        input_dir  = pathlib.Path(input_dir)
+        if rec_info is not None and pathlib.Path(rec_info.source_directory) != input_dir:
+            raise ValueError(f"The provided source_dir ({input_dir}) does not equal the source directory set in rec_info ({rec_info.source_directory}).")
+    elif rec_info is None:
+        raise RuntimeError('Either the "input_dir" or the "rec_info" input argument should be set.')
     else:
-        inputDir  = pathlib.Path(recInfo.source_directory)
+        input_dir  = pathlib.Path(rec_info.source_directory)
     
-    if recInfo is not None:
-        if not recInfo.eye_tracker in [utils.EyeTracker.Pupil_Core, utils.EyeTracker.Pupil_Invisible]:
-            raise ValueError(f'Provided recInfo is for a device ({recInfo.eye_tracker.value}) that is not a {utils.EyeTracker.Pupil_Core.value} or a {utils.EyeTracker.Pupil_Invisible.value}. Cannot use.')
-        if not recInfo.proc_directory_name:
-            recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
-        newDir = outputDir / recInfo.proc_directory_name
+    if rec_info is not None:
+        if not rec_info.eye_tracker in [utils.EyeTracker.Pupil_Core, utils.EyeTracker.Pupil_Invisible]:
+            raise ValueError(f'Provided rec_info is for a device ({rec_info.eye_tracker.value}) that is not a {utils.EyeTracker.Pupil_Core.value} or a {utils.EyeTracker.Pupil_Invisible.value}. Cannot use.')
+        if not rec_info.proc_directory_name:
+            rec_info.proc_directory_name = utils.make_fs_dirname(rec_info, output_dir)
+        newDir = output_dir / rec_info.proc_directory_name
         if newDir.is_dir():
-            raise RuntimeError(f'Output directory specified in recInfo ({recInfo.proc_directory_name}) already exists in the outputDir ({outputDir}). Cannot use.')
+            raise RuntimeError(f'Output directory specified in rec_info ({rec_info.proc_directory_name}) already exists in the outputDir ({output_dir}). Cannot use.')
 
-    if device is None and recInfo is None:
-        raise RuntimeError('Either the "device" or the "recInfo" input argument should be set.')
+    if device is None and rec_info is None:
+        raise RuntimeError('Either the "device" or the "rec_info" input argument should be set.')
     if device is not None:
         device = utils.type_string_to_enum(device)
         if not device in [utils.EyeTracker.Pupil_Core, utils.EyeTracker.Pupil_Invisible]:
-            raise ValueError(f'Provided device ({recInfo.eye_tracker.value}) is not a {utils.EyeTracker.Pupil_Core.value} or a {utils.EyeTracker.Pupil_Invisible.value}.')
-    if recInfo is not None:
+            raise ValueError(f'Provided device ({rec_info.eye_tracker.value}) is not a {utils.EyeTracker.Pupil_Core.value} or a {utils.EyeTracker.Pupil_Invisible.value}.')
+    if rec_info is not None:
         if device is not None:
-            if recInfo.eye_tracker != device:
-                raise ValueError(f'Provided device ({device.value}) did not match device specific in recInfo ({recInfo.eye_tracker.value}). Provide matching values or do not provide the device input argument.')
+            if rec_info.eye_tracker != device:
+                raise ValueError(f'Provided device ({device.value}) did not match device specific in rec_info ({rec_info.eye_tracker.value}). Provide matching values or do not provide the device input argument.')
         else:
-            device = recInfo.eye_tracker
+            device = rec_info.eye_tracker
 
-    print(f'processing: {inputDir.name}')
+    print(f'processing: {input_dir.name}')
 
 
     ### check and copy needed files to the output directory
     print('Check and copy raw data...')
      ### check pupil recording and get export directory
-    exportFile = checkPupilRecording(inputDir)
-    if recInfo is not None:
-        checkRecording(inputDir, recInfo)
+    exportFile = checkPupilRecording(input_dir)
+    if rec_info is not None:
+        checkRecording(input_dir, rec_info)
     else:
-        recInfo = getRecordingInfo(inputDir, device)
-        if recInfo is None:
-            raise RuntimeError(f"The folder {device.value} is not recognized as a {exportFile} recording.")
+        rec_info = getRecordingInfo(input_dir, device)
+        if rec_info is None:
+            raise RuntimeError(f"The folder {input_dir} is not recognized as a {device.value} recording.")
 
     # make output dir
-    if recInfo.proc_directory_name is None or not recInfo.proc_directory_name:
-        recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
-    newDataDir = outputDir / recInfo.proc_directory_name
+    if rec_info.proc_directory_name is None or not rec_info.proc_directory_name:
+        rec_info.proc_directory_name = utils.make_fs_dirname(rec_info, output_dir)
+    newDataDir = output_dir / rec_info.proc_directory_name
     if not newDataDir.is_dir():
         newDataDir.mkdir()
 
     # store rec info
-    recInfo.store_as_json(newDataDir)
+    rec_info.store_as_json(newDataDir)
 
     # make sure there is a processing status file, and update it
     utils.get_recording_status(newDataDir, create_if_missing=True)
@@ -94,22 +94,22 @@ def preprocessData(outputDir, device=None, inputDir=None, recInfo=None):
 
     
     # copy world video
-    shutil.copyfile(str(inputDir / 'world.mp4'), str(newDataDir / 'worldCamera.mp4'))
+    shutil.copyfile(str(input_dir / 'world.mp4'), str(newDataDir / 'worldCamera.mp4'))
     print(f'Input data copied to: {newDataDir}')
 
 
     ### get camera cal
     print('Getting camera calibration...')
-    match recInfo.eye_tracker:
+    match rec_info.eye_tracker:
         case utils.EyeTracker.Pupil_Core:
-            sceneVideoDimensions = getCameraFromMsgPack(inputDir, newDataDir)
+            sceneVideoDimensions = getCameraFromMsgPack(input_dir, newDataDir)
         case utils.EyeTracker.Pupil_Invisible:
-            sceneVideoDimensions = getCameraCalFromOnline(inputDir, newDataDir, recInfo)
+            sceneVideoDimensions = getCameraCalFromOnline(input_dir, newDataDir, rec_info)
 
 
     ### get gaze data and video frame timestamps
     print('Prepping gaze data...')
-    gazeDf, frameTimestamps = formatGazeData(inputDir, exportFile, sceneVideoDimensions, recInfo)
+    gazeDf, frameTimestamps = formatGazeData(input_dir, exportFile, sceneVideoDimensions, rec_info)
 
     # write the gaze data to a csv file
     gazeDf.to_csv(str(newDataDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")

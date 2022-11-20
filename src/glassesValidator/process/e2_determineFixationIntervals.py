@@ -13,28 +13,28 @@ from .. import config
 from .. import utils
 
 
-def process(inputDir, configDir=None):
-    inputDir  = pathlib.Path(inputDir)
-    if configDir is not None:
-        configDir = pathlib.Path(configDir)
+def process(input_dir, config_dir=None):
+    input_dir  = pathlib.Path(input_dir)
+    if config_dir is not None:
+        config_dir = pathlib.Path(config_dir)
 
-    print('processing: {}'.format(inputDir.name))
-    utils.update_recording_status(inputDir, utils.Task.Fixation_Intervals_Determined, utils.Status.Running)
+    print('processing: {}'.format(input_dir.name))
+    utils.update_recording_status(input_dir, utils.Task.Fixation_Intervals_Determined, utils.Status.Running)
     
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = config.get_validation_setup(configDir)
+    validationSetup = config.get_validation_setup(config_dir)
 
     # get interval coded to be analyzed
-    analyzeFrames = utils.readMarkerIntervalsFile(inputDir / "markerInterval.tsv")
+    analyzeFrames = utils.readMarkerIntervalsFile(input_dir / "markerInterval.tsv")
     if analyzeFrames is None:
         print('  no marker intervals defined for this recording, skipping')
         return
 
     # Read gaze on board data
-    gazeWorld = utils.GazeWorld.readDataFromFile(inputDir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
+    gazeWorld = utils.GazeWorld.readDataFromFile(input_dir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
     # get info about markers on our board
-    reference = utils.Reference(configDir, validationSetup, imHeight=-1)
+    reference = utils.Reference(config_dir, validationSetup, imHeight=-1)
     targets   = {ID: reference.targets[ID].center for ID in reference.targets}   # get centers of targets
     markerHalfSizeMm = reference.markerSize/2.
     
@@ -129,12 +129,12 @@ def process(inputDir, configDir=None):
         plt.xlabel('mm')
         plt.ylabel('mm')
 
-        f.savefig(str(inputDir / 'targetSelection_I2MC_interval_{}.png'.format(ival)))
+        f.savefig(str(input_dir / 'targetSelection_I2MC_interval_{}.png'.format(ival)))
         plt.close(f)
 
         # also make timseries plot of gaze data with fixations
         f = I2MC.plot.data_and_fixations(data, fix, fix_as_line=True, unit='mm', res=[[reference.bbox[0]-2*markerHalfSizeMm, reference.bbox[2]+2*markerHalfSizeMm], [reference.bbox[1]-2*markerHalfSizeMm, reference.bbox[3]+2*markerHalfSizeMm]])
-        f.savefig(str(inputDir / 'targetSelection_I2MC_interval_{}_fixations.png'.format(ival)))
+        f.savefig(str(input_dir / 'targetSelection_I2MC_interval_{}_fixations.png'.format(ival)))
         plt.close(f)
 
         # store selected intervals
@@ -147,6 +147,6 @@ def process(inputDir, configDir=None):
             df.loc[t,'start_timestamp'] = fix['startT'][selected[i]]
             df.loc[t,  'end_timestamp'] = fix[  'endT'][selected[i]]
         
-        df.to_csv(str(inputDir / 'analysisInterval.tsv'), mode='w' if ival==0 else 'a', header=ival==0, sep='\t', na_rep='nan', float_format="%.3f")
+        df.to_csv(str(input_dir / 'analysisInterval.tsv'), mode='w' if ival==0 else 'a', header=ival==0, sep='\t', na_rep='nan', float_format="%.3f")
         
-    utils.update_recording_status(inputDir, utils.Task.Fixation_Intervals_Determined, utils.Status.Finished)
+    utils.update_recording_status(input_dir, utils.Task.Fixation_Intervals_Determined, utils.Status.Finished)

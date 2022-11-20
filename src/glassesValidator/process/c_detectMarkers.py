@@ -9,32 +9,32 @@ from .. import config
 from .. import utils
 
 
-def process(inputDir, configDir=None, visualizeDetection=False, showRejectedMarkers=False, FPSFac=1):
+def process(input_dir, config_dir=None, visualize_detection=False, show_rejected_markers=False, fps_fac=1):
     # if visualizeDetection, draw each frame and overlay info about detected markers and board
     # if showRejectedMarkers, rejected marker candidates are also drawn on frame. Possibly useful for debug
-    inputDir  = pathlib.Path(inputDir)
-    if configDir is not None:
-        configDir = pathlib.Path(configDir)
+    input_dir  = pathlib.Path(input_dir)
+    if config_dir is not None:
+        config_dir = pathlib.Path(config_dir)
 
-    print('processing: {}'.format(inputDir.name))
-    utils.update_recording_status(inputDir, utils.Task.Markers_Detected, utils.Status.Running)
+    print('processing: {}'.format(input_dir.name))
+    utils.update_recording_status(input_dir, utils.Task.Markers_Detected, utils.Status.Running)
 
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = config.get_validation_setup(configDir)
+    validationSetup = config.get_validation_setup(config_dir)
     
     # open video file, query it for size
-    inVideo = inputDir / 'worldCamera.mp4'
+    inVideo = input_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
-        inVideo = inputDir / 'worldCamera.avi'
+        inVideo = input_dir / 'worldCamera.avi'
     cap    = cv2.VideoCapture(str(inVideo))
     if not cap.isOpened():
         raise RuntimeError('the file "{}" could not be opened'.format(str(inVideo)))
     width  = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    ifi    = 1000./cap.get(cv2.CAP_PROP_FPS)/FPSFac
+    ifi    = 1000./cap.get(cv2.CAP_PROP_FPS)/fps_fac
     
     # get info about markers on our board
-    reference       = utils.Reference(configDir, validationSetup)
+    reference       = utils.Reference(config_dir, validationSetup)
     centerTarget    = reference.targets[validationSetup['centerTarget']].center
     # turn into aruco board object to be used for pose estimation
     referenceBoard  = reference.getArucoBoard()
@@ -45,16 +45,16 @@ def process(inputDir, configDir=None, visualizeDetection=False, showRejectedMark
     parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
 
     # get camera calibration info
-    cameraMatrix,distCoeff = utils.readCameraCalibrationFile(inputDir / "calibration.xml")[0:2]
+    cameraMatrix,distCoeff = utils.readCameraCalibrationFile(input_dir / "calibration.xml")[0:2]
     hasCameraMatrix = cameraMatrix is not None
     hasDistCoeff    = distCoeff is not None
 
     # get interval coded to be analyzed, if any
-    analyzeFrames   = utils.readMarkerIntervalsFile(inputDir / "markerInterval.tsv")
+    analyzeFrames   = utils.readMarkerIntervalsFile(input_dir / "markerInterval.tsv")
     hasAnalyzeFrames= analyzeFrames is not None
 
     # prep output file
-    csv_file = open(inputDir / 'boardPose.tsv', 'w', newline='')
+    csv_file = open(input_dir / 'boardPose.tsv', 'w', newline='')
     csv_writer = csv.writer(csv_file, delimiter='\t')
     header = utils.BoardPose.getWriteHeader()
     csv_writer.writerow(header)
@@ -110,7 +110,7 @@ def process(inputDir, configDir=None, visualizeDetection=False, showRejectedMark
                         # set pose
                         pose.setPose(rVec,tVec)
                         # and draw if wanted
-                        if visualizeDetection:
+                        if visualize_detection:
                             # draw axis indicating board pose (origin and orientation)
                             utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, pose.rVec, pose.tVec, armLength, 3, subPixelFac)
 
@@ -123,7 +123,7 @@ def process(inputDir, configDir=None, visualizeDetection=False, showRejectedMark
 
                 if status:
                     pose.hMat = H
-                    if visualizeDetection:
+                    if visualize_detection:
                         # find where target is expected to be in the image
                         iH = np.linalg.inv(pose.hMat)
                         target = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
@@ -137,15 +137,15 @@ def process(inputDir, configDir=None, visualizeDetection=False, showRejectedMark
                     csv_writer.writerow( pose.getWriteData() )
 
             # if any markers were detected, draw where on the frame
-            if visualizeDetection:
+            if visualize_detection:
                 utils.drawArucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac, specialHighlight=[recoveredIds,(255,255,0)])
 
         # for debug, can draw rejected markers on frame
-        if visualizeDetection and showRejectedMarkers:
+        if visualize_detection and show_rejected_markers:
             cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
                 
-        if visualizeDetection:
-            cv2.imshow(inputDir.name,frame)
+        if visualize_detection:
+            cv2.imshow(input_dir.name,frame)
             key = cv2.waitKey(max(1,int(round(ifi-(time.perf_counter()-startTime)*1000)))) & 0xFF
             if key == ord('q'):
                 # quit fully
@@ -156,7 +156,7 @@ def process(inputDir, configDir=None, visualizeDetection=False, showRejectedMark
                 break
             if key == ord('s'):
                 # screenshot
-                cv2.imwrite(str(inputDir / ('detect_frame_%d.png' % frame_idx)), frame)
+                cv2.imwrite(str(input_dir / ('detect_frame_%d.png' % frame_idx)), frame)
         elif (frame_idx)%100==0:
             print('  frame {}'.format(frame_idx))
 
@@ -164,6 +164,6 @@ def process(inputDir, configDir=None, visualizeDetection=False, showRejectedMark
     cap.release()
     cv2.destroyAllWindows()
     
-    utils.update_recording_status(inputDir, utils.Task.Markers_Detected, utils.Status.Finished)
+    utils.update_recording_status(input_dir, utils.Task.Markers_Detected, utils.Status.Finished)
 
     return stopAllProcessing

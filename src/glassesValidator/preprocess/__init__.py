@@ -8,14 +8,14 @@ from .SMI_ETG import preprocessData as SMI_ETG
 from .tobii_G2 import preprocessData as tobii_G2
 from .tobii_G3 import preprocessData as tobii_G3
 
-def pupil_core(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = None, recInfo: _utils.Recording = None):
+def pupil_core(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = None, rec_info: _utils.Recording = None):
     from .pupilLabs import preprocessData
-    preprocessData(output_dir, 'Pupil Core', source_dir, recInfo)
+    preprocessData(output_dir, 'Pupil Core', source_dir, rec_info)
 
 
-def pupil_invisible(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = None, recInfo: _utils.Recording = None):
+def pupil_invisible(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = None, rec_info: _utils.Recording = None):
     from .pupilLabs import preprocessData
-    preprocessData(output_dir, 'Pupil Invisible', source_dir, recInfo)
+    preprocessData(output_dir, 'Pupil Invisible', source_dir, rec_info)
 
     
 def get_recording_info(source_dir: str | pathlib.Path, device: str | _utils.EyeTracker):

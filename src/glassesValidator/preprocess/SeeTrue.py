@@ -17,7 +17,7 @@ import numpy as np
 from .. import utils
 
 
-def preprocessData(outputDir, inputDir=None, recInfo=None, camCalFile=None):
+def preprocessData(output_dir, input_dir=None, rec_info=None, cam_cal_file=None):
 
     if shutil.which('ffmpeg') is None:
         RuntimeError('ffmpeg must be on path to prep SeeTrue recording for processing with GlassesValidator')
@@ -25,45 +25,45 @@ def preprocessData(outputDir, inputDir=None, recInfo=None, camCalFile=None):
     """
     Run all preprocessing steps on SeeTrue data
     """
-    outputDir = pathlib.Path(outputDir)
-    if inputDir is not None:
-        inputDir  = pathlib.Path(inputDir)
-        if recInfo is not None and pathlib.Path(recInfo.source_directory) != inputDir:
-            raise ValueError(f"The provided source_dir ({inputDir}) does not equal the source directory set in recInfo ({recInfo.source_directory}).")
-    elif recInfo is None:
-        raise RuntimeError('Either the "inputDir" or the "recInfo" input argument should be set.')
+    output_dir = pathlib.Path(output_dir)
+    if input_dir is not None:
+        input_dir  = pathlib.Path(input_dir)
+        if rec_info is not None and pathlib.Path(rec_info.source_directory) != input_dir:
+            raise ValueError(f"The provided source_dir ({input_dir}) does not equal the source directory set in rec_info ({rec_info.source_directory}).")
+    elif rec_info is None:
+        raise RuntimeError('Either the "input_dir" or the "rec_info" input argument should be set.')
     else:
-        inputDir  = pathlib.Path(recInfo.source_directory)
+        input_dir  = pathlib.Path(rec_info.source_directory)
     
-    if recInfo is not None:
-        if recInfo.eye_tracker!=utils.EyeTracker.SeeTrue:
-            raise ValueError(f'Provided recInfo is for a device ({recInfo.eye_tracker.value}) that is not an {utils.EyeTracker.SeeTrue.value}. Cannot use.')
-        if not recInfo.proc_directory_name:
-            recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
-        newDir = outputDir / recInfo.proc_directory_name
+    if rec_info is not None:
+        if rec_info.eye_tracker!=utils.EyeTracker.SeeTrue:
+            raise ValueError(f'Provided rec_info is for a device ({rec_info.eye_tracker.value}) that is not an {utils.EyeTracker.SeeTrue.value}. Cannot use.')
+        if not rec_info.proc_directory_name:
+            rec_info.proc_directory_name = utils.make_fs_dirname(rec_info, output_dir)
+        newDir = output_dir / rec_info.proc_directory_name
         if newDir.is_dir():
-            raise RuntimeError(f'Output directory specified in recInfo ({recInfo.proc_directory_name}) already exists in the outputDir ({outputDir}). Cannot use.')
+            raise RuntimeError(f'Output directory specified in rec_info ({rec_info.proc_directory_name}) already exists in the outputDir ({output_dir}). Cannot use.')
 
 
-    print(f'processing: {inputDir.name}')
+    print(f'processing: {input_dir.name}')
 
 
     ### check and copy needed files to the output directory
     print('Check and copy raw data...')
-    if recInfo is not None:
-        if not checkRecording(inputDir, recInfo):
-            raise ValueError(f"A recording with the name \"{recInfo.name}\" was not found in the folder {inputDir}.")
-        recInfos = [recInfo]
+    if rec_info is not None:
+        if not checkRecording(input_dir, rec_info):
+            raise ValueError(f"A recording with the name \"{rec_info.name}\" was not found in the folder {input_dir}.")
+        recInfos = [rec_info]
     else:
-        recInfos = getRecordingInfo(inputDir)
+        recInfos = getRecordingInfo(input_dir)
         if recInfos is None:
-            raise RuntimeError(f"The folder {inputDir} does not contain SeeTrue recordings.")
+            raise RuntimeError(f"The folder {input_dir} does not contain SeeTrue recordings.")
 
     # make output dirs
     for i in range(len(recInfos)):
         if recInfos[i].proc_directory_name is None or not recInfos[i].proc_directory_name:
-            recInfos[i].proc_directory_name = utils.make_fs_dirname(recInfos[i], outputDir)
-        newDataDir = outputDir / recInfos[i].proc_directory_name
+            recInfos[i].proc_directory_name = utils.make_fs_dirname(recInfos[i], output_dir)
+        newDataDir = output_dir / recInfos[i].proc_directory_name
         if not newDataDir.is_dir():
             newDataDir.mkdir()
 
@@ -76,17 +76,17 @@ def preprocessData(outputDir, inputDir=None, recInfo=None, camCalFile=None):
 
         
     #### prep the data
-    for recInfo in recInfos:
-        newDataDir = outputDir / recInfo.proc_directory_name
+    for rec_info in recInfos:
+        newDataDir = output_dir / rec_info.proc_directory_name
         print(f'{newDataDir.name}...')
         print('  Getting camera calibration...')
-        if camCalFile is not None:
-            shutil.copyfile(str(camCalFile), str(newDataDir / 'calibration.xml'))
+        if cam_cal_file is not None:
+            shutil.copyfile(str(cam_cal_file), str(newDataDir / 'calibration.xml'))
         else:
             print('    !! No camera calibration provided!')
 
         # NB: gaze data and scene video prep are intertwined, status messages are output inside this function
-        gazeDf, frameTimestamps = copySeeTrueRecording(inputDir, newDataDir, recInfo)
+        gazeDf, frameTimestamps = copySeeTrueRecording(input_dir, newDataDir, rec_info)
 
         # write the gaze data to a csv file
         gazeDf.to_csv(str(newDataDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")

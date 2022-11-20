@@ -11,32 +11,32 @@ from .. import config
 from .. import utils
 
 
-def process(inputDir, configDir=None):
+def process(input_dir, config_dir=None):
     from . import DataQualityType
-    inputDir  = pathlib.Path(inputDir)
-    if configDir is not None:
-        configDir = pathlib.Path(configDir)
+    input_dir  = pathlib.Path(input_dir)
+    if config_dir is not None:
+        config_dir = pathlib.Path(config_dir)
 
-    print('processing: {}'.format(inputDir.name))
-    utils.update_recording_status(inputDir, utils.Task.Target_Offsets_Computed, utils.Status.Running)
+    print('processing: {}'.format(input_dir.name))
+    utils.update_recording_status(input_dir, utils.Task.Target_Offsets_Computed, utils.Status.Running)
     
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = config.get_validation_setup(configDir)
+    validationSetup = config.get_validation_setup(config_dir)
 
     # get interval coded to be analyzed
-    analyzeFrames = utils.readMarkerIntervalsFile(inputDir / "markerInterval.tsv")
+    analyzeFrames = utils.readMarkerIntervalsFile(input_dir / "markerInterval.tsv")
     if analyzeFrames is None:
         print('  no marker intervals defined for this recording, skipping')
         return
 
     # Read pose of marker board
-    poses = utils.BoardPose.readDataFromFile(inputDir / 'boardPose.tsv',analyzeFrames[0],analyzeFrames[-1],True)
+    poses = utils.BoardPose.readDataFromFile(input_dir / 'boardPose.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
     # Read gaze on board data
-    gazeWorld = utils.GazeWorld.readDataFromFile(inputDir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
+    gazeWorld = utils.GazeWorld.readDataFromFile(input_dir / 'gazeWorldPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
     # get info about markers on our board
-    reference = utils.Reference(configDir, validationSetup)
+    reference = utils.Reference(config_dir, validationSetup)
     targets = {ID: reference.targets[ID].center for ID in reference.targets}   # get centers of targets
 
     # get types of data quality to compute
@@ -129,6 +129,6 @@ def process(inputDir, configDir=None):
         df                      = pd.concat([df, pd.DataFrame(np.reshape(offset,(-1,2)),columns=['offset_x','offset_y'])],axis=1)
         df                      = df.dropna(axis=0, subset=['offset_x','offset_y'])  # drop any missing data
         # 3. write to file
-        df.to_csv(str(inputDir / 'gazeTargetOffset.tsv'), mode='w' if ival==0 else 'a', header=ival==0, index=False, sep='\t', na_rep='nan', float_format="%.3f")
+        df.to_csv(str(input_dir / 'gazeTargetOffset.tsv'), mode='w' if ival==0 else 'a', header=ival==0, index=False, sep='\t', na_rep='nan', float_format="%.3f")
 
-    utils.update_recording_status(inputDir, utils.Task.Target_Offsets_Computed, utils.Status.Finished)
+    utils.update_recording_status(input_dir, utils.Task.Target_Offsets_Computed, utils.Status.Finished)

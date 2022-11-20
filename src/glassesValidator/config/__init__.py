@@ -16,13 +16,13 @@ def _readValidationSetupFile(file):
     lexer.commenters = '%'
     return dict(zip(lexer, lexer))
 
-def get_validation_setup(configDir=None, setupFile='validationSetup.txt'):
-    if configDir is not None:
-        with (pathlib.Path(configDir) / setupFile).open() as f:
+def get_validation_setup(config_dir=None, setup_file='validationSetup.txt'):
+    if config_dir is not None:
+        with (pathlib.Path(config_dir) / setup_file).open() as f:
             validationSetup = _readValidationSetupFile(f)
     else:
         # fall back on default config included with package
-        with importlib.resources.open_text(__package__, setupFile) as f:
+        with importlib.resources.open_text(__package__, setup_file) as f:
             validationSetup = _readValidationSetupFile(f)
 
     # parse numerics into int or float
@@ -39,36 +39,36 @@ def get_validation_setup(configDir=None, setupFile='validationSetup.txt'):
 def _readCoordFile(file):
     return pd.read_csv(str(file),index_col=0)
 
-def _getCoordFile(configDir, file):
-    if configDir is not None:
-        if (configDir / file).is_file():
-            return _readCoordFile(configDir / file)
+def _getCoordFile(config_dir, file):
+    if config_dir is not None:
+        if (config_dir / file).is_file():
+            return _readCoordFile(config_dir / file)
         else:
             return None
     else:
         with importlib.resources.path(__package__, file) as p:
             return _readCoordFile(p)
 
-def get_targets(configDir=None, file='targetPositions.csv'):
-    return _getCoordFile(configDir, file)
+def get_targets(config_dir=None, file='targetPositions.csv'):
+    return _getCoordFile(config_dir, file)
 
-def get_markers(configDir=None, file='markerPositions.csv'):
-    return _getCoordFile(configDir, file)
+def get_markers(config_dir=None, file='markerPositions.csv'):
+    return _getCoordFile(config_dir, file)
 
             
 
-def deploy_validation_config(outDir):
-    outDir = pathlib.Path(outDir)
-    if not outDir.is_dir():
-        raise RuntimeError('the requested directory "%s" does not exist' % outDir)
+def deploy_validation_config(output_dir):
+    output_dir = pathlib.Path(output_dir)
+    if not output_dir.is_dir():
+        raise RuntimeError('the requested directory "%s" does not exist' % output_dir)
 
     # copy over all config files
     for r in ['markerPositions.csv', 'targetPositions.csv', 'validationSetup.txt']:
         with importlib.resources.path(__package__, r) as p:
-            shutil.copyfile(p, str(outDir/r))
+            shutil.copyfile(p, str(output_dir/r))
 
     # copy over markerBoard tex file
-    boardDir = outDir / 'markerBoard'
+    boardDir = output_dir / 'markerBoard'
     if not boardDir.is_dir():
         boardDir.mkdir()
 

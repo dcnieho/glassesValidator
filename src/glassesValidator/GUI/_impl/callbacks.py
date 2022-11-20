@@ -248,8 +248,8 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
                 case Task.Make_Video:
                     fun = gv_utils.make_video
             args = (working_dir,)
-            if globals.settings.config_dir and (config_dir := globals.project_path / globals.settings.config_dir).is_dir():
-                kwargs['configDir'] = config_dir
+            if globals.settings.config_dir and (config_dir := globals.project_path / globals.settings.config_dir).is_dir() and task!=Task.Data_Quality_Calculated:
+                kwargs['config_dir'] = config_dir
          
         # other, includes Task.Unknown (all already done, see above), nothing to do if no specific task specified:
         case _:

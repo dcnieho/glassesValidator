@@ -24,52 +24,52 @@ import datetime
 from .. import utils
 
 
-def preprocessData(outputDir, inputDir=None, recInfo=None):
+def preprocessData(output_dir, input_dir=None, rec_info=None):
     """
     Run all preprocessing steps on tobii data
     """
-    outputDir = pathlib.Path(outputDir)
-    if inputDir is not None:
-        inputDir  = pathlib.Path(inputDir)
-        if recInfo is not None and pathlib.Path(recInfo.source_directory) != inputDir:
-            raise ValueError(f"The provided source_dir ({inputDir}) does not equal the source directory set in recInfo ({recInfo.source_directory}).")
-    elif recInfo is None:
-        raise RuntimeError('Either the "inputDir" or the "recInfo" input argument should be set.')
+    output_dir = pathlib.Path(output_dir)
+    if input_dir is not None:
+        input_dir  = pathlib.Path(input_dir)
+        if rec_info is not None and pathlib.Path(rec_info.source_directory) != input_dir:
+            raise ValueError(f"The provided source_dir ({input_dir}) does not equal the source directory set in rec_info ({rec_info.source_directory}).")
+    elif rec_info is None:
+        raise RuntimeError('Either the "input_dir" or the "rec_info" input argument should be set.')
     else:
-        inputDir  = pathlib.Path(recInfo.source_directory)
+        input_dir  = pathlib.Path(rec_info.source_directory)
     
-    if recInfo is not None:
-        if recInfo.eye_tracker!=utils.EyeTracker.Tobii_Glasses_3:
-            raise ValueError(f'Provided recInfo is for a device ({recInfo.eye_tracker.value}) that is not an {utils.EyeTracker.Tobii_Glasses_3.value}. Cannot use.')
-        if not recInfo.proc_directory_name:
-            recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
-        newDir = outputDir / recInfo.proc_directory_name
+    if rec_info is not None:
+        if rec_info.eye_tracker!=utils.EyeTracker.Tobii_Glasses_3:
+            raise ValueError(f'Provided rec_info is for a device ({rec_info.eye_tracker.value}) that is not an {utils.EyeTracker.Tobii_Glasses_3.value}. Cannot use.')
+        if not rec_info.proc_directory_name:
+            rec_info.proc_directory_name = utils.make_fs_dirname(rec_info, output_dir)
+        newDir = output_dir / rec_info.proc_directory_name
         if newDir.is_dir():
-            raise RuntimeError(f'Output directory specified in recInfo ({recInfo.proc_directory_name}) already exists in the outputDir ({outputDir}). Cannot use.')
+            raise RuntimeError(f'Output directory specified in rec_info ({rec_info.proc_directory_name}) already exists in the outputDir ({output_dir}). Cannot use.')
 
 
-    print(f'processing: {inputDir.name}')
+    print(f'processing: {input_dir.name}')
 
 
     ### check and copy needed files to the output directory
     print('Check and copy raw data...')
      ### check tobii recording and get export directory
-    if recInfo is not None:
-        checkRecording(inputDir, recInfo)
+    if rec_info is not None:
+        checkRecording(input_dir, rec_info)
     else:
-        recInfo = getRecordingInfo(inputDir)
-        if recInfo is None:
-            raise RuntimeError(f"The folder {inputDir} is not recognized as a Tobii Glasses 3 recording.")
+        rec_info = getRecordingInfo(input_dir)
+        if rec_info is None:
+            raise RuntimeError(f"The folder {input_dir} is not recognized as a Tobii Glasses 3 recording.")
 
     # make output dir
-    if recInfo.proc_directory_name is None or not recInfo.proc_directory_name:
-        recInfo.proc_directory_name = utils.make_fs_dirname(recInfo, outputDir)
-    newDataDir = outputDir / recInfo.proc_directory_name
+    if rec_info.proc_directory_name is None or not rec_info.proc_directory_name:
+        rec_info.proc_directory_name = utils.make_fs_dirname(rec_info, output_dir)
+    newDataDir = output_dir / rec_info.proc_directory_name
     if not newDataDir.is_dir():
         newDataDir.mkdir()
 
     # store rec info
-    recInfo.store_as_json(newDataDir)
+    rec_info.store_as_json(newDataDir)
 
     # make sure there is a processing status file, and update it
     utils.get_recording_status(newDataDir, create_if_missing=True)
@@ -77,12 +77,12 @@ def preprocessData(outputDir, inputDir=None, recInfo=None):
 
 
     ### copy the raw data to the output directory
-    copyTobiiRecording(inputDir, newDataDir)
+    copyTobiiRecording(input_dir, newDataDir)
     print(f'Input data copied to: {newDataDir}')
 
     #### prep the copied data...
     print('Getting camera calibration...')
-    sceneVideoDimensions = getCameraFromJson(inputDir, newDataDir)
+    sceneVideoDimensions = getCameraFromJson(input_dir, newDataDir)
     print('Prepping gaze data...')
     gazeDf, frameTimestamps = formatGazeData(newDataDir, sceneVideoDimensions)
 

@@ -27,27 +27,27 @@ from .. import utils
 # will also be shown if available.
 
 
-def process(inputDir, configDir=None, showReference=False):
+def process(input_dir, config_dir=None, show_reference=False):
     # if showReference, also draw reference board with gaze overlaid on it (if available)
-    inputDir  = pathlib.Path(inputDir)
-    if configDir is not None:
-        configDir = pathlib.Path(configDir)
+    input_dir  = pathlib.Path(input_dir)
+    if config_dir is not None:
+        config_dir = pathlib.Path(config_dir)
 
-    print('processing: {}'.format(inputDir.name))
-    utils.update_recording_status(inputDir, utils.Task.Coded, utils.Status.Running)
+    print('processing: {}'.format(input_dir.name))
+    utils.update_recording_status(input_dir, utils.Task.Coded, utils.Status.Running)
     
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = config.get_validation_setup(configDir)
-    reference = utils.Reference(configDir, validationSetup)
+    validationSetup = config.get_validation_setup(config_dir)
+    reference = utils.Reference(config_dir, validationSetup)
 
     # Read gaze data
-    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(inputDir / 'gazeData.tsv')
+    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(input_dir / 'gazeData.tsv')
 
     # Read pose of marker board, if available
     hasBoardPose = False
-    if (inputDir / 'boardPose.tsv').is_file():
+    if (input_dir / 'boardPose.tsv').is_file():
         try:
-            poses = utils.BoardPose.readDataFromFile(inputDir / 'boardPose.tsv')
+            poses = utils.BoardPose.readDataFromFile(input_dir / 'boardPose.tsv')
             hasBoardPose = True
         except:
             # ignore when file can't be read or is empty
@@ -55,20 +55,20 @@ def process(inputDir, configDir=None, showReference=False):
 
     # Read gaze on board data, if available
     hasWorldGaze = False
-    if (inputDir / 'gazeWorldPos.tsv').is_file():
+    if (input_dir / 'gazeWorldPos.tsv').is_file():
         try:
-            gazesWorld = utils.GazeWorld.readDataFromFile(inputDir / 'gazeWorldPos.tsv')
+            gazesWorld = utils.GazeWorld.readDataFromFile(input_dir / 'gazeWorldPos.tsv')
             hasWorldGaze = True
         except:
             # ignore when file can't be read or is empty
             pass
 
     # get camera calibration info
-    cameraMatrix,distCoeff = utils.readCameraCalibrationFile(inputDir / "calibration.xml")[0:2]
+    cameraMatrix,distCoeff = utils.readCameraCalibrationFile(input_dir / "calibration.xml")[0:2]
     hasCamCal = (cameraMatrix is not None) and (distCoeff is not None)
 
     # get interval coded to be analyzed, if available
-    analyzeFrames = utils.readMarkerIntervalsFile(inputDir / "markerInterval.tsv")
+    analyzeFrames = utils.readMarkerIntervalsFile(input_dir / "markerInterval.tsv")
     if analyzeFrames is None:
         analyzeFrames = []
 
@@ -76,16 +76,16 @@ def process(inputDir, configDir=None, showReference=False):
     # 1. OpenCV window for scene video
     cv2.namedWindow("code validation intervals",cv2.WINDOW_NORMAL)
     # 2. if wanted and available, second OpenCV window for reference board with gaze on that plane
-    showReference &= hasWorldGaze  # no reference board if we don't have world gaze, it'd be empty and pointless
-    if showReference:
+    show_reference &= hasWorldGaze  # no reference board if we don't have world gaze, it'd be empty and pointless
+    if show_reference:
         cv2.namedWindow("reference")
     # 3. timestamp info for relating audio to video frames
-    t2i = utils.Timestamp2Index( inputDir / 'frameTimestamps.tsv' )
-    i2t = utils.Idx2Timestamp( inputDir / 'frameTimestamps.tsv' )
+    t2i = utils.Timestamp2Index( input_dir / 'frameTimestamps.tsv' )
+    i2t = utils.Idx2Timestamp( input_dir / 'frameTimestamps.tsv' )
     # 4. mediaplayer for the actual video playback, with sound if available
-    inVideo = inputDir / 'worldCamera.mp4'
+    inVideo = input_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
-        inVideo = inputDir / 'worldCamera.avi'
+        inVideo = input_dir / 'worldCamera.avi'
     ff_opts = {'volume': 1., 'sync': 'audio', 'framedrop': True}
     player = MediaPlayer(str(inVideo), ff_opts=ff_opts)
 
@@ -109,7 +109,7 @@ def process(inputDir, configDir=None, showReference=False):
         if frame is not None:
             # the audio is my shepherd and nothing shall I lack :-)
             frame_idx = t2i.find(pts*1000)  # pts is in seconds, our frame timestamps are in ms
-            if showReference:
+            if show_reference:
                 refImg = reference.getImgCopy()
 
             # if we have board pose, draw board origin on video
@@ -125,7 +125,7 @@ def process(inputDir, configDir=None, showReference=False):
             if hasWorldGaze and frame_idx in gazesWorld:
                 if hasCamCal:
                     gazesWorld[frame_idx][0].drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
-                if showReference:
+                if show_reference:
                     gazesWorld[frame_idx][0].drawOnReferencePlane(refImg, reference, subPixelFac)
 
             analysisIntervalIdx = None
@@ -176,7 +176,7 @@ def process(inputDir, configDir=None, showReference=False):
                         cv2.resizeWindow('code validation intervals', width, height)
                     hasResized = True
                         
-            if showReference:
+            if show_reference:
                 cv2.imshow("reference", refImg)
 
         if not hasRequestedFocus:
@@ -264,12 +264,12 @@ def process(inputDir, configDir=None, showReference=False):
     cv2.waitKey(1)
 
     # store coded interval to file, if available
-    with open(inputDir / 'markerInterval.tsv', 'w', newline='') as file:
+    with open(input_dir / 'markerInterval.tsv', 'w', newline='') as file:
         csv_writer = csv.writer(file, delimiter='\t')
         csv_writer.writerow(['start_frame', 'end_frame'])
         for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't write out incomplete intervals
             csv_writer.writerow(analyzeFrames[f:f+2])
 
-    utils.update_recording_status(inputDir, utils.Task.Coded, utils.Status.Finished)
+    utils.update_recording_status(input_dir, utils.Task.Coded, utils.Status.Finished)
 
     return stopAllProcessing

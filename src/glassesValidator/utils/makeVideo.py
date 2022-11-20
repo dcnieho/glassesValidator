@@ -18,27 +18,27 @@ import ffpyplayer.tools
 from fractions import Fraction
 
 
-def process(inputDir, configDir=None, showRejectedMarkers=False, addAudioToBoardVideo=False, showVisualization=False):
+def process(input_dir, config_dir=None, show_rejected_markers=False, add_audio_to_poster_video=False, show_visualization=False):
     # if showRejectedMarkers, rejected marker candidates are also drawn on frame. Possibly useful for debug
     # if addAudioToBoardVideo, audio will be added to reference board video, not only to the scene video
     # if showVisualization, draw each frame and overlay info about detected markers and board
-    inputDir  = pathlib.Path(inputDir)
-    if configDir is not None:
-        configDir = pathlib.Path(configDir)
+    input_dir  = pathlib.Path(input_dir)
+    if config_dir is not None:
+        config_dir = pathlib.Path(config_dir)
 
-    print('processing: {}'.format(inputDir.name))
+    print('processing: {}'.format(input_dir.name))
 
     # open file with information about Aruco marker and Gaze target locations
-    validationSetup = config.get_validation_setup(configDir)
+    validationSetup = config.get_validation_setup(config_dir)
 
-    if showVisualization:
-        cv2.namedWindow("frame")
-        cv2.namedWindow("reference")
+    if show_visualization:
+        cv2.namedWindow("scene camera")
+        cv2.namedWindow("poster")
     
     # open input video file, query it for size
-    inVideo = inputDir / 'worldCamera.mp4'
+    inVideo = input_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
-        inVideo = inputDir / 'worldCamera.avi'
+        inVideo = input_dir / 'worldCamera.avi'
     vidIn  = cv2.VideoCapture( str(inVideo) )
     if not vidIn.isOpened():
         raise RuntimeError('the file "{}" could not be opened'.format(str(inVideo)))
@@ -47,7 +47,7 @@ def process(inputDir, configDir=None, showRejectedMarkers=False, addAudioToBoard
     fps    = vidIn.get(cv2.CAP_PROP_FPS)
 
     # get info about markers on our board
-    reference       = utils.Reference(configDir, validationSetup)
+    reference       = utils.Reference(config_dir, validationSetup)
     centerTarget    = reference.targets[validationSetup['centerTarget']].center
     # turn into aruco board object to be used for pose estimation
     referenceBoard  = reference.getArucoBoard()
@@ -59,10 +59,10 @@ def process(inputDir, configDir=None, showRejectedMarkers=False, addAudioToBoard
     fpsFrac  = Fraction(fps).limit_denominator(10000).as_integer_ratio()
     # scene video
     out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(      width    ), 'height_in':int(      height    ),'frame_rate':fpsFrac}
-    vidOutScene = MediaWriter(str(inputDir / 'detectOutput_scene.mp4'), [out_opts], overwrite=True)
+    vidOutScene = MediaWriter(str(input_dir / 'detectOutput_scene.mp4'), [out_opts], overwrite=True)
     # reference board video
     out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(reference.width), 'height_in':int(reference.height),'frame_rate':fpsFrac}
-    vidOutBoard = MediaWriter(str(inputDir / 'detectOutput_board.mp4'), [out_opts], overwrite=True)
+    vidOutBoard = MediaWriter(str(input_dir / 'detectOutput_poster.mp4'), [out_opts], overwrite=True)
 
     # setup aruco marker detection
     parameters = cv2.aruco.DetectorParameters_create()
@@ -70,18 +70,18 @@ def process(inputDir, configDir=None, showRejectedMarkers=False, addAudioToBoard
     parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
 
     # get frame timestamps lookup file
-    i2t = utils.Idx2Timestamp(inputDir / 'frameTimestamps.tsv')
+    i2t = utils.Idx2Timestamp(input_dir / 'frameTimestamps.tsv')
 
     # get camera calibration info
-    cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(inputDir / "calibration.xml")
+    cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(input_dir / "calibration.xml")
     hasCameraMatrix = cameraMatrix is not None
     hasDistCoeff    = distCoeff is not None
 
     # Read gaze data
-    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(inputDir / 'gazeData.tsv')
+    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(input_dir / 'gazeData.tsv')
 
     # get interval coded to be analyzed, if available
-    analyzeFrames = utils.readMarkerIntervalsFile(inputDir / "markerInterval.tsv")
+    analyzeFrames = utils.readMarkerIntervalsFile(input_dir / "markerInterval.tsv")
     if analyzeFrames is None:
         analyzeFrames = []
     
@@ -146,7 +146,7 @@ def process(inputDir, configDir=None, showRejectedMarkers=False, addAudioToBoard
             utils.drawArucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac, specialHighlight=[recoveredIds,(255,255,0)])
 
         # for debug, can draw rejected markers on frame
-        if showRejectedMarkers:
+        if show_rejected_markers:
             cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
         
         # process gaze
@@ -186,9 +186,9 @@ def process(inputDir, configDir=None, showRejectedMarkers=False, addAudioToBoard
         vidOutBoard.write_frame(img=img, pts=frame_idx/fps)
 
 
-        if showVisualization:
-            cv2.imshow('frame',frame)
-            cv2.imshow('reference',refImg)
+        if show_visualization:
+            cv2.imshow('scene camera',frame)
+            cv2.imshow('poster',refImg)
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
                 # quit fully
@@ -209,9 +209,9 @@ def process(inputDir, configDir=None, showRejectedMarkers=False, addAudioToBoard
 
     # if ffmpeg is on path, add audio to scene and optionally board video
     if shutil.which('ffmpeg') is not None:
-        todo = [inputDir / 'detectOutput_scene.mp4']
-        if addAudioToBoardVideo:
-            todo.append(inputDir / 'detectOutput_board.mp4')
+        todo = [input_dir / 'detectOutput_scene.mp4']
+        if add_audio_to_poster_video:
+            todo.append(input_dir / 'detectOutput_poster.mp4')
 
         for f in todo:
             # move file to temp name

@@ -9,24 +9,22 @@ import warnings
 from .. import utils
 
 
-def process(inputDir, configDir=None, dq_types=[], allow_dq_fallback=False, include_data_loss=False):
+def process(input_dir, dq_types=[], allow_dq_fallback=False, include_data_loss=False):
     from . import DataQualityType
-    inputDir  = pathlib.Path(inputDir)
-    if configDir is not None:
-        configDir = pathlib.Path(configDir)
+    input_dir  = pathlib.Path(input_dir)
 
-    print('processing: {}'.format(inputDir.name))
-    utils.update_recording_status(inputDir, utils.Task.Data_Quality_Calculated, utils.Status.Running)
+    print('processing: {}'.format(input_dir.name))
+    utils.update_recording_status(input_dir, utils.Task.Data_Quality_Calculated, utils.Status.Running)
 
     # get time intervals to use for each target
-    fileName = inputDir / "analysisInterval.tsv"
+    fileName = input_dir / "analysisInterval.tsv"
     if not fileName.is_file():
         print('  no analysis intervals defined for this recording, skipping')
         return
     analysisIntervals = pd.read_csv(str(fileName), delimiter='\t', dtype={'marker_interval':int},index_col=['marker_interval','target'])
     
     # get offsets
-    fileName = inputDir / "gazeTargetOffset.tsv"
+    fileName = input_dir / "gazeTargetOffset.tsv"
     if not fileName.is_file():
         print('  no gaze offsets precomputed defined for this recording, skipping')
         return
@@ -136,6 +134,6 @@ def process(inputDir, configDir=None, dq_types=[], allow_dq_fallback=False, incl
                             df.loc[(i,e,t),'dataLoss'] = np.sum(np.isnan(data['offset_x']))/len(data)
     
 
-    df.to_csv(str(inputDir / 'dataQuality.tsv'), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.3f")
+    df.to_csv(str(input_dir / 'dataQuality.tsv'), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.3f")
     
-    utils.update_recording_status(inputDir, utils.Task.Data_Quality_Calculated, utils.Status.Finished)
+    utils.update_recording_status(input_dir, utils.Task.Data_Quality_Calculated, utils.Status.Finished)
