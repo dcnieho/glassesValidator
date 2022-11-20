@@ -2112,7 +2112,7 @@ class MainGUI():
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
             imgui.text("Report data loss on\nvalidation poster:")
-            draw_hover_text("If selected, the data quality report will include data quality during "
+            draw_hover_text("If selected, the data quality report will include data loss during "
                             "the episode selected for each target on the validation poster. This is "
                             "NOT the data loss of the whole recording and thus not what you want "
                             "to report in your paper.", text="")
