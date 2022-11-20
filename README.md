@@ -28,7 +28,15 @@ settings are automatically used), and can be deployed with the `Deploy config` b
 
 
 ## Eye trackers
-glassesValidator supports the following eye trackers.
+glassesValidator supports the following eye trackers:
+- Pupil Core
+- Pupil Invisible
+- SeeTrue
+- SMI ETG 1 and ETG 2
+- Tobii Pro Glasses 2
+- Tobii Pro Glasses 3
+
+Pull requests or partial help implementing support for further wearable eye trackers are gladly received. To support a new eye tracker, device support in [`glassesValidator.preprocess`](#glassesValidator.preprocess) should be implemented and the new eye tracker added to the `glassesValidator.utils.EyeTracker` `Enum`.
 
 ### Required preprocessing outside glassesValidator
 xx
