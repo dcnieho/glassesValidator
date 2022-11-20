@@ -15,24 +15,27 @@ from ...process import DataQualityType
 
 
 
-
-def open_folder(path: pathlib.Path):
-    if not path.is_dir():
-        utils.push_popup(msgbox.msgbox, "Folder not found", f"The folder you're trying to open\n{path}\ncould not be found.", MsgBox.warn)
-        return
+def open_url(path: str):
+    # this works for files, folders and URLs
     if globals.os is Os.Windows:
-        os.startfile(str(path))
+        os.startfile(path)
     else:
         if globals.os is Os.Linux:
             open_util = "xdg-open"
         elif globals.os is Os.MacOS:
             open_util = "open"
         async_thread.run(asyncio.create_subprocess_exec(
-            open_util, str(path),
+            open_util, path,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         ))
+
+def open_folder(path: pathlib.Path):
+    if not path.is_dir():
+        utils.push_popup(msgbox.msgbox, "Folder not found", f"The folder you're trying to open\n{path}\ncould not be found.", MsgBox.warn)
+        return
+    open_url(str(path))
 
 
 async def _deploy_config(conf_dir: pathlib.Path):

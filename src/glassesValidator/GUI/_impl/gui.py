@@ -1609,16 +1609,13 @@ class MainGUI():
             width = imgui.get_content_region_available_width()
             btn_width = (width - 2 * imgui.style.item_spacing.x) / 3
             if imgui.button("󰌠 PyPI", width=btn_width):
-                glfw.set_clipboard_string(self.window, globals.pypi_page)
-            draw_hover_text(text='', hover_text="Click to copy link to clipboard")
+                callbacks.open_url(globals.pypi_page)
             imgui.same_line()
             if imgui.button("󰊤 GitHub repo", width=btn_width):
-                glfw.set_clipboard_string(self.window, globals.github_page)
-            draw_hover_text(text='', hover_text="Click to copy link to clipboard")
+                callbacks.open_url(globals.github_page)
             imgui.same_line()
             if imgui.button("󰖟 Researcher homepage", width=btn_width):
-                glfw.set_clipboard_string(self.window, globals.developer_page)
-            draw_hover_text(text='', hover_text="Click to copy link to clipboard")
+                callbacks.open_url(globals.developer_page)
             
             imgui.spacing()
             imgui.spacing()
