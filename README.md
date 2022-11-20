@@ -214,6 +214,6 @@ public API. Many functions share common input arguments. These are documented [h
 |`Recording`|z|
 
 ### Common input arguments
-|argument|description|
-| --- | --- |
-|`config_dir`|z|
+|argument|module(s)|description|
+| --- | --- | --- |
+|`config_dir`||z|
