@@ -1906,6 +1906,9 @@ class MainGUI():
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󰮞 Close project", width=btn_width):
                 self.unload_project()
+            imgui.set_cursor_pos_x((width-btn_width)/2)
+            if imgui.button("󰈦 Get poster pdf", width=btn_width):
+                utils.push_popup(self.get_folder_picker(reason='deploy_pdf'))
                 
             # continue table
             self.start_settings_section("Project", right_width, collapsible = False)
