@@ -191,15 +191,7 @@ jobs:
         name: wheel
         path: ./dist/
 
-    - name: Display structure of downloaded files
-      run: ls -R
-
-    - name: Display structure of downloaded files 2
-      run: ls -R
-      working-directory: ./dist
-
-
-    - name: Publish wheel 📦 to PyPI
+    - name: Publish wheel
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         password: ${{ secrets.PYPI_API_TOKEN }}
