@@ -1,12 +1,12 @@
-import OpenGL.GL as gl
 import pathlib
 import functools
 import traceback
 import typing
 import random
-from imgui_bundle import imgui as imgui, imgui_internal as imgui_internal
-import math
+from imgui_bundle import imgui
 import glfw
+import OpenGL.GL as gl
+import math
 import sys
 import os
 
@@ -72,8 +72,11 @@ def get_traceback(*exc_info: list):
 
 
 
-# https://github.com/pyimgui/pyimgui/blob/24219a8d4338b6e197fa22af97f5f06d3b1fe9f7/doc/examples/integrations_glfw3.py
+def glfw_error_callback(error: int, description: str):
+    sys.stderr.write(f"Glfw Error {error}: {description}\n")
+    
 def impl_glfw_init(width: int, height: int, window_name: str):
+    glfw.set_error_callback(glfw_error_callback)
     if not glfw.init():
         print("Could not initialize OpenGL context")
         sys.exit(1)
@@ -87,12 +90,12 @@ def impl_glfw_init(width: int, height: int, window_name: str):
 
     # Create a windowed mode window and its OpenGL context
     window = glfw.create_window(width, height, window_name, None, None)
-    glfw.make_context_current(window)
-
     if not window:
         glfw.terminate()
         print("Could not initialize Window")
         sys.exit(1)
+
+    glfw.make_context_current(window)
 
     return window
 
@@ -142,13 +145,13 @@ def get_current_monitor(wx, wy, ww, wh):
 
 def push_disabled(block_interaction=True):
     if block_interaction:
-        imgui_internal.push_item_flag(imgui_internal.ImGuiItemFlags_.disabled, True)
+        imgui.internal.push_item_flag(imgui.internal.ImGuiItemFlags_.disabled, True)
     imgui.push_style_var(imgui.ImGuiStyleVar_.alpha, imgui.get_style().alpha *  0.5)
 
 
 def pop_disabled(block_interaction=True):
     if block_interaction:
-        imgui_internal.pop_item_flag()
+        imgui.internal.pop_item_flag()
     imgui.pop_style_var()
 
 

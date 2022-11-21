@@ -1,4 +1,3 @@
-from imgui.integrations.glfw import GlfwRenderer
 import concurrent.futures
 from PIL import Image
 import configparser
@@ -7,10 +6,9 @@ import asyncio
 import pebble
 import pathlib
 import OpenGL
-import OpenGL.GL as gl
+from imgui_bundle import imgui, imgui_backends
 import glfw
-from imgui_bundle import imgui as imgui, imgui_internal as imgui_internal
-import numpy as np
+import OpenGL.GL as gl
 import time
 import sys
 import datetime
@@ -155,7 +153,7 @@ class RecordingTable():
                         multi_selected_state = 0
 
                     if multi_selected_state==0:
-                        imgui.internal.push_item_flag(imgui_internal.ImGuiItemFlags_.mixed_value, True)
+                        imgui.internal.push_item_flag(imgui.internal.ImGuiItemFlags_.mixed_value, True)
                     clicked, new_state = imgui.checkbox(f"##header_checkbox{extra}", multi_selected_state==1, frame_size=(0,0), do_vertical_align=False)
                     if multi_selected_state==0:
                         imgui.internal.pop_item_flag()
@@ -207,7 +205,7 @@ class RecordingTable():
                         imgui.push_style_color(imgui.ImGuiCol_.header_active , 0., 0., 0., 0.)
                         imgui.push_style_color(imgui.ImGuiCol_.header        , 0., 0., 0., 0.)
                         imgui.push_style_color(imgui.ImGuiCol_.header_hovered, 0., 0., 0., 0.)
-                        selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox{extra}", self.selected_recordings[id], flags=imgui.ImGuiSelectableFlags_.span_all_columns|imgui_internal.ImGuiSelectableFlagsPrivate_.im_gui_selectable_flags_select_on_click, height=frame_height+cell_padding_y)
+                        selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox{extra}", self.selected_recordings[id], flags=imgui.ImGuiSelectableFlags_.span_all_columns|imgui.internal.ImGuiSelectableFlagsPrivate_.im_gui_selectable_flags_select_on_click, height=frame_height+cell_padding_y)
                         # instead override table row background color
                         if selectable_out:
                             imgui.table_set_background_color(imgui.ImGuiTableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(*style_selected_row))
@@ -226,7 +224,7 @@ class RecordingTable():
                         imgui.push_style_var(imgui.ImGuiStyleVar_.frame_padding, (0.,imgui.style.frame_padding.y))
                         imgui.push_style_var(imgui.ImGuiStyleVar_.item_spacing, (0.,imgui.style.item_spacing.y))
                         imgui.push_style_color(imgui.ImGuiCol_.button, 0.,0.,0.,0.)
-                        imgui.button(f"##{recording.id}_id", width=np.finfo('single').tiny)
+                        imgui.button(f"##{recording.id}_id", width=imgui.FLT_MIN)
                         imgui.pop_style_color()
                         imgui.pop_style_var(3)
                         
@@ -847,7 +845,12 @@ class MainGUI():
             glfw.set_window_icon(self.window, 1, Image.open(icon_file))
 
     def setup_imgui_impl(self):
-        self.impl = GlfwRenderer(self.window)
+        # transfer the window address to imgui_backends.glfw_init_for_open_gl
+        import ctypes
+        window_address = ctypes.cast(self.window, ctypes.c_void_p).value
+        imgui_backends.glfw_init_for_open_gl(window_address, True)
+        imgui_backends.open_gl3_init("#version 150")
+
         glfw.set_char_callback(self.window, self.char_callback)
         glfw.set_window_focus_callback(self.window, self.focus_callback)
         glfw.set_window_pos_callback(self.window, self.pos_callback)
@@ -974,7 +977,7 @@ class MainGUI():
     def refresh_fonts(self):
         imgui.io.fonts.clear()
         max_tex_size = gl.glGetIntegerv(gl.GL_MAX_TEXTURE_SIZE)
-        imgui.io.fonts.texture_desired_width = max_tex_size
+        imgui.io.fonts.tex_desired_width = max_tex_size
         win_w, win_h = glfw.get_window_size(self.window)
         fb_w, fb_h = glfw.get_framebuffer_size(self.window)
         font_scaling_factor = max(fb_w / win_w, fb_h / win_h)
@@ -982,13 +985,15 @@ class MainGUI():
         karla_font = importlib.resources.files('glassesValidator.resources.fonts') / 'Karla-Regular.ttf'
         noto_font = importlib.resources.files('glassesValidator.resources.fonts') / 'NotoSans-Regular.ttf'
         mdi_font = [f for f in importlib.resources.files('glassesValidator.resources.fonts').iterdir() if fnmatch.fnmatch(str(f),"*materialdesignicons-webfont*.ttf")][0]
-        karla_config = imgui.ImFontConfig(oversample_h=3, oversample_v=3)
-        noto_config = imgui.ImFontConfig(merge_mode=True, oversample_h=3, oversample_v=3)
-        mdi_config = imgui.ImFontConfig(merge_mode=True, glyph_offset_y=1*self.size_mult)
-        karla_range = imgui.ImWchar([0x1, 0x131, 0])
-        noto_range = imgui.ImWchar([0x1, 0x10663, 0])
-        mdi_range = imgui.ImWchar([0xf0000, 0xf2000, 0])
-        msgbox_range = imgui.ImWchar([0xf02d7, 0xf02d7, 0xf02fc, 0xf02fc, 0xf11ce, 0xf11ce, 0xf0029, 0xf0029, 0])
+        noto_config = imgui.ImFontConfig()
+        noto_config.merge_mode=True
+        mdi_config = imgui.ImFontConfig()
+        mdi_config.merge_mode=True
+        mdi_config.glyph_offset.y=1*self.size_mult
+        karla_range = [0x1, 0x131, 0]
+        noto_range = [0x1, 0x10663, 0]
+        mdi_range = [0xf0000, 0xf2000, 0]
+        msgbox_range = [0xf02d7, 0xf02d7, 0xf02fc, 0xf02fc, 0xf11ce, 0xf11ce, 0xf0029, 0xf0029, 0]
         size_18 = 18 * font_scaling_factor * self.size_mult
         size_28 = 28 * font_scaling_factor * self.size_mult
         size_69 = 69 * font_scaling_factor * self.size_mult
@@ -998,29 +1003,19 @@ class MainGUI():
             importlib.resources.as_file(noto_font) as noto_path,
             importlib.resources.as_file(mdi_font) as mdi_path
         ):
-            imgui.io.fonts.add_font_from_file_ttf(str(karla_path), size_18, font_config=karla_config, glyph_ranges=karla_range)
-            imgui.io.fonts.add_font_from_file_ttf(str(noto_path),  size_18, font_config=noto_config,  glyph_ranges=noto_range)
-            imgui.io.fonts.add_font_from_file_ttf(str(mdi_path),   size_18, font_config=mdi_config,   glyph_ranges=mdi_range)
+            imgui.io.fonts.add_font_from_file_ttf(str(karla_path), size_18,                       glyph_ranges=karla_range)
+            imgui.io.fonts.add_font_from_file_ttf(str(noto_path),  size_18, font_cfg=noto_config, glyph_ranges=noto_range)
+            imgui.io.fonts.add_font_from_file_ttf(str(mdi_path),   size_18, font_cfg=mdi_config,  glyph_ranges=mdi_range)
             # Big font + more glyphs
-            self.big_font = imgui.io.fonts.add_font_from_file_ttf(str(karla_path), size_28, font_config=karla_config, glyph_ranges=karla_range)
-            imgui.io.fonts.add_font_from_file_ttf(                str(noto_path),  size_28, font_config=noto_config,  glyph_ranges=noto_range)
-            imgui.io.fonts.add_font_from_file_ttf(                str(mdi_path),   size_28, font_config=mdi_config,   glyph_ranges=mdi_range)
+            self.big_font = imgui.io.fonts.add_font_from_file_ttf(str(karla_path), size_28,                       glyph_ranges=karla_range)
+            imgui.io.fonts.add_font_from_file_ttf(                str(noto_path),  size_28, font_cfg=noto_config, glyph_ranges=noto_range)
+            imgui.io.fonts.add_font_from_file_ttf(                str(mdi_path),   size_28, font_cfg=mdi_config,  glyph_ranges=mdi_range)
             # MsgBox type icons
             self.icon_font = msgbox.icon_font = imgui.io.fonts.add_font_from_file_ttf(str(mdi_path), size_69, glyph_ranges=msgbox_range)
-        try:
-            tex_width, tex_height, pixels = imgui.io.fonts.get_tex_data_as_rgba32()
-        except SystemError:
-            tex_height = 1
-            max_tex_size = 0
-        if tex_height > max_tex_size:
-            self.size_mult = 1.0
-            return self.refresh_fonts()
-        self.impl.refresh_font_texture()
         if self.recording_list is not None:
             self.recording_list.font_changed()
 
     def char_callback(self, window: glfw._GLFWwindow, char: int):
-        self.impl.char_callback(window, char)
         self.input_chars.append(char)
 
     def focus_callback(self, window: glfw._GLFWwindow, focused: int):
@@ -1134,7 +1129,6 @@ class MainGUI():
             self.input_chars.clear()
 
             glfw.poll_events()
-            self.impl.process_inputs()
             # if there's a queued window resize, execute
             if self.new_screen_size[0]!=0 and self.new_screen_size!=self.screen_size:
                 glfw.set_window_size(self.window, *self.new_screen_size)
@@ -1184,7 +1178,9 @@ class MainGUI():
                             any_deleted = True
                     if any_deleted:
                         self.recording_list.require_sort = True
-
+                        
+                imgui_backends.open_gl3_new_frame()
+                imgui_backends.glfw_new_frame()
                 imgui.new_frame()
 
                 imgui.set_next_window_position(0, 0, imgui.ImGuiCond_.once)
@@ -1248,7 +1244,14 @@ class MainGUI():
                 imgui.end()
 
                 imgui.render()
-                self.impl.render(imgui.get_draw_data())
+                display_w, display_h = glfw.get_framebuffer_size(self.window)
+                gl.glViewport(0, 0, display_w, display_h)
+                gl.glClearColor(
+                    globals.settings.style_bg[0] * globals.settings.style_bg[3],
+                    globals.settings.style_bg[1] * globals.settings.style_bg[3],
+                    globals.settings.style_bg[2] * globals.settings.style_bg[3],
+                    globals.settings.style_bg[3])
+                imgui_backends.open_gl3_render_draw_data(imgui.get_draw_data())
                 if self.size_mult != self.last_size_mult:
                     self.refresh_fonts()
                     self.refresh_styles()
@@ -1266,7 +1269,8 @@ class MainGUI():
 
         # clean up
         self.save_imgui_ini()
-        self.impl.shutdown()
+        imgui_backends.open_gl3_shutdown()
+        imgui_backends.glfw_shutdown()
         if (ctx := imgui.get_current_context()) is not None:
             imgui.io.ini_filename = None   # don't store settings to ini, we already did that manually just above and with augmentation
             imgui.destroy_context(ctx)
@@ -1619,7 +1623,7 @@ class MainGUI():
 
     def draw_bottombar(self, filter_box_text: str, require_sort: bool, in_adder_popup: bool = False):
         extra = "_adder" if in_adder_popup else ""
-        imgui.set_next_item_width(-np.finfo('single').tiny)
+        imgui.set_next_item_width(-imgui.FLT_MIN)
         changed = False
         if (not globals.popup_stack or in_adder_popup) and not imgui.is_any_item_active():
             # some character was input while bottom bar didn't have input focus, route to bottom bar

@@ -1,9 +1,7 @@
-# https://gist.github.com/Willy-JL/82137493896d385a74d148534691b6e1
 import pathlib
 import typing
 import string
-from imgui_bundle import imgui as imgui, imgui_internal as imgui_internal
-import numpy as np
+from imgui_bundle import imgui
 import glfw
 import sys
 import os
@@ -25,7 +23,6 @@ class DirEntry:
     mtime: float
     size: int
     mime_type: str
-
 
 class FilePicker:
     flags: int = (
@@ -247,10 +244,10 @@ class FilePicker:
                             multi_selected_state = 0
 
                         if multi_selected_state==0:
-                            imgui_internal.push_item_flag(imgui_internal.ImGuiItemFlags_.mixed_value, True)
+                            imgui.internal.push_item_flag(imgui.internal.ImGuiItemFlags_.mixed_value, True)
                         clicked, new_state = imgui.checkbox(f"##header_checkbox", multi_selected_state==1, frame_size=(0,0), do_vertical_align=False)
                         if multi_selected_state==0:
-                            imgui_internal.pop_item_flag()
+                            imgui.internal.pop_item_flag()
 
                         if clicked:
                             utils.set_all(self.selected, new_state, subset = self.sorted_items, predicate=self.predicate)
@@ -278,7 +275,7 @@ class FilePicker:
 
                         disable_item = self.predicate and not self.predicate(id)
                         if disable_item:
-                            imgui_internal.push_item_flag(imgui_internal.ImGuiItemFlags_.disabled, True)
+                            imgui.internal.push_item_flag(imgui.internal.ImGuiItemFlags_.disabled, True)
                             imgui.push_style_var(imgui.ImGuiStyleVar_.alpha, imgui.get_style().alpha *  0.5)
 
                         for ci in range(5+self.allow_multiple):
@@ -302,7 +299,7 @@ class FilePicker:
                                 imgui.push_style_color(imgui.ImGuiCol_.header_active , 0., 0., 0., 0.)
                                 imgui.push_style_color(imgui.ImGuiCol_.header        , 0., 0., 0., 0.)
                                 imgui.push_style_color(imgui.ImGuiCol_.header_hovered, 0., 0., 0., 0.)
-                                selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox", self.selected[id], flags=imgui.ImGuiSelectableFlags_.span_all_columns|imgui_internal.ImGuiSelectableFlagsPrivate_.im_gui_selectable_flags_select_on_click, height=frame_height+cell_padding_y)
+                                selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox", self.selected[id], flags=imgui.ImGuiSelectableFlags_.span_all_columns|imgui.internal.ImGuiSelectableFlagsPrivate_.im_gui_selectable_flags_select_on_click, height=frame_height+cell_padding_y)
                                 # instead override table row background color
                                 if selectable_out:
                                     imgui.table_set_background_color(imgui.ImGuiTableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(*style_selected_row))
@@ -320,7 +317,7 @@ class FilePicker:
                                 imgui.push_style_var(imgui.ImGuiStyleVar_.frame_padding, (0.,imgui.style.frame_padding.y))
                                 imgui.push_style_var(imgui.ImGuiStyleVar_.item_spacing, (0.,imgui.style.item_spacing.y))
                                 imgui.push_style_color(imgui.ImGuiCol_.button, 0.,0.,0.,0.)
-                                imgui.button(f"##{id}_id", width=np.finfo('single').tiny)
+                                imgui.button(f"##{id}_id", width=imgui.FLT_MIN)
                                 imgui.pop_style_color()
                                 imgui.pop_style_var(3)
                         
@@ -360,7 +357,7 @@ class FilePicker:
                                         imgui.text(new)
                                     
                         if disable_item:
-                            imgui_internal.pop_item_flag()
+                            imgui.internal.pop_item_flag()
                             imgui.pop_style_var()
 
                         # handle selection logic
@@ -405,13 +402,13 @@ class FilePicker:
             num_selected = sum([self.selected[id] for id in self.selected])
             disable_ok = not num_selected and not self.dir_picker
             if disable_ok:
-                imgui_internal.push_item_flag(imgui_internal.ImGuiItemFlags_.disabled, True)
+                imgui.internal.push_item_flag(imgui.internal.ImGuiItemFlags_.disabled, True)
                 imgui.push_style_var(imgui.ImGuiStyleVar_.alpha, imgui.get_style().alpha *  0.5)
             if imgui.button("󰄬 Ok"):
                 imgui.close_current_popup()
                 closed = True
             if disable_ok:
-                imgui_internal.pop_item_flag()
+                imgui.internal.pop_item_flag()
                 imgui.pop_style_var()
             # Selected text
             imgui.same_line()

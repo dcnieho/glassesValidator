@@ -1,5 +1,5 @@
 import typing
-from imgui_bundle import imgui as imgui
+from imgui_bundle import imgui
 
 from .structs import MsgBox
 from . import globals, utils

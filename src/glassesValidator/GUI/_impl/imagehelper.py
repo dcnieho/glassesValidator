@@ -1,8 +1,8 @@
 # edited from https://gist.github.com/Willy-JL/9c5116e5a11abd559c56f23aa1270de9
 from PIL import Image, ImageSequence, UnidentifiedImageError
-import OpenGL.GL as gl
 import pathlib
-from imgui_bundle import imgui as imgui
+from imgui_bundle import imgui
+import OpenGL.GL as gl
 import numpy
 
 

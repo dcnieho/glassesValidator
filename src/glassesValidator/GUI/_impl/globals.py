@@ -1,14 +1,5 @@
 ﻿import pathlib
 import sys
-import os
-
-frozen = getattr(sys, "frozen", False)
-
-if frozen and sys.platform.startswith("linux"):
-    self_path = pathlib.Path(sys.executable).parent
-    library = self_path / f"lib/glfw/{os.environ.get('XDG_SESSION_TYPE')}/libglfw.so"
-    if library.is_file():
-        os.environ["PYGLFW_LIBRARY"] = str(library)
        
 from ... import __version__
 version           = __version__
@@ -31,7 +22,7 @@ from .structs import CounterContext, JobDescription, Os, Settings
 from .gui import MainGUI
 from ...utils import Recording
 
-home = pathlib.Path.home()
+frozen = getattr(sys, "frozen", False)
 if sys.platform.startswith("win"):
     os = Os.Windows
     data_path = "AppData/Roaming/glassesValidator"
@@ -45,6 +36,8 @@ else:
     print("Your system is not officially supported at the moment!\n"
           "You can let me know on the tool thread or on GitHub, or you can try porting yourself ;)")
     sys.exit(1)
+    
+home = pathlib.Path.home()
 data_path = home / data_path
 data_path.mkdir(parents=True, exist_ok=True)
 
