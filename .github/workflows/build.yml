@@ -100,19 +100,20 @@ jobs:
         with:
           files: "./${{ github.event.repository.name }}-${{ runner.os }}.zip"
 
+
   source:
-    name: "package source"
-    runs-on: "ubuntu-latest"
+    name: Package 📦 source
+    runs-on: ubuntu-latest
     steps:
 
       # === PACKAGE ===
 
-      - name: "Clone repo"
-        uses: "actions/checkout@v2"
+      - name: Clone repo
+        uses: actions/checkout@v2
         with:
           path: "./src"
 
-      - name: "Package"
+      - name: Package 📦
         run: |
           cd    ./src/
           mkdir ./dist/
@@ -123,27 +124,28 @@ jobs:
 
       # === ARTIFACT ===
 
-      - name: "Zip artifact"
+      - name: Zip artifact
         run: |
           7z a -r ./${{ github.event.repository.name }}-Source.zip ./src/dist/*
 
-      - name: "Upload release artifact"
-        uses: "softprops/action-gh-release@v1"
+      - name: Upload release artifact
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         with:
           files: "./${{ github.event.repository.name }}-Source.zip"
 
-  package-n-publish:
-    name: Package and publish 📦 to PyPI
+
+  wheel:
+    name: Package 📦 wheel
     runs-on: ubuntu-latest
     steps:
 
-    - name: "Clone repo"
-      uses: "actions/checkout@v2"
+    - name: Clone repo
+      uses: actions/checkout@v2
 
-    - name: "Setup python"
-      uses: "actions/setup-python@v2"
+    - name: Setup python
+      uses: actions/setup-python@v2
       with:
         python-version: "3.10.x"
 
@@ -162,17 +164,26 @@ jobs:
         --wheel
         --outdir dist/
 
-    - name: "Upload wheel as release artifact"
-      uses: "softprops/action-gh-release@v1"
+    - name: Upload wheel as release artifact
+      uses: softprops/action-gh-release@v1
       env:
         GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       with:
         files: "./dist/*.whl"
 
+        
+  publish-wheel:
+    name: Publish wheel 📦 to PyPI
+    runs-on: ubuntu-latest
+    needs:
+      - wheel
+    steps:
+
     - name: Publish distribution 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         password: ${{ secrets.PYPI_API_TOKEN }}
+
 
   release:
     name: "add artifacts to release"
@@ -180,7 +191,7 @@ jobs:
     needs:
       - build
       - source
-      - package-n-publish
+      - wheel
     steps:
 
       - name: "Clone repo"
