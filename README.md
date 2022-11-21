@@ -12,7 +12,7 @@ a standalone executable](https://github.com/dcnieho/glassesValidator/releases/la
 
 For users who wish to use glassesValidator in their Python code, ~~the package can be installed directly from Python using the command
 `python -m pip install glassesValidator`. Should that fail,~~ this repository is pip-installable as well:
-`python -m pip install git+https://github.com/dcnieho/glassesValidator.git#egg=glassesValidator`.
+`python -m pip install git+https://github.com/dcnieho/glassesValidator.git#egg=glassesValidator`. NB: on some platforms you may have to replace `python` with `python3` in the above command lines.
 
 # Usage
 The glassesValidator validation procedure consists of two parts, 1) a poster that is used during a recording, and 2) Python software
