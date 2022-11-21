@@ -171,6 +171,12 @@ jobs:
       with:
         files: "./dist/*.whl"
 
+    - name: Upload as action artifact as well
+      uses: actions/upload-artifact@v3
+      with:
+        name: wheel
+        path: ./dist/
+
         
   publish-wheel:
     name: Publish wheel 📦 to PyPI
@@ -178,8 +184,22 @@ jobs:
     needs:
       - wheel
     steps:
+    
+    - name: Download wheel
+      uses: actions/download-artifact@v3
+      with:
+        name: wheel
+        path: ./dist/
 
-    - name: Publish distribution 📦 to PyPI
+    - name: Display structure of downloaded files
+      run: ls -R
+
+    - name: Display structure of downloaded files 2
+      run: ls -R
+      working-directory: ./dist
+
+
+    - name: Publish wheel 📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         password: ${{ secrets.PYPI_API_TOKEN }}
