@@ -2,7 +2,7 @@
 Tool for automatic determination of data quality (accuracy and precision) of wearable eye tracker recordings.
 
 Please cite:
-Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. and Hooge, I.T.C. (submitted).
+Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. and Hooge, I.T.C. (in preparation).
 GlassesValidator: A data quality tool for eye tracking glasses.
 
 # How to acquire
