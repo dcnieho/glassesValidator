@@ -1252,10 +1252,19 @@ class MainGUI():
                     globals.settings.style_bg[2] * globals.settings.style_bg[3],
                     globals.settings.style_bg[3])
                 imgui_backends.open_gl3_render_draw_data(imgui.get_draw_data())
+
+                # Update and Render additional Platform Windows, if any
+                if io.config_flags & imgui.ImGuiConfigFlags_.viewports_enable > 0:
+                    backup_current_context = glfw.get_current_context()
+                    imgui.update_platform_windows()
+                    imgui.render_platform_windows_default()
+                    glfw.make_context_current(backup_current_context)
+
+                glfw.swap_buffers(self.window)
+
                 if self.size_mult != self.last_size_mult:
                     self.refresh_fonts()
                     self.refresh_styles()
-                glfw.swap_buffers(self.window)  # Also waits idle time
             else:
                 time.sleep(1 / 3)
 
