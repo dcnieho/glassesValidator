@@ -23,6 +23,12 @@ For users who wish to use glassesValidator in their Python code, ~~the package c
 `python -m pip install git+https://github.com/dcnieho/glassesValidator.git#egg=glassesValidator`. NB: on some platforms you may have
 to replace `python` with `python3` in the above command lines.
 
+Once pip-installed in your Python distribution, running the GUI on any of the supported operating systems requires only the following two lines of code:
+```python
+import glassesValidator
+glassesValidator.GUI.run()
+````
+
 # Usage
 The glassesValidator validation procedure consists of two parts, 1) a poster that is used during a recording, and 2) Python software
 for offline processing of the recording to estimate data quality measures.
