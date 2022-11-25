@@ -282,6 +282,17 @@ The matching between fixations and fixation targets produced by this procedure i
 recording's directory in the glassesValidator project. The advanced user can provide their own matching by changing the contents of
 this file.
 
+### Coordinate system of data
+Gaze data in poster space in the `gazePosterPos.tsv` file of a processed recording has its origin (0,0) at the center of the position
+of the fixation target that was indicated to be the center target with the `centerTarget` setting in the [`validationSetup.txt`
+configuration file](/src/glassesValidator/config/validationSetup.txt). The positive x-axis points to the right and the positive y-axis
+downward, which means that (-,-) coordinates are to the left and above of the poster origin, and (+,+) to the right and below.
+
+Angular accuracy values in the `dataQuality.tsv` file of a processed recording use the same sign-coding as the gaze data in poster space.
+That is, for the horizontal component of reported accuracy values, positive means gaze is to the right of the fixation target and
+negative to the left. For the vertical component, positive means gaze is below the fixation target, and negative that it is above the
+fixation target.
+
 ## API
 All of glassesValidator's functionality is exposed through its API. Below are all functions that are part of the
 public API. Many functions share common input arguments. These are documented [here](#common-input-arguments) and linked to in the API
