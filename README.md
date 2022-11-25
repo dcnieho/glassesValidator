@@ -6,7 +6,7 @@ the software is potentially subject to change, and we urge users to carefully ch
 glassesValidator. Please provide us with feedback on *anything* you notice, *no matter how small*.
 
 A preliminary reference to the upcoming paper is:<br>
-Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. and Hooge, I.T.C. (in preparation). GlassesValidator:
+Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. and Hooge, I.T.C. (submitted). GlassesValidator:
 A data quality tool for eye tracking glasses.
  
 However, as long as the paper is not accepted, please cite this work as follows:<br>
@@ -122,7 +122,7 @@ contains the following settings for the poster:
 
 |setting|default<br>value|description|
 | --- | --- | --- |
-|`distance`|60|viewing distance in cm, used to convert coordinates and sizes in degrees to cm. Only used when `mode` is `deg`.|
+|`distance`|60|Viewing distance in cm, used to convert coordinates and sizes in degrees to cm. Only used when `mode` is `deg`.|
 |`mode`|cm|`cm` or `deg`. Sets the unit for the `markerSide` and `targetDiameter` below as well as for interpreting the coordinates in the marker and target position files.|
 |`markerSide`|4.18945|Size of ArUco markers. In cm or deg, see `mode` setting.|
 |`markerPosFile`|[`markerPositions.csv`](/src/glassesValidator/config/markerPositions.csv)|File in the config folder where the markers to draw are specified.|
@@ -139,8 +139,8 @@ contains the following settings for the poster:
 To check your custom configuration, you can generate a poster pdf using [the steps below](#steps-for-making-your-own-poster). Furthermore,
 a png image showing the poster will be generated in the configuration folder when any of glassesValidator's processing steps are run.
 
-The above settings are furthermore used by glassesValidator when performing its processing. For instance, the `distance` parameter is
-used as the assumed viewing distance when computing the `viewpos_vidpos_homography` data quality type (see [the disccusion in the
+The above settings are furthermore used by glassesValidator when processing recordings. For instance, the `distance` parameter is
+used as the assumed viewing distance when computing the `viewpos_vidpos_homography` data quality type (see [the discussion in the
 Advanced settings section below](#advanced-settings)). Three further settings are present in the [`validationSetup.txt` configuration
 file](/src/glassesValidator/config/validationSetup.txt) that are only used by the glassesValidator processing tool, and not for the poster:
 
@@ -266,7 +266,7 @@ fixation target and to the gaze position on the poster. For eye trackers for whi
 homography transformation is used to determine gaze position on the poster and accuracy and precision are computed using an assumed
 viewing distance configured in the glassesValidator project's configuration file, along with the assumptions that the eye is located
 exactly in front of the center of the poster and that the poster is oriented perpendicularly to the line of sight. As discussed in
-the "Assuming a fixed viewing distance" section of the glassesValidator paper (Niehorster et al., in prep), differences in computed
+the "Assuming a fixed viewing distance" section of the glassesValidator paper (Niehorster et al., submitted), differences in computed
 values between these two modes are generally small. Nonetheless, it is up to the researcher to decide whether the level of error
 introduced when operating without a camera calibration is acceptable and whether they should perform their own camera calibration.
 

@@ -15,14 +15,14 @@ version           = __version__
 pypi_page         = "https://pypi.org/project/glassesValidator/"
 github_page       = "https://github.com/dcnieho/glassesValidator"
 developer_page    = "https://scholar.google.se/citations?user=uRUYoVgAAAAJ&hl=en"
-reference         = "Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. & Hooge, I.T.C. (in prep). GlassesValidator: Data quality tool for eye tracking glasses."
+reference         = "Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. & Hooge, I.T.C. (submitted). GlassesValidator: Data quality tool for eye tracking glasses."
 reference_bibtex  = """@article{niehorster2023glassesValidator,
     Author = {Niehorster, Diederick C. and Hessels, Roy S. and Benjamins, Jeroen S. and Nystr{\"o}m, Marcus and Hooge, Ignace T. C.},
     Journal = {},
     Number = {},
     Pages = {},
     Title = {GlassesValidator: A data quality tool for eye tracking glasses},
-    Year = {in preparation}
+    Year = {submitted}
 }
 """
 
