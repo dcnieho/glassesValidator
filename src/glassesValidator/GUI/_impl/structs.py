@@ -114,7 +114,7 @@ class Settings:
     config_dir                  : str
     confirm_on_remove           : bool
     continue_process_after_code : bool
-    dq_use_viewdist_vidpos_homography : bool
+    dq_use_viewpos_vidpos_homography : bool
     dq_use_pose_vidpos_homography : bool
     dq_use_pose_vidpos_ray      : bool
     dq_use_pose_left_eye        : bool

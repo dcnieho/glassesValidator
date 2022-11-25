@@ -27,7 +27,7 @@ def do_process(working_dir: str | pathlib.Path, config_dir=None):
 
 # NB: using pose information requires a calibrated scene camera
 class DataQualityType(Enum):
-    viewdist_vidpos_homography  = auto()    # use homography to map gaze from video to poster, and viewing distance defined in config to compute angular measures
+    viewpos_vidpos_homography   = auto()    # use homography to map gaze from video to poster, and viewing distance defined in config (combined with the assumptions that the viewing position (eye) is located directly in front of the poster's center and that the poster is oriented perpendicularly to the line of sight) to compute angular measures
     pose_vidpos_homography      = auto()    # use homography to map gaze from video to poster, and pose information w.r.t. poster to compute angular measures
     pose_vidpos_ray             = auto()    # use camera calibration to map gaze postion in scene video to cyclopean gaze vector, and pose information w.r.t. poster to compute angular measures
     pose_left_eye               = auto()    # use provided left eye gaze vector, and pose information w.r.t. poster to compute angular measures
@@ -42,12 +42,15 @@ def get_DataQualityType_explanation(dq: DataQualityType):
     ler_name =  "Left eye ray + pose"
     rer_name = "Right eye ray + pose"
     match dq:
-        case DataQualityType.viewdist_vidpos_homography:
+        case DataQualityType.viewpos_vidpos_homography:
             return "Homography + view distance", \
                    "Use homography to map gaze position from the scene video to " \
                    "the validation poster, and use an assumed viewing distance (see " \
                    "the project's configuration) to compute data quality measures " \
-                   "in degrees with respect to the scene camera."
+                   "in degrees with respect to the scene camera. In this mode, it is "\
+                   "assumed that the eye is located exactly in front of the center of "\
+                   "the poster and that the poster is oriented perpendicularly to the "\
+                   "line of sight from this assumed viewing position."
         case DataQualityType.pose_vidpos_homography:
             return "Homography + pose", \
                    "Use homography to map gaze position from the scene video to " \

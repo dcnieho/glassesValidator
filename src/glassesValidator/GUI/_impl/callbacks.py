@@ -235,8 +235,8 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
                     fun = process.calculate_data_quality
                     kwargs['allow_dq_fallback'] = True
                     kwargs['dq_types'] = []
-                    if globals.settings.dq_use_viewdist_vidpos_homography:
-                        kwargs['dq_types'].append(DataQualityType.viewdist_vidpos_homography)
+                    if globals.settings.dq_use_viewpos_vidpos_homography:
+                        kwargs['dq_types'].append(DataQualityType.viewpos_vidpos_homography)
                     if globals.settings.dq_use_pose_vidpos_homography:
                         kwargs['dq_types'].append(DataQualityType.pose_vidpos_homography)
                     if globals.settings.dq_use_pose_vidpos_ray:
@@ -300,8 +300,8 @@ async def export_data_quality(ids: list[int]):
     typeIdx = df.index.names.index('type')
     pop_data['dq_types'] = sorted(list(df.index.levels[typeIdx]), key=lambda dq: dq.value)
     pop_data['dq_types_sel'] = [False for i in pop_data['dq_types']]
-    if globals.settings.dq_use_viewdist_vidpos_homography and DataQualityType.viewdist_vidpos_homography in pop_data['dq_types']:
-        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.viewdist_vidpos_homography)] = True
+    if globals.settings.dq_use_viewpos_vidpos_homography and DataQualityType.viewpos_vidpos_homography in pop_data['dq_types']:
+        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.viewpos_vidpos_homography)] = True
     if globals.settings.dq_use_pose_vidpos_homography and DataQualityType.pose_vidpos_homography in pop_data['dq_types']:
         pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_vidpos_homography)] = True
     if globals.settings.dq_use_pose_vidpos_ray and DataQualityType.pose_vidpos_ray in pop_data['dq_types']:

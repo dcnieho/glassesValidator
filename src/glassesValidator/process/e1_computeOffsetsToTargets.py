@@ -40,7 +40,7 @@ def process(working_dir, config_dir=None):
     targets = {ID: poster.targets[ID].center for ID in poster.targets}   # get centers of targets
 
     # get types of data quality to compute
-    dq_types = [DataQualityType.viewdist_vidpos_homography,DataQualityType.pose_vidpos_homography,DataQualityType.pose_vidpos_ray,DataQualityType.pose_left_eye,DataQualityType.pose_right_eye]
+    dq_types = [DataQualityType.viewpos_vidpos_homography,DataQualityType.pose_vidpos_homography,DataQualityType.pose_vidpos_ray,DataQualityType.pose_left_eye,DataQualityType.pose_right_eye]
     
     # for each frame during analysis interval, determine offset
     # (angle) of gaze (each eye) to each of the targets
@@ -74,10 +74,10 @@ def process(working_dir, config_dir=None):
             # all based on pose info
             for e in range(len(dq_types)):
                 match dq_types[e]:
-                    case DataQualityType.viewdist_vidpos_homography | DataQualityType.pose_vidpos_homography:
+                    case DataQualityType.viewpos_vidpos_homography | DataQualityType.pose_vidpos_homography:
                         # from camera perspective, using homography
-                        # pose_vidpos_homography    : using pose info
-                        # viewdist_vidpos_homography: using assumed viewing distance
+                        # pose_vidpos_homography   : using pose info
+                        # viewpos_vidpos_homography: using assumed viewing distance
                         ori         = np.zeros(3)
                         gaze        = gaze3DHomography[s,:]
                         gazePoster  = gaze2DHomography[s,:]
@@ -97,7 +97,7 @@ def process(working_dir, config_dir=None):
                     
 
                 for ti,t in enumerate(targets):
-                    if dq_types[e]==DataQualityType.viewdist_vidpos_homography:
+                    if dq_types[e]==DataQualityType.viewpos_vidpos_homography:
                         # get vectors based on assumed viewing distance (from config), without using pose info
                         distMm  = validationSetup['distance']*10.
                         vGaze   = np.array([gazePoster[0], gazePoster[1], distMm])
