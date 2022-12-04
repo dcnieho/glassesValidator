@@ -6,6 +6,7 @@ import asyncio
 import pebble
 import pathlib
 import OpenGL
+import imgui_bundle
 from imgui_bundle import imgui, imgui_backends
 import glfw
 import OpenGL.GL as gl
@@ -224,7 +225,7 @@ class RecordingTable():
                         imgui.push_style_var(imgui.StyleVar_.frame_padding, (0.,imgui.style.frame_padding.y))
                         imgui.push_style_var(imgui.StyleVar_.item_spacing, (0.,imgui.style.item_spacing.y))
                         imgui.push_style_color(imgui.Col_.button, 0.,0.,0.,0.)
-                        imgui.button(f"##{recording.id}_id", width=imgui.FLT_MIN)
+                        imgui.button(f"##{recording.id}_id", size=imgui.ImVec2(imgui.FLT_MIN, 0))
                         imgui.pop_style_color()
                         imgui.pop_style_var(3)
                         
@@ -362,7 +363,7 @@ class RecordingTable():
         if align:
             imgui.begin_group()
             imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + backup_y_padding)
-        imgui.button(f"{recording.eye_tracker.value}##{recording.id}_type", *args, width=self._eye_tracker_label_width, **kwargs)
+        imgui.button(f"{recording.eye_tracker.value}##{recording.id}_type", *args, size=imgui.ImVec2(self._eye_tracker_label_width, 0), **kwargs)
         if align:
             imgui.end_group()
         imgui.pop_style_color(3)
@@ -865,111 +866,111 @@ class MainGUI():
         imgui.style.item_spacing = imgui.ImVec2(imgui.style.item_spacing.y, imgui.style.item_spacing.y)
         imgui.style.frame_border_size = 1.6
         imgui.style.scrollbar_size = 10
-        imgui.style.colors[imgui.Col_.modal_window_dim_bg] = (0, 0, 0, 0.5)
-        imgui.style.colors[imgui.Col_.table_border_strong] = (0, 0, 0, 0)
+        #imgui.style.colors[imgui.Col_.modal_window_dim_bg] = (0, 0, 0, 0.5)
+        #imgui.style.colors[imgui.Col_.table_border_strong] = (0, 0, 0, 0)
         self.refresh_styles()
 
     def style_imgui_functions(self):
         # Custom checkbox style
         def checkbox(label: str, state: bool, frame_size=None, do_vertical_align=True):
             if state:
-                imgui.push_style_color(imgui.Col_.frame_bg_hovered, *imgui.style.colors[imgui.Col_.button_hovered])
-                imgui.push_style_color(imgui.Col_.frame_bg, *imgui.style.colors[imgui.Col_.button_hovered])
-                imgui.push_style_color(imgui.Col_.check_mark, *imgui.style.colors[imgui.Col_.text])
+                pass#imgui.push_style_color(imgui.Col_.frame_bg_hovered, *imgui.style.colors[imgui.Col_.button_hovered])
+                #imgui.push_style_color(imgui.Col_.frame_bg, *imgui.style.colors[imgui.Col_.button_hovered])
+                #imgui.push_style_color(imgui.Col_.check_mark, *imgui.style.colors[imgui.Col_.text])
             if frame_size is not None:
                 frame_padding = imgui.style.frame_padding
                 imgui.push_style_var(imgui.StyleVar_.frame_padding, imgui.ImVec2(frame_size))
                 imgui.push_style_var(imgui.StyleVar_.item_spacing, imgui.ImVec2(0.,0.))
                 imgui.begin_group()
                 if do_vertical_align:
-                    imgui.dummy(0,frame_padding.y)
-                imgui.dummy(frame_padding.x,0)
+                    imgui.dummy(imgui.ImVec2(imgui.ImVec2(0,frame_padding.y)))
+                imgui.dummy(imgui.ImVec2(imgui.ImVec2(frame_padding.x,0)))
                 imgui.same_line()
             result = imgui._checkbox(label, state)
             if frame_size is not None:
                 imgui.end_group()
                 imgui.pop_style_var(2)
             if state:
-                imgui.pop_style_color(3)
+                pass#imgui.pop_style_color(3)
             return result
         if not hasattr(imgui,'_checkbox'):
             imgui._checkbox = imgui.checkbox
         imgui.checkbox = checkbox
         # Custom combo style
         def combo(*args, **kwargs):
-            imgui.push_style_color(imgui.Col_.button, *imgui.style.colors[imgui.Col_.button_hovered])
+            #imgui.push_style_color(imgui.Col_.button, *imgui.style.colors[imgui.Col_.button_hovered])
             result = imgui._combo(*args, **kwargs)
-            imgui.pop_style_color()
+            #imgui.pop_style_color()
             return result
         if not hasattr(imgui,'_combo'):
             imgui._combo = imgui.combo
         imgui.combo = combo
 
     def refresh_styles(self):
-        globals.settings.style_accent = \
-        imgui.style.colors[imgui.Col_.check_mark] = \
-            imgui.style.colors[imgui.Col_.tab_active] = \
-            imgui.style.colors[imgui.Col_.slider_grab] = \
-            imgui.style.colors[imgui.Col_.tab_hovered] = \
-            imgui.style.colors[imgui.Col_.button_active] = \
-            imgui.style.colors[imgui.Col_.header_active] = \
-            imgui.style.colors[imgui.Col_.nav_highlight] = \
-            imgui.style.colors[imgui.Col_.plot_histogram] = \
-            imgui.style.colors[imgui.Col_.button_hovered] = \
-            imgui.style.colors[imgui.Col_.header_hovered] = \
-            imgui.style.colors[imgui.Col_.separator_active] = \
-            imgui.style.colors[imgui.Col_.separator_hovered] = \
-            imgui.style.colors[imgui.Col_.resize_grip_active] = \
-            imgui.style.colors[imgui.Col_.resize_grip_hovered] = \
-            imgui.style.colors[imgui.Col_.tab_unfocused_active] = \
-            imgui.style.colors[imgui.Col_.scrollbar_grab_active] = \
-            imgui.style.colors[imgui.Col_.frame_bg_active] = \
-            imgui.style.colors[imgui.Col_.title_bg_active] = \
-            imgui.style.colors[imgui.Col_.text_selected_bg] = \
-        globals.settings.style_accent
-        style_accent_dim = \
-            imgui.style.colors[imgui.Col_.tab] = \
-            imgui.style.colors[imgui.Col_.resize_grip] = \
-            imgui.style.colors[imgui.Col_.tab_unfocused] = \
-            imgui.style.colors[imgui.Col_.frame_bg_hovered] = \
-        (*globals.settings.style_accent[:3], 0.25)
-        globals.settings.style_alt_bg = \
-            imgui.style.colors[imgui.Col_.table_header_bg] = \
-            imgui.style.colors[imgui.Col_.table_row_bg_alt] = \
-        globals.settings.style_alt_bg
-        globals.settings.style_bg = \
-            imgui.style.colors[imgui.Col_.button] = \
-            imgui.style.colors[imgui.Col_.header] = \
-            imgui.style.colors[imgui.Col_.frame_bg] = \
-            imgui.style.colors[imgui.Col_.child_bg] = \
-            imgui.style.colors[imgui.Col_.popup_bg] = \
-            imgui.style.colors[imgui.Col_.title_bg] = \
-            imgui.style.colors[imgui.Col_.window_bg] = \
-            imgui.style.colors[imgui.Col_.slider_grab_active] = \
-            imgui.style.colors[imgui.Col_.scrollbar_bg] = \
-        globals.settings.style_bg
-        globals.settings.style_border = \
-            imgui.style.colors[imgui.Col_.border] = \
-            imgui.style.colors[imgui.Col_.separator] = \
-        globals.settings.style_border
-        style_corner_radius = \
-            imgui.style.tab_rounding  = \
-            imgui.style.grab_rounding = \
-            imgui.style.frame_rounding = \
-            imgui.style.child_rounding = \
-            imgui.style.popup_rounding = \
-            imgui.style.window_rounding = \
-            imgui.style.scrollbar_rounding = \
-        globals.settings.style_corner_radius * self.last_size_mult
-        globals.settings.style_text = \
-            imgui.style.colors[imgui.Col_.text] = \
-        globals.settings.style_text
-        globals.settings.style_text_dim = \
-            imgui.style.colors[imgui.Col_.text_disabled] = \
-        globals.settings.style_text_dim
+        #globals.settings.style_accent = \
+        #imgui.style.colors[imgui.Col_.check_mark] = \
+        #    imgui.style.colors[imgui.Col_.tab_active] = \
+        #    imgui.style.colors[imgui.Col_.slider_grab] = \
+        #    imgui.style.colors[imgui.Col_.tab_hovered] = \
+        #    imgui.style.colors[imgui.Col_.button_active] = \
+        #    imgui.style.colors[imgui.Col_.header_active] = \
+        #    imgui.style.colors[imgui.Col_.nav_highlight] = \
+        #    imgui.style.colors[imgui.Col_.plot_histogram] = \
+        #    imgui.style.colors[imgui.Col_.button_hovered] = \
+        #    imgui.style.colors[imgui.Col_.header_hovered] = \
+        #    imgui.style.colors[imgui.Col_.separator_active] = \
+        #    imgui.style.colors[imgui.Col_.separator_hovered] = \
+        #    imgui.style.colors[imgui.Col_.resize_grip_active] = \
+        #    imgui.style.colors[imgui.Col_.resize_grip_hovered] = \
+        #    imgui.style.colors[imgui.Col_.tab_unfocused_active] = \
+        #    imgui.style.colors[imgui.Col_.scrollbar_grab_active] = \
+        #    imgui.style.colors[imgui.Col_.frame_bg_active] = \
+        #    imgui.style.colors[imgui.Col_.title_bg_active] = \
+        #    imgui.style.colors[imgui.Col_.text_selected_bg] = \
+        #globals.settings.style_accent
+        #style_accent_dim = \
+        #    imgui.style.colors[imgui.Col_.tab] = \
+        #    imgui.style.colors[imgui.Col_.resize_grip] = \
+        #    imgui.style.colors[imgui.Col_.tab_unfocused] = \
+        #    imgui.style.colors[imgui.Col_.frame_bg_hovered] = \
+        #(*globals.settings.style_accent[:3], 0.25)
+        #globals.settings.style_alt_bg = \
+        #    imgui.style.colors[imgui.Col_.table_header_bg] = \
+        #    imgui.style.colors[imgui.Col_.table_row_bg_alt] = \
+        #globals.settings.style_alt_bg
+        #globals.settings.style_bg = \
+        #    imgui.style.colors[imgui.Col_.button] = \
+        #    imgui.style.colors[imgui.Col_.header] = \
+        #    imgui.style.colors[imgui.Col_.frame_bg] = \
+        #    imgui.style.colors[imgui.Col_.child_bg] = \
+        #    imgui.style.colors[imgui.Col_.popup_bg] = \
+        #    imgui.style.colors[imgui.Col_.title_bg] = \
+        #    imgui.style.colors[imgui.Col_.window_bg] = \
+        #    imgui.style.colors[imgui.Col_.slider_grab_active] = \
+        #    imgui.style.colors[imgui.Col_.scrollbar_bg] = \
+        #globals.settings.style_bg
+        #globals.settings.style_border = \
+        #    imgui.style.colors[imgui.Col_.border] = \
+        #    imgui.style.colors[imgui.Col_.separator] = \
+        #globals.settings.style_border
+        #style_corner_radius = \
+        #    imgui.style.tab_rounding  = \
+        #    imgui.style.grab_rounding = \
+        #    imgui.style.frame_rounding = \
+        #    imgui.style.child_rounding = \
+        #    imgui.style.popup_rounding = \
+        #    imgui.style.window_rounding = \
+        #    imgui.style.scrollbar_rounding = \
+        #globals.settings.style_corner_radius * self.last_size_mult
+        #globals.settings.style_text = \
+        #    imgui.style.colors[imgui.Col_.text] = \
+        #globals.settings.style_text
+        #globals.settings.style_text_dim = \
+        #    imgui.style.colors[imgui.Col_.text_disabled] = \
+        #globals.settings.style_text_dim
 
         fac = self.size_mult/self.last_size_mult
-        imgui.scale_all_sizes(fac)
+        imgui.style.scale_all_sizes(fac)
 
         self.last_size_mult = self.size_mult
 
@@ -1007,11 +1008,13 @@ class MainGUI():
             imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(noto_path),  size_18, font_cfg=noto_config, glyph_ranges_as_int_list=noto_range)
             imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(mdi_path),   size_18, font_cfg=mdi_config,  glyph_ranges_as_int_list=mdi_range)
             # Big font + more glyphs
-            self.big_font = imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(karla_path), size_28,                       glyph_ranges_as_int_list=karla_range)
-            imgui.font_atlas_add_font_from_file_ttf(                imgui.io.fonts,str(noto_path),  size_28, font_cfg=noto_config, glyph_ranges_as_int_list=noto_range)
-            imgui.font_atlas_add_font_from_file_ttf(                imgui.io.fonts,str(mdi_path),   size_28, font_cfg=mdi_config,  glyph_ranges_as_int_list=mdi_range)
+            self.big_font = \
+            imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(karla_path), size_28,                       glyph_ranges_as_int_list=karla_range)
+            imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(noto_path),  size_28, font_cfg=noto_config, glyph_ranges_as_int_list=noto_range)
+            imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(mdi_path),   size_28, font_cfg=mdi_config,  glyph_ranges_as_int_list=mdi_range)
             # MsgBox type icons
-            self.icon_font = msgbox.icon_font = imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(mdi_path), size_69, glyph_ranges_as_int_list=msgbox_range)
+            self.icon_font = msgbox.icon_font = \
+            imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(mdi_path),   size_69,                       glyph_ranges_as_int_list=msgbox_range)
         #try:
         #    tex_width, tex_height, pixels = imgui.font_atlas_get_tex_data_as_rgba32(imgui.io.fonts)
         #except SystemError:
@@ -1020,6 +1023,9 @@ class MainGUI():
         #if tex_height > max_tex_size:
         #    self.size_mult = 1.0
         #    return self.refresh_fonts()
+        # now refresh font texture
+        imgui_backends.opengl3_destroy_fonts_texture()
+        imgui_backends.opengl3_create_fonts_texture()
         if self.recording_list is not None:
             self.recording_list.font_changed()
 
@@ -1143,7 +1149,7 @@ class MainGUI():
                 glfw.poll_events()
             if not self.focused and glfw.get_window_attrib(self.window, glfw.HOVERED):
                 # GlfwRenderer (self.impl) resets cursor pos if not focused, making it unresponsive
-                imgui.io.mouse_pos = glfw.get_cursor_pos(self.window)
+                imgui.io.mouse_pos = imgui.ImVec2(*glfw.get_cursor_pos(self.window))
             if self.focused or globals.settings.render_when_unfocused:
                 # Scroll modifiers (must be before new_frame())
                 imgui.io.mouse_wheel *= globals.settings.scroll_amount
@@ -1172,13 +1178,13 @@ class MainGUI():
 
                 # check selection should be cancelled
                 self.escape_handled = False
-                if imgui.is_key_pressed(glfw.KEY_ESCAPE, repeat=False) and not globals.popup_stack:
+                if imgui.is_key_pressed(imgui.Key.escape, repeat=False) and not globals.popup_stack:
                     for r in globals.selected_recordings:
                         globals.selected_recordings[r] = False
                     self.escape_handled = True
 
                 # delete should issue delete for selected recordings, if any
-                if imgui.is_key_pressed(glfw.KEY_DELETE) and not globals.popup_stack:
+                if imgui.is_key_pressed(imgui.Key.delete) and not globals.popup_stack:
                     any_deleted = False
                     for rid in globals.selected_recordings:
                         if globals.selected_recordings[rid]:
@@ -1187,18 +1193,18 @@ class MainGUI():
                     if any_deleted:
                         self.recording_list.require_sort = True
                         
-                imgui_backends.open_gl3_new_frame()
+                imgui_backends.opengl3_new_frame()
                 imgui_backends.glfw_new_frame()
                 imgui.new_frame()
 
-                imgui.set_next_window_position(0, 0, imgui.Cond_.once)
+                imgui.set_next_window_pos(imgui.ImVec2(0,0), imgui.Cond_.once)
                 if (size := imgui.io.display_size) != self.screen_size or not have_set_window_size:
-                    imgui.set_next_window_size(*size, imgui.Cond_.always)
-                    self.screen_size = [int(x) for x in size]
+                    imgui.set_next_window_size(size, imgui.Cond_.always)
+                    self.screen_size = [int(size.x), int(size.y)]
                     have_set_window_size = True
 
                 imgui.push_style_var(imgui.StyleVar_.window_border_size, 0)
-                imgui.begin("glassesValidator", closable=False, flags=self.window_flags)
+                imgui.begin("glassesValidator", flags=self.window_flags)
                 imgui.pop_style_var()
 
                 text = self.watermark_text
@@ -1222,16 +1228,16 @@ class MainGUI():
                     imgui.end_child()
 
                     imgui.same_line(spacing=self.scaled(4))
-                    imgui.begin_child("##sidebar_frame", width=sidebar_size - 1, height=-text_size.y)
+                    imgui.begin_child("##sidebar_frame", size=imgui.ImVec2(sidebar_size-1, -text_size.y))
                     self.draw_sidebar()
                     imgui.end_child()
                 else:
                     self.draw_unopened_interface()
 
-                imgui.set_cursor_screen_pos((text_x - _3, text_y))
-                if imgui.invisible_button("##watermark_btn", width=text_size.x + _6, height=text_size.y + _3):
+                imgui.set_cursor_screen_pos(imgui.ImVec2(text_x - _3, text_y))
+                if imgui.invisible_button("##watermark_btn", size=imgui.ImVec2(text_size.x+_6, text_size.y+_3)):
                     utils.push_popup(self.draw_about_popup)
-                imgui.set_cursor_screen_pos((text_x, text_y))
+                imgui.set_cursor_screen_pos(imgui.ImVec2(text_x, text_y))
                 imgui.text(text)
                 draw_hover_text(self.watermark_popup_text, text='')
 
@@ -1259,10 +1265,10 @@ class MainGUI():
                     globals.settings.style_bg[1] * globals.settings.style_bg[3],
                     globals.settings.style_bg[2] * globals.settings.style_bg[3],
                     globals.settings.style_bg[3])
-                imgui_backends.open_gl3_render_draw_data(imgui.get_draw_data())
+                imgui_backends.opengl3_render_draw_data(imgui.get_draw_data())
 
                 # Update and Render additional Platform Windows, if any
-                if io.config_flags & imgui.ConfigFlags_.viewports_enable > 0:
+                if imgui.io.config_flags & imgui.ConfigFlags_.viewports_enable > 0:
                     backup_current_context = glfw.get_current_context()
                     imgui.update_platform_windows()
                     imgui.render_platform_windows_default()
@@ -1286,7 +1292,7 @@ class MainGUI():
 
         # clean up
         self.save_imgui_ini()
-        imgui_backends.open_gl3_shutdown()
+        imgui_backends.opengl3_shutdown()
         imgui_backends.glfw_shutdown()
         if (ctx := imgui.get_current_context()) is not None:
             imgui.io.ini_filename = None   # don't store settings to ini, we already did that manually just above and with augmentation
@@ -1363,7 +1369,7 @@ class MainGUI():
         return picker
 
     def draw_unopened_interface(self):
-        avail      = imgui.get_content_region_available()
+        avail      = imgui.get_content_region_avail()
         but_width  = self.scaled(200)
         but_height = self.scaled(100)
 
@@ -1381,10 +1387,10 @@ class MainGUI():
         imgui.set_cursor_pos_x(but_x)
         imgui.set_cursor_pos_y(but_y)
         
-        if imgui.button("󰮝 New project", width=but_width, height=but_height):
+        if imgui.button("󰮝 New project", size=imgui.ImVec2(but_width, but_height)):
             utils.push_popup(self.get_folder_picker(reason='creating'))
         imgui.same_line(spacing=10*imgui.style.item_spacing.x)
-        if imgui.button("󰷏 Open project", width=but_width, height=but_height):
+        if imgui.button("󰷏 Open project", size=imgui.ImVec2(but_width, but_height)):
             utils.push_popup(self.get_folder_picker())
 
         but_width  = self.scaled(150)
@@ -1393,7 +1399,7 @@ class MainGUI():
         but_y = avail.y/4*3 - but_height / 2
         imgui.set_cursor_pos_x(but_x)
         imgui.set_cursor_pos_y(but_y)
-        if imgui.button("󰈦 Get poster pdf", width=but_width, height=but_height):
+        if imgui.button("󰈦 Get poster pdf", size=imgui.ImVec2(but_width, but_height)):
             utils.push_popup(self.get_folder_picker(reason='deploy_pdf'))
 
     def draw_select_eye_tracker_popup(self, combo_value, eye_tracker):
@@ -1407,19 +1413,19 @@ class MainGUI():
         imgui.same_line(spacing=spacing)
 
         imgui.begin_group()
-        imgui.dummy(0,2*imgui.style.item_spacing.y)
+        imgui.dummy(imgui.ImVec2(0,2*imgui.style.item_spacing.y))
         imgui.text_unformatted("For which eye tracker would you like to import recordings?")
-        imgui.dummy(0,3*imgui.style.item_spacing.y)
+        imgui.dummy(imgui.ImVec2(0,3*imgui.style.item_spacing.y))
         full_width = imgui.get_content_region_available_width()
         imgui.push_item_width(full_width*.4)
         imgui.set_cursor_pos_x(full_width*.3)
         changed, combo_value = imgui.combo("##select_eye_tracker", combo_value, eye_tracker_names)
         imgui.pop_item_width()
-        imgui.dummy(0,2*imgui.style.item_spacing.y)
+        imgui.dummy(imgui.ImVec2(0,2*imgui.style.item_spacing.y))
 
         imgui.end_group()
         imgui.same_line(spacing=spacing)
-        imgui.dummy(0, 0)
+        imgui.dummy(imgui.ImVec2(0, 0))
 
         if changed:
             eye_tracker = EyeTracker(eye_tracker_names[combo_value])
@@ -1437,26 +1443,26 @@ class MainGUI():
         imgui.same_line(spacing=spacing)
 
         imgui.begin_group()
-        imgui.dummy(0,2*imgui.style.item_spacing.y)
+        imgui.dummy(imgui.ImVec2(0,2*imgui.style.item_spacing.y))
         text = f'Searching the path(s) you provided for {eye_tracker.value} recordings.'
         imgui.text_unformatted(text)
-        imgui.dummy(0,3*imgui.style.item_spacing.y)
+        imgui.dummy(imgui.ImVec2(0,3*imgui.style.item_spacing.y))
         text_size = imgui.calc_text_size(text)
         spinner_radii = [x*self.size_mult for x in [22, 16, 10]]
         imgui.set_cursor_pos_x(imgui.get_cursor_pos_x()+(text_size.x-2*spinner_radii[0])/2)
         utils.draw_spinner('waitSpinner', *spinner_radii, 3.5*self.size_mult, c1=imgui.color_convert_float4_to_u32(*globals.settings.style_text), c2=imgui.color_convert_float4_to_u32(*globals.settings.style_accent), c3=imgui.color_convert_float4_to_u32(*globals.settings.style_text))
-        imgui.dummy(0,2*imgui.style.item_spacing.y)
+        imgui.dummy(imgui.ImVec2(0,2*imgui.style.item_spacing.y))
         imgui.end_group()
 
         imgui.same_line(spacing=spacing)
-        imgui.dummy(0, 0)
+        imgui.dummy(imgui.ImVec2(0, 0))
 
     def draw_select_recordings_to_import(self, recording_list: RecordingTable):
         spacing = 2 * imgui.style.item_spacing.x
         imgui.same_line(spacing=spacing)
 
         imgui.text_unformatted("Select which recordings you would like to import.")
-        imgui.dummy(0,1*imgui.style.item_spacing.y)
+        imgui.dummy(imgui.ImVec2(0,1*imgui.style.item_spacing.y))
 
         imgui.begin_child("##main_frame_adder", height=min(self.scaled(300),(len(recording_list.recordings)+2)*imgui.get_frame_height_with_spacing()), width=self.scaled(800))
         imgui.begin_child("##recording_list_frame_adder", height=-imgui.get_frame_height_with_spacing(), flags=imgui.WindowFlags_.horizontal_scrollbar)
@@ -1469,7 +1475,7 @@ class MainGUI():
         imgui.end_child()
         
         imgui.same_line(spacing=spacing)
-        imgui.dummy(0,6*imgui.style.item_spacing.y)
+        imgui.dummy(imgui.ImVec2(0,6*imgui.style.item_spacing.y))
 
     def draw_dq_export_config_popup(self, pop_data):
         spacing = 2 * imgui.style.item_spacing.x
@@ -1481,7 +1487,7 @@ class MainGUI():
         
         imgui.begin_group()
         imgui.text_unformatted("Configure what you would like to export.")
-        imgui.dummy(0,1*imgui.style.item_spacing.y)
+        imgui.dummy(imgui.ImVec2(0,1*imgui.style.item_spacing.y))
 
         if len(pop_data['dq_types'])>1:
             name = 'Data quality types'
@@ -1493,7 +1499,7 @@ class MainGUI():
                     imgui.table_setup_column(f"##settings_{name}_right", imgui.TableColumnFlags_.width_fixed)
                     imgui.table_next_row()
                     imgui.table_set_column_index(1)  # Right
-                    imgui.dummy(right_width, 1)
+                    imgui.dummy(imgui.ImVec2(right_width, 1))
                     imgui.push_item_width(right_width)
 
                     for i,dq in enumerate(pop_data['dq_types']):
@@ -1520,7 +1526,7 @@ class MainGUI():
                 imgui.table_setup_column(f"##settings_{name}_right", imgui.TableColumnFlags_.width_fixed)
                 imgui.table_next_row()
                 imgui.table_set_column_index(1)  # Right
-                imgui.dummy(right_width, 1)
+                imgui.dummy(imgui.ImVec2(right_width, 1))
                 imgui.push_item_width(right_width)
 
                 for i,t in enumerate(pop_data['targets']):
@@ -1542,7 +1548,7 @@ class MainGUI():
             imgui.table_setup_column(f"##settings_{name}_right", imgui.TableColumnFlags_.width_fixed)
             imgui.table_next_row()
             imgui.table_set_column_index(1)  # Right
-            imgui.dummy(right_width, 1)
+            imgui.dummy(imgui.ImVec2(right_width, 1))
             imgui.push_item_width(right_width)
 
             imgui.table_next_row()
@@ -1560,7 +1566,7 @@ class MainGUI():
         imgui.end_group()
 
         imgui.same_line(spacing=spacing)
-        imgui.dummy(0,6*imgui.style.item_spacing.y)
+        imgui.dummy(imgui.ImVec2(0,6*imgui.style.item_spacing.y))
 
 
     def draw_about_popup(self):
@@ -1568,7 +1574,7 @@ class MainGUI():
             _60 = self.scaled(60)
             _230 = self.scaled(230)
             imgui.begin_group()
-            imgui.dummy(_60, _230)
+            imgui.dummy(imgui.ImVec2(_60, _230))
             imgui.same_line()
             self.icon_texture.render(_230, _230, rounding=globals.settings.style_corner_radius)
             imgui.same_line()
@@ -1582,7 +1588,7 @@ class MainGUI():
             imgui.text(f"󰌠 Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
             imgui.text(f"OpenGL {'.'.join(str(gl.glGetInteger(num)) for num in (gl.GL_MAJOR_VERSION, gl.GL_MINOR_VERSION))},  󰌠 {OpenGL.__version__}")
             imgui.text(f"GLFW {'.'.join(str(num) for num in glfw.get_version())},  󰌠 {glfw.__version__}")
-            imgui.text(f"ImGui {imgui.get_version()},  󰌠 {imgui.__version__}")
+            imgui.text(f"ImGui {imgui.get_version()},  󰌠 {imgui_bundle.__version__}")
             if globals.os is Os.Linux:
                 imgui.text(f"{platform.system()} {platform.release()}")
             elif globals.os is Os.Windows:
@@ -1591,18 +1597,18 @@ class MainGUI():
                 imgui.text(f"{platform.system()} {platform.release()}")
             imgui.end_group()
             imgui.same_line()
-            imgui.dummy(_60, _230)
+            imgui.dummy(imgui.ImVec2(_60, _230))
             imgui.end_group()
             imgui.spacing()
-            width = imgui.get_content_region_available_width()
+            width = imgui.get_content_region_avail().x
             btn_width = (width - 2 * imgui.style.item_spacing.x) / 3
-            if imgui.button("󰌠 PyPI", width=btn_width):
+            if imgui.button("󰌠 PyPI", size=imgui.ImVec2(btn_width, 0)):
                 callbacks.open_url(globals.pypi_page)
             imgui.same_line()
-            if imgui.button("󰊤 GitHub repo", width=btn_width):
+            if imgui.button("󰊤 GitHub repo", size=imgui.ImVec2(btn_width, 0)):
                 callbacks.open_url(globals.github_page)
             imgui.same_line()
-            if imgui.button("󰖟 Researcher homepage", width=btn_width):
+            if imgui.button("󰖟 Researcher homepage", size=imgui.ImVec2(btn_width, 0)):
                 callbacks.open_url(globals.developer_page)
             
             imgui.spacing()
@@ -1616,7 +1622,7 @@ class MainGUI():
             imgui.text("If you find bugs or have some feedback, please do let me know on GitHub (using issues or pull requests).")
             imgui.spacing()
             imgui.spacing()
-            imgui.dummy(0, self.scaled(10))
+            imgui.dummy(imgui.ImVec2(0, self.scaled(10)))
             imgui.push_font(self.big_font)
             size = imgui.calc_text_size("Reference")
             imgui.set_cursor_pos_x((width - size.x + imgui.style.scrollbar_size) / 2)
@@ -1628,9 +1634,9 @@ class MainGUI():
             imgui.text(globals.reference)
             if imgui.begin_popup_context_item(f"##refresh_context"):
                 # Right click = more options context menu
-                if imgui.selectable("󱓷 APA", False)[0]:
+                if imgui.selectable("󱓷 APA", False):
                     glfw.set_clipboard_string(self.window, globals.reference)
-                if imgui.selectable("󰟀 BibTeX", False)[0]:
+                if imgui.selectable("󰟀 BibTeX", False):
                     glfw.set_clipboard_string(self.window, globals.reference_bibtex)
                 imgui.end_popup()
             draw_hover_text(text='', hover_text="Right-click to copy citation to clipboard")
@@ -1648,12 +1654,12 @@ class MainGUI():
                 self.repeat_chars = True
                 imgui.set_keyboard_focus_here()
             # check for backspace, should work even when not have focus
-            if imgui.is_key_pressed(glfw.KEY_BACKSPACE, repeat=False):
+            if imgui.is_key_pressed(imgui.Key.backspace, repeat=False):
                 filter_box_text = filter_box_text[:-1]
                 changed = True
                 imgui.set_keyboard_focus_here()
             # check for escape, should work even when not have focus
-            if imgui.is_key_pressed(glfw.KEY_ESCAPE, repeat=False) and not self.escape_handled and sum([globals.selected_recordings[id] for id in globals.selected_recordings])==0:
+            if imgui.is_key_pressed(imgui.Key.escape, repeat=False) and not self.escape_handled and sum([globals.selected_recordings[id] for id in globals.selected_recordings])==0:
                 filter_box_text = ""
                 changed = True
         _, value = imgui.input_text_with_hint(f"##bottombar{extra}", "Start typing to filter the list", filter_box_text, flags=imgui.InputTextFlags_.enter_returns_true)
@@ -1686,7 +1692,7 @@ class MainGUI():
             imgui.table_setup_column(f"##settings_{name}_right", imgui.TableColumnFlags_.width_fixed)
             imgui.table_next_row()
             imgui.table_set_column_index(1)  # Right
-            imgui.dummy(right_width, 1)
+            imgui.dummy(imgui.ImVec2(right_width, 1))
             imgui.push_item_width(right_width)
         return opened
 
@@ -1777,7 +1783,7 @@ class MainGUI():
 
         # 2. draw it. Last item has highest priority, so that ends up on the button
         # rest in priority order in the right click menu
-        if imgui.button(text[-1], width=width, height=height):
+        if imgui.button(text[-1], size=imgui.ImVec2(width, height)):
             action[-1]()
         if hover_text[-1] or len(text)>1:
             ht = hover_text[-1]
@@ -1831,7 +1837,7 @@ class MainGUI():
                 imgui.align_text_to_frame_padding()
                 imgui.text(f"{flt.mode.value} filter:")
                 imgui.table_next_column()
-                if imgui.button(f"Remove##filter_{flt.id}_remove", width=right_width):
+                if imgui.button(f"Remove##filter_{flt.id}_remove", size=imgui.ImVec2(right_width, 0)):
                     self.recording_list.remove_filter(flt.id)
                     
                 if flt.mode is FilterMode.Task_State:
@@ -1879,20 +1885,20 @@ class MainGUI():
 
             btn_width = right_width*1.5
             imgui.set_cursor_pos_x((width-btn_width)/2)
-            if imgui.button("󰮝 New project", width=btn_width):
+            if imgui.button("󰮝 New project", size=imgui.ImVec2(btn_width, 0)):
                 utils.push_popup(self.get_folder_picker(reason='creating'))
             imgui.set_cursor_pos_x((width-btn_width)/2)
-            if imgui.button("󰷏 Open project", width=btn_width):
+            if imgui.button("󰷏 Open project", size=imgui.ImVec2(btn_width, 0)):
                 utils.push_popup(self.get_folder_picker())
             imgui.set_cursor_pos_x((width-btn_width)/2)
-            if imgui.button("󱂀 Deploy config", width=btn_width):
+            if imgui.button("󱂀 Deploy config", size=imgui.ImVec2(btn_width, 0)):
                 async_thread.run(callbacks.deploy_config(globals.project_path, globals.settings.config_dir))
             draw_hover_text(f"Deploys a default glassesValidator to the '{globals.settings.config_dir}' folder in the open project. You can edit this configuration, which you may need to do, e.g., in case you used a different viewing distance, or different marker or gaze target layout.", text="")
             imgui.set_cursor_pos_x((width-btn_width)/2)
-            if imgui.button("󰮞 Close project", width=btn_width):
+            if imgui.button("󰮞 Close project", size=imgui.ImVec2(btn_width, 0)):
                 self.unload_project()
             imgui.set_cursor_pos_x((width-btn_width)/2)
-            if imgui.button("󰈦 Get poster pdf", width=btn_width):
+            if imgui.button("󰈦 Get poster pdf", size=imgui.ImVec2(btn_width, 0)):
                 utils.push_popup(self.get_folder_picker(reason='deploy_pdf'))
                 
             # continue table
@@ -1956,7 +1962,7 @@ class MainGUI():
                 imgui.align_text_to_frame_padding()
                 imgui.text("Continue processing after\ninterval coding:")
                 imgui.table_next_column()
-                imgui.dummy(1,imgui.calc_text_size('').y/2)
+                imgui.dummy(imgui.ImVec2(1,imgui.calc_text_size('').y/2))
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
                 changed, value = imgui.checkbox("##continue_process_after_code", set.continue_process_after_code)
                 if changed:
@@ -2102,7 +2108,7 @@ class MainGUI():
                             "NOT the data loss of the whole recording and thus not what you want "
                             "to report in your paper.", text="")
             imgui.table_next_column()
-            imgui.dummy(1,imgui.calc_text_size('').y/2)
+            imgui.dummy(imgui.ImVec2(1,imgui.calc_text_size('').y/2))
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             changed, value = imgui.checkbox("##dq_report_data_loss", set.dq_report_data_loss)
             if changed:
@@ -2320,9 +2326,9 @@ class MainGUI():
                 imgui.text("Defaults:")
                 imgui.table_next_column()
                 style = None
-                if imgui.button("Dark", width=right_width):
+                if imgui.button("Dark", size=imgui.ImVec2(right_width, 0)):
                     style = DefaultStyleDark
-                if imgui.button("Light", width=right_width):
+                if imgui.button("Light", size=imgui.ImVec2(right_width, 0)):
                     style = DefaultStyleLight
                 if style is not None:
                     set.style_corner_radius = style.corner_radius
@@ -2351,9 +2357,9 @@ class MainGUI():
             imgui.text("Default style:")
             imgui.table_next_column()
             style = None
-            if imgui.button("Dark", width=right_width):
+            if imgui.button("Dark", size=imgui.ImVec2(right_width, 0)):
                 style = DefaultStyleDark
-            if imgui.button("Light", width=right_width):
+            if imgui.button("Light", size=imgui.ImVec2(right_width, 0)):
                 style = DefaultStyleLight
             if style is not None:
                 set.style_corner_radius = style.corner_radius

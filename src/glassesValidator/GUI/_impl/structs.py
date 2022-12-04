@@ -32,7 +32,7 @@ class DefaultStyleDark:
     alt_bg        = "#181818"
     bg            = "#0a0a0a"
     border        = "#454545"
-    corner_radius = 6
+    corner_radius = 6.
     text          = "#ffffff"
     text_dim      = "#808080"
 
@@ -42,7 +42,7 @@ class DefaultStyleLight:
     alt_bg        = "#e1e1e1"
     bg            = "#f0f0f0"
     border        = "#999999"
-    corner_radius = 6
+    corner_radius = 6.
     text          = "#000000"
     text_dim      = "#999999"
     
@@ -133,7 +133,7 @@ class Settings:
     style_bg                    : tuple[float]
     style_border                : tuple[float]
     style_color_recording_name  : bool
-    style_corner_radius         : int
+    style_corner_radius         : float
     style_text                  : tuple[float]
     style_text_dim              : tuple[float]
     vsync_ratio                 : int

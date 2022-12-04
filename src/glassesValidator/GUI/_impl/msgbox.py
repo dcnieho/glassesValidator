@@ -42,7 +42,7 @@ def msgbox(title: str, msg: str, type: MsgBox = None, buttons: dict[str, typing.
         if more:
             msg_size_y += imgui.get_text_line_height_with_spacing() + imgui.get_frame_height_with_spacing()
         if icon and (diff := icon_size.y - msg_size_y) > 0:
-            imgui.dummy(0, diff / 2 - imgui.style.item_spacing.y)
+            imgui.dummy(imgui.ImVec2(0, diff / 2 - imgui.style.item_spacing.y))
         imgui.text_unformatted(msg)
         if more:
             imgui.text("")
@@ -56,7 +56,7 @@ def msgbox(title: str, msg: str, type: MsgBox = None, buttons: dict[str, typing.
                 imgui.tree_pop()
         imgui.end_group()
         imgui.same_line(spacing=spacing)
-        imgui.dummy(0, 0)
+        imgui.dummy(imgui.ImVec2(0, 0))
     return utils.popup(title, popup_content, buttons, closable=False, outside=False)
 
 

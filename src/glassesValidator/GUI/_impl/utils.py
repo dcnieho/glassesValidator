@@ -157,26 +157,26 @@ def pop_disabled(block_interaction=True):
 
 def center_next_window():
     size = imgui.io.display_size
-    imgui.set_next_window_position(size.x / 2, size.y / 2, pivot_x=0.5, pivot_y=0.5)
+    imgui.set_next_window_pos(imgui.ImVec2(size.x/2, size.y/2), pivot=imgui.ImVec2(0.5,0.5))
 
 
 def constrain_next_window():
     size = imgui.io.display_size
-    imgui.set_next_window_size_constraints((0, 0), (size.x * 0.9, size.y * 0.9))
+    imgui.set_next_window_size_constraints(imgui.ImVec2(0, 0), imgui.ImVec2(size.x * 0.9, size.y * 0.9))
 
 
 def close_weak_popup():
     if not imgui.is_popup_open("", imgui.PopupFlags_.any_popup_id):
         # This is the topmost popup
-        if imgui.io.keys_down[glfw.KEY_ESCAPE]:
+        if imgui.is_key_pressed(imgui.Key.escape):
             # Escape is pressed
             imgui.close_current_popup()
             return True
-        elif imgui.is_mouse_clicked():
+        elif imgui.is_mouse_clicked(imgui.MouseButton_.left):
             # Mouse was just clicked
-            pos = imgui.get_window_position()
+            pos = imgui.get_window_pos()
             size = imgui.get_window_size()
-            if not imgui.is_mouse_hovering_rect(pos.x, pos.y, pos.x + size.x, pos.y + size.y, clip=False):
+            if not imgui.is_mouse_hovering_rect(pos, imgui.ImVec2(pos.x+size.x, pos.y+size.y), clip=False):
                 # Popup is not hovered
                 imgui.close_current_popup()
                 return True
@@ -296,7 +296,7 @@ def draw_spinner(label: str, radius1: float, radius2: float, radius3: float, thi
     # draw dummy of that size and reset cursor back to position before if that dummy was visible. The dummy reserves the space we need to draw in
     cur_pos = imgui.get_cursor_pos()
     imgui.push_id(label)
-    imgui.dummy(size[0],size[1])
+    imgui.dummy(imgui.ImVec2(size[0],size[1]))
     imgui.pop_id()
     imgui.set_cursor_pos(cur_pos)
 
@@ -334,7 +334,7 @@ def bounce_dots(label: str, thickness: float, color = 0xffffffff, speed = 2.8, d
     # draw dummy of that size and reset cursor back to position before if that dummy was visible. The dummy reserves the space we need to draw in
     cur_pos = imgui.get_cursor_pos()
     imgui.push_id(label)
-    imgui.dummy(size[0],size[1])
+    imgui.dummy(imgui.ImVec2(size[0],size[1]))
     imgui.pop_id()
     imgui.set_cursor_pos(cur_pos)
 
