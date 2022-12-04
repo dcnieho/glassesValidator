@@ -145,8 +145,8 @@ def get_current_monitor(wx, wy, ww, wh):
 
 def push_disabled(block_interaction=True):
     if block_interaction:
-        imgui.internal.push_item_flag(imgui.internal.ImGuiItemFlags_.disabled, True)
-    imgui.push_style_var(imgui.ImGuiStyleVar_.alpha, imgui.get_style().alpha *  0.5)
+        imgui.internal.push_item_flag(imgui.internal.ItemFlags_.disabled, True)
+    imgui.push_style_var(imgui.StyleVar_.alpha, imgui.get_style().alpha *  0.5)
 
 
 def pop_disabled(block_interaction=True):
@@ -166,7 +166,7 @@ def constrain_next_window():
 
 
 def close_weak_popup():
-    if not imgui.is_popup_open("", imgui.ImGuiPopupFlags_.any_popup_id):
+    if not imgui.is_popup_open("", imgui.PopupFlags_.any_popup_id):
         # This is the topmost popup
         if imgui.io.keys_down[glfw.KEY_ESCAPE]:
             # Escape is pressed

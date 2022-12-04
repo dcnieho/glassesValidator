@@ -26,11 +26,11 @@ class DirEntry:
 
 class FilePicker:
     flags: int = (
-        imgui.ImGuiWindowFlags_.no_move |
-        imgui.ImGuiWindowFlags_.no_resize |
-        imgui.ImGuiWindowFlags_.no_collapse |
-        imgui.ImGuiWindowFlags_.no_saved_settings |
-        imgui.ImGuiWindowFlags_.always_auto_resize
+        imgui.WindowFlags_.no_move |
+        imgui.WindowFlags_.no_resize |
+        imgui.WindowFlags_.no_collapse |
+        imgui.WindowFlags_.no_saved_settings |
+        imgui.WindowFlags_.always_auto_resize
     )
 
     def __init__(self, title="File picker", dir_picker=False, start_dir: str | pathlib.Path = None, callback: typing.Callable = None, allow_multiple = True, custom_popup_flags=0):
@@ -172,7 +172,7 @@ class FilePicker:
             # Location bar
             imgui.same_line()
             imgui.set_next_item_width(size.x * 0.7)
-            confirmed, dir = imgui.input_text("##location_bar", str(self.dir), flags=imgui.ImGuiInputTextFlags_.enter_returns_true)
+            confirmed, dir = imgui.input_text("##location_bar", str(self.dir), flags=imgui.InputTextFlags_.enter_returns_true)
             if imgui.begin_popup_context_item(f"##location_context"):
                 if imgui.selectable("󰆒 Paste", False)[0] and (clip := glfw.get_clipboard_string(globals.gui.window)):
                     dir = str(clip, encoding="utf-8")
@@ -193,17 +193,17 @@ class FilePicker:
                 imgui.text_unformatted(self.msg)
             else:
                 table_flags = (
-                    imgui.ImGuiTableFlags_.scroll_x |
-                    imgui.ImGuiTableFlags_.scroll_y |
-                    imgui.ImGuiTableFlags_.hideable |
-                    imgui.ImGuiTableFlags_.sortable |
-                    imgui.ImGuiTableFlags_.resizable |
-                    imgui.ImGuiTableFlags_.sort_multi |
-                    imgui.ImGuiTableFlags_.reorderable |
-                    imgui.ImGuiTableFlags_.row_bg |
-                    imgui.ImGuiTableFlags_.sizing_fixed_fit |
-                    imgui.ImGuiTableFlags_.no_host_extend_y |
-                    imgui.ImGuiTableFlags_.no_borders_in_body_until_resize
+                    imgui.TableFlags_.scroll_x |
+                    imgui.TableFlags_.scroll_y |
+                    imgui.TableFlags_.hideable |
+                    imgui.TableFlags_.sortable |
+                    imgui.TableFlags_.resizable |
+                    imgui.TableFlags_.sort_multi |
+                    imgui.TableFlags_.reorderable |
+                    imgui.TableFlags_.row_bg |
+                    imgui.TableFlags_.sizing_fixed_fit |
+                    imgui.TableFlags_.no_host_extend_y |
+                    imgui.TableFlags_.no_borders_in_body_until_resize
                 )
                 if imgui.begin_table(f"##folder_list",column=5+self.allow_multiple,flags=table_flags):
                     frame_height = imgui.get_frame_height()
@@ -211,9 +211,9 @@ class FilePicker:
                     # Setup
                     checkbox_width = frame_height
                     if self.allow_multiple:
-                        imgui.table_setup_column("Selector", imgui.ImGuiTableColumnFlags_.no_hide | imgui.ImGuiTableColumnFlags_.no_sort | imgui.ImGuiTableColumnFlags_.no_resize | imgui.ImGuiTableColumnFlags_.no_reorder, init_width_or_weight=checkbox_width)  # 0
-                    imgui.table_setup_column("Name", imgui.ImGuiTableColumnFlags_.default_sort | imgui.ImGuiTableColumnFlags_.no_hide)  # 1
-                    imgui.table_setup_column("Date created", imgui.ImGuiTableColumnFlags_.default_hide)  # 2
+                        imgui.table_setup_column("Selector", imgui.TableColumnFlags_.no_hide | imgui.TableColumnFlags_.no_sort | imgui.TableColumnFlags_.no_resize | imgui.TableColumnFlags_.no_reorder, init_width_or_weight=checkbox_width)  # 0
+                    imgui.table_setup_column("Name", imgui.TableColumnFlags_.default_sort | imgui.TableColumnFlags_.no_hide)  # 1
+                    imgui.table_setup_column("Date created", imgui.TableColumnFlags_.default_hide)  # 2
                     imgui.table_setup_column("Date modified")  # 3
                     imgui.table_setup_column("Type")  # 4
                     imgui.table_setup_column("Size")  # 5
@@ -223,7 +223,7 @@ class FilePicker:
                     self.sort_items(sort_specs)
 
                     # Headers
-                    imgui.table_next_row(imgui.ImGuiTableRowFlags_.headers)
+                    imgui.table_next_row(imgui.TableRowFlags_.headers)
                     # checkbox column: reflects whether all, some or none of visible recordings are selected, and allows selecting all or none
                     num_selected = sum([self.selected[id] for id in self.selected])
                     if self.allow_multiple:
@@ -244,7 +244,7 @@ class FilePicker:
                             multi_selected_state = 0
 
                         if multi_selected_state==0:
-                            imgui.internal.push_item_flag(imgui.internal.ImGuiItemFlags_.mixed_value, True)
+                            imgui.internal.push_item_flag(imgui.internal.ItemFlags_.mixed_value, True)
                         clicked, new_state = imgui.checkbox(f"##header_checkbox", multi_selected_state==1, frame_size=(0,0), do_vertical_align=False)
                         if multi_selected_state==0:
                             imgui.internal.pop_item_flag()
@@ -275,11 +275,11 @@ class FilePicker:
 
                         disable_item = self.predicate and not self.predicate(id)
                         if disable_item:
-                            imgui.internal.push_item_flag(imgui.internal.ImGuiItemFlags_.disabled, True)
-                            imgui.push_style_var(imgui.ImGuiStyleVar_.alpha, imgui.get_style().alpha *  0.5)
+                            imgui.internal.push_item_flag(imgui.internal.ItemFlags_.disabled, True)
+                            imgui.push_style_var(imgui.StyleVar_.alpha, imgui.get_style().alpha *  0.5)
 
                         for ci in range(5+self.allow_multiple):
-                            if not (imgui.table_get_column_flags(ci) & imgui.ImGuiTableColumnFlags_.is_enabled):
+                            if not (imgui.table_get_column_flags(ci) & imgui.TableColumnFlags_.is_enabled):
                                 continue
                             imgui.table_set_column_index(ci)
 
@@ -292,19 +292,19 @@ class FilePicker:
                                 cell_padding_y = imgui.style.cell_padding.y
                                 cur_pos_y = imgui.get_cursor_pos_y()
                                 imgui.set_cursor_pos_y(cur_pos_y - cell_padding_y/2)
-                                imgui.push_style_var(imgui.ImGuiStyleVar_.frame_border_size, 0.)
-                                imgui.push_style_var(imgui.ImGuiStyleVar_.frame_padding, (0.,0.))
-                                imgui.push_style_var(imgui.ImGuiStyleVar_.item_spacing, (0.,cell_padding_y))
+                                imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0.)
+                                imgui.push_style_var(imgui.StyleVar_.frame_padding, (0.,0.))
+                                imgui.push_style_var(imgui.StyleVar_.item_spacing, (0.,cell_padding_y))
                                 # make selectable completely transparent
-                                imgui.push_style_color(imgui.ImGuiCol_.header_active , 0., 0., 0., 0.)
-                                imgui.push_style_color(imgui.ImGuiCol_.header        , 0., 0., 0., 0.)
-                                imgui.push_style_color(imgui.ImGuiCol_.header_hovered, 0., 0., 0., 0.)
-                                selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox", self.selected[id], flags=imgui.ImGuiSelectableFlags_.span_all_columns|imgui.internal.ImGuiSelectableFlagsPrivate_.im_gui_selectable_flags_select_on_click, height=frame_height+cell_padding_y)
+                                imgui.push_style_color(imgui.Col_.header_active , 0., 0., 0., 0.)
+                                imgui.push_style_color(imgui.Col_.header        , 0., 0., 0., 0.)
+                                imgui.push_style_color(imgui.Col_.header_hovered, 0., 0., 0., 0.)
+                                selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox", self.selected[id], flags=imgui.SelectableFlags_.span_all_columns|imgui.internal.SelectableFlagsPrivate_.im_gui_selectable_flags_select_on_click, height=frame_height+cell_padding_y)
                                 # instead override table row background color
                                 if selectable_out:
-                                    imgui.table_set_background_color(imgui.ImGuiTableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(*style_selected_row))
+                                    imgui.table_set_background_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(*style_selected_row))
                                 elif imgui.is_item_hovered():
-                                    imgui.table_set_background_color(imgui.ImGuiTableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(*style_hovered_row))
+                                    imgui.table_set_background_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(*style_hovered_row))
                                 imgui.set_cursor_pos_y(cur_pos_y)   # instead of imgui.same_line(), we just need this part of its effect
                                 imgui.set_item_allow_overlap()
                                 imgui.pop_style_color(3)
@@ -313,10 +313,10 @@ class FilePicker:
                         
                             if ci==int(self.allow_multiple):
                                 # (Invisible) button because it aligns the following draw calls to center vertically
-                                imgui.push_style_var(imgui.ImGuiStyleVar_.frame_border_size, 0.)
-                                imgui.push_style_var(imgui.ImGuiStyleVar_.frame_padding, (0.,imgui.style.frame_padding.y))
-                                imgui.push_style_var(imgui.ImGuiStyleVar_.item_spacing, (0.,imgui.style.item_spacing.y))
-                                imgui.push_style_color(imgui.ImGuiCol_.button, 0.,0.,0.,0.)
+                                imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0.)
+                                imgui.push_style_var(imgui.StyleVar_.frame_padding, (0.,imgui.style.frame_padding.y))
+                                imgui.push_style_var(imgui.StyleVar_.item_spacing, (0.,imgui.style.item_spacing.y))
+                                imgui.push_style_color(imgui.Col_.button, 0.,0.,0.,0.)
                                 imgui.button(f"##{id}_id", width=imgui.FLT_MIN)
                                 imgui.pop_style_color()
                                 imgui.pop_style_var(3)
@@ -402,8 +402,8 @@ class FilePicker:
             num_selected = sum([self.selected[id] for id in self.selected])
             disable_ok = not num_selected and not self.dir_picker
             if disable_ok:
-                imgui.internal.push_item_flag(imgui.internal.ImGuiItemFlags_.disabled, True)
-                imgui.push_style_var(imgui.ImGuiStyleVar_.alpha, imgui.get_style().alpha *  0.5)
+                imgui.internal.push_item_flag(imgui.internal.ItemFlags_.disabled, True)
+                imgui.push_style_var(imgui.StyleVar_.alpha, imgui.get_style().alpha *  0.5)
             if imgui.button("󰄬 Ok"):
                 imgui.close_current_popup()
                 closed = True
@@ -430,7 +430,7 @@ class FilePicker:
                 self.callback(selected if selected else None)
         return opened, closed
 
-    def sort_items(self, sort_specs_in: imgui.ImGuiTableSortSpecs):
+    def sort_items(self, sort_specs_in: imgui.TableSortSpecs):
         if sort_specs_in.specs_dirty or self.require_sort:
             ids = list(self.items)
             for sort_spec in sort_specs_in.specs:
