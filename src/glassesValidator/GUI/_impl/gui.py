@@ -200,18 +200,18 @@ class RecordingTable():
                         cur_pos_y = imgui.get_cursor_pos_y()
                         imgui.set_cursor_pos_y(cur_pos_y - cell_padding_y/2)
                         imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0.)
-                        imgui.push_style_var(imgui.StyleVar_.frame_padding, (0.,0.))
-                        imgui.push_style_var(imgui.StyleVar_.item_spacing, (0.,cell_padding_y))
+                        imgui.push_style_var(imgui.StyleVar_.frame_padding    , imgui.ImVec2(0.,0.))
+                        imgui.push_style_var(imgui.StyleVar_.item_spacing     , imgui.ImVec2(0.,cell_padding_y))
                         # make selectable completely transparent
-                        imgui.push_style_color(imgui.Col_.header_active , 0., 0., 0., 0.)
-                        imgui.push_style_color(imgui.Col_.header        , 0., 0., 0., 0.)
-                        imgui.push_style_color(imgui.Col_.header_hovered, 0., 0., 0., 0.)
-                        selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox{extra}", self.selected_recordings[id], flags=imgui.SelectableFlags_.span_all_columns|imgui.internal.SelectableFlagsPrivate_.im_gui_selectable_flags_select_on_click, height=frame_height+cell_padding_y)
+                        imgui.push_style_color(imgui.Col_.header_active , imgui.ImVec4(0., 0., 0., 0.))
+                        imgui.push_style_color(imgui.Col_.header        , imgui.ImVec4(0., 0., 0., 0.))
+                        imgui.push_style_color(imgui.Col_.header_hovered, imgui.ImVec4(0., 0., 0., 0.))
+                        selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox{extra}", self.selected_recordings[id], flags=imgui.SelectableFlags_.span_all_columns|imgui.internal.SelectableFlagsPrivate_.im_gui_selectable_flags_select_on_click, size=imgui.ImVec2(0,frame_height+cell_padding_y))
                         # instead override table row background color
                         if selectable_out:
-                            imgui.table_set_background_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(*style_selected_row))
+                            imgui.table_set_background_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(imgui.ImVec4(*style_selected_row)))
                         elif imgui.is_item_hovered():
-                            imgui.table_set_background_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(*style_hovered_row))
+                            imgui.table_set_background_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(imgui.ImVec4(*style_hovered_row)))
                         imgui.set_cursor_pos_y(cur_pos_y)   # instead of imgui.same_line(), we just need this part of its effect
                         imgui.set_item_allow_overlap()
                         imgui.pop_style_color(3)
@@ -222,9 +222,9 @@ class RecordingTable():
                     if num_columns_drawn==2:
                         # (Invisible) button because it aligns the following draw calls to center vertically
                         imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0.)
-                        imgui.push_style_var(imgui.StyleVar_.frame_padding, (0.,imgui.style.frame_padding.y))
-                        imgui.push_style_var(imgui.StyleVar_.item_spacing, (0.,imgui.style.item_spacing.y))
-                        imgui.push_style_color(imgui.Col_.button, 0.,0.,0.,0.)
+                        imgui.push_style_var(imgui.StyleVar_.frame_padding    , imgui.ImVec2(0.,imgui.style.frame_padding.y))
+                        imgui.push_style_var(imgui.StyleVar_.item_spacing     , imgui.ImVec2(0.,imgui.style.item_spacing.y))
+                        imgui.push_style_color(imgui.Col_.button, imgui.ImVec4(0.,0.,0.,0.))
                         imgui.button(f"##{recording.id}_id", size=imgui.ImVec2(imgui.FLT_MIN, 0))
                         imgui.pop_style_color()
                         imgui.pop_style_var(3)
@@ -309,7 +309,7 @@ class RecordingTable():
             # deselect all, and if right click, show popup
             # check mouse is below bottom of last drawn row so that clicking on the one pixel empty space between selectables
             # does not cause everything to unselect or popup to open
-            if imgui.is_item_clicked() and not any_selectable_clicked and imgui.io.mouse_pos.y>last_y:  # left mouse click (NB: table header is not signalled by is_item_clicked(), so this works correctly)
+            if imgui.is_item_clicked(imgui.MouseButton_.left) and not any_selectable_clicked and imgui.io.mouse_pos.y>last_y:  # NB: table header is not signalled by is_item_clicked(), so this works correctly
                 utils.set_all(self.selected_recordings, False)
 
             # show menu when right-clicking the empty space
@@ -346,15 +346,15 @@ class RecordingTable():
         else:
             async_thread.run(callbacks.remove_recording(self.recordings[rec_id]))
 
-    def draw_eye_tracker_widget(self, recording: Recording, align=False, *args, **kwargs):
-        col = recording.eye_tracker.color
-        imgui.push_style_color(imgui.Col_.button, *col)
-        imgui.push_style_color(imgui.Col_.button_active, *col)
-        imgui.push_style_color(imgui.Col_.button_hovered, *col)
+    def draw_eye_tracker_widget(self, recording: Recording, align=False):
+        col = imgui.ImVec4(*recording.eye_tracker.color)
+        imgui.push_style_color(imgui.Col_.button, col)
+        imgui.push_style_color(imgui.Col_.button_active, col)
+        imgui.push_style_color(imgui.Col_.button_hovered, col)
         imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0)
         x_padding = 4
         backup_y_padding = imgui.style.frame_padding.y
-        imgui.push_style_var(imgui.StyleVar_.frame_padding, (x_padding, 0))
+        imgui.push_style_var(imgui.StyleVar_.frame_padding, imgui.ImVec2(x_padding, 0))
         if self._eye_tracker_label_width is None:
             self._eye_tracker_label_width = 0
             for eye_tracker in list(EyeTracker):
@@ -363,19 +363,19 @@ class RecordingTable():
         if align:
             imgui.begin_group()
             imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + backup_y_padding)
-        imgui.button(f"{recording.eye_tracker.value}##{recording.id}_type", *args, size=imgui.ImVec2(self._eye_tracker_label_width, 0), **kwargs)
+        imgui.button(f"{recording.eye_tracker.value}##{recording.id}_type", size=imgui.ImVec2(self._eye_tracker_label_width, 0))
         if align:
             imgui.end_group()
         imgui.pop_style_color(3)
         imgui.pop_style_var(2)
 
-    def draw_recording_name_text(self, recording: Recording, *args, **kwargs):
+    def draw_recording_name_text(self, recording: Recording):
         if globals.settings.style_color_recording_name:
-            imgui.text_colored(recording.name, *globals.settings.style_accent, *args, **kwargs)
+            imgui.text_colored(recording.name, *globals.settings.style_accent)
         else:
-            imgui.text(recording.name, *args, **kwargs)
+            imgui.text(recording.name)
 
-    def draw_recording_status_widget(self, recording: Recording, *args, **kwargs):
+    def draw_recording_status_widget(self, recording: Recording):
         job_state = None
         if recording.id in globals.jobs:
             job = globals.jobs[recording.id]
@@ -390,53 +390,53 @@ class RecordingTable():
             symbol_size = imgui.calc_text_size("󰲞")
             if job_state==ProcessState.Pending:
                 thickness = symbol_size.x / 3 / 2.5 # 3 is number of dots, 2.5 is nextItemKoeff in utils.bounce_dots()
-                utils.bounce_dots(f'waitBounceDots_{recording.id}', thickness, color=imgui.color_convert_float4_to_u32(*globals.settings.style_text))
+                utils.bounce_dots(f'waitBounceDots_{recording.id}', thickness, color=imgui.color_convert_float4_to_u32(imgui.ImVec4(*globals.settings.style_text)))
                 hover_text = f'Pending: {get_task_name_friendly(job.task)}'
             else:
                 spinner_radii = [x/22/2*symbol_size.x for x in [22, 16, 10]]
                 lw = 3.5/22/2*symbol_size.x
-                utils.draw_spinner(f'runSpinner_{recording.id}', *spinner_radii, lw, c1=imgui.color_convert_float4_to_u32(*globals.settings.style_text), c2=imgui.color_convert_float4_to_u32(*globals.settings.style_accent), c3=imgui.color_convert_float4_to_u32(*globals.settings.style_text))
+                utils.draw_spinner(f'runSpinner_{recording.id}', *spinner_radii, lw, c1=imgui.color_convert_float4_to_u32(imgui.ImVec4(*globals.settings.style_text), c2=imgui.color_convert_float4_to_u32(*globals.settings.style_accent), c3=imgui.color_convert_float4_to_u32(*globals.settings.style_text)))
                 hover_text = f'Running: {get_task_name_friendly(job.task)}'
         else:
             match get_simplified_task_state(recording.task):
                 # before stage 1
                 case TaskSimplified.Not_Imported:
-                    imgui.text_colored("󰲞", 0.5000, 0.5000, 0.5000, *args, **kwargs)
+                    imgui.text_colored("󰲞", imgui.ImVec4(0.5000, 0.5000, 0.5000, 1.))
                 # after stage 1
                 case TaskSimplified.Imported:
-                    imgui.text_colored("󰲠", 0.3333, 0.6167, 0.3333, *args, **kwargs)
+                    imgui.text_colored("󰲠", imgui.ImVec4(0.3333, 0.6167, 0.3333, 1.))
                 # after stage 2 / during stage 3
                 case TaskSimplified.Coded:
-                    imgui.text_colored("󰲢", 0.1667, 0.7333, 0.1667, *args, **kwargs)
+                    imgui.text_colored("󰲢", imgui.ImVec4(0.1667, 0.7333, 0.1667, 1.))
                 # after stage 3:
                 case TaskSimplified.Processed:
-                    imgui.text_colored("󰲤", 0.0000, 0.8500, 0.0000, *args, **kwargs)
+                    imgui.text_colored("󰲤", imgui.ImVec4(0.0000, 0.8500, 0.0000, 1.))
                 # other
                 case TaskSimplified.Unknown:
-                    imgui.text_colored("󰀨", 0.8700, 0.2000, 0.2000, *args, **kwargs)
+                    imgui.text_colored("󰀨", imgui.ImVec4(0.8700, 0.2000, 0.2000, 1.))
                 case _:
-                    imgui.text("", *args, **kwargs)
+                    imgui.text("")
             hover_text = recording.task.value
 
         draw_hover_text(hover_text, text='')
 
-    def draw_recording_remove_button(self, ids: list[int], label="", selectable=False, *args, **kwargs):
+    def draw_recording_remove_button(self, ids: list[int], label, selectable=False):
         if not ids:
             return False
 
         extra = "_adder" if self.in_adder_popup else ""
         id = f"{label}##{ids[0]}_remove{extra}"
         if selectable:
-            clicked = imgui.selectable(id, False, *args, **kwargs)[0]
+            clicked = imgui.selectable(id, False)[0]
         else:
-            clicked = imgui.button(id, *args, **kwargs)
+            clicked = imgui.button(id)
         if clicked:
             for rid in ids:
                 self.remove_recording(rid)
             self.require_sort = True
         return clicked
 
-    def draw_recording_open_folder_button(self, ids: list[int], label="", selectable=False, source_dir=False, *args, **kwargs):
+    def draw_recording_open_folder_button(self, ids: list[int], label, source_dir=False):
         if len(ids)!=1:
             return False
         recording = self.recordings[ids[0]]
@@ -449,32 +449,46 @@ class RecordingTable():
             extra = ""
             path = globals.project_path / recording.proc_directory_name
             disable = not recording.proc_directory_name or not path.is_dir()
-
-        id = f"{label}##{recording.id}_open_{extra}folder"
+            
         if disable:
             utils.push_disabled()
-        if selectable:
-            clicked = imgui.selectable(id, False, *args, **kwargs)[0]
-        else:
-            clicked = imgui.button(id, *args, **kwargs)
+        if (clicked := imgui.selectable(f"{label}##{recording.id}_open_{extra}folder", False)[0]):
+            callbacks.open_folder(path)
         if disable:
             utils.pop_disabled()
-        if clicked:
-            callbacks.open_folder(path)
         return clicked
 
-    def draw_recording_remove_folder_button(self, ids: list[int], label="", selectable=False, *args, **kwargs):
+    def draw_recording_remove_folder_button(self, ids: list[int], label):
         if not ids:
             return False
 
-        id = f"{label}##{ids[0]}_remove_folder"
-        if selectable:
-            clicked = imgui.selectable(id, False, *args, **kwargs)[0]
-        else:
-            clicked = imgui.button(id, *args, **kwargs)
-        if clicked:
+        if (clicked := imgui.selectable(f"{label}##{ids[0]}_remove_folder", False)[0]):
             for id in ids:
                 async_thread.run(callbacks.remove_recording_working_dir(self.recordings[id]))
+        return clicked
+
+    def draw_recording_process_button(self, ids: list[int], label, action=None, should_chain_next=False):
+        if not ids:
+            return False
+
+        if (clicked := imgui.selectable(f"{label}##{ids[0]}_process_button", False)[0]):
+            async_thread.run(callbacks.process_recordings(ids, task=action, chain=should_chain_next))
+        return clicked
+
+    def draw_recording_export_button(self, ids: list[int], label):
+        if not ids:
+            return False
+
+        if (clicked := imgui.selectable(f"{label}##{ids[0]}_export_button", False)[0]):
+            async_thread.run(callbacks.export_data_quality(ids))
+        return clicked
+
+    def draw_recording_process_cancel_button(self, ids: list[int], label):
+        if not ids:
+            return False
+        
+        if (clicked := imgui.selectable(f"{label}##{ids[0]}_cancel_button", False)[0]):
+            async_thread.run(callbacks.cancel_processing_recordings(ids))
         return clicked
 
     def draw_recordings_context_menu(self):
@@ -488,81 +502,42 @@ class RecordingTable():
             if any(has_no_job):
                 # before stage 1
                 not_imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Not_Imported]
-                self.draw_recording_process_button(not_imported_ids, label="󰼛 Import", selectable=True, action=Task.Imported)
+                self.draw_recording_process_button(not_imported_ids, label="󰼛 Import", action=Task.Imported)
                 # after stage 1
                 imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Imported]
-                self.draw_recording_process_button(imported_ids, label="󰼛 Code validation intervals", selectable=True, action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
+                self.draw_recording_process_button(imported_ids, label="󰼛 Code validation intervals", action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
                 # already coded, recode
                 recoded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task) in [TaskSimplified.Coded, TaskSimplified.Processed]]
-                self.draw_recording_process_button(recoded_ids, label="󰑐 Edit validation intervals", selectable=True, action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
+                self.draw_recording_process_button(recoded_ids, label="󰑐 Edit validation intervals", action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
                 # after stage 2 / during stage 3
                 coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Coded]
                 # NB: don't send action, so that callback code figures out where we we left off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
-                self.draw_recording_process_button(coded_ids, label="󰼛 Calculate data quality", selectable=True, should_chain_next=True)
+                self.draw_recording_process_button(coded_ids, label="󰼛 Calculate data quality", should_chain_next=True)
                 # already fully done, recompute
                 processed_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Processed]
-                self.draw_recording_process_button(processed_ids, label="󰑐 Recalculate data quality", selectable=True, action=Task.Markers_Detected, should_chain_next=True)
+                self.draw_recording_process_button(processed_ids, label="󰑐 Recalculate data quality", action=Task.Markers_Detected, should_chain_next=True)
                 # make video, always possible
                 video_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)!=TaskSimplified.Not_Imported]
-                self.draw_recording_process_button(video_ids, label="󰯜 Export scene video", selectable=True, action=Task.Make_Video)
+                self.draw_recording_process_button(video_ids, label="󰯜 Export scene video", action=Task.Make_Video)
             if any(has_job):
-                self.draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label="󱠮 Cancel job", selectable=True)
+                self.draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label="󱠮 Cancel job")
 
             # if any fully done, offer export
             processed_ids = [id for id in ids if get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Processed]
-            self.draw_recording_export_button(processed_ids, label="󱎻 Export data quality", selectable=True)
+            self.draw_recording_export_button(processed_ids, label="󱎻 Export data quality")
 
             if len(ids)==1:
-                self.draw_recording_open_folder_button(ids, label="󰷏 Open Working Folder", selectable=True)
+                self.draw_recording_open_folder_button(ids, label="󰷏 Open Working Folder")
             work_dir_ids = [id for id in ids if (pd:=self.recordings[id].proc_directory_name) and (globals.project_path / pd).is_dir()]
             if work_dir_ids:
-                self.draw_recording_remove_folder_button(work_dir_ids, label="󰮞 Remove Working Folder", selectable=True)
+                self.draw_recording_remove_folder_button(work_dir_ids, label="󰮞 Remove Working Folder")
 
             if len(ids)==1:
-                self.draw_recording_open_folder_button(ids, label="󰷏 Open Source Folder", selectable=True, source_dir=True)
+                self.draw_recording_open_folder_button(ids, label="󰷏 Open Source Folder", source_dir=True)
         elif len(ids)==1:
             # in this context, the source folder is just the folder
-            self.draw_recording_open_folder_button(ids, label="󰷏 Open Folder", selectable=True, source_dir=True)
+            self.draw_recording_open_folder_button(ids, label="󰷏 Open Folder", source_dir=True)
         self.draw_recording_remove_button(ids, label="󰩺 Remove", selectable=True)
-
-    def draw_recording_process_button(self, ids: list[int], label="", selectable=False, action = None, should_chain_next = False, *args, **kwargs):
-        if not ids:
-            return False
-
-        id = f"{label}##{ids[0]}_process_button"
-        if selectable:
-            clicked = imgui.selectable(id, False, *args, **kwargs)[0]
-        else:
-            clicked = imgui.button(id, *args, **kwargs)
-        if clicked:
-            async_thread.run(callbacks.process_recordings(ids, task=action, chain=should_chain_next))
-        return clicked
-
-    def draw_recording_export_button(self, ids: list[int], label="", selectable=False, *args, **kwargs):
-        if not ids:
-            return False
-
-        id = f"{label}##{ids[0]}_export_button"
-        if selectable:
-            clicked = imgui.selectable(id, False, *args, **kwargs)[0]
-        else:
-            clicked = imgui.button(id, *args, **kwargs)
-        if clicked:
-            async_thread.run(callbacks.export_data_quality(ids))
-        return clicked
-
-    def draw_recording_process_cancel_button(self, ids: list[int], label="", selectable=False, *args, **kwargs):
-        if not ids:
-            return False
-
-        id = f"{label}##{ids[0]}_cancel_button"
-        if selectable:
-            clicked = imgui.selectable(id, False, *args, **kwargs)[0]
-        else:
-            clicked = imgui.button(id, *args, **kwargs)
-        if clicked:
-            async_thread.run(callbacks.cancel_processing_recordings(ids))
-        return clicked
 
     def sort_and_filter_recordings(self, sort_specs_in: imgui.TableSortSpecs):
         if sort_specs_in.specs_count > 0:

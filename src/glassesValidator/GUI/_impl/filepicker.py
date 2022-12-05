@@ -276,7 +276,7 @@ class FilePicker:
                         disable_item = self.predicate and not self.predicate(id)
                         if disable_item:
                             imgui.internal.push_item_flag(imgui.internal.ItemFlags_.disabled, True)
-                            imgui.push_style_var(imgui.StyleVar_.alpha, imgui.get_style().alpha *  0.5)
+                            imgui.push_style_var(imgui.StyleVar_.alpha, imgui.get_style().alpha * 0.5)
 
                         for ci in range(5+self.allow_multiple):
                             if not (imgui.table_get_column_flags(ci) & imgui.TableColumnFlags_.is_enabled):
@@ -293,8 +293,8 @@ class FilePicker:
                                 cur_pos_y = imgui.get_cursor_pos_y()
                                 imgui.set_cursor_pos_y(cur_pos_y - cell_padding_y/2)
                                 imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0.)
-                                imgui.push_style_var(imgui.StyleVar_.frame_padding, imgui.ImVec2(0.,0.))
-                                imgui.push_style_var(imgui.StyleVar_.item_spacing, imgui.ImVec2(0.,cell_padding_y))
+                                imgui.push_style_var(imgui.StyleVar_.frame_padding    , imgui.ImVec2(0.,0.))
+                                imgui.push_style_var(imgui.StyleVar_.item_spacing     , imgui.ImVec2(0.,cell_padding_y))
                                 # make selectable completely transparent
                                 imgui.push_style_color(imgui.Col_.header_active , imgui.ImVec4(0., 0., 0., 0.))
                                 imgui.push_style_color(imgui.Col_.header        , imgui.ImVec4(0., 0., 0., 0.))
@@ -314,8 +314,8 @@ class FilePicker:
                             if ci==int(self.allow_multiple):
                                 # (Invisible) button because it aligns the following draw calls to center vertically
                                 imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0.)
-                                imgui.push_style_var(imgui.StyleVar_.frame_padding, imgui.ImVec2(0.,imgui.style.frame_padding.y))
-                                imgui.push_style_var(imgui.StyleVar_.item_spacing, imgui.ImVec2(0.,imgui.style.item_spacing.y))
+                                imgui.push_style_var(imgui.StyleVar_.frame_padding    , imgui.ImVec2(0.,imgui.style.frame_padding.y))
+                                imgui.push_style_var(imgui.StyleVar_.item_spacing     , imgui.ImVec2(0.,imgui.style.item_spacing.y))
                                 imgui.push_style_color(imgui.Col_.button, imgui.ImVec4(0.,0.,0.,0.))
                                 imgui.button(f"##{id}_id", size=imgui.ImVec2(imgui.FLT_MIN,0))
                                 imgui.pop_style_color()
@@ -371,7 +371,7 @@ class FilePicker:
 
                         # further deal with doubleclick on item
                         if selectable_clicked and not checkbox_hovered: # don't enter this branch if interaction is with checkbox on the table row
-                            if not imgui.io.key_ctrl and not imgui.io.key_shift and imgui.is_mouse_double_clicked():
+                            if not imgui.io.key_ctrl and not imgui.io.key_shift and imgui.is_mouse_double_clicked(imgui.MouseButton_.left):
                                 if self.items[id].is_dir:
                                     self.goto(self.items[id].full_path)
                                     break
