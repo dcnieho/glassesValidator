@@ -189,7 +189,6 @@ class RecordingTable():
                     if not (imgui.table_get_column_flags(ri) & imgui.TableColumnFlags_.is_enabled):
                         continue
                     imgui.table_set_column_index(ri)
-                    num_columns_drawn+=1
 
                     # Row hitbox
                     if not has_drawn_hitbox:
@@ -220,7 +219,7 @@ class RecordingTable():
                         selectable_right_clicked = self.handle_recording_hitbox_events(id)
                         has_drawn_hitbox = True
                         
-                    if num_columns_drawn==2:
+                    if num_columns_drawn==1:
                         # (Invisible) button because it aligns the following draw calls to center vertically
                         imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0.)
                         imgui.push_style_var(imgui.StyleVar_.frame_padding    , imgui.ImVec2(0.,imgui.style.frame_padding.y))
@@ -291,6 +290,7 @@ class RecordingTable():
                         case 14:
                             # Scene Camera Serial
                             imgui.text(recording.scene_camera_serial or "Unknown")
+                    num_columns_drawn+=1
                     
                 # handle selection logic
                 # NB: the part of this logic that has to do with right-clicks is in handle_recording_hitbox_events()
