@@ -299,7 +299,7 @@ class FilePicker:
                                 imgui.push_style_color(imgui.Col_.header_active , imgui.ImVec4(0., 0., 0., 0.))
                                 imgui.push_style_color(imgui.Col_.header        , imgui.ImVec4(0., 0., 0., 0.))
                                 imgui.push_style_color(imgui.Col_.header_hovered, imgui.ImVec4(0., 0., 0., 0.))
-                                selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox", self.selected[id], flags=imgui.SelectableFlags_.span_all_columns|imgui.internal.SelectableFlagsPrivate_.im_gui_selectable_flags_select_on_click, size=imgui.ImVec2(0,frame_height+cell_padding_y))
+                                selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox", self.selected[id], flags=imgui.SelectableFlags_.span_all_columns|imgui.internal.SelectableFlagsPrivate_.select_on_click, size=imgui.ImVec2(0,frame_height+cell_padding_y))
                                 # instead override table row background color
                                 if selectable_out:
                                     imgui.table_set_bg_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(imgui.ImVec4(*style_selected_row)))
@@ -433,8 +433,10 @@ class FilePicker:
     def sort_items(self, sort_specs_in: imgui.TableSortSpecs):
         if sort_specs_in.specs_dirty or self.require_sort:
             ids = list(self.items)
-            for sort_spec in []:#sort_specs_in.specs:
-                sort_spec = SortSpec(index=sort_spec.column_index, reverse=bool(sort_spec.sort_direction - 1))
+            sort_specs = [sort_specs_in.get_specs(i) for i in range(sort_specs_in.specs_count)]
+            for sort_spec in reversed(sort_specs):
+                pass
+                sort_spec = SortSpec(index=sort_spec.column_index, reverse=bool(sort_spec.get_sort_direction() - 1))
                 match sort_spec.index+int(not self.allow_multiple):
                     case 2:     # Date created
                         key = lambda id: self.items[id].ctime

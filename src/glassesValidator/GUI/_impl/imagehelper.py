@@ -140,7 +140,7 @@ class ImageHelper:
                 pos = imgui.get_cursor_screen_pos()
                 pos2 = imgui.ImVec2(pos.x + width, pos.y + height)
                 draw_list = imgui.get_window_draw_list()
-                #draw_list.add_image_rounded(self.texture_id, pos, pos2, *args, flags=flags, **kwargs)
+                draw_list.add_image_rounded(self.texture_id, pos, pos2, imgui.ImVec2(0,0), imgui.ImVec2(1,1), col=0xffffffff, *args, flags=flags, **kwargs)
                 imgui.dummy(imgui.ImVec2(width, height))
             else:
                 imgui.image(self.texture_id, width, height, *args, **kwargs)

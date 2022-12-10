@@ -1,4 +1,5 @@
 import concurrent.futures
+from typing import Tuple
 from PIL import Image
 import configparser
 import platform
@@ -7,7 +8,7 @@ import pebble
 import pathlib
 import OpenGL
 import imgui_bundle
-from imgui_bundle import imgui, imgui_backends
+from imgui_bundle import imgui
 import glfw
 import OpenGL.GL as gl
 import time
@@ -206,12 +207,12 @@ class RecordingTable():
                         imgui.push_style_color(imgui.Col_.header_active , imgui.ImVec4(0., 0., 0., 0.))
                         imgui.push_style_color(imgui.Col_.header        , imgui.ImVec4(0., 0., 0., 0.))
                         imgui.push_style_color(imgui.Col_.header_hovered, imgui.ImVec4(0., 0., 0., 0.))
-                        selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox{extra}", self.selected_recordings[id], flags=imgui.SelectableFlags_.span_all_columns|imgui.internal.SelectableFlagsPrivate_.im_gui_selectable_flags_select_on_click, size=imgui.ImVec2(0,frame_height+cell_padding_y))
+                        selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox{extra}", self.selected_recordings[id], flags=imgui.SelectableFlags_.span_all_columns|imgui.internal.SelectableFlagsPrivate_.select_on_click, size=imgui.ImVec2(0,frame_height+cell_padding_y))
                         # instead override table row background color
                         if selectable_out:
-                            imgui.table_set_background_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(imgui.ImVec4(*style_selected_row)))
+                            imgui.table_set_bg_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(imgui.ImVec4(*style_selected_row)))
                         elif imgui.is_item_hovered():
-                            imgui.table_set_background_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(imgui.ImVec4(*style_hovered_row)))
+                            imgui.table_set_bg_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(imgui.ImVec4(*style_hovered_row)))
                         imgui.set_cursor_pos_y(cur_pos_y)   # instead of imgui.same_line(), we just need this part of its effect
                         imgui.set_item_allow_overlap()
                         imgui.pop_style_color(3)
@@ -313,7 +314,7 @@ class RecordingTable():
                 utils.set_all(self.selected_recordings, False)
 
             # show menu when right-clicking the empty space
-            if not self.in_adder_popup and imgui.io.mouse_pos.y>last_y and imgui.begin_popup_context_item("##recording_list_context",mouse_button=imgui.PopupFlags_.mouse_button_right | imgui.PopupFlags_.no_open_over_existing_popup):
+            if not self.in_adder_popup and imgui.io.mouse_pos.y>last_y and imgui.begin_popup_context_item("##recording_list_context",popup_flags=imgui.PopupFlags_.mouse_button_right | imgui.PopupFlags_.no_open_over_existing_popup):
                 utils.set_all(self.selected_recordings, False)  # deselect on right mouse click as well
                 if imgui.selectable("󱃩 Add recordings##context_menu", False)[0]:
                     utils.push_popup(globals.gui.get_folder_picker(reason='add_recordings'))
@@ -371,7 +372,7 @@ class RecordingTable():
 
     def draw_recording_name_text(self, recording: Recording):
         if globals.settings.style_color_recording_name:
-            imgui.text_colored(recording.name, *globals.settings.style_accent)
+            imgui.text_colored(imgui.ImVec4(*globals.settings.style_accent), recording.name)
         else:
             imgui.text(recording.name)
 
@@ -401,19 +402,19 @@ class RecordingTable():
             match get_simplified_task_state(recording.task):
                 # before stage 1
                 case TaskSimplified.Not_Imported:
-                    imgui.text_colored("󰲞", imgui.ImVec4(0.5000, 0.5000, 0.5000, 1.))
+                    imgui.text_colored(imgui.ImVec4(0.5000, 0.5000, 0.5000, 1.), "󰲞")
                 # after stage 1
                 case TaskSimplified.Imported:
-                    imgui.text_colored("󰲠", imgui.ImVec4(0.3333, 0.6167, 0.3333, 1.))
+                    imgui.text_colored(imgui.ImVec4(0.3333, 0.6167, 0.3333, 1.), "󰲠")
                 # after stage 2 / during stage 3
                 case TaskSimplified.Coded:
-                    imgui.text_colored("󰲢", imgui.ImVec4(0.1667, 0.7333, 0.1667, 1.))
+                    imgui.text_colored(imgui.ImVec4(0.1667, 0.7333, 0.1667, 1.), "󰲢")
                 # after stage 3:
                 case TaskSimplified.Processed:
-                    imgui.text_colored("󰲤", imgui.ImVec4(0.0000, 0.8500, 0.0000, 1.))
+                    imgui.text_colored(imgui.ImVec4(0.0000, 0.8500, 0.0000, 1.), "󰲤")
                 # other
                 case TaskSimplified.Unknown:
-                    imgui.text_colored("󰀨", imgui.ImVec4(0.8700, 0.2000, 0.2000, 1.))
+                    imgui.text_colored(imgui.ImVec4(0.8700, 0.2000, 0.2000, 1.), "󰀨")
                 case _:
                     imgui.text("")
             hover_text = recording.task.value
@@ -540,13 +541,11 @@ class RecordingTable():
         self.draw_recording_remove_button(ids, label="󰩺 Remove", selectable=True)
 
     def sort_and_filter_recordings(self, sort_specs_in: imgui.TableSortSpecs):
-        if sort_specs_in.specs_count > 0:
-            sort_specs = []
-            for sort_spec in sort_specs_in.specs:
-                sort_specs.insert(0, SortSpec(index=sort_spec.column_index, reverse=bool(sort_spec.sort_direction - 1)))
         if sort_specs_in.specs_dirty or self.require_sort:
             ids = list(self.recordings)
-            for sort_spec in sort_specs:
+            sort_specs = [sort_specs_in.get_specs(i) for i in range(sort_specs_in.specs_count)]
+            for sort_spec in reversed(sort_specs):
+                sort_spec = SortSpec(index=sort_spec.column_index, reverse=bool(sort_spec.get_sort_direction() - 1))
                 match sort_spec.index:
                     case 1:     # Eye tracker
                         key = lambda id: self.recordings[id].eye_tracker.value
@@ -769,7 +768,7 @@ class MainGUI():
     def setup_imgui(self):
         imgui.create_context()
         imgui.io = imgui.get_io()
-        imgui.set_io_ini_filename(str(utils.get_data_path() / "imgui.ini"))
+        imgui.io.set_ini_filename(str(utils.get_data_path() / "imgui.ini"))
         imgui.io.config_drag_click_to_input_text = True
         size = tuple()
         pos = tuple()
@@ -821,11 +820,11 @@ class MainGUI():
             glfw.set_window_icon(self.window, 1, Image.open(icon_file))
 
     def setup_imgui_impl(self):
-        # transfer the window address to imgui_backends.glfw_init_for_open_gl
+        # transfer the window address to imgui.backends.glfw_init_for_open_gl
         import ctypes
         window_address = ctypes.cast(self.window, ctypes.c_void_p).value
-        imgui_backends.glfw_init_for_open_gl(window_address, True)
-        imgui_backends.opengl3_init("#version 150")
+        imgui.backends.glfw_init_for_open_gl(window_address, True)
+        imgui.backends.opengl3_init("#version 150")
 
         glfw.set_char_callback(self.window, self.char_callback)
         glfw.set_window_focus_callback(self.window, self.focus_callback)
@@ -847,19 +846,21 @@ class MainGUI():
 
     def style_imgui_functions(self):
         # Custom checkbox style
-        def checkbox(label: str, state: bool, frame_size=None, do_vertical_align=True):
+        def checkbox(label: str, state: bool, frame_size: Tuple=None, do_vertical_align=True):
             if state:
                 pass#imgui.push_style_color(imgui.Col_.frame_bg_hovered, *imgui.style.colors[imgui.Col_.button_hovered])
                 #imgui.push_style_color(imgui.Col_.frame_bg, *imgui.style.colors[imgui.Col_.button_hovered])
                 #imgui.push_style_color(imgui.Col_.check_mark, *imgui.style.colors[imgui.Col_.text])
             if frame_size is not None:
                 frame_padding = imgui.style.frame_padding
-                imgui.push_style_var(imgui.StyleVar_.frame_padding, imgui.ImVec2(frame_size))
+                if not isinstance(frame_size,imgui.ImVec2):
+                    frame_size = imgui.ImVec2(*frame_size)
+                imgui.push_style_var(imgui.StyleVar_.frame_padding, frame_size)
                 imgui.push_style_var(imgui.StyleVar_.item_spacing, imgui.ImVec2(0.,0.))
                 imgui.begin_group()
                 if do_vertical_align:
-                    imgui.dummy(imgui.ImVec2(imgui.ImVec2(0,frame_padding.y)))
-                imgui.dummy(imgui.ImVec2(imgui.ImVec2(frame_padding.x,0)))
+                    imgui.dummy(imgui.ImVec2(0,frame_padding.y))
+                imgui.dummy(imgui.ImVec2(frame_padding.x,0))
                 imgui.same_line()
             result = imgui._checkbox(label, state)
             if frame_size is not None:
@@ -979,28 +980,29 @@ class MainGUI():
             importlib.resources.as_file(noto_font) as noto_path,
             importlib.resources.as_file(mdi_font) as mdi_path
         ):
-            imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(karla_path), size_18,                       glyph_ranges_as_int_list=karla_range)
-            imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(noto_path),  size_18, font_cfg=noto_config, glyph_ranges_as_int_list=noto_range)
-            imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(mdi_path),   size_18, font_cfg=mdi_config,  glyph_ranges_as_int_list=mdi_range)
+            imgui.io.fonts.add_font_from_file_ttf(str(karla_path), size_18,                       glyph_ranges_as_int_list=karla_range)
+            imgui.io.fonts.add_font_from_file_ttf(str(noto_path),  size_18, font_cfg=noto_config, glyph_ranges_as_int_list=noto_range)
+            imgui.io.fonts.add_font_from_file_ttf(str(mdi_path),   size_18, font_cfg=mdi_config,  glyph_ranges_as_int_list=mdi_range)
             # Big font + more glyphs
             self.big_font = \
-            imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(karla_path), size_28,                       glyph_ranges_as_int_list=karla_range)
-            imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(noto_path),  size_28, font_cfg=noto_config, glyph_ranges_as_int_list=noto_range)
-            imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(mdi_path),   size_28, font_cfg=mdi_config,  glyph_ranges_as_int_list=mdi_range)
+            imgui.io.fonts.add_font_from_file_ttf(str(karla_path), size_28,                       glyph_ranges_as_int_list=karla_range)
+            imgui.io.fonts.add_font_from_file_ttf(str(noto_path),  size_28, font_cfg=noto_config, glyph_ranges_as_int_list=noto_range)
+            imgui.io.fonts.add_font_from_file_ttf(str(mdi_path),   size_28, font_cfg=mdi_config,  glyph_ranges_as_int_list=mdi_range)
             # MsgBox type icons
             self.icon_font = msgbox.icon_font = \
-            imgui.font_atlas_add_font_from_file_ttf(imgui.io.fonts,str(mdi_path),   size_69,                       glyph_ranges_as_int_list=msgbox_range)
-        #try:
-        #    tex_width, tex_height, pixels = imgui.font_atlas_get_tex_data_as_rgba32(imgui.io.fonts)
-        #except SystemError:
-        #    tex_height = 1
-        #    max_tex_size = 0
-        #if tex_height > max_tex_size:
-        #    self.size_mult = 1.0
-        #    return self.refresh_fonts()
+            imgui.io.fonts.add_font_from_file_ttf(str(mdi_path),   size_69,                       glyph_ranges_as_int_list=msgbox_range)
+        try:
+            pixels = imgui.font_atlas_get_tex_data_as_rgba32(imgui.io.fonts)
+            tex_height,tex_width = pixels.shape[0:2]
+        except SystemError:
+            tex_height = 1
+            max_tex_size = 0
+        if tex_height > max_tex_size:
+            self.size_mult = 1.0
+            return self.refresh_fonts()
         # now refresh font texture
-        imgui_backends.opengl3_destroy_fonts_texture()
-        imgui_backends.opengl3_create_fonts_texture()
+        imgui.backends.opengl3_destroy_fonts_texture()
+        imgui.backends.opengl3_create_fonts_texture()
         if self.recording_list is not None:
             self.recording_list.font_changed()
 
@@ -1168,8 +1170,8 @@ class MainGUI():
                     if any_deleted:
                         self.recording_list.require_sort = True
                         
-                imgui_backends.opengl3_new_frame()
-                imgui_backends.glfw_new_frame()
+                imgui.backends.opengl3_new_frame()
+                imgui.backends.glfw_new_frame()
                 imgui.new_frame()
 
                 imgui.set_next_window_pos(imgui.ImVec2(0,0), imgui.Cond_.once)
@@ -1192,8 +1194,8 @@ class MainGUI():
                 if globals.project_path is not None:
                     sidebar_size = self.scaled(self.sidebar_size)
                     
-                    imgui.begin_child("##main_frame", width=-(sidebar_size+self.scaled(4)))
-                    imgui.begin_child("##recording_list_frame", height=-imgui.get_frame_height_with_spacing(), flags=imgui.WindowFlags_.horizontal_scrollbar)
+                    imgui.begin_child("##main_frame", size=imgui.ImVec2(-(sidebar_size+self.scaled(4)),0))
+                    imgui.begin_child("##recording_list_frame", size=imgui.ImVec2(0,-imgui.get_frame_height_with_spacing()), flags=imgui.WindowFlags_.horizontal_scrollbar)
                     self.recording_list.draw()
                     imgui.end_child()
                     imgui.begin_child("##bottombar_frame")
@@ -1240,7 +1242,7 @@ class MainGUI():
                     globals.settings.style_bg[1] * globals.settings.style_bg[3],
                     globals.settings.style_bg[2] * globals.settings.style_bg[3],
                     globals.settings.style_bg[3])
-                imgui_backends.opengl3_render_draw_data(imgui.get_draw_data())
+                imgui.backends.opengl3_render_draw_data(imgui.get_draw_data())
 
                 # Update and Render additional Platform Windows, if any
                 if imgui.io.config_flags & imgui.ConfigFlags_.viewports_enable > 0:
@@ -1267,10 +1269,10 @@ class MainGUI():
 
         # clean up
         self.save_imgui_ini()
-        imgui_backends.opengl3_shutdown()
-        imgui_backends.glfw_shutdown()
+        imgui.backends.opengl3_shutdown()
+        imgui.backends.glfw_shutdown()
         if (ctx := imgui.get_current_context()) is not None:
-            imgui.io.ini_filename = None   # don't store settings to ini, we already did that manually just above and with augmentation
+            imgui.io.set_ini_filename('')   # don't store settings to ini, we already did that manually just above and with augmentation
             imgui.destroy_context(ctx)
         glfw.terminate()
         globals.coding_job_queue = None # this one we can just clear as its not enqueued on the job queue, no cancellation will be issued
@@ -1383,7 +1385,7 @@ class MainGUI():
         color = (0.45, 0.09, 1.00)
         imgui.push_font(self.icon_font)
         icon_size = imgui.calc_text_size(icon)
-        imgui.text_colored(icon, *color)
+        imgui.text_colored(imgui.ImVec4(*color), icon)
         imgui.pop_font()
         imgui.same_line(spacing=spacing)
 
@@ -1391,7 +1393,7 @@ class MainGUI():
         imgui.dummy(imgui.ImVec2(0,2*imgui.style.item_spacing.y))
         imgui.text_unformatted("For which eye tracker would you like to import recordings?")
         imgui.dummy(imgui.ImVec2(0,3*imgui.style.item_spacing.y))
-        full_width = imgui.get_content_region_available_width()
+        full_width = imgui.get_content_region_avail().x
         imgui.push_item_width(full_width*.4)
         imgui.set_cursor_pos_x(full_width*.3)
         changed, combo_value = imgui.combo("##select_eye_tracker", combo_value, eye_tracker_names)
@@ -1413,7 +1415,7 @@ class MainGUI():
         color = (0.45, 0.09, 1.00)
         imgui.push_font(self.icon_font)
         icon_size = imgui.calc_text_size(icon)
-        imgui.text_colored(icon, *color)
+        imgui.text_colored(imgui.ImVec4(*color), icon)
         imgui.pop_font()
         imgui.same_line(spacing=spacing)
 
@@ -1439,8 +1441,8 @@ class MainGUI():
         imgui.text_unformatted("Select which recordings you would like to import.")
         imgui.dummy(imgui.ImVec2(0,1*imgui.style.item_spacing.y))
 
-        imgui.begin_child("##main_frame_adder", height=min(self.scaled(300),(len(recording_list.recordings)+2)*imgui.get_frame_height_with_spacing()), width=self.scaled(800))
-        imgui.begin_child("##recording_list_frame_adder", height=-imgui.get_frame_height_with_spacing(), flags=imgui.WindowFlags_.horizontal_scrollbar)
+        imgui.begin_child("##main_frame_adder", size=imgui.ImVec2(self.scaled(800),min(self.scaled(300),(len(recording_list.recordings)+2)*imgui.get_frame_height_with_spacing())))
+        imgui.begin_child("##recording_list_frame_adder", size=imgui.ImVec2(0,-imgui.get_frame_height_with_spacing()), flags=imgui.WindowFlags_.horizontal_scrollbar)
         recording_list.draw()
         imgui.end_child()
         imgui.begin_child("##bottombar_frame_adder")
@@ -1466,7 +1468,7 @@ class MainGUI():
 
         if len(pop_data['dq_types'])>1:
             name = 'Data quality types'
-            header = imgui.collapsing_header(name)[0]
+            header = imgui.collapsing_header(name)
             if header:
                 imgui.text_unformatted("Indicates which type(s) of\ndata quality to export.")
                 if imgui.begin_table(f"##export_popup_{name}", column=2, flags=imgui.TableFlags_.no_clip):
@@ -1493,7 +1495,7 @@ class MainGUI():
 
         
         name = 'Targets'
-        header = imgui.collapsing_header(name)[0]
+        header = imgui.collapsing_header(name)
         if header:
             imgui.text_unformatted("Indicate for which target(s) you\nwant to export data quality metrics.")
             if imgui.begin_table(f"##export_popup_{name}", column=2, flags=imgui.TableFlags_.no_clip):
@@ -1658,7 +1660,7 @@ class MainGUI():
 
     def start_settings_section(self, name: str, right_width: int | float, collapsible=True):
         if collapsible:
-            header = imgui.collapsing_header(name)[0]
+            header = imgui.collapsing_header(name)
         else:
             header = True
         opened = header and imgui.begin_table(f"##settings_{name}", column=2, flags=imgui.TableFlags_.no_clip)
@@ -1676,7 +1678,7 @@ class MainGUI():
         right_width = self.scaled(90)
         frame_height = imgui.get_frame_height()
         checkbox_offset = right_width - frame_height
-        width = imgui.get_content_region_available_width()
+        width = imgui.get_content_region_avail().x
 
         # Big action button
         height = self.scaled(100)
@@ -1960,7 +1962,7 @@ class MainGUI():
                     " number of workers will only be changed once all have completed or are cancelled."
                 )
                 imgui.table_next_column()
-                changed, value = imgui.drag_int("##process_workers", set.process_workers, change_speed=0.5, min_value=1, max_value=100)
+                changed, value = imgui.drag_int("##process_workers", set.process_workers, v_speed=0.5, v_min=1, v_max=100)
                 set.process_workers = min(max(value, 1), 100)
                 if changed:
                     async_thread.run(db.update_settings("process_workers"))
@@ -2128,7 +2130,7 @@ class MainGUI():
                 "How fast or slow the smooth scrolling animation is. Default is 8."
             )
             imgui.table_next_column()
-            changed, value = imgui.drag_float("##scroll_smooth_speed", set.scroll_smooth_speed, change_speed=0.25, min_value=0.1, max_value=50)
+            changed, value = imgui.drag_float("##scroll_smooth_speed", set.scroll_smooth_speed, v_speed=0.25, v_min=0.1, v_max=50)
             set.scroll_smooth_speed = min(max(value, 0.1), 50)
             if changed:
                 async_thread.run(db.update_settings("scroll_smooth_speed"))
@@ -2145,7 +2147,7 @@ class MainGUI():
                 "Multiplier for how much a single scroll event should actually scroll. Default is 1."
             )
             imgui.table_next_column()
-            changed, value = imgui.drag_float("##scroll_amount", set.scroll_amount, change_speed=0.05, min_value=0.1, max_value=10, format="%.2fx")
+            changed, value = imgui.drag_float("##scroll_amount", set.scroll_amount, v_speed=0.05, v_min=0.1, v_max=10, format="%.2fx")
             set.scroll_amount = min(max(value, 0.1), 10)
             if changed:
                 async_thread.run(db.update_settings("scroll_amount"))
@@ -2161,7 +2163,7 @@ class MainGUI():
                 "For example a ratio of 1:2 means the app refreshes every 2nd monitor frame, resulting in half the framerate."
             )
             imgui.table_next_column()
-            changed, value = imgui.drag_int("##vsync_ratio", set.vsync_ratio, change_speed=0.05, min_value=0, max_value=10, format="1:%d")
+            changed, value = imgui.drag_int("##vsync_ratio", set.vsync_ratio, v_speed=0.05, v_min=0, v_max=10, format="1:%d")
             set.vsync_ratio = min(max(value, 0), 10)
             if changed:
                 glfw.swap_interval(set.vsync_ratio)
@@ -2201,7 +2203,7 @@ class MainGUI():
                 imgui.align_text_to_frame_padding()
                 imgui.text("Corner radius:")
                 imgui.table_next_column()
-                changed, value = imgui.drag_int("##style_corner_radius", set.style_corner_radius, change_speed=0.04, min_value=0, max_value=20, format="%d px")
+                changed, value = imgui.drag_int("##style_corner_radius", set.style_corner_radius, v_speed=0.04, v_min=0, v_max=20, format="%d px")
                 set.style_corner_radius = min(max(value, 0), 20)
                 if changed:
                     imgui.style.window_rounding = imgui.style.frame_rounding = imgui.style.tab_rounding = \
@@ -2215,7 +2217,7 @@ class MainGUI():
                 imgui.text("Accent:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.color_edit3("##style_accent", *set.style_accent[:3], flags=imgui.ColorEditFlags_.no_inputs)
+                changed, value = imgui.color_edit3("##style_accent", list(set.style_accent[:3]), flags=imgui.ColorEditFlags_.no_inputs)
                 if changed:
                     set.style_accent = (*value, 1.0)
                     self.refresh_styles()
@@ -2242,7 +2244,7 @@ class MainGUI():
                 imgui.text("Background:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.color_edit3("##style_bg", *set.style_bg[:3], flags=imgui.ColorEditFlags_.no_inputs)
+                changed, value = imgui.color_edit3("##style_bg", list(set.style_bg[:3]), flags=imgui.ColorEditFlags_.no_inputs)
                 if changed:
                     set.style_bg = (*value, 1.0)
                     self.refresh_styles()
@@ -2254,7 +2256,7 @@ class MainGUI():
                 imgui.text("Alt background:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.color_edit3("##style_alt_bg", *set.style_alt_bg[:3], flags=imgui.ColorEditFlags_.no_inputs)
+                changed, value = imgui.color_edit3("##style_alt_bg", list(set.style_alt_bg[:3]), flags=imgui.ColorEditFlags_.no_inputs)
                 if changed:
                     set.style_alt_bg = (*value, 1.0)
                     self.refresh_styles()
@@ -2266,7 +2268,7 @@ class MainGUI():
                 imgui.text("Border:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.color_edit3("##style_border", *set.style_border[:3], flags=imgui.ColorEditFlags_.no_inputs)
+                changed, value = imgui.color_edit3("##style_border", list(set.style_border[:3]), flags=imgui.ColorEditFlags_.no_inputs)
                 if changed:
                     set.style_border = (*value, 1.0)
                     self.refresh_styles()
@@ -2278,7 +2280,7 @@ class MainGUI():
                 imgui.text("Text:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.color_edit3("##style_text", *set.style_text[:3], flags=imgui.ColorEditFlags_.no_inputs)
+                changed, value = imgui.color_edit3("##style_text", list(set.style_text[:3]), flags=imgui.ColorEditFlags_.no_inputs)
                 if changed:
                     set.style_text = (*value, 1.0)
                     self.refresh_styles()
@@ -2290,7 +2292,7 @@ class MainGUI():
                 imgui.text("Text dim:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.color_edit3("##style_text_dim", *set.style_text_dim[:3], flags=imgui.ColorEditFlags_.no_inputs)
+                changed, value = imgui.color_edit3("##style_text_dim", list(set.style_text_dim[:3]), flags=imgui.ColorEditFlags_.no_inputs)
                 if changed:
                     set.style_text_dim = (*value, 1.0)
                     self.refresh_styles()

@@ -204,7 +204,7 @@ def popup(label: str, popup_content: typing.Callable, buttons: dict[str, typing.
         if buttons:
             btns_width = sum(imgui.calc_text_size(name).x for name in buttons) + (2 * len(buttons) * imgui.style.frame_padding.x) + (imgui.style.item_spacing.x * (len(buttons) - 1))
             cur_pos_x = imgui.get_cursor_pos_x()
-            new_pos_x = cur_pos_x + imgui.get_content_region_available_width() - btns_width
+            new_pos_x = cur_pos_x + imgui.get_content_region_avail().x - btns_width
             if new_pos_x > cur_pos_x:
                 imgui.set_cursor_pos_x(new_pos_x)
             for label, callback in buttons.items():

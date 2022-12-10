@@ -34,7 +34,7 @@ def msgbox(title: str, msg: str, type: MsgBox = None, buttons: dict[str, typing.
         if icon:
             imgui.push_font(icon_font)
             icon_size = imgui.calc_text_size(icon)
-            imgui.text_colored(icon, *color)
+            imgui.text_colored(imgui.ImVec4(*color,1.),icon)
             imgui.pop_font()
             imgui.same_line(spacing=spacing)
         imgui.begin_group()
