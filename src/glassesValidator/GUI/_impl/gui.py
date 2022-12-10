@@ -852,15 +852,15 @@ class MainGUI():
                 imgui.push_style_color(imgui.Col_.frame_bg, imgui.style.get_color(imgui.Col_.button_hovered))
                 imgui.push_style_color(imgui.Col_.check_mark, imgui.style.get_color(imgui.Col_.text))
             if frame_size is not None:
-                frame_padding = imgui.style.frame_padding
+                frame_padding = [imgui.style.frame_padding.x, imgui.style.frame_padding.y]
                 if not isinstance(frame_size,imgui.ImVec2):
                     frame_size = imgui.ImVec2(*frame_size)
                 imgui.push_style_var(imgui.StyleVar_.frame_padding, frame_size)
                 imgui.push_style_var(imgui.StyleVar_.item_spacing, imgui.ImVec2(0.,0.))
                 imgui.begin_group()
                 if do_vertical_align:
-                    imgui.dummy(imgui.ImVec2(0,frame_padding.y))
-                imgui.dummy(imgui.ImVec2(frame_padding.x,0))
+                    imgui.dummy(imgui.ImVec2(0,frame_padding[1]))
+                imgui.dummy(imgui.ImVec2(frame_padding[0],0))
                 imgui.same_line()
             result = imgui._checkbox(label, state)
             if frame_size is not None:
