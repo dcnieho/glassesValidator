@@ -1558,7 +1558,7 @@ class MainGUI():
             imgui.text(f"󰌠 Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
             imgui.text(f"OpenGL {'.'.join(str(gl.glGetInteger(num)) for num in (gl.GL_MAJOR_VERSION, gl.GL_MINOR_VERSION))},  󰌠 {OpenGL.__version__}")
             imgui.text(f"GLFW {'.'.join(str(num) for num in glfw.get_version())},  󰌠 {glfw.__version__}")
-            imgui.text(f"ImGui {imgui.get_version()},  󰌠 {imgui_bundle.__version__}")
+            imgui.text(f"ImGui {imgui.get_version()},  󰌠 imgui_bundle {imgui_bundle.__version__}")
             if globals.os is Os.Linux:
                 imgui.text(f"{platform.system()} {platform.release()}")
             elif globals.os is Os.Windows:
