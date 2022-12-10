@@ -1377,7 +1377,6 @@ class MainGUI():
         icon = "󰋗"
         color = (0.45, 0.09, 1.00)
         imgui.push_font(self.icon_font)
-        icon_size = imgui.calc_text_size(icon)
         imgui.text_colored(imgui.ImVec4(*color), icon)
         imgui.pop_font()
         imgui.same_line(spacing=spacing)
@@ -1407,7 +1406,6 @@ class MainGUI():
         icon = "󰋗"
         color = (0.45, 0.09, 1.00)
         imgui.push_font(self.icon_font)
-        icon_size = imgui.calc_text_size(icon)
         imgui.text_colored(imgui.ImVec4(*color), icon)
         imgui.pop_font()
         imgui.same_line(spacing=spacing)
