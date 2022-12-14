@@ -34,7 +34,7 @@ elif sys.platform.startswith("darwin"):
     data_path = "Library/Application Support/glassesValidator"
 else:
     print("Your system is not officially supported at the moment!\n"
-          "You can let me know on the tool thread or on GitHub, or you can try porting yourself ;)")
+          "You can let me know on GitHub, or you can try porting yourself ;)")
     sys.exit(1)
     
 home = pathlib.Path.home()
