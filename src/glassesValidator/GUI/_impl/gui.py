@@ -840,17 +840,17 @@ class MainGUI():
         imgui.style.item_spacing = imgui.ImVec2(imgui.style.item_spacing.y, imgui.style.item_spacing.y)
         imgui.style.frame_border_size = 1.6
         imgui.style.scrollbar_size = 10
-        #imgui.style.colors[imgui.Col_.modal_window_dim_bg] = (0, 0, 0, 0.5)
-        #imgui.style.colors[imgui.Col_.table_border_strong] = (0, 0, 0, 0)
+        imgui.style.colors[imgui.Col_.modal_window_dim_bg] = (0, 0, 0, 0.5)
+        imgui.style.colors[imgui.Col_.table_border_strong] = (0, 0, 0, 0)
         self.refresh_styles()
 
     def style_imgui_functions(self):
         # Custom checkbox style
         def checkbox(label: str, state: bool, frame_size: Tuple=None, do_vertical_align=True):
             if state:
-                pass#imgui.push_style_color(imgui.Col_.frame_bg_hovered, *imgui.style.colors[imgui.Col_.button_hovered])
-                #imgui.push_style_color(imgui.Col_.frame_bg, *imgui.style.colors[imgui.Col_.button_hovered])
-                #imgui.push_style_color(imgui.Col_.check_mark, *imgui.style.colors[imgui.Col_.text])
+                imgui.push_style_color(imgui.Col_.frame_bg_hovered, imgui.style.colors[imgui.Col_.button_hovered])
+                imgui.push_style_color(imgui.Col_.frame_bg, imgui.style.colors[imgui.Col_.button_hovered])
+                imgui.push_style_color(imgui.Col_.check_mark, imgui.style.colors[imgui.Col_.text])
             if frame_size is not None:
                 frame_padding = [imgui.style.frame_padding.x, imgui.style.frame_padding.y]
                 if not isinstance(frame_size,imgui.ImVec2):
@@ -867,87 +867,81 @@ class MainGUI():
                 imgui.end_group()
                 imgui.pop_style_var(2)
             if state:
-                pass#imgui.pop_style_color(3)
+                imgui.pop_style_color(3)
             return result
         if not hasattr(imgui,'_checkbox'):
             imgui._checkbox = imgui.checkbox
         imgui.checkbox = checkbox
         # Custom combo style
         def combo(*args, **kwargs):
-            #imgui.push_style_color(imgui.Col_.button, *imgui.style.colors[imgui.Col_.button_hovered])
+            imgui.push_style_color(imgui.Col_.button, imgui.style.colors[imgui.Col_.button_hovered])
             result = imgui._combo(*args, **kwargs)
-            #imgui.pop_style_color()
+            imgui.pop_style_color()
             return result
         if not hasattr(imgui,'_combo'):
             imgui._combo = imgui.combo
         imgui.combo = combo
 
     def refresh_styles(self):
-        #globals.settings.style_accent = \
-        #imgui.style.colors[imgui.Col_.check_mark] = \
-        #    imgui.style.colors[imgui.Col_.tab_active] = \
-        #    imgui.style.colors[imgui.Col_.slider_grab] = \
-        #    imgui.style.colors[imgui.Col_.tab_hovered] = \
-        #    imgui.style.colors[imgui.Col_.button_active] = \
-        #    imgui.style.colors[imgui.Col_.header_active] = \
-        #    imgui.style.colors[imgui.Col_.nav_highlight] = \
-        #    imgui.style.colors[imgui.Col_.plot_histogram] = \
-        #    imgui.style.colors[imgui.Col_.button_hovered] = \
-        #    imgui.style.colors[imgui.Col_.header_hovered] = \
-        #    imgui.style.colors[imgui.Col_.separator_active] = \
-        #    imgui.style.colors[imgui.Col_.separator_hovered] = \
-        #    imgui.style.colors[imgui.Col_.resize_grip_active] = \
-        #    imgui.style.colors[imgui.Col_.resize_grip_hovered] = \
-        #    imgui.style.colors[imgui.Col_.tab_unfocused_active] = \
-        #    imgui.style.colors[imgui.Col_.scrollbar_grab_active] = \
-        #    imgui.style.colors[imgui.Col_.frame_bg_active] = \
-        #    imgui.style.colors[imgui.Col_.title_bg_active] = \
-        #    imgui.style.colors[imgui.Col_.text_selected_bg] = \
-        #globals.settings.style_accent
-        #style_accent_dim = \
-        #    imgui.style.colors[imgui.Col_.tab] = \
-        #    imgui.style.colors[imgui.Col_.resize_grip] = \
-        #    imgui.style.colors[imgui.Col_.tab_unfocused] = \
-        #    imgui.style.colors[imgui.Col_.frame_bg_hovered] = \
-        #(*globals.settings.style_accent[:3], 0.25)
-        #globals.settings.style_alt_bg = \
-        #    imgui.style.colors[imgui.Col_.table_header_bg] = \
-        #    imgui.style.colors[imgui.Col_.table_row_bg_alt] = \
-        #globals.settings.style_alt_bg
-        #globals.settings.style_bg = \
-        #    imgui.style.colors[imgui.Col_.button] = \
-        #    imgui.style.colors[imgui.Col_.header] = \
-        #    imgui.style.colors[imgui.Col_.frame_bg] = \
-        #    imgui.style.colors[imgui.Col_.child_bg] = \
-        #    imgui.style.colors[imgui.Col_.popup_bg] = \
-        #    imgui.style.colors[imgui.Col_.title_bg] = \
-        #    imgui.style.colors[imgui.Col_.window_bg] = \
-        #    imgui.style.colors[imgui.Col_.slider_grab_active] = \
-        #    imgui.style.colors[imgui.Col_.scrollbar_bg] = \
-        #globals.settings.style_bg
-        #globals.settings.style_border = \
-        #    imgui.style.colors[imgui.Col_.border] = \
-        #    imgui.style.colors[imgui.Col_.separator] = \
-        #globals.settings.style_border
-        #style_corner_radius = \
-        #    imgui.style.tab_rounding  = \
-        #    imgui.style.grab_rounding = \
-        #    imgui.style.frame_rounding = \
-        #    imgui.style.child_rounding = \
-        #    imgui.style.popup_rounding = \
-        #    imgui.style.window_rounding = \
-        #    imgui.style.scrollbar_rounding = \
-        #globals.settings.style_corner_radius * self.last_size_mult
-        #globals.settings.style_text = \
-        #    imgui.style.colors[imgui.Col_.text] = \
-        #globals.settings.style_text
-        #globals.settings.style_text_dim = \
-        #    imgui.style.colors[imgui.Col_.text_disabled] = \
-        #globals.settings.style_text_dim
+        imgui.style.colors[imgui.Col_.check_mark] = \
+            imgui.style.colors[imgui.Col_.tab_active] = \
+            imgui.style.colors[imgui.Col_.slider_grab] = \
+            imgui.style.colors[imgui.Col_.tab_hovered] = \
+            imgui.style.colors[imgui.Col_.button_active] = \
+            imgui.style.colors[imgui.Col_.header_active] = \
+            imgui.style.colors[imgui.Col_.nav_highlight] = \
+            imgui.style.colors[imgui.Col_.plot_histogram] = \
+            imgui.style.colors[imgui.Col_.button_hovered] = \
+            imgui.style.colors[imgui.Col_.header_hovered] = \
+            imgui.style.colors[imgui.Col_.separator_active] = \
+            imgui.style.colors[imgui.Col_.separator_hovered] = \
+            imgui.style.colors[imgui.Col_.resize_grip_active] = \
+            imgui.style.colors[imgui.Col_.resize_grip_hovered] = \
+            imgui.style.colors[imgui.Col_.tab_unfocused_active] = \
+            imgui.style.colors[imgui.Col_.scrollbar_grab_active] = \
+            imgui.style.colors[imgui.Col_.frame_bg_active] = \
+            imgui.style.colors[imgui.Col_.title_bg_active] = \
+            imgui.style.colors[imgui.Col_.text_selected_bg] = \
+        globals.settings.style_accent
 
-        fac = self.size_mult/self.last_size_mult
-        imgui.style.scale_all_sizes(fac)
+        imgui.style.colors[imgui.Col_.tab] = \
+            imgui.style.colors[imgui.Col_.resize_grip] = \
+            imgui.style.colors[imgui.Col_.tab_unfocused] = \
+            imgui.style.colors[imgui.Col_.frame_bg_hovered] = \
+        (*globals.settings.style_accent[:3], 0.25)
+        
+        imgui.style.colors[imgui.Col_.table_header_bg] = \
+            imgui.style.colors[imgui.Col_.table_row_bg_alt] = \
+        globals.settings.style_alt_bg
+        
+        imgui.style.colors[imgui.Col_.button] = \
+            imgui.style.colors[imgui.Col_.header] = \
+            imgui.style.colors[imgui.Col_.frame_bg] = \
+            imgui.style.colors[imgui.Col_.child_bg] = \
+            imgui.style.colors[imgui.Col_.popup_bg] = \
+            imgui.style.colors[imgui.Col_.title_bg] = \
+            imgui.style.colors[imgui.Col_.window_bg] = \
+            imgui.style.colors[imgui.Col_.slider_grab_active] = \
+            imgui.style.colors[imgui.Col_.scrollbar_bg] = \
+        globals.settings.style_bg
+        
+        imgui.style.colors[imgui.Col_.border] = \
+            imgui.style.colors[imgui.Col_.separator] = \
+        globals.settings.style_border
+        
+        imgui.style.colors[imgui.Col_.text] = globals.settings.style_text
+        imgui.style.colors[imgui.Col_.text_disabled] = globals.settings.style_text_dim
+        
+        imgui.style.tab_rounding  = \
+            imgui.style.grab_rounding = \
+            imgui.style.frame_rounding = \
+            imgui.style.child_rounding = \
+            imgui.style.popup_rounding = \
+            imgui.style.window_rounding = \
+            imgui.style.scrollbar_rounding = \
+        globals.settings.style_corner_radius * self.last_size_mult
 
+        imgui.style.scale_all_sizes(self.size_mult/self.last_size_mult)
         self.last_size_mult = self.size_mult
 
 
