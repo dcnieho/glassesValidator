@@ -9,7 +9,7 @@ import pathlib
 import OpenGL
 import OpenGL.GL as gl
 import imgui_bundle
-from imgui_bundle import imgui
+from imgui_bundle import imgui, imspinner
 import glfw
 import time
 import sys
@@ -391,12 +391,12 @@ class RecordingTable():
             symbol_size = imgui.calc_text_size("󰲞")
             if job_state==ProcessState.Pending:
                 thickness = symbol_size.x / 3 / 2.5 # 3 is number of dots, 2.5 is nextItemKoeff in utils.bounce_dots()
-                utils.bounce_dots(f'waitBounceDots_{recording.id}', thickness, color=imgui.color_convert_float4_to_u32(imgui.ImVec4(*globals.settings.style_text)))
+                imspinner.spinner_bounce_dots(f'waitBounceDots_{recording.id}', thickness, color=globals.settings.style_text)
                 hover_text = f'Pending: {get_task_name_friendly(job.task)}'
             else:
                 spinner_radii = [x/22/2*symbol_size.x for x in [22, 16, 10]]
                 lw = 3.5/22/2*symbol_size.x
-                utils.draw_spinner(f'runSpinner_{recording.id}', *spinner_radii, lw, c1=imgui.color_convert_float4_to_u32(imgui.ImVec4(*globals.settings.style_text), c2=imgui.color_convert_float4_to_u32(*globals.settings.style_accent), c3=imgui.color_convert_float4_to_u32(*globals.settings.style_text)))
+                imspinner.spinner_ang_triple(f'runSpinner_{recording.id}', *spinner_radii, lw, c1=globals.settings.style_text, c2=globals.settings.style_accent, c3=globals.settings.style_text)
                 hover_text = f'Running: {get_task_name_friendly(job.task)}'
         else:
             match get_simplified_task_state(recording.task):
@@ -1415,7 +1415,7 @@ class MainGUI():
         text_size = imgui.calc_text_size(text)
         spinner_radii = [x*self.size_mult for x in [22, 16, 10]]
         imgui.set_cursor_pos_x(imgui.get_cursor_pos_x()+(text_size.x-2*spinner_radii[0])/2)
-        utils.draw_spinner('waitSpinner', *spinner_radii, 3.5*self.size_mult, c1=imgui.color_convert_float4_to_u32(*globals.settings.style_text), c2=imgui.color_convert_float4_to_u32(*globals.settings.style_accent), c3=imgui.color_convert_float4_to_u32(*globals.settings.style_text))
+        imspinner.spinner_ang_triple('waitSpinner', *spinner_radii, 3.5*self.size_mult, c1=globals.settings.style_text, c2=globals.settings.style_accent, c3=globals.settings.style_text)
         imgui.dummy(imgui.ImVec2(0,2*imgui.style.item_spacing.y))
         imgui.end_group()
 
