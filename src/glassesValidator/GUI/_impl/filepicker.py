@@ -188,7 +188,7 @@ class FilePicker:
 
             # entry list
             num_selected = 0
-            imgui.begin_child("##folder_contents", size=(size.y*0.65, imgui.get_item_rect_size().x))
+            imgui.begin_child("##folder_contents", size=(imgui.get_item_rect_size().x, size.y*0.65))
             if self.msg:
                 imgui.text_unformatted(self.msg)
             else:
