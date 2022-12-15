@@ -7,10 +7,10 @@ import asyncio
 import pebble
 import pathlib
 import OpenGL
+import OpenGL.GL as gl
 import imgui_bundle
 from imgui_bundle import imgui
 import glfw
-import OpenGL.GL as gl
 import time
 import sys
 import datetime
@@ -992,7 +992,7 @@ class MainGUI():
             self.icon_font = msgbox.icon_font = \
             imgui.io.fonts.add_font_from_file_ttf(str(mdi_path),   size_69,                       glyph_ranges_as_int_list=msgbox_range)
         try:
-            pixels = imgui.font_atlas_get_tex_data_as_rgba32(imgui.io.fonts)
+            pixels = imgui.io.fonts.get_tex_data_as_rgba32()
             tex_height,tex_width = pixels.shape[0:2]
         except SystemError:
             tex_height = 1
