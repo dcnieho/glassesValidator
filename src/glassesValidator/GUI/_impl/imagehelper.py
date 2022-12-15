@@ -132,22 +132,22 @@ class ImageHelper:
     def render(self, width: int, height: int, *args, **kwargs):
         if self.missing:
             return False
-        if imgui.is_rect_visible(imgui.ImVec2(width, height)):
+        if imgui.is_rect_visible((width, height)):
             if "rounding" in kwargs:
                 flags = kwargs.pop("flags", None)
                 if flags is None:
                     flags = imgui.ImDrawFlags_.round_corners_all
                 pos = imgui.get_cursor_screen_pos()
-                pos2 = imgui.ImVec2(pos.x + width, pos.y + height)
+                pos2 = (pos.x + width, pos.y + height)
                 draw_list = imgui.get_window_draw_list()
-                draw_list.add_image_rounded(self.texture_id, pos, pos2, imgui.ImVec2(0,0), imgui.ImVec2(1,1), col=0xffffffff, *args, flags=flags, **kwargs)
-                imgui.dummy(imgui.ImVec2(width, height))
+                draw_list.add_image_rounded(self.texture_id, pos, pos2, (0,0), (1,1), col=0xffffffff, *args, flags=flags, **kwargs)
+                imgui.dummy((width, height))
             else:
                 imgui.image(self.texture_id, width, height, *args, **kwargs)
             return True
         else:
             # Skip if outside view
-            imgui.dummy(imgui.ImVec2(width, height))
+            imgui.dummy((width, height))
             return False
 
     def crop_to_ratio(self, ratio: int | float, fit=False):

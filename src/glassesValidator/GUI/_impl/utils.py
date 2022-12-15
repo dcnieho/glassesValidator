@@ -156,12 +156,12 @@ def pop_disabled(block_interaction=True):
 
 def center_next_window():
     size = imgui.io.display_size
-    imgui.set_next_window_pos(imgui.ImVec2(size.x/2, size.y/2), pivot=imgui.ImVec2(0.5,0.5))
+    imgui.set_next_window_pos((size.x/2, size.y/2), pivot=(0.5,0.5))
 
 
 def constrain_next_window():
     size = imgui.io.display_size
-    imgui.set_next_window_size_constraints(imgui.ImVec2(0, 0), imgui.ImVec2(size.x * 0.9, size.y * 0.9))
+    imgui.set_next_window_size_constraints((0, 0), (size.x * 0.9, size.y * 0.9))
 
 
 def close_weak_popup():
@@ -175,7 +175,7 @@ def close_weak_popup():
             # Mouse was just clicked
             pos = imgui.get_window_pos()
             size = imgui.get_window_size()
-            if not imgui.is_mouse_hovering_rect(pos, imgui.ImVec2(pos.x+size.x, pos.y+size.y), clip=False):
+            if not imgui.is_mouse_hovering_rect(pos, (pos.x+size.x, pos.y+size.y), clip=False):
                 # Popup is not hovered
                 imgui.close_current_popup()
                 return True

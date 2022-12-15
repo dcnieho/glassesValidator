@@ -155,7 +155,7 @@ class FilePicker:
         cancelled = closed = False
         opened = 1
         size = io.display_size
-        imgui.set_next_window_pos(imgui.ImVec2(size.x/2, size.y/2), pivot=imgui.ImVec2(0.5,0.5))
+        imgui.set_next_window_pos((size.x/2, size.y/2), pivot=(0.5,0.5))
         if imgui.begin_popup_modal(self.title, True, flags=self.flags)[0]:
             cancelled = closed = utils.close_weak_popup()
             imgui.begin_group()
@@ -188,7 +188,7 @@ class FilePicker:
 
             # entry list
             num_selected = 0
-            imgui.begin_child("##folder_contents", size=imgui.ImVec2(size.y*0.65, imgui.get_item_rect_size().x))
+            imgui.begin_child("##folder_contents", size=(size.y*0.65, imgui.get_item_rect_size().x))
             if self.msg:
                 imgui.text_unformatted(self.msg)
             else:
@@ -293,18 +293,18 @@ class FilePicker:
                                 cur_pos_y = imgui.get_cursor_pos_y()
                                 imgui.set_cursor_pos_y(cur_pos_y - cell_padding_y/2)
                                 imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0.)
-                                imgui.push_style_var(imgui.StyleVar_.frame_padding    , imgui.ImVec2(0.,0.))
-                                imgui.push_style_var(imgui.StyleVar_.item_spacing     , imgui.ImVec2(0.,cell_padding_y))
+                                imgui.push_style_var(imgui.StyleVar_.frame_padding    , (0.,0.))
+                                imgui.push_style_var(imgui.StyleVar_.item_spacing     , (0.,cell_padding_y))
                                 # make selectable completely transparent
-                                imgui.push_style_color(imgui.Col_.header_active , imgui.ImVec4(0., 0., 0., 0.))
-                                imgui.push_style_color(imgui.Col_.header        , imgui.ImVec4(0., 0., 0., 0.))
-                                imgui.push_style_color(imgui.Col_.header_hovered, imgui.ImVec4(0., 0., 0., 0.))
-                                selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox", self.selected[id], flags=imgui.SelectableFlags_.span_all_columns|imgui.internal.SelectableFlagsPrivate_.select_on_click, size=imgui.ImVec2(0,frame_height+cell_padding_y))
+                                imgui.push_style_color(imgui.Col_.header_active , (0., 0., 0., 0.))
+                                imgui.push_style_color(imgui.Col_.header        , (0., 0., 0., 0.))
+                                imgui.push_style_color(imgui.Col_.header_hovered, (0., 0., 0., 0.))
+                                selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox", self.selected[id], flags=imgui.SelectableFlags_.span_all_columns|imgui.internal.SelectableFlagsPrivate_.select_on_click, size=(0,frame_height+cell_padding_y))
                                 # instead override table row background color
                                 if selectable_out:
-                                    imgui.table_set_bg_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(imgui.ImVec4(*style_selected_row)))
+                                    imgui.table_set_bg_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(style_selected_row))
                                 elif imgui.is_item_hovered():
-                                    imgui.table_set_bg_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(imgui.ImVec4(*style_hovered_row)))
+                                    imgui.table_set_bg_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(style_hovered_row))
                                 imgui.set_cursor_pos_y(cur_pos_y)   # instead of imgui.same_line(), we just need this part of its effect
                                 imgui.set_item_allow_overlap()
                                 imgui.pop_style_color(3)
@@ -314,10 +314,10 @@ class FilePicker:
                             if ci==int(self.allow_multiple):
                                 # (Invisible) button because it aligns the following draw calls to center vertically
                                 imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0.)
-                                imgui.push_style_var(imgui.StyleVar_.frame_padding    , imgui.ImVec2(0.,imgui.style.frame_padding.y))
-                                imgui.push_style_var(imgui.StyleVar_.item_spacing     , imgui.ImVec2(0.,imgui.style.item_spacing.y))
-                                imgui.push_style_color(imgui.Col_.button, imgui.ImVec4(0.,0.,0.,0.))
-                                imgui.button(f"##{id}_id", size=imgui.ImVec2(imgui.FLT_MIN,0))
+                                imgui.push_style_var(imgui.StyleVar_.frame_padding    , (0.,imgui.style.frame_padding.y))
+                                imgui.push_style_var(imgui.StyleVar_.item_spacing     , (0.,imgui.style.item_spacing.y))
+                                imgui.push_style_color(imgui.Col_.button, (0.,0.,0.,0.))
+                                imgui.button(f"##{id}_id", size=(imgui.FLT_MIN,0))
                                 imgui.pop_style_color()
                                 imgui.pop_style_var(3)
                         
@@ -326,7 +326,7 @@ class FilePicker:
                             match ci+int(not self.allow_multiple):
                                 case 0:
                                     # Selector
-                                    checkbox_clicked, checkbox_out = imgui.checkbox(f"##{id}_selected", self.selected[id], frame_size=imgui.ImVec2(0,0))
+                                    checkbox_clicked, checkbox_out = imgui.checkbox(f"##{id}_selected", self.selected[id], frame_size=(0,0))
                                     checkbox_hovered = imgui.is_item_hovered()
                                 case 1:
                                     # Name
