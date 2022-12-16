@@ -1977,15 +1977,15 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            t,ht = get_DataQualityType_explanation(DataQualityType.viewdist_vidpos_homography)
+            t,ht = get_DataQualityType_explanation(DataQualityType.viewpos_vidpos_homography)
             imgui.text(t+':')
             draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("##dq_use_viewdist_vidpos_homography", set.dq_use_viewdist_vidpos_homography)
+            changed, value = imgui.checkbox("##dq_use_viewpos_vidpos_homography", set.dq_use_viewpos_vidpos_homography)
             if changed:
-                set.dq_use_viewdist_vidpos_homography = value
-                async_thread.run(db.update_settings("dq_use_viewdist_vidpos_homography"))
+                set.dq_use_viewpos_vidpos_homography = value
+                async_thread.run(db.update_settings("dq_use_viewpos_vidpos_homography"))
             
             imgui.table_next_row()
             imgui.table_next_column()
