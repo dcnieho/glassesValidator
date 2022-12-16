@@ -1601,9 +1601,9 @@ class MainGUI():
             imgui.text(globals.reference)
             if imgui.begin_popup_context_item(f"##refresh_context"):
                 # Right click = more options context menu
-                if imgui.selectable("󱓷 APA", False):
+                if imgui.selectable("󱓷 APA", False)[0]:
                     glfw.set_clipboard_string(self.window, globals.reference)
-                if imgui.selectable("󰟀 BibTeX", False):
+                if imgui.selectable("󰟀 BibTeX", False)[0]:
                     glfw.set_clipboard_string(self.window, globals.reference_bibtex)
                 imgui.end_popup()
             draw_hover_text(text='', hover_text="Right-click to copy citation to clipboard")
