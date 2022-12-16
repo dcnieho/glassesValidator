@@ -347,26 +347,34 @@ class RecordingTable():
             async_thread.run(callbacks.remove_recording(self.recordings[rec_id]))
 
     def draw_eye_tracker_widget(self, recording: Recording, align=False):
-        imgui.push_style_color(imgui.Col_.button, recording.eye_tracker.color)
-        imgui.push_style_color(imgui.Col_.button_active, recording.eye_tracker.color)
-        imgui.push_style_color(imgui.Col_.button_hovered, recording.eye_tracker.color)
         imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0)
-        x_padding = 4
-        backup_y_padding = imgui.style.frame_padding.y
-        imgui.push_style_var(imgui.StyleVar_.frame_padding, (x_padding, 0))
+        x_padding = 4 
         if self._eye_tracker_label_width is None:
             self._eye_tracker_label_width = 0
             for eye_tracker in list(EyeTracker):
-                self._eye_tracker_label_width = max(self._eye_tracker_label_width, imgui.calc_text_size(eye_tracker.name).x)
+                self._eye_tracker_label_width = max(self._eye_tracker_label_width, imgui.calc_text_size(eye_tracker.value).x)
             self._eye_tracker_label_width += 2 * x_padding
         if align:
             imgui.begin_group()
-            imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + backup_y_padding)
-        imgui.button(f"{recording.eye_tracker.value}##{recording.id}_type", size=(self._eye_tracker_label_width, 0))
+            imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + imgui.style.frame_padding.y)
+
+        # prep for drawing widget: determine its size and position and see if visible
+        id          = imgui.get_id(f"{recording.eye_tracker.value}##{recording.id}_type")
+        label_size  = imgui.calc_text_size(recording.eye_tracker.value)
+        size        = imgui.ImVec2(self._eye_tracker_label_width, label_size.y)
+        pos         = imgui.get_cursor_screen_pos()
+        bb          = imgui.internal.ImRect(pos, (pos.x+size.x, pos.y+size.y))
+        imgui.internal.item_size(size, 0)
+        # if visible
+        if imgui.internal.item_add(bb, id):
+            # draw frame
+            imgui.internal.render_frame(bb.min, bb.max, imgui.color_convert_float4_to_u32(recording.eye_tracker.color), True, imgui.style.frame_rounding)
+            # draw text on top
+            imgui.internal.render_text_clipped((bb.min.x+x_padding, bb.min.y), (bb.max.x-x_padding, bb.max.y), recording.eye_tracker.value, None, label_size, imgui.style.button_text_align, bb)
+            
         if align:
             imgui.end_group()
-        imgui.pop_style_color(3)
-        imgui.pop_style_var(2)
+        imgui.pop_style_var()
 
     def draw_recording_name_text(self, recording: Recording):
         if globals.settings.style_color_recording_name:
