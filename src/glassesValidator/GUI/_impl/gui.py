@@ -193,7 +193,7 @@ class RecordingTable():
                     # Row hitbox
                     if not has_drawn_hitbox:
                         # hitbox needs to be drawn before anything else on the row so that, together with imgui.set_item_allow_overlap(), hovering button
-                        # or checkbox on the row will still be correctly lead detected.
+                        # or checkbox on the row will still be correctly detected.
                         # this is super finicky, but works. The below together with using a height of frame_height+cell_padding_y
                         # makes the table row only cell_padding_y/2 longer. The whole row is highlighted correctly
                         cell_padding_y = imgui.style.cell_padding.y
@@ -206,14 +206,13 @@ class RecordingTable():
                         imgui.push_style_color(imgui.Col_.header_active , (0., 0., 0., 0.))
                         imgui.push_style_color(imgui.Col_.header        , (0., 0., 0., 0.))
                         imgui.push_style_color(imgui.Col_.header_hovered, (0., 0., 0., 0.))
-                        selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox{extra}", self.selected_recordings[id], flags=imgui.SelectableFlags_.span_all_columns|imgui.internal.SelectableFlagsPrivate_.select_on_click, size=(0,frame_height+cell_padding_y))
+                        selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox{extra}", self.selected_recordings[id], flags=imgui.SelectableFlags_.span_all_columns|imgui.SelectableFlags_.allow_item_overlap|imgui.internal.SelectableFlagsPrivate_.select_on_click, size=(0,frame_height+cell_padding_y))
                         # instead override table row background color
                         if selectable_out:
                             imgui.table_set_bg_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(style_selected_row))
                         elif imgui.is_item_hovered():
                             imgui.table_set_bg_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(style_hovered_row))
                         imgui.set_cursor_pos_y(cur_pos_y)   # instead of imgui.same_line(), we just need this part of its effect
-                        imgui.set_item_allow_overlap()
                         imgui.pop_style_color(3)
                         imgui.pop_style_var(3)
                         selectable_right_clicked = self.handle_recording_hitbox_events(id)
