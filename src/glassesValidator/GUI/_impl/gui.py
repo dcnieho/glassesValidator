@@ -1130,12 +1130,10 @@ class MainGUI():
                 cursor = imgui.get_mouse_cursor()
                 any_hovered = imgui.is_any_item_hovered()
                 if cursor != self.prev_cursor or any_hovered != self.prev_any_hovered:
-                    shape = glfw.ARROW_CURSOR
-                    if cursor == imgui.MouseCursor_.text_input:
-                        shape = glfw.IBEAM_CURSOR
-                    elif any_hovered:
-                        shape = glfw.HAND_CURSOR
-                    glfw.set_cursor(self.window, glfw.create_standard_cursor(shape))
+                    if any_hovered and cursor==imgui.MouseCursor_.arrow:
+                        # override: set cursor to hand when hovering actionable items
+                        cursor = imgui.MouseCursor_.hand
+                        imgui.set_mouse_cursor(cursor)
                     self.prev_cursor = cursor
                     self.prev_any_hovered = any_hovered
 
