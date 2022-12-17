@@ -640,7 +640,7 @@ class MainGUI():
         self.screen_size = (0, 0)
         self.new_screen_size = (0, 0)
         self.monitor = 0
-        self.repeat_chars = False
+        self.repeat_chars = 0
         self.escape_handled = False
         self.prev_any_hovered = None
         self.refresh_ratio_smooth = 0.0
@@ -1114,11 +1114,19 @@ class MainGUI():
         globals.coding_job_queue = {}
         while not glfw.window_should_close(self.window) and self.project_to_load is None:
             # for repeating characters that were input while bottom bar didn't have input focus
+            # it apparently takes a frame to set focus to the input box, so wait another frame
+            # before repeating the char. Hence the below logic
             if self.repeat_chars:
-                for char in self.input_chars:
-                    imgui.io.add_input_character(char)
-                self.repeat_chars = False
-            self.input_chars.clear()
+                if self.repeat_chars==2:
+                    for char in self.input_chars:
+                        imgui.io.add_input_character(char)
+                    self.repeat_chars = 0
+                    self.input_chars.clear()
+                else:
+                    self.repeat_chars+=1
+            else:
+                self.input_chars.clear()
+            
 
             glfw.poll_events()
             # if there's a queued window resize, execute
@@ -1625,7 +1633,11 @@ class MainGUI():
         if (not globals.popup_stack or in_adder_popup) and not imgui.is_any_item_active():
             # some character was input while bottom bar didn't have input focus, route to bottom bar
             if self.input_chars:
-                self.repeat_chars = True
+                # it apparently takes a frame to set focus to the input box, so don't request
+                # repeating of chars again if we've already set that, would introduce unnecessary
+                # delay
+                if not self.repeat_chars:
+                    self.repeat_chars = 1
                 imgui.set_keyboard_focus_here()
             # check for backspace, should work even when not have focus
             if imgui.is_key_pressed(imgui.Key.backspace, repeat=False):
