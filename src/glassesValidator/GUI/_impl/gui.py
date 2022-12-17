@@ -830,16 +830,19 @@ class MainGUI():
             glfw.set_window_icon(self.window, 1, Image.open(icon_file))
 
     def setup_imgui_impl(self):
+        # set our own callbacks before calling 
+        # imgui.backends.glfw_init_for_open_gl(), then imgui's
+        # glfw backend will chaincall them
+        glfw.set_char_callback(self.window, self.char_callback)
+        glfw.set_window_focus_callback(self.window, self.focus_callback)
+        glfw.set_window_pos_callback(self.window, self.pos_callback)
+        glfw.set_drop_callback(self.window, self.drop_callback)
+
         # transfer the window address to imgui.backends.glfw_init_for_open_gl
         import ctypes
         window_address = ctypes.cast(self.window, ctypes.c_void_p).value
         imgui.backends.glfw_init_for_open_gl(window_address, True)
         imgui.backends.opengl3_init("#version 150")
-
-        glfw.set_char_callback(self.window, self.char_callback)
-        glfw.set_window_focus_callback(self.window, self.focus_callback)
-        glfw.set_window_pos_callback(self.window, self.pos_callback)
-        glfw.set_drop_callback(self.window, self.drop_callback)
         glfw.swap_interval(globals.settings.vsync_ratio)
 
     def setup_imgui_style(self):
