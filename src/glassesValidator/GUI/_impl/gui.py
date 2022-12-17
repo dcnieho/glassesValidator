@@ -776,6 +776,10 @@ class MainGUI():
         imgui.io = imgui.get_io()
         imgui.io.set_ini_filename(str(utils.get_data_path() / "imgui.ini"))
         imgui.io.config_drag_click_to_input_text = True
+        #imgui.io.config_flags |= imgui.ConfigFlags_.viewports_enable # Enable Multi-Viewport / Platform Windows
+        #imgui.io.config_viewports_no_auto_merge = True
+        #imgui.io.config_viewports_no_task_bar_icon = True
+        #imgui.io.config_viewports_move_from_title_bar_only = True
         size = tuple()
         pos = tuple()
         is_default = False
