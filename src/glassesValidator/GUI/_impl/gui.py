@@ -1606,9 +1606,9 @@ class MainGUI():
             if imgui.begin_popup_context_item(f"##refresh_context"):
                 # Right click = more options context menu
                 if imgui.selectable("󱓷 APA", False)[0]:
-                    glfw.set_clipboard_string(self.window, globals.reference)
+                    imgui.set_clipboard_text(globals.reference)
                 if imgui.selectable("󰟀 BibTeX", False)[0]:
-                    glfw.set_clipboard_string(self.window, globals.reference_bibtex)
+                    imgui.set_clipboard_text(globals.reference_bibtex)
                 imgui.end_popup()
             draw_hover_text(text='', hover_text="Right-click to copy citation to clipboard")
 
@@ -1637,7 +1637,7 @@ class MainGUI():
         if imgui.begin_popup_context_item(f"##bottombar_context{extra}"):
             # Right click = more options context menu
             if imgui.selectable("󰆒 Paste", False)[0]:
-                value += str(glfw.get_clipboard_string(self.window) or b"", encoding="utf-8")
+                value += imgui.get_clipboard_text() or ""
             imgui.separator()
             if imgui.selectable("󰋽 More info", False)[0]:
                 utils.push_popup(
