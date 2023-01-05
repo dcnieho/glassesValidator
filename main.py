@@ -7,11 +7,6 @@ if getattr(sys, "frozen", False):
     # doesn't encounter a None in site.USER_BASE
     import site
     site.getuserbase()
-else:
-    import pathlib
-    src_path = str(pathlib.Path(__file__).parent/"src")
-    if not src_path in sys.path:
-        sys.path.append(src_path)
 
 if __name__=="__main__":
     # on Windows, multiprocessing.freeze_support() takes care of not executing
