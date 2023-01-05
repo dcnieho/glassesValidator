@@ -34,7 +34,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
     if show_visualization:
         cv2.namedWindow("scene camera")
         cv2.namedWindow("poster")
-    
+
     # open input video file, query it for size
     inVideo = working_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
@@ -51,7 +51,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
     centerTarget= poster.targets[validationSetup['centerTarget']].center
     # turn into aruco board object to be used for pose estimation
     arucoBoard  = poster.getArucoBoard()
-    
+
     # prep output video files
     # get which pixel format
     codec    = ffpyplayer.tools.get_format_codec(fmt='mp4')
@@ -84,7 +84,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
     analyzeFrames = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
     if analyzeFrames is None:
         analyzeFrames = []
-    
+
     frame_idx = 0
     armLength = poster.markerSize/2 # arms of axis are half a marker long
     subPixelFac = 8   # for sub-pixel positioning
@@ -115,7 +115,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
                             cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
 
                     pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, arucoBoard, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
-                    
+
                     # draw axis indicating poster pose (origin and orientation)
                     if pose.nMarkers>0:
                         # set pose
@@ -148,13 +148,13 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
         # for debug, can draw rejected markers on frame
         if show_rejected_markers:
             cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
-        
+
         # process gaze
         if frame_idx in gazes:
             for gaze in gazes[frame_idx]:
                 # draw gaze point on scene video
                 gaze.draw(frame, subPixelFac=subPixelFac, camRot=cameraRotation, camPos=cameraPosition, cameraMatrix=cameraMatrix, distCoeff=distCoeff)
-                
+
                 # if we have pose information, figure out where gaze vectors
                 # intersect with poster. Do same for 3D gaze point
                 # (the projection of which coincides with 2D gaze provided by
@@ -165,7 +165,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
                     # draw gazes on video and poster
                     gazePoster.drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
                     gazePoster.drawOnPoster(refImg, poster, subPixelFac)
-        
+
         # annotate frame
         analysisIntervalIdx = None
         for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't try incomplete intervals
@@ -201,7 +201,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
             print('  frame {}'.format(frame_idx+1))
 
         frame_idx += 1
-        
+
     vidIn.release()
     vidOutScene.close()
     vidOutPoster.close()

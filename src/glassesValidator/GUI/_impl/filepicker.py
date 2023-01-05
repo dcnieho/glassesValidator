@@ -116,10 +116,10 @@ class FilePicker:
                         self.selected[i] = False
                 else:
                     self.msg = "This folder does not contain any folders!"
-                    
+
         except Exception:
             self.msg = "Cannot open this folder!"
-            
+
         for old in selected:
             for id in self.items:
                 entry = self.items[id]
@@ -256,7 +256,7 @@ class FilePicker:
                         imgui.table_set_column_index(i+self.allow_multiple)
                         imgui.table_header(imgui.table_get_column_name(i+self.allow_multiple))
 
-                    
+
                     # Loop rows
                     a=.4
                     style_selected_row = (*tuple(a*x+(1-a)*y for x,y in zip(globals.settings.style_accent[:3],globals.settings.style_bg[:3])), 1.)
@@ -268,7 +268,7 @@ class FilePicker:
                         self.last_clicked_id = self.sorted_items[0]
                     for id in self.sorted_items:
                         imgui.table_next_row()
-                
+
                         selectable_clicked = False
                         checkbox_clicked, checkbox_hovered, checkbox_out = False, False, False
                         has_drawn_hitbox = False
@@ -309,7 +309,7 @@ class FilePicker:
                                 imgui.pop_style_color(3)
                                 imgui.pop_style_var(3)
                                 has_drawn_hitbox = True
-                        
+
                             if ci==int(self.allow_multiple):
                                 # (Invisible) button because it aligns the following draw calls to center vertically
                                 imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0.)
@@ -319,7 +319,7 @@ class FilePicker:
                                 imgui.button(f"##{id}_id", size=(imgui.FLT_MIN,0))
                                 imgui.pop_style_color()
                                 imgui.pop_style_var(3)
-                        
+
                                 imgui.same_line()
 
                             match ci+int(not self.allow_multiple):
@@ -354,7 +354,7 @@ class FilePicker:
                                                 break
                                             orig = new
                                         imgui.text(new)
-                                    
+
                         if disable_item:
                             imgui.internal.pop_item_flag()
                             imgui.pop_style_var()
@@ -382,14 +382,14 @@ class FilePicker:
 
                     last_y = imgui.get_cursor_screen_pos().y
                     imgui.end_table()
-                    
+
                     # handle click in table area outside header+contents:
                     # deselect all, and if right click, show popup
                     # check mouse is below bottom of last drawn row so that clicking on the one pixel empty space between selectables
                     # does not cause everything to unselect or popup to open
                     if imgui.is_item_clicked() and not any_selectable_clicked and imgui.io.mouse_pos.y>last_y:  # left mouse click (NB: table header is not signalled by is_item_clicked(), so this works correctly)
                         utils.set_all(self.selected, False)
-                        
+
             imgui.end_child()
 
             # Cancel button
@@ -450,7 +450,7 @@ class FilePicker:
                         key = natsort.os_sort_keygen(key=lambda id: self.items[id].full_path)
 
                 ids.sort(key=key, reverse=sort_spec.reverse)
-            
+
             # finally, always sort dirs first
             ids.sort(key=lambda id: self.items[id].is_dir, reverse=True)
             self.sorted_items = ids

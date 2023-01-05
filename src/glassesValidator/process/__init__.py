@@ -22,7 +22,7 @@ def do_process(working_dir: str | pathlib.Path, config_dir=None):
     compute_offsets_to_targets(working_dir, config_dir)
     determine_fixation_intervals(working_dir, config_dir)
     calculate_data_quality(working_dir, config_dir)
-    
+
 
 
 # NB: using pose information requires a calibrated scene camera
@@ -33,7 +33,7 @@ class DataQualityType(Enum):
     pose_left_eye               = auto()    # use provided left eye gaze vector, and pose information w.r.t. poster to compute angular measures
     pose_right_eye              = auto()    # use provided right eye gaze vector, and pose information w.r.t. poster to compute angular measures
     pose_left_right_avg         = auto()    # report average of left (pose_left_eye) and right (pose_right_eye) eye angular values
-    
+
     # so this get serialized in a user-friendly way by pandas..
     def __str__(self):
         return self.name
@@ -87,10 +87,10 @@ def get_DataQualityType_explanation(dq: DataQualityType):
                    "right gaze positions and the fixation target and average them " \
                    "to compute data quality measures in degrees. Requires " \
                    f"'{ler_name}' and '{rer_name}' to be enabled."
-        
+
 
 def _collect_data_quality(rec_dirs: list[str | pathlib.Path]):
-    # 1. collect all data quality from the selected 
+    # 1. collect all data quality from the selected
     rec_dirs = [pathlib.Path(rec) for rec in rec_dirs]
     df = pd.concat((pd.read_csv(rec/'dataQuality.tsv', delimiter='\t').assign(recording=rec.name) for rec in rec_dirs), ignore_index=True)
     if df.empty:

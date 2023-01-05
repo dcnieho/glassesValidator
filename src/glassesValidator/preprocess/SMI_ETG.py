@@ -38,7 +38,7 @@ def preprocessData(output_dir, input_dir=None, rec_info=None):
         raise RuntimeError('Either the "input_dir" or the "rec_info" input argument should be set.')
     else:
         input_dir  = pathlib.Path(rec_info.source_directory)
-    
+
     if rec_info is not None:
         if rec_info.eye_tracker!=utils.EyeTracker.SMI_ETG:
             raise ValueError(f'Provided rec_info is for a device ({rec_info.eye_tracker.value}) that is not an {utils.EyeTracker.SMI_ETG.value}. Cannot use.')
@@ -78,7 +78,7 @@ def preprocessData(output_dir, input_dir=None, rec_info=None):
         utils.get_recording_status(newDataDir, create_if_missing=True)
         utils.update_recording_status(newDataDir, utils.Task.Imported, utils.Status.Running)
 
-    
+
     ### copy the raw data to the output directory
     for rec_info in recInfos:
         newDataDir = output_dir / rec_info.proc_directory_name
@@ -115,7 +115,7 @@ def getRecordingInfo(inputDir):
         return None
     camInfo = readSMICamInfoFile(inputDir)
     serial = camInfo.get("MiiSimulation",'DeviceSerialNumber')
-    
+
     # get recordings. We expect the user to rename their exports to have the same format
     # as the other files in a project directory. So e.g., data exported from 001-2-recording.idf
     # for the corresponding 001-2-recording.avi, should be named 001-2-recording.txt. The
@@ -130,7 +130,7 @@ def getRecordingInfo(inputDir):
     # should return None if no valid recordings found
     return recInfos if recInfos else None
 
-        
+
 def checkRecording(inputDir, recInfo, use_return = False):
     """
     This checks that the folder is properly prepared
@@ -159,7 +159,7 @@ def copySMIRecordings(inputDir, outputDir, recInfo):
     """
     Copy the relevant files from the specified input dir to the specified output dirs
     """
-    
+
     # Copy relevent files to new directory
     file = recInfo.name + '-export.avi'
 
@@ -176,7 +176,7 @@ def copySMIRecordings(inputDir, outputDir, recInfo):
 def readSMICamInfoFile(inputDir):
     with open(inputDir / 'codec1.bin', 'r') as file:
         camInfoStr = file.read().replace('## ', '')
-    
+
     camInfo = configparser.ConfigParser(converters={'nparray': lambda x: np.fromstring(x,sep='\t')})
     camInfo.read_string(camInfoStr)
     return camInfo
@@ -192,7 +192,7 @@ def getCameraFromFile(inputDir, outputDir):
     camera['FOV'] = camInfo.getfloat("MiiSimulation",'SceneCamFOV')
     camera['resolution'] = np.array([camInfo.getint("MiiSimulation",'SceneCamWidth'), camInfo.getint("MiiSimulation",'SceneCamHeight')])
     camera['sensorOffsets'] = np.array([camInfo.getfloat("MiiSimulation",'SceneCamSensorOffsetX'), camInfo.getfloat("MiiSimulation",'SceneCamSensorOffsetY')])
-    
+
     camera['radialDistortion'] = camInfo.getnparray("MiiSimulation",'SceneCamRadialDistortion')
     camera['tangentialDistortion'] = camInfo.getnparray("MiiSimulation",'SceneCamTangentialDistortion')
 
@@ -275,7 +275,7 @@ def gazedata2df(textFile,sceneVideoDimensions):
     """
     convert the gazedata file to a pandas dataframe
     """
-    
+
     with open(textFile, 'r') as file:
         textData = file.read()
 
@@ -299,7 +299,7 @@ def gazedata2df(textFile,sceneVideoDimensions):
         yEqual = np.all( np.logical_or(df['R POR Y [px]'] == df['B POR Y [px]'], np.isnan(df['R POR Y [px]']) ))
         if xEqual and yEqual:
             df=df.drop(columns=['R POR X [px]', 'R POR Y [px]'])
-    
+
     # rename and reorder columns
     lookup = {'Time': 'timestamp',
                'L EPOS X':'l_gaze_ori_x',

@@ -41,10 +41,10 @@ def init_project_folder(folder: str | pathlib.Path, imgui_ini_saver: typing.Call
         return
     # a project directory should contain the empty
     # glassesValidator.project file, so we create it
-    # here.    
+    # here.
     # Also, a copy of imgui.ini to persist some settings
     # of the current shown GUI is good to have, so save it here.
-    
+
     if imgui_ini_saver is not None:
         imgui_ini_saver(folder/'imgui.ini')
     else:
@@ -73,7 +73,7 @@ def get_traceback(*exc_info: list):
 
 def glfw_error_callback(error: int, description: str):
     sys.stderr.write(f"Glfw Error {error}: {description}\n")
-    
+
 def impl_glfw_init(width: int, height: int, window_name: str):
     glfw.set_error_callback(glfw_error_callback)
     if not glfw.init():
@@ -134,7 +134,7 @@ def get_current_monitor(wx, wy, ww, wh):
         overlap = \
             max(0, min(wx + ww, mx + mw) - max(wx, mx)) * \
             max(0, min(wy + wh, my + mh) - max(wy, my))
-        
+
         if bestoverlap < overlap:
             bestoverlap = overlap
             monitor = mon
@@ -195,7 +195,7 @@ def popup(label: str, popup_content: typing.Callable, buttons: dict[str, typing.
     center_next_window()
     if imgui.begin_popup_modal(label, closable or None, flags=globals.gui.popup_flags)[0]:
         if outside:
-             closed = close_weak_popup()
+            closed = close_weak_popup()
         imgui.begin_group()
         popup_content()
         imgui.end_group()

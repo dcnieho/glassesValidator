@@ -17,7 +17,7 @@ def pupil_invisible(output_dir: str | pathlib.Path, source_dir: str | pathlib.Pa
     from .pupilLabs import preprocessData
     preprocessData(output_dir, 'Pupil Invisible', source_dir, rec_info)
 
-    
+
 def get_recording_info(source_dir: str | pathlib.Path, device: str | _utils.EyeTracker):
     source_dir  = pathlib.Path(source_dir)
     device = _utils.type_string_to_enum(device)
@@ -100,7 +100,7 @@ def do_import(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = N
             rec_info = tobii_G2(output_dir, source_dir, rec_info)
         case _utils.EyeTracker.Tobii_Glasses_3:
             rec_info = tobii_G3(output_dir, source_dir, rec_info)
-            
+
     if rec_info is not None and not isinstance(rec_info,list):
         rec_info = [rec_info]
     return rec_info

@@ -19,7 +19,7 @@ def process(working_dir, config_dir=None):
 
     print('processing: {}'.format(working_dir.name))
     utils.update_recording_status(working_dir, utils.Task.Target_Offsets_Computed, utils.Status.Running)
-    
+
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
 
@@ -41,7 +41,7 @@ def process(working_dir, config_dir=None):
 
     # get types of data quality to compute
     dq_types = [DataQualityType.viewpos_vidpos_homography,DataQualityType.pose_vidpos_homography,DataQualityType.pose_vidpos_ray,DataQualityType.pose_left_eye,DataQualityType.pose_right_eye]
-    
+
     # for each frame during analysis interval, determine offset
     # (angle) of gaze (each eye) to each of the targets
     for ival in range(0,len(analyzeFrames)//2):
@@ -94,7 +94,7 @@ def process(working_dir, config_dir=None):
                         ori         = oriRight[s,:]
                         gaze        = gaze3DRight[s,:]
                         gazePoster  = gaze2DRight[s,:]
-                    
+
 
                 for ti,t in enumerate(targets):
                     if dq_types[e]==DataQualityType.viewpos_vidpos_homography:
@@ -105,11 +105,11 @@ def process(working_dir, config_dir=None):
                     else:
                         # use 3D vectors known given pose information
                         target  = np.matmul(RtPoster,np.array([targets[t][0], targets[t][1], 0., 1.]))
-            
+
                         # get vectors from origin to target and to gaze point
                         vGaze   = gaze  -ori
                         vTarget = target-ori
-        
+
                     # get offset
                     ang2D           = utils.angle_between(vTarget,vGaze)
                     # decompose in horizontal/vertical (in poster space)

@@ -8,7 +8,7 @@ glassesValidator. Please provide us with feedback on *anything* you notice, *no 
 A preliminary reference to the upcoming paper is:<br>
 Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. and Hooge, I.T.C. (submitted). GlassesValidator:
 A data quality tool for eye tracking glasses.
- 
+
 However, as long as the paper is not accepted, please cite this work as follows:<br>
 Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. and Hooge, I.T.C. (2022). GlassesValidator:
 A data quality tool for eye tracking glasses. Available from https://github.com/dcnieho/glassesValidator

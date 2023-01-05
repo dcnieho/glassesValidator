@@ -11,7 +11,7 @@ if __name__ in ["__main__","__mp_main__"]:
 
     self_path = pathlib.Path(__file__).parents[3]
     sys.path.append(str(self_path))
-    
+
     from glassesValidator.GUI._impl.structs import CounterContext, ProcessState
     from glassesValidator.GUI._impl import globals
 else:
@@ -33,7 +33,7 @@ def _cleanup():
 
     # cancel all pending and running jobs
     cancel_all_jobs()
-    
+
     # stop pool
     if _pool and _pool.active:
         _pool.stop()
@@ -99,7 +99,7 @@ def run(fn: typing.Callable, *args, **kwargs):
 
         if _work_items is None:
             _work_items = {}
-        
+
         with _work_id_provider:
             work_id = _work_id_provider.get_count()
             _work_items[work_id] = _pool.submit(fn, None, *args, **kwargs)
@@ -134,7 +134,7 @@ def cancel_job(id: int):
         return False
     if (future := _work_items.get(id, None)) is None:
         return False
-    
+
     return future.cancel()
 
 def cancel_all_jobs():
@@ -198,7 +198,7 @@ if __name__ == "__main__":
         print('cancelling jobs')
         for id in reversed(work_ids):
             process_pool.cancel_job(id)
-    
+
         # 3. enqueue some more work, see what states we have
         work_ids = []   # NB: even though we dump the work_ids from the previous jobs here, there state is still kept in process_pool internally. Use process_pool.clear_job_state() to clear that out if you really think its needed
         print('enqueueing some more jobs')

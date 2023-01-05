@@ -22,7 +22,7 @@ def process(working_dir, dq_types=[], allow_dq_fallback=False, include_data_loss
         print('  no analysis intervals defined for this recording, skipping')
         return
     analysisIntervals = pd.read_csv(str(fileName), delimiter='\t', dtype={'marker_interval':int},index_col=['marker_interval','target'])
-    
+
     # get offsets
     fileName = working_dir / "gazeTargetOffset.tsv"
     if not fileName.is_file():
@@ -75,7 +75,7 @@ def process(working_dir, dq_types=[], allow_dq_fallback=False, include_data_loss
             if not DataQualityType.viewpos_vidpos_homography in dq_have:
                 raise RuntimeError(f'Even data quality type {DataQualityType.viewpos_vidpos_homography} could not be used, bare minimum failed for some weird reason')
             dq_types.append(DataQualityType.viewpos_vidpos_homography)
-        
+
     # prep output data frame
     idx  = []
     idxs = analysisIntervals.index.to_frame().to_numpy()
@@ -116,24 +116,24 @@ def process(working_dir, dq_types=[], allow_dq_fallback=False, include_data_loss
                             df.loc[(i,e,t),k] = np.nan
                         if include_data_loss:
                             df.loc[(i,e,t),'data_loss'] = np.nan
-                    
+
                     if hasData:
                         df.loc[(i,e,t),'acc_x'] = np.nanmean(data['offset_x'])
                         df.loc[(i,e,t),'acc_y'] = np.nanmean(data['offset_y'])
                         df.loc[(i,e,t),'acc'  ] = np.nanmean(np.hypot(data['offset_x'],data['offset_y']))
-                    
+
                         df.loc[(i,e,t),'rms_x'] = np.sqrt(np.nanmean(np.diff(data['offset_x'])**2))
                         df.loc[(i,e,t),'rms_y'] = np.sqrt(np.nanmean(np.diff(data['offset_y'])**2))
                         df.loc[(i,e,t),'rms'  ] = np.hypot(df.loc[(i,e,t),'rms_x'], df.loc[(i,e,t),'rms_y'])
-                    
+
                         df.loc[(i,e,t),'std_x'] = np.nanstd(data['offset_x'],ddof=1)
                         df.loc[(i,e,t),'std_y'] = np.nanstd(data['offset_y'],ddof=1)
                         df.loc[(i,e,t),'std'  ] = np.hypot(df.loc[(i,e,t),'std_x'], df.loc[(i,e,t),'std_y'])
 
                         if include_data_loss:
                             df.loc[(i,e,t),'data_loss'] = np.sum(np.isnan(data['offset_x']))/len(data)
-    
+
 
     df.to_csv(str(working_dir / 'dataQuality.tsv'), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.3f")
-    
+
     utils.update_recording_status(working_dir, utils.Task.Data_Quality_Calculated, utils.Status.Finished)

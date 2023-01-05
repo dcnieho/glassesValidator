@@ -35,7 +35,7 @@ def process(working_dir, config_dir=None, show_poster=False):
 
     print('processing: {}'.format(working_dir.name))
     utils.update_recording_status(working_dir, utils.Task.Coded, utils.Status.Running)
-    
+
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
     poster = utils.Poster(config_dir, validationSetup)
@@ -120,7 +120,7 @@ def process(working_dir, config_dir=None, show_poster=False):
             # NB: usually have multiple gaze samples for a video frame, draw one
             if frame_idx in gazes:
                 gazes[frame_idx][0].draw(frame, subPixelFac)
-               
+
             # if have gaze in world info, draw it too (also only first)
             if hasPosterGaze and frame_idx in gazesPoster:
                 if hasCamCal:
@@ -141,10 +141,10 @@ def process(working_dir, config_dir=None, show_poster=False):
                     analysisLbl +=   '{} -- xx'.format(analyzeFrames[-1])
                 else:
                     analysisLbl += ', {} -- xx'.format(analyzeFrames[-1])
-            
+
             # annotate what frame we're on
             frameClr = (0,0,255) if analysisIntervalIdx is not None else (0,0,0)
-            text = "%8.3f [%6d]" % (pts, frame_idx) 
+            text = "%8.3f [%6d]" % (pts, frame_idx)
             textSize,baseline = cv2.getTextSize(text,cv2.FONT_HERSHEY_PLAIN,2,2)
             cv2.rectangle(frame,(0,int(height)),(textSize[0]+2,int(height)-textSize[1]-baseline-5), frameClr, -1)
             cv2.putText(frame, (text), (2, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
@@ -165,7 +165,7 @@ def process(working_dir, config_dir=None, show_poster=False):
                 cv2.putText(frame,("E: seek to end of next interval, shift+E seek to end of previous interval"), (0,235), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
                 cv2.putText(frame,("N/Q: quit"), (0,265), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
                 cv2.putText(frame,("I: toggle help"), (0,295), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.2, (0,255,255),2)
-            
+
             if frame is not None:
                 cv2.imshow("code validation intervals", frame)
                 if not hasResized:
@@ -175,7 +175,7 @@ def process(working_dir, config_dir=None, show_poster=False):
                     else:
                         cv2.resizeWindow('code validation intervals', width, height)
                     hasResized = True
-                        
+
             if show_poster:
                 cv2.imshow("poster", refImg)
 
@@ -258,7 +258,7 @@ def process(working_dir, config_dir=None, show_poster=False):
         elif key == ord('n'):
             # goto next
             break
-        
+
     player.close_player()
     cv2.destroyAllWindows()
     cv2.waitKey(1)

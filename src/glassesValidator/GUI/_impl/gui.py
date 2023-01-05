@@ -48,7 +48,7 @@ class RecordingTable():
                  recordings: dict[int, Recording],
         selected_recordings: dict[int, bool],
         is_adder_popup: bool = False):
-        
+
         self.recordings = recordings
         self.selected_recordings = selected_recordings
         self.in_adder_popup = is_adder_popup
@@ -178,7 +178,7 @@ class RecordingTable():
                 self.last_clicked_id = self.sorted_recordings_ids[0]
             for id in self.sorted_recordings_ids:
                 imgui.table_next_row()
-                
+
                 recording = self.recordings[id]
                 num_columns_drawn = 0
                 selectable_clicked = False
@@ -217,7 +217,7 @@ class RecordingTable():
                         imgui.pop_style_var(3)
                         selectable_right_clicked = self.handle_recording_hitbox_events(id)
                         has_drawn_hitbox = True
-                        
+
                     if num_columns_drawn==1:
                         # (Invisible) button because it aligns the following draw calls to center vertically
                         imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0.)
@@ -227,7 +227,7 @@ class RecordingTable():
                         imgui.button(f"##{recording.id}_id", size=(imgui.FLT_MIN, 0))
                         imgui.pop_style_color()
                         imgui.pop_style_var(3)
-                        
+
                         imgui.same_line()
 
                     match ri:
@@ -290,7 +290,7 @@ class RecordingTable():
                             # Scene Camera Serial
                             imgui.text(recording.scene_camera_serial or "Unknown")
                     num_columns_drawn+=1
-                    
+
                 # handle selection logic
                 # NB: the part of this logic that has to do with right-clicks is in handle_recording_hitbox_events()
                 # NB: any_selectable_clicked is just for handling clicks not on any recording
@@ -348,7 +348,7 @@ class RecordingTable():
 
     def draw_eye_tracker_widget(self, recording: Recording, align=False):
         imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0)
-        x_padding = 4 
+        x_padding = 4
         if self._eye_tracker_label_width is None:
             self._eye_tracker_label_width = 0
             for eye_tracker in list(EyeTracker):
@@ -371,7 +371,7 @@ class RecordingTable():
             imgui.internal.render_frame(bb.min, bb.max, imgui.color_convert_float4_to_u32(recording.eye_tracker.color), True, imgui.style.frame_rounding)
             # draw text on top
             imgui.internal.render_text_clipped((bb.min.x+x_padding, bb.min.y), (bb.max.x-x_padding, bb.max.y), recording.eye_tracker.value, None, label_size, imgui.style.button_text_align, bb)
-            
+
         if align:
             imgui.end_group()
         imgui.pop_style_var()
@@ -456,7 +456,7 @@ class RecordingTable():
             extra = ""
             path = globals.project_path / recording.proc_directory_name
             disable = not recording.proc_directory_name or not path.is_dir()
-            
+
         if disable:
             utils.push_disabled()
         if (clicked := imgui.selectable(f"{label}##{recording.id}_open_{extra}folder", False)[0]):
@@ -493,7 +493,7 @@ class RecordingTable():
     def draw_recording_process_cancel_button(self, ids: list[int], label):
         if not ids:
             return False
-        
+
         if (clicked := imgui.selectable(f"{label}##{ids[0]}_cancel_button", False)[0]):
             async_thread.run(callbacks.cancel_processing_recordings(ids))
         return clicked
@@ -682,7 +682,7 @@ class MainGUI():
                 # might happen if recording already removed
                 return
             rec = globals.recordings[rec_id]
-            
+
             del globals.jobs[rec_id]
             match state:
                 case ProcessState.Canceled:
@@ -830,7 +830,7 @@ class MainGUI():
             glfw.set_window_icon(self.window, 1, Image.open(icon_file))
 
     def setup_imgui_impl(self):
-        # set our own callbacks before calling 
+        # set our own callbacks before calling
         # imgui.backends.glfw_init_for_open_gl(), then imgui's
         # glfw backend will chaincall them
         glfw.set_char_callback(self.window, self.char_callback)
@@ -913,16 +913,16 @@ class MainGUI():
         imgui.style.set_color_(imgui.Col_.frame_bg_active, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.title_bg_active, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.text_selected_bg, globals.settings.style_accent)
-        
+
         style_bg_dim = [*globals.settings.style_accent[0:3], 0.25]
         imgui.style.set_color_(imgui.Col_.tab, style_bg_dim)
         imgui.style.set_color_(imgui.Col_.resize_grip, style_bg_dim)
         imgui.style.set_color_(imgui.Col_.tab_unfocused, style_bg_dim)
         imgui.style.set_color_(imgui.Col_.frame_bg_hovered, style_bg_dim)
-        
+
         imgui.style.set_color_(imgui.Col_.table_header_bg, globals.settings.style_alt_bg)
         imgui.style.set_color_(imgui.Col_.table_row_bg_alt, globals.settings.style_alt_bg)
-        
+
         imgui.style.set_color_(imgui.Col_.button, globals.settings.style_bg)
         imgui.style.set_color_(imgui.Col_.header, globals.settings.style_bg)
         imgui.style.set_color_(imgui.Col_.frame_bg, globals.settings.style_bg)
@@ -932,13 +932,13 @@ class MainGUI():
         imgui.style.set_color_(imgui.Col_.window_bg, globals.settings.style_bg)
         imgui.style.set_color_(imgui.Col_.slider_grab_active, globals.settings.style_bg)
         imgui.style.set_color_(imgui.Col_.scrollbar_bg, globals.settings.style_bg)
-        
+
         imgui.style.set_color_(imgui.Col_.border, globals.settings.style_border)
         imgui.style.set_color_(imgui.Col_.separator, globals.settings.style_border)
-        
+
         imgui.style.set_color_(imgui.Col_.text, globals.settings.style_text)
         imgui.style.set_color_(imgui.Col_.text_disabled, globals.settings.style_text_dim)
-        
+
         imgui.style.tab_rounding = \
             imgui.style.grab_rounding = \
             imgui.style.frame_rounding = \
@@ -1040,7 +1040,7 @@ class MainGUI():
             else:
                 path = path[0]
         path = pathlib.Path(path)
-        
+
         if utils.is_project_folder(path):
             if action=='creating':
                 buttons = {
@@ -1126,7 +1126,7 @@ class MainGUI():
                     self.repeat_chars+=1
             else:
                 self.input_chars.clear()
-            
+
 
             glfw.poll_events()
             # if there's a queued window resize, execute
@@ -1176,7 +1176,7 @@ class MainGUI():
                             any_deleted = True
                     if any_deleted:
                         self.recording_list.require_sort = True
-                        
+
                 imgui.backends.opengl3_new_frame()
                 imgui.backends.glfw_new_frame()
                 imgui.new_frame()
@@ -1200,7 +1200,7 @@ class MainGUI():
 
                 if globals.project_path is not None:
                     sidebar_size = self.scaled(self.sidebar_size)
-                    
+
                     imgui.begin_child("##main_frame", size=(-(sidebar_size+self.scaled(4)),0))
                     imgui.begin_child("##recording_list_frame", size=(0,-imgui.get_frame_height_with_spacing()), flags=imgui.WindowFlags_.horizontal_scrollbar)
                     self.recording_list.draw()
@@ -1338,7 +1338,7 @@ class MainGUI():
                     callbacks.add_recordings(selected)
                 case 'deploy_pdf':
                     async_thread.run(callbacks.deploy_poster_pdf(selected[0]))
-                    
+
         match reason:
             case 'loading' | 'creating':
                 header = "Select or drop project folder"
@@ -1370,7 +1370,7 @@ class MainGUI():
 
         imgui.set_cursor_pos_x(but_x)
         imgui.set_cursor_pos_y(but_y)
-        
+
         if imgui.button("󰮝 New project", size=(but_width, but_height)):
             utils.push_popup(self.get_folder_picker(reason='creating'))
         imgui.same_line(spacing=10*imgui.style.item_spacing.x)
@@ -1455,7 +1455,7 @@ class MainGUI():
             self.draw_bottombar(recording_list.filter_box_text, recording_list.require_sort, in_adder_popup=True)
         imgui.end_child()
         imgui.end_child()
-        
+
         imgui.same_line(spacing=spacing)
         imgui.dummy((0,6*imgui.style.item_spacing.y))
 
@@ -1466,7 +1466,7 @@ class MainGUI():
         checkbox_offset = right_width - frame_height
 
         imgui.same_line(spacing=spacing)
-        
+
         imgui.begin_group()
         imgui.text_unformatted("Configure what you would like to export.")
         imgui.dummy((0,1*imgui.style.item_spacing.y))
@@ -1494,11 +1494,11 @@ class MainGUI():
                         imgui.table_next_column()
                         imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
                         _, pop_data['dq_types_sel'][i] = imgui.checkbox(f"##{dq.name}", pop_data['dq_types_sel'][i])
-                
+
                     imgui.end_table()
                     imgui.spacing()
 
-        
+
         name = 'Targets'
         header = imgui.collapsing_header(name)
         if header:
@@ -1520,10 +1520,10 @@ class MainGUI():
                     imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
                     _, pop_data['targets_sel'][i] = imgui.checkbox(f"##target_{t}", pop_data['targets_sel'][i])
 
-                
+
                 imgui.end_table()
                 imgui.spacing()
-                
+
         name = 'targets_avg'
         if imgui.begin_table(f"##export_popup_{name}", column=2, flags=imgui.TableFlags_.no_clip):
             imgui.table_setup_column(f"##settings_{name}_left", imgui.TableColumnFlags_.width_stretch)
@@ -1541,10 +1541,10 @@ class MainGUI():
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             _, pop_data['targets_avg'] = imgui.checkbox("##average_over_targets", pop_data['targets_avg'])
 
-                
+
             imgui.end_table()
             imgui.spacing()
-        
+
         imgui.end_group()
 
         imgui.same_line(spacing=spacing)
@@ -1592,7 +1592,7 @@ class MainGUI():
             imgui.same_line()
             if imgui.button("󰖟 Researcher homepage", size=(btn_width, 0)):
                 callbacks.open_url(globals.developer_page)
-            
+
             imgui.spacing()
             imgui.spacing()
             imgui.push_text_wrap_pos(width)
@@ -1612,7 +1612,7 @@ class MainGUI():
             imgui.pop_font()
             imgui.spacing()
             imgui.spacing()
-            
+
             imgui.text(globals.reference)
             if imgui.begin_popup_context_item(f"##refresh_context"):
                 # Right click = more options context menu
@@ -1825,7 +1825,7 @@ class MainGUI():
                 imgui.table_next_column()
                 if imgui.button(f"Remove##filter_{flt.id}_remove", size=(right_width, 0)):
                     self.recording_list.remove_filter(flt.id)
-                    
+
                 if flt.mode is FilterMode.Task_State:
                     imgui.table_next_row()
                     imgui.table_next_column()
@@ -1886,7 +1886,7 @@ class MainGUI():
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󰈦 Get poster pdf", size=(btn_width, 0)):
                 utils.push_popup(self.get_folder_picker(reason='deploy_pdf'))
-                
+
             # continue table
             self.start_settings_section("Project", right_width, collapsible = False)
             if not set.show_advanced_options:
@@ -1975,7 +1975,7 @@ class MainGUI():
                 set.process_workers = min(max(value, 1), 100)
                 if changed:
                     async_thread.run(db.update_settings("process_workers"))
-                
+
             imgui.end_table()
             imgui.spacing()
 
@@ -1992,7 +1992,7 @@ class MainGUI():
                     "recording, as well as whether the camera is calibrated. Hover over a "
                     "data quality type below to see what its prerequisites are.", text="(help)"
                 )
-            
+
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
@@ -2005,7 +2005,7 @@ class MainGUI():
             if changed:
                 set.dq_use_viewpos_vidpos_homography = value
                 async_thread.run(db.update_settings("dq_use_viewpos_vidpos_homography"))
-            
+
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
@@ -2018,7 +2018,7 @@ class MainGUI():
             if changed:
                 set.dq_use_pose_vidpos_homography = value
                 async_thread.run(db.update_settings("dq_use_pose_vidpos_homography"))
-            
+
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
@@ -2031,7 +2031,7 @@ class MainGUI():
             if changed:
                 set.dq_use_pose_vidpos_ray = value
                 async_thread.run(db.update_settings("dq_use_pose_vidpos_ray"))
-            
+
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
@@ -2048,7 +2048,7 @@ class MainGUI():
                     # can't have average if we don't have both individual eyes
                     set.dq_use_pose_left_right_avg = value
                     async_thread.run(db.update_settings("dq_use_pose_left_right_avg"))
-            
+
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
@@ -2065,7 +2065,7 @@ class MainGUI():
                     # can't have average if we don't have both individual eyes
                     set.dq_use_pose_left_right_avg = value
                     async_thread.run(db.update_settings("dq_use_pose_left_right_avg"))
-            
+
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
@@ -2084,7 +2084,7 @@ class MainGUI():
                     async_thread.run(db.update_settings("dq_use_pose_left_eye"))
                     set.dq_use_pose_right_eye = value
                     async_thread.run(db.update_settings("dq_use_pose_right_eye"))
-                    
+
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
@@ -2100,7 +2100,7 @@ class MainGUI():
             if changed:
                 set.dq_report_data_loss = value
                 async_thread.run(db.update_settings("dq_report_data_loss"))
-                
+
             imgui.end_table()
             imgui.spacing()
 
@@ -2367,7 +2367,7 @@ class MainGUI():
                 ))
 
             imgui.end_table()
-            
+
         imgui.spacing()
 
         imgui.end_child()

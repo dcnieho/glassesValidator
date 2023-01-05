@@ -20,7 +20,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
 
     print('processing: {}'.format(working_dir.name))
     utils.update_recording_status(working_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Running)
-    
+
     # open file with information about ArUco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
 
@@ -32,7 +32,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
         poster      = utils.Poster(config_dir, validationSetup)
         centerTarget= poster.targets[validationSetup['centerTarget']].center
         i2t         = utils.Idx2Timestamp(working_dir / 'frameTimestamps.tsv')
-    
+
     # get camera calibration info
     cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(working_dir / "calibration.xml")
     hasCameraMatrix = cameraMatrix is not None
@@ -62,7 +62,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
     header = ['frame_idx']
     header.extend(utils.GazePoster.getWriteHeader())
     csv_writer.writerow(header)
-    
+
     subPixelFac = 8   # for sub-pixel positioning
     stopAllProcessing = False
     for frame_idx in range(maxFrameIdx+1):
@@ -88,7 +88,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
                     continue
             if show_poster:
                 refImg = poster.getImgCopy()
-            
+
 
         if frame_idx in gazes:
             for gaze in gazes[frame_idx]:
@@ -96,7 +96,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
                 # draw gaze point on scene video
                 if show_visualization:
                     gaze.draw(frame, subPixelFac=subPixelFac, camRot=cameraRotation, camPos=cameraPosition, cameraMatrix=cameraMatrix, distCoeff=distCoeff)
-                
+
                 # if we have pose information, figure out where gaze vectors
                 # intersect with poster. Do same for 3D gaze point
                 # (the projection of which coincides with 2D gaze provided by
@@ -106,7 +106,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
                 writeData = [frame_idx]
                 if frame_idx in poses:
                     gazePoster = utils.gazeToPlane(gaze,poses[frame_idx],cameraRotation,cameraPosition, cameraMatrix, distCoeff)
-                    
+
                     # draw gazes on video and poster
                     if show_visualization:
                         gazePoster.drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
@@ -133,7 +133,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
                 utils.drawOpenCVCircle(frame, a, 3, (0,255,0), -1, subPixelFac)
                 utils.drawOpenCVLine(frame, (a[0],0), (a[0],height), (0,255,0), 1, subPixelFac)
                 utils.drawOpenCVLine(frame, (0,a[1]), (width,a[1]) , (0,255,0), 1, subPixelFac)
-                
+
             frame_ts  = i2t.get(frame_idx)
             cv2.rectangle(frame,(0,int(height)),(int(0.25*width),int(height)-30),(0,0,0),-1)
             cv2.putText(frame, '%8.2f [%6d]' % (frame_ts,frame_idx), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255))

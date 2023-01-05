@@ -37,7 +37,7 @@ def preprocessData(output_dir, input_dir=None, rec_info=None):
         raise RuntimeError('Either the "input_dir" or the "rec_info" input argument should be set.')
     else:
         input_dir  = pathlib.Path(rec_info.source_directory)
-    
+
     if rec_info is not None:
         if rec_info.eye_tracker!=utils.EyeTracker.Tobii_Glasses_3:
             raise ValueError(f'Provided rec_info is for a device ({rec_info.eye_tracker.value}) that is not an {utils.EyeTracker.Tobii_Glasses_3.value}. Cannot use.')
@@ -53,7 +53,7 @@ def preprocessData(output_dir, input_dir=None, rec_info=None):
 
     ### check and copy needed files to the output directory
     print('Check and copy raw data...')
-     ### check tobii recording and get export directory
+    ### check tobii recording and get export directory
     if rec_info is not None:
         checkRecording(input_dir, rec_info)
     else:
@@ -99,7 +99,7 @@ def preprocessData(output_dir, input_dir=None, rec_info=None):
 def getRecordingInfo(inputDir):
     # returns None if not a recording directory
     recInfo = utils.Recording(source_directory=inputDir, eye_tracker=utils.EyeTracker.Tobii_Glasses_3)
-    
+
     # get recording info
     file = inputDir / 'recording.g3'
     if not file.is_file():
@@ -114,7 +114,7 @@ def getRecordingInfo(inputDir):
         time_string = time_string[:-1]+'+00:00'
     recInfo.start_time = utils.Timestamp(int(datetime.datetime.fromisoformat(time_string).timestamp()))
 
-    
+
     # get participant info
     file = inputDir / rInfo['meta-folder'] / 'participant'
     if not file.is_file():
@@ -122,7 +122,7 @@ def getRecordingInfo(inputDir):
     with open(file, 'rb') as j:
         pInfo = json.load(j)
     recInfo.participant = pInfo['name']
-    
+
     # get system info
     recInfo.firmware_version = (inputDir / rInfo['meta-folder'] / 'RuVersion').read_text()
     recInfo.glasses_serial = (inputDir / rInfo['meta-folder'] / 'HuSerial').read_text()
@@ -137,7 +137,7 @@ def checkRecording(inputDir, recInfo):
     actualRecInfo = getRecordingInfo(inputDir)
     if actualRecInfo is None or recInfo.name!=actualRecInfo.name:
         raise ValueError(f"A recording with the name \"{recInfo.name}\" was not found in the folder {inputDir}.")
-    
+
     # make sure caller did not mess with recInfo
     if recInfo.participant!=actualRecInfo.participant:
         raise ValueError(f"A recording with the participant \"{recInfo.participant}\" was not found in the folder {inputDir}.")
@@ -172,7 +172,7 @@ def getCameraFromJson(inputDir, outputDir):
     """
     with open(inputDir / 'recording.g3', 'rb') as f:
         rInfo = json.load(f)
-    
+
     camera = rInfo['scenecamera']['camera-calibration']
 
     # rename some fields, ensure they are numpy arrays
@@ -180,7 +180,7 @@ def getCameraFromJson(inputDir, outputDir):
     camera['principalPoint'] = np.array(camera.pop('principal-point'))
     camera['radialDistortion'] = np.array(camera.pop('radial-distortion'))
     camera['tangentialDistortion'] = np.array(camera.pop('tangential-distortion'))
-    
+
     camera['position'] = np.array(camera['position'])
     camera['resolution'] = np.array(camera['resolution'])
     camera['rotation'] = np.array(camera['rotation'])
@@ -223,7 +223,7 @@ def formatGazeData(inputDir, sceneVideoDimensions):
 
     # read video file, create array of frame timestamps
     frameTimestamps = utils.getFrameTimestampsFromVideo(inputDir / 'worldCamera.mp4')
-    
+
     # use the frame timestamps to assign a frame number to each data point
     frameIdx = utils.tssToFrameNumber(df.index,frameTimestamps['timestamp'].to_numpy())
     df.insert(0,'frame_idx',frameIdx['frame_idx'])
@@ -264,7 +264,7 @@ def json2df(jsonFile,sceneVideoDimensions):
         df[which_eye + '_pup_diam'] = dfR['data.eye'+eye+'.pupildiameter']
         df[[which_eye + '_gaze_dir_x', which_eye + '_gaze_dir_y', which_eye + '_gaze_dir_z']] = \
             pd.DataFrame(expander(dfR['data.eye'+eye+'.gazedirection'].tolist(),3), index=dfR.index)
-    
+
     # binocular gaze data
     df[['3d_gaze_pos_x', '3d_gaze_pos_y', '3d_gaze_pos_z']] = pd.DataFrame(expander(dfR['data.gaze3d'].tolist(),3), index=dfR.index)
     df[['vid_gaze_pos_x', 'vid_gaze_pos_y']] = pd.DataFrame(expander(dfR['data.gaze2d'].tolist(),2), index=dfR.index)

@@ -1,6 +1,6 @@
 ﻿import pathlib
 import sys
-       
+
 from ... import __version__
 version           = __version__
 pypi_page         = "https://pypi.org/project/glassesValidator/"
@@ -36,7 +36,7 @@ else:
     print("Your system is not officially supported at the moment!\n"
           "You can let me know on GitHub, or you can try porting yourself ;)")
     sys.exit(1)
-    
+
 home = pathlib.Path.home()
 data_path = home / data_path
 data_path.mkdir(parents=True, exist_ok=True)

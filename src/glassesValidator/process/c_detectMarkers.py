@@ -21,7 +21,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
-    
+
     # open video file, query it for size
     inVideo = working_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
@@ -32,13 +32,13 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
     width  = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     ifi    = 1000./cap.get(cv2.CAP_PROP_FPS)/fps_fac
-    
+
     # get info about markers on our poster
     poster          = utils.Poster(config_dir, validationSetup)
     centerTarget    = poster.targets[validationSetup['centerTarget']].center
     # turn into aruco board object to be used for pose estimation
     arucoBoard      = poster.getArucoBoard()
-    
+
     # setup aruco marker detection
     parameters = cv2.aruco.DetectorParameters_create()
     parameters.markerBorderBits       = validationSetup['markerBorderBits']
@@ -91,11 +91,11 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
         corners, ids, rejectedImgPoints = \
             cv2.aruco.detectMarkers(frame, poster.aruco_dict, parameters=parameters)
         recoveredIds = None
-        
+
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
                 pose = utils.PosterPose(frame_idx)
-                
+
                 # get camera pose
                 if hasCameraMatrix and hasDistCoeff:
                     # Refine detected markers (eliminates markers not part of our poster, adds missing markers to the poster)
@@ -105,7 +105,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
                             cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
 
                     pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, arucoBoard, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
-                
+
                     if pose.nMarkers>0:
                         # set pose
                         pose.setPose(rVec,tVec)
@@ -143,7 +143,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
         # for debug, can draw rejected markers on frame
         if show_visualization and show_rejected_markers:
             cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
-                
+
         if show_visualization:
             cv2.imshow(working_dir.name,frame)
             key = cv2.waitKey(max(1,int(round(ifi-(time.perf_counter()-startTime)*1000)))) & 0xFF
@@ -163,7 +163,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
     csv_file.close()
     cap.release()
     cv2.destroyAllWindows()
-    
+
     utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Finished)
 
     return stopAllProcessing
