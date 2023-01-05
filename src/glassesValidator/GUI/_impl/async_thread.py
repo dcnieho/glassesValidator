@@ -1,4 +1,3 @@
-# https://gist.github.com/Willy-JL/183cb7134e940db1cfab72480e95a357
 import threading
 import asyncio
 import typing
@@ -9,10 +8,11 @@ thread: threading.Thread = None
 done_callback: typing.Callable = None
 
 
-def setup():
+def setup(enable_asyncio_debug=False):
     global loop, thread
 
     loop = asyncio.new_event_loop()
+    loop.set_debug(enable_asyncio_debug)
 
     def run_loop(loop: asyncio.AbstractEventLoop):
         asyncio.set_event_loop(loop)
@@ -48,7 +48,7 @@ def wait(coroutine: typing.Coroutine):
         time.sleep(0.1)
     if exception := future.exception():
         raise exception
-    return future.result
+    return future.result()
 
 
 # Example usage
