@@ -20,8 +20,8 @@ __pycache__/
 *.so
 
 # virtual environment
-venv/
-build_venv/
+.venv/
+.build_venv/
 
 # Distribution / packaging
 .Python
