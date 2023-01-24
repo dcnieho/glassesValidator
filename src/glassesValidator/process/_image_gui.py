@@ -15,6 +15,9 @@ class GUI:
         self._frame = None
         self._glfw_window = None
 
+        self._interesting_keys = {}
+        self._pressed_keys = {}
+
         self._draw_callback = None
 
     def __del__(self):
@@ -51,6 +54,33 @@ class GUI:
     def register_draw_callback(self, callback):
         # e.g. for drawing overlays
         self._draw_callback = callback
+
+    def set_interesting_keys(self, keys):
+        if isinstance(keys,str):
+            keys = [x for x in keys]
+
+        self._interesting_keys = {}
+        self._pressed_keys = {}
+        for k in keys:
+            # convert to imgui enum
+            self._interesting_keys[k] = getattr(imgui.Key,k)
+            # storage for presses
+            self._pressed_keys[k] = [-1, False]
+
+    def get_key_presses(self):
+        out = {}
+        thisT = time.perf_counter()
+        for k in self._pressed_keys:
+            if self._pressed_keys[k][0] != -1:
+                t = thisT - self._pressed_keys[k][0]
+                if self._pressed_keys[k][1]:
+                    out[k.upper()] = t
+                else:
+                    out[    k    ] = t
+
+                # clear key press so its not output again
+                self._pressed_keys[k] = [-1, False]
+        return out
 
     def _thread_start_fun(self, window_name):
         self._last_frame = None
@@ -106,6 +136,11 @@ class GUI:
 
         if elapsedT < 1/60:
             time.sleep(1/60-elapsedT)
+
+        # if user wants to know about keypresses, keep record of them
+        for k in self._interesting_keys:
+            if imgui.is_key_pressed(self._interesting_keys[k]):
+                self._pressed_keys[k] = [thisT, imgui.is_key_pressed(imgui.Key.im_gui_mod_shift)]
 
         # upload texture if needed
         if self._texID is None:

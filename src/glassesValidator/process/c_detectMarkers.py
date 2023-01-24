@@ -63,6 +63,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
     # prep visualization, if any
     if show_visualization:
         gui = GUI()
+        gui.set_interesting_keys('qns')
         gui.start(working_dir.name)
 
     frame_idx = -1
@@ -152,18 +153,17 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
             cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
 
         if show_visualization:
-            # cv2.imshow(working_dir.name,frame)
-            # key = cv2.waitKey(max(1,int(round(ifi-(time.perf_counter()-startTime)*1000)))) & 0xFF
-            # if key == ord('q'):
-            #     # quit fully
-            #     stopAllProcessing = True
-            #     break
-            # if key == ord('n'):
-            #     # goto next
-            #     break
-            # if key == ord('s'):
-            #     # screenshot
-            #     cv2.imwrite(str(working_dir / ('detect_frame_%d.png' % frame_idx)), frame)
+            keys = gui.get_key_presses()
+            if 'q' in keys:
+                # quit fully
+                stopAllProcessing = True
+                break
+            if 'n' in keys:
+                # goto next
+                break
+            if 's' in keys:
+                # screenshot
+                cv2.imwrite(str(working_dir / ('detect_frame_%d.png' % frame_idx)), frame)
             gui.update_image(frame, pts/1000., frame_idx)
             closed, = gui.get_state()
             if closed:
