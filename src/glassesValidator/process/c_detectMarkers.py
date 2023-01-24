@@ -7,6 +7,7 @@ import time
 
 from .. import config
 from .. import utils
+from ._image_gui import GUI
 
 
 def process(working_dir, config_dir=None, show_visualization=False, show_rejected_markers=False, fps_fac=1):
@@ -59,6 +60,11 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
     header = utils.PosterPose.getWriteHeader()
     csv_writer.writerow(header)
 
+    # prep visualization, if any
+    if show_visualization:
+        gui = GUI()
+        gui.start(working_dir.name)
+
     frame_idx = -1
     stopAllProcessing = False
     armLength = poster.markerSize/2 # arms of axis are half a marker long
@@ -67,6 +73,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
         startTime = time.perf_counter()
 
         # process frame-by-frame
+        pts = cap.get(cv2.CAP_PROP_POS_MSEC)
         ret, frame = cap.read()
         frame_idx += 1
         if (not ret) or (hasAnalyzeFrames and frame_idx > analyzeFrames[-1]):
@@ -145,24 +152,31 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
             cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
 
         if show_visualization:
-            cv2.imshow(working_dir.name,frame)
-            key = cv2.waitKey(max(1,int(round(ifi-(time.perf_counter()-startTime)*1000)))) & 0xFF
-            if key == ord('q'):
-                # quit fully
+            # cv2.imshow(working_dir.name,frame)
+            # key = cv2.waitKey(max(1,int(round(ifi-(time.perf_counter()-startTime)*1000)))) & 0xFF
+            # if key == ord('q'):
+            #     # quit fully
+            #     stopAllProcessing = True
+            #     break
+            # if key == ord('n'):
+            #     # goto next
+            #     break
+            # if key == ord('s'):
+            #     # screenshot
+            #     cv2.imwrite(str(working_dir / ('detect_frame_%d.png' % frame_idx)), frame)
+            gui.update_image(frame, pts/1000., frame_idx)
+            closed, = gui.get_state()
+            if closed:
                 stopAllProcessing = True
                 break
-            if key == ord('n'):
-                # goto next
-                break
-            if key == ord('s'):
-                # screenshot
-                cv2.imwrite(str(working_dir / ('detect_frame_%d.png' % frame_idx)), frame)
-        elif (frame_idx)%100==0:
+
+        if (frame_idx)%100==0:
             print('  frame {}'.format(frame_idx))
 
     csv_file.close()
     cap.release()
-    cv2.destroyAllWindows()
+    if show_visualization:
+        gui.stop()
 
     utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Finished)
 
