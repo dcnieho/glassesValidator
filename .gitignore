@@ -45,3 +45,4 @@ MANIFEST
 # IDEs
 .idea/
 .vs/
+imgui.ini
