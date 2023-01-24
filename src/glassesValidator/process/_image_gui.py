@@ -87,12 +87,15 @@ class GUI:
     def _draw_gui(self):
         # check if we should exit
         if self._should_exit:
-            hello_imgui.get_runner_params().app_shall_exit = True
             # clean up
             if self._texID:
                 # delete
                 gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-                gl.glDeleteTextures(1, self._texID)
+                gl.glDeleteTextures(1, [self._texID])
+                self._texID = None
+            # and kill
+            hello_imgui.get_runner_params().app_shall_exit = True
+            # nothing more to do
             return
 
         # manual vsync with a sleep, so that other thread can run
