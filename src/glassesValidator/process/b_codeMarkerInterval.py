@@ -19,7 +19,7 @@ from .. import utils
 # This script shows a video player that is used to indicate the interval(s)
 # during which the poster should be found in the video and in later
 # steps data quality computed. So this interval/these intervals would for
-# instance be the exact interval during which the subject performs the 
+# instance be the exact interval during which the subject performs the
 # validation task.
 # This script can be run directly on recordings converted to the common format
 # with the a_* scripts, but output from steps c_detectMarkers and d_gazeToPoster
