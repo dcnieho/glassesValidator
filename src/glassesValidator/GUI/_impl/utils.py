@@ -4,8 +4,6 @@ import traceback
 import typing
 import random
 from imgui_bundle import imgui
-import glfw
-import OpenGL.GL as gl
 import sys
 import os
 
@@ -69,77 +67,6 @@ def get_traceback(*exc_info: list):
     return tb
 
 
-
-
-def glfw_error_callback(error: int, description: str):
-    sys.stderr.write(f"Glfw Error {error}: {description}\n")
-
-def impl_glfw_init(width: int, height: int, window_name: str):
-    glfw.set_error_callback(glfw_error_callback)
-    if not glfw.init():
-        print("Could not initialize OpenGL context")
-        sys.exit(1)
-
-    if globals.os is Os.MacOS:
-        # OS X supports only forward-compatible core profiles from 3.2
-        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 3)
-        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 3)
-        glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-        glfw.window_hint(glfw.OPENGL_FORWARD_COMPAT, gl.GL_TRUE)
-
-    # Create a windowed mode window and its OpenGL context
-    window = glfw.create_window(width, height, window_name, None, None)
-    if not window:
-        glfw.terminate()
-        print("Could not initialize Window")
-        sys.exit(1)
-
-    glfw.make_context_current(window)
-
-    return window
-
-
-def validate_geometry(x, y, width, height):
-    window_pos = (x, y)
-    window_size = (width, height)
-    valid = False
-    for monitor in glfw.get_monitors():
-        monitor_area = glfw.get_monitor_workarea(monitor)
-        monitor_pos = (monitor_area[0], monitor_area[1])
-        monitor_size = (monitor_area[2], monitor_area[3])
-        # Horizontal check, at least 1 pixel on x axis must be in monitor
-        if (window_pos[0]) >= (monitor_pos[0] + monitor_size[0]):
-            continue  # Too right
-        if (window_pos[0] + window_size[0]) <= (monitor_pos[0]):
-            continue  # Too left
-        # Vertical check, at least the pixel above window must be in monitor (titlebar)
-        if (window_pos[1] - 1) >= (monitor_pos[1] + monitor_size[1]):
-            continue  # Too low
-        if (window_pos[1]) <= (monitor_pos[1]):
-            continue  # Too high
-        valid = True
-        break
-    return valid
-
-def get_current_monitor(wx, wy, ww, wh):
-    import ctypes
-    # so we always return something sensible
-    monitor = glfw.get_primary_monitor()
-    bestoverlap = 0
-    for mon in glfw.get_monitors():
-        monitor_area = glfw.get_monitor_workarea(mon)
-        mx, my = monitor_area[0], monitor_area[1]
-        mw, mh = monitor_area[2], monitor_area[3]
-
-        overlap = \
-            max(0, min(wx + ww, mx + mw) - max(wx, mx)) * \
-            max(0, min(wy + wh, my + mh) - max(wy, my))
-
-        if bestoverlap < overlap:
-            bestoverlap = overlap
-            monitor = mon
-
-    return monitor, ctypes.cast(ctypes.pointer(monitor), ctypes.POINTER(ctypes.c_long)).contents.value
 
 
 def push_disabled(block_interaction=True):

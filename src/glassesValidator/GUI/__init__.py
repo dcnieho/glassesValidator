@@ -30,8 +30,8 @@ def run(project_dir: str | pathlib.Path = None):
     globals.gui = gui.MainGUI()
     
     while True:
-        # returns true if a new main_loop is needed, or false if all done
-        should_restart = globals.gui.main_loop()
+        # returns true if a new call to run() is needed, or false if all done
+        should_restart = globals.gui.run()
 
         process_pool.cleanup()
 

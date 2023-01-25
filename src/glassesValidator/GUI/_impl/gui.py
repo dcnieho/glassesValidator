@@ -21,6 +21,7 @@ import importlib.resources
 
 from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, SortSpec, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
 from . import globals, async_thread, callbacks, db, filepicker, imagehelper, msgbox, process_pool, utils
+from .. import _general_imgui
 from ...utils import EyeTracker, Recording, Task, Status, hex_to_rgba_0_1, eye_tracker_names, get_task_name_friendly, task_names, update_recording_status
 from ...process import DataQualityType, get_DataQualityType_explanation
 
@@ -742,16 +743,14 @@ class MainGUI():
 
     def init_imgui_glfw(self, is_reload = False):
         # Setup ImGui
-        size, pos, is_default = self.setup_imgui()
+        _general_imgui.setup_imgui()
+        size, pos, is_default = self.get_imgui_config()
 
         # Setup GLFW window
-        self.setup_glfw_window(size, pos)
+        self.window, self.screen_pos, self.screen_size = _general_imgui.setup_glfw_window("glassesValidator", size, pos)
 
-        # Determine what monitor we're (mostly) on, for scaling
-        mon, self.monitor = utils.get_current_monitor(*self.screen_pos, *self.screen_size)
-        # apply scaling
-        xscale, yscale = glfw.get_monitor_content_scale(mon)
-        self.size_mult = max(xscale, yscale)
+        # Determine what monitor we're (mostly) on and apply scaling
+        self.monitor, self.size_mult = _general_imgui.get_monitor_scaling(self.screen_pos, self.screen_size)
         if is_reload and is_default:
             glfw.set_window_size(self.window, int(self.screen_size[0]*self.size_mult), int(self.screen_size[1]*self.size_mult))
         elif self.size_mult!=self.last_size_mult:
@@ -768,16 +767,9 @@ class MainGUI():
             # this should be done only once
             self.style_imgui_functions()
 
-    def setup_imgui(self):
-        imgui.create_context()
-        imgui.io = imgui.get_io()
+    def get_imgui_config(self):
         imgui.io.set_ini_filename(str(utils.get_data_path() / "imgui.ini"))
-        imgui.io.config_drag_click_to_input_text = True
-        imgui.io.config_flags |= imgui.ConfigFlags_.viewports_enable # Enable Multi-Viewport / Platform Windows
-        imgui.io.config_viewports_no_auto_merge = True
-        imgui.io.config_viewports_no_decoration = False
-        imgui.io.config_windows_move_from_title_bar_only = True
-        imgui.io.config_windows_resize_from_edges = True
+
         size = tuple()
         pos = tuple()
         is_default = False
@@ -814,19 +806,6 @@ class MainGUI():
 
         return size, pos, is_default
 
-    def setup_glfw_window(self, size, pos):
-        self.window: glfw._GLFWwindow = utils.impl_glfw_init(*size, "glassesValidator")
-        if all([isinstance(x, int) for x in pos]) and len(pos) == 2 and utils.validate_geometry(*pos, *size):
-            glfw.set_window_pos(self.window, *pos)
-        self.screen_pos = glfw.get_window_pos(self.window)
-        self.screen_size= glfw.get_window_size(self.window)
-
-        icon_path = importlib.resources.files('glassesValidator.resources.icons') / 'icon.png'
-        with importlib.resources.as_file(icon_path) as icon_file:
-            self.icon_texture = imagehelper.ImageHelper(icon_file)
-            self.icon_texture.reload()
-            glfw.set_window_icon(self.window, 1, Image.open(icon_file))
-
     def setup_imgui_impl(self):
         # set our own callbacks before calling
         # imgui.backends.glfw_init_for_open_gl(), then imgui's
@@ -836,12 +815,7 @@ class MainGUI():
         glfw.set_window_pos_callback(self.window, self.pos_callback)
         glfw.set_drop_callback(self.window, self.drop_callback)
 
-        # transfer the window address to imgui.backends.glfw_init_for_open_gl
-        import ctypes
-        window_address = ctypes.cast(self.window, ctypes.c_void_p).value
-        imgui.backends.glfw_init_for_open_gl(window_address, True)
-        imgui.backends.opengl3_init("#version 150")
-        glfw.swap_interval(globals.settings.vsync_ratio)
+        _general_imgui.setup_imgui_impl(self.window, globals.settings.vsync_ratio)
 
     def setup_imgui_style(self):
         self.refresh_fonts()
@@ -1016,7 +990,7 @@ class MainGUI():
             self.screen_pos = (x, y)
 
             # check if we moved to another monitor
-            mon, mon_id = utils.get_current_monitor(*self.screen_pos, *self.screen_size)
+            mon, mon_id = _general_imgui.get_current_monitor(*self.screen_pos, *self.screen_size)
             if mon_id != self.monitor:
                 self.monitor = mon_id
                 # update scaling
@@ -1105,138 +1079,23 @@ class MainGUI():
         if globals.project_path is not None:
             self.recording_list = RecordingTable(globals.recordings, globals.selected_recordings)
 
-    def main_loop(self):
-        scroll_energy = 0.0
-        have_set_window_size = False
+    def run(self):
         globals.jobs = {}
         globals.coding_job_queue = {}
+        self.have_set_window_size = False
+
         while not glfw.window_should_close(self.window) and self.project_to_load is None:
-            # for repeating characters that were input while bottom bar didn't have input focus
-            # it apparently takes a frame to set focus to the input box, so wait another frame
-            # before repeating the char. Hence the below logic
-            if self.repeat_chars:
-                if self.repeat_chars==2:
-                    for char in self.input_chars:
-                        imgui.io.add_input_character(char)
-                    self.repeat_chars = 0
-                    self.input_chars.clear()
-                else:
-                    self.repeat_chars+=1
-            else:
-                self.input_chars.clear()
-
-
+            self.pre_poll()
             glfw.poll_events()
-            # if there's a queued window resize, execute
-            if self.new_screen_size[0]!=0 and self.new_screen_size!=self.screen_size:
-                glfw.set_window_size(self.window, *self.new_screen_size)
-                glfw.poll_events()
+
             if self.focused or globals.settings.render_when_unfocused:
-                # Scroll modifiers (must be before new_frame())
-                imgui.io.mouse_wheel *= globals.settings.scroll_amount
-                if globals.settings.scroll_smooth:
-                    scroll_energy += imgui.io.mouse_wheel
-                    if abs(scroll_energy) > 0.1:
-                        scroll_now = scroll_energy * imgui.io.delta_time * globals.settings.scroll_smooth_speed
-                        scroll_energy -= scroll_now
-                    else:
-                        scroll_now = 0.0
-                        scroll_energy = 0.0
-                    imgui.io.mouse_wheel = scroll_now
-
-                # Reactive cursors
-                cursor = imgui.get_mouse_cursor()
-                any_hovered = imgui.is_any_item_hovered()
-                if cursor != self.prev_cursor or any_hovered != self.prev_any_hovered:
-                    if any_hovered and cursor==imgui.MouseCursor_.arrow:
-                        # override: set cursor to hand when hovering actionable items
-                        cursor = imgui.MouseCursor_.hand
-                        imgui.set_mouse_cursor(cursor)
-                    self.prev_cursor = cursor
-                    self.prev_any_hovered = any_hovered
-
-                # check selection should be cancelled
-                self.escape_handled = False
-                if imgui.is_key_pressed(imgui.Key.escape, repeat=False) and not globals.popup_stack:
-                    for r in globals.selected_recordings:
-                        globals.selected_recordings[r] = False
-                    self.escape_handled = True
-
-                # delete should issue delete for selected recordings, if any
-                if imgui.is_key_pressed(imgui.Key.delete) and not globals.popup_stack:
-                    any_deleted = False
-                    for rid in globals.selected_recordings:
-                        if globals.selected_recordings[rid]:
-                            async_thread.run(callbacks.remove_recording(globals.recordings[rid]))
-                            any_deleted = True
-                    if any_deleted:
-                        self.recording_list.require_sort = True
-
+                self.pre_new_frame()
                 imgui.backends.opengl3_new_frame()
                 imgui.backends.glfw_new_frame()
                 imgui.new_frame()
 
-                if (size := imgui.io.display_size) != self.screen_size or not have_set_window_size:
-                    imgui.set_next_window_size(size, imgui.Cond_.always)
-                    self.screen_size = [int(size.x), int(size.y)]
-                    have_set_window_size = True
-
-                imgui.push_style_var(imgui.StyleVar_.window_border_size, 0)
-                imgui.get_main_viewport().flags |= imgui.ViewportFlags_.can_host_other_windows
-                imgui.set_next_window_viewport(imgui.get_main_viewport().id_)
-                imgui.begin("glassesValidator", flags=self.window_flags)
-                imgui.get_main_viewport().flags &= ~imgui.ViewportFlags_.can_host_other_windows
-                imgui.pop_style_var()
-
-                text = self.watermark_text
-                _3 = self.scaled(3)
-                _6 = self.scaled(6)
-                text_size = imgui.calc_text_size(text)
-                text_x = size.x - text_size.x - _6
-                text_y = size.y - text_size.y - _6
-
-                if globals.project_path is not None:
-                    sidebar_size = self.scaled(self.sidebar_size)
-
-                    imgui.begin_child("##main_frame", size=(-(sidebar_size+self.scaled(4)),0))
-                    imgui.begin_child("##recording_list_frame", size=(0,-imgui.get_frame_height_with_spacing()), flags=imgui.WindowFlags_.horizontal_scrollbar)
-                    self.recording_list.draw()
-                    imgui.end_child()
-                    imgui.begin_child("##bottombar_frame")
-                    self.recording_list.filter_box_text, self.recording_list.require_sort = \
-                        self.draw_bottombar(self.recording_list.filter_box_text, self.recording_list.require_sort)
-                    imgui.end_child()
-                    imgui.end_child()
-
-                    imgui.same_line(spacing=self.scaled(4))
-                    imgui.begin_child("##sidebar_frame", size=(sidebar_size-1, -text_size.y))
-                    self.draw_sidebar()
-                    imgui.end_child()
-                else:
-                    self.draw_unopened_interface()
-
-                imgui.set_cursor_pos((text_x - _3, text_y))
-                if imgui.invisible_button("##watermark_btn", size=(text_size.x+_6, text_size.y+_3)):
-                    utils.push_popup(self.draw_about_popup)
-                imgui.set_cursor_pos((text_x, text_y))
-                imgui.text(text)
-                draw_hover_text(self.watermark_popup_text, text='')
-
-                open_popup_count = 0
-                for popup in globals.popup_stack:
-                    if hasattr(popup, "tick"):
-                        popup_func = popup.tick
-                    else:
-                        popup_func = popup
-                    opened, closed = popup_func()
-                    if closed:
-                        globals.popup_stack.remove(popup)
-                    open_popup_count += opened
-                # Popups are closed all at the end to allow stacking
-                for _ in range(open_popup_count):
-                    imgui.end_popup()
-
-                imgui.end()
+                # draw gui
+                self.draw_gui()
 
                 imgui.render()
                 display_w, display_h = glfw.get_framebuffer_size(self.window)
@@ -1256,29 +1115,144 @@ class MainGUI():
                     glfw.make_context_current(backup_current_context)
 
                 glfw.swap_buffers(self.window)
-
-                if self.size_mult != self.last_size_mult:
-                    self.refresh_fonts()
-                    self.refresh_styles()
             else:
-                time.sleep(1 / 3)
+                time.sleep(1 / 3.)
 
-            # If the process pool is running, stop it if there is no more work.
-            # This so we don't keep hogging resources and so that no lingering
-            # Python processes show up in the taskbar of MacOS users (sic).
-            if self.maybe_cleanup_process_pool:
-                if not globals.jobs:
-                    process_pool.cleanup_if_no_work()
-                self.maybe_cleanup_process_pool = False
+            # post render callback
+            self.post_render()
 
+        return self.stopping_render()
+
+    def pre_poll(self):
+        # for repeating characters that were input while bottom bar didn't have input focus
+        # it apparently takes a frame to set focus to the input box, so wait another frame
+        # before repeating the char. Hence the below logic
+        if self.repeat_chars:
+            if self.repeat_chars==2:
+                for char in self.input_chars:
+                    imgui.io.add_input_character(char)
+                self.repeat_chars = 0
+                self.input_chars.clear()
+            else:
+                self.repeat_chars+=1
+        else:
+            self.input_chars.clear()
+
+    def pre_new_frame(self):
+        # if there's a queued window resize, execute
+        if self.new_screen_size[0]!=0 and self.new_screen_size!=self.screen_size:
+            glfw.set_window_size(self.window, *self.new_screen_size)
+            glfw.poll_events()
+
+        # Reactive cursors
+        cursor = imgui.get_mouse_cursor()
+        any_hovered = imgui.is_any_item_hovered()
+        if cursor != self.prev_cursor or any_hovered != self.prev_any_hovered:
+            if any_hovered and cursor==imgui.MouseCursor_.arrow:
+                # override: set cursor to hand when hovering actionable items
+                cursor = imgui.MouseCursor_.hand
+                imgui.set_mouse_cursor(cursor)
+            self.prev_cursor = cursor
+            self.prev_any_hovered = any_hovered
+
+        # check selection should be cancelled
+        self.escape_handled = False
+        if imgui.is_key_pressed(imgui.Key.escape, repeat=False) and not globals.popup_stack:
+            for r in globals.selected_recordings:
+                globals.selected_recordings[r] = False
+            self.escape_handled = True
+
+        # delete should issue delete for selected recordings, if any
+        if imgui.is_key_pressed(imgui.Key.delete) and not globals.popup_stack:
+            any_deleted = False
+            for rid in globals.selected_recordings:
+                if globals.selected_recordings[rid]:
+                    async_thread.run(callbacks.remove_recording(globals.recordings[rid]))
+                    any_deleted = True
+            if any_deleted:
+                self.recording_list.require_sort = True
+
+    def draw_gui(self):
+        if (size := imgui.io.display_size) != self.screen_size or not self.have_set_window_size:
+            imgui.set_next_window_size(size, imgui.Cond_.always)
+            self.screen_size = [int(size.x), int(size.y)]
+            self.have_set_window_size = True
+
+        imgui.push_style_var(imgui.StyleVar_.window_border_size, 0)
+        imgui.get_main_viewport().flags |= imgui.ViewportFlags_.can_host_other_windows
+        imgui.set_next_window_viewport(imgui.get_main_viewport().id_)
+        imgui.begin("glassesValidator", flags=self.window_flags)
+        imgui.get_main_viewport().flags &= ~imgui.ViewportFlags_.can_host_other_windows
+        imgui.pop_style_var()
+
+        text = self.watermark_text
+        _3 = self.scaled(3)
+        _6 = self.scaled(6)
+        text_size = imgui.calc_text_size(text)
+        text_x = size.x - text_size.x - _6
+        text_y = size.y - text_size.y - _6
+
+        if globals.project_path is not None:
+            sidebar_size = self.scaled(self.sidebar_size)
+
+            imgui.begin_child("##main_frame", size=(-(sidebar_size+self.scaled(4)),0))
+            imgui.begin_child("##recording_list_frame", size=(0,-imgui.get_frame_height_with_spacing()), flags=imgui.WindowFlags_.horizontal_scrollbar)
+            self.recording_list.draw()
+            imgui.end_child()
+            imgui.begin_child("##bottombar_frame")
+            self.recording_list.filter_box_text, self.recording_list.require_sort = \
+                self.draw_bottombar(self.recording_list.filter_box_text, self.recording_list.require_sort)
+            imgui.end_child()
+            imgui.end_child()
+
+            imgui.same_line(spacing=self.scaled(4))
+            imgui.begin_child("##sidebar_frame", size=(sidebar_size-1, -text_size.y))
+            self.draw_sidebar()
+            imgui.end_child()
+        else:
+            self.draw_unopened_interface()
+
+        imgui.set_cursor_pos((text_x - _3, text_y))
+        if imgui.invisible_button("##watermark_btn", size=(text_size.x+_6, text_size.y+_3)):
+            utils.push_popup(self.draw_about_popup)
+        imgui.set_cursor_pos((text_x, text_y))
+        imgui.text(text)
+        draw_hover_text(self.watermark_popup_text, text='')
+
+        open_popup_count = 0
+        for popup in globals.popup_stack:
+            if hasattr(popup, "tick"):
+                popup_func = popup.tick
+            else:
+                popup_func = popup
+            opened, closed = popup_func()
+            if closed:
+                globals.popup_stack.remove(popup)
+            open_popup_count += opened
+        # Popups are closed all at the end to allow stacking
+        for _ in range(open_popup_count):
+            imgui.end_popup()
+
+        imgui.end()
+
+
+    def post_render(self):
+        if self.size_mult != self.last_size_mult:
+            self.refresh_fonts()
+            self.refresh_styles()
+
+        # If the process pool is running, stop it if there is no more work.
+        # This so we don't keep hogging resources and so that no lingering
+        # Python processes show up in the taskbar of MacOS users (sic).
+        if self.maybe_cleanup_process_pool:
+            if not globals.jobs:
+                process_pool.cleanup_if_no_work()
+            self.maybe_cleanup_process_pool = False
+
+    def stopping_render(self):
         # clean up
         self.save_imgui_ini()
-        imgui.backends.opengl3_shutdown()
-        imgui.backends.glfw_shutdown()
-        if (ctx := imgui.get_current_context()) is not None:
-            imgui.io.set_ini_filename('')   # don't store settings to ini, we already did that manually just above and with augmentation
-            imgui.destroy_context(ctx)
-        glfw.terminate()
+        _general_imgui.destroy_imgui_glfw()
         globals.coding_job_queue = None # this one we can just clear as its not enqueued on the job queue, no cancellation will be issued
         if globals.jobs:
             process_pool.cancel_all_jobs()
@@ -1555,7 +1529,7 @@ class MainGUI():
             imgui.begin_group()
             imgui.dummy((_60, _230))
             imgui.same_line()
-            self.icon_texture.render(_230, _230, rounding=globals.settings.style_corner_radius)
+            _general_imgui.icon_texture.render(_230, _230, rounding=globals.settings.style_corner_radius)
             imgui.same_line()
             imgui.begin_group()
             imgui.push_font(self.big_font)
