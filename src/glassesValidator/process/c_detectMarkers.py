@@ -10,7 +10,7 @@ from .. import utils
 from ._image_gui import GUI, generic_tooltip, qns_tooltip
 
 
-def process(working_dir, config_dir=None, show_visualization=False, show_rejected_markers=False, fps_fac=1):
+def process(working_dir, config_dir=None, show_visualization=False, show_rejected_markers=False):
     # if show_visualization, each frame is shown in a viewer, overlaid with info about detected markers and poster
     # if show_rejected_markers, rejected ArUco marker candidates are also shown in the viewer. Possibly useful for debug
     working_dir  = pathlib.Path(working_dir)
@@ -32,7 +32,6 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
         raise RuntimeError('the file "{}" could not be opened'.format(str(inVideo)))
     width  = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    ifi    = 1000./cap.get(cv2.CAP_PROP_FPS)/fps_fac
 
     # get info about markers on our poster
     poster          = utils.Poster(config_dir, validationSetup)
@@ -62,6 +61,8 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
 
     # prep visualization, if any
     if show_visualization:
+        i2t = utils.Idx2Timestamp(working_dir / 'frameTimestamps.tsv')
+
         gui = GUI()
         gui.set_interesting_keys('qns')
         gui.register_draw_callback('status',lambda: generic_tooltip(qns_tooltip()))
@@ -72,10 +73,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
     armLength = poster.markerSize/2 # arms of axis are half a marker long
     subPixelFac = 8   # for sub-pixel positioning
     while True:
-        startTime = time.perf_counter()
-
         # process frame-by-frame
-        pts = cap.get(cv2.CAP_PROP_POS_MSEC)
         ret, frame = cap.read()
         frame_idx += 1
         if (not ret) or (hasAnalyzeFrames and frame_idx > analyzeFrames[-1]):
@@ -165,7 +163,8 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
             if 's' in keys:
                 # screenshot
                 cv2.imwrite(str(working_dir / ('detect_frame_%d.png' % frame_idx)), frame)
-            gui.update_image(frame, pts/1000., frame_idx)
+            frame_ts  = i2t.get(frame_idx)
+            gui.update_image(frame, frame_ts/1000., frame_idx)
             closed, = gui.get_state()
             if closed:
                 stopAllProcessing = True
