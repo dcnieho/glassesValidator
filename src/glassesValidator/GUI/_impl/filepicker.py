@@ -26,7 +26,6 @@ class DirEntry:
 
 class FilePicker:
     flags: int = (
-        imgui.WindowFlags_.no_move |
         imgui.WindowFlags_.no_resize |
         imgui.WindowFlags_.no_collapse |
         imgui.WindowFlags_.no_saved_settings |
@@ -154,8 +153,9 @@ class FilePicker:
             imgui.open_popup(self.title)
         cancelled = closed = False
         opened = 1
-        size = io.display_size
-        imgui.set_next_window_pos((size.x/2, size.y/2), pivot=(0.5,0.5))
+        pos = imgui.get_window_pos()
+        size = imgui.get_window_size()
+        imgui.set_next_window_pos((pos.x+size.x/2, pos.y+size.y/2), pivot=(0.5,0.5), cond=imgui.Cond_.appearing)
         if imgui.begin_popup_modal(self.title, True, flags=self.flags)[0]:
             cancelled = closed = utils.close_weak_popup()
             imgui.begin_group()

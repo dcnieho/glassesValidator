@@ -616,15 +616,12 @@ class MainGUI():
             imgui.WindowFlags_.no_resize |
             imgui.WindowFlags_.no_collapse |
             imgui.WindowFlags_.no_title_bar |
-            imgui.WindowFlags_.no_scrollbar | 
+            imgui.WindowFlags_.no_scrollbar |
             imgui.WindowFlags_.no_scroll_with_mouse
         )
         self.popup_flags: int = (
-            imgui.WindowFlags_.no_move |
-            imgui.WindowFlags_.no_resize |
             imgui.WindowFlags_.no_collapse |
-            imgui.WindowFlags_.no_saved_settings |
-            imgui.WindowFlags_.always_auto_resize
+            imgui.WindowFlags_.no_saved_settings
         )
         self.watermark_text         = "About"
         self.watermark_popup_text   = f"glassesValidator {globals.version}\nClick for more information"
@@ -776,6 +773,11 @@ class MainGUI():
         imgui.io = imgui.get_io()
         imgui.io.set_ini_filename(str(utils.get_data_path() / "imgui.ini"))
         imgui.io.config_drag_click_to_input_text = True
+        imgui.io.config_flags |= imgui.ConfigFlags_.viewports_enable # Enable Multi-Viewport / Platform Windows
+        imgui.io.config_viewports_no_auto_merge = True
+        imgui.io.config_viewports_no_decoration = False
+        imgui.io.config_windows_move_from_title_bar_only = True
+        imgui.io.config_windows_resize_from_edges = True
         size = tuple()
         pos = tuple()
         is_default = False
@@ -1174,14 +1176,16 @@ class MainGUI():
                 imgui.backends.glfw_new_frame()
                 imgui.new_frame()
 
-                imgui.set_next_window_pos((0,0), imgui.Cond_.once)
                 if (size := imgui.io.display_size) != self.screen_size or not have_set_window_size:
                     imgui.set_next_window_size(size, imgui.Cond_.always)
                     self.screen_size = [int(size.x), int(size.y)]
                     have_set_window_size = True
 
                 imgui.push_style_var(imgui.StyleVar_.window_border_size, 0)
+                imgui.get_main_viewport().flags |= imgui.ViewportFlags_.can_host_other_windows
+                imgui.set_next_window_viewport(imgui.get_main_viewport().id_)
                 imgui.begin("glassesValidator", flags=self.window_flags)
+                imgui.get_main_viewport().flags &= ~imgui.ViewportFlags_.can_host_other_windows
                 imgui.pop_style_var()
 
                 text = self.watermark_text
@@ -1211,10 +1215,10 @@ class MainGUI():
                 else:
                     self.draw_unopened_interface()
 
-                imgui.set_cursor_screen_pos((text_x - _3, text_y))
+                imgui.set_cursor_pos((text_x - _3, text_y))
                 if imgui.invisible_button("##watermark_btn", size=(text_size.x+_6, text_size.y+_3)):
                     utils.push_popup(self.draw_about_popup)
-                imgui.set_cursor_screen_pos((text_x, text_y))
+                imgui.set_cursor_pos((text_x, text_y))
                 imgui.text(text)
                 draw_hover_text(self.watermark_popup_text, text='')
 

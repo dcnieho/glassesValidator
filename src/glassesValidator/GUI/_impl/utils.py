@@ -155,14 +155,13 @@ def pop_disabled(block_interaction=True):
 
 
 def center_next_window():
-    size = imgui.io.display_size
-    imgui.set_next_window_pos((size.x/2, size.y/2), pivot=(0.5,0.5))
-
+    pos = imgui.get_window_pos()
+    size = imgui.get_window_size()
+    imgui.set_next_window_pos((pos.x+size.x/2, pos.y+size.y/2), pivot=(0.5,0.5), cond=imgui.Cond_.appearing)
 
 def constrain_next_window():
     size = imgui.io.display_size
     imgui.set_next_window_size_constraints((0, 0), (size.x * 0.9, size.y * 0.9))
-
 
 def close_weak_popup():
     if not imgui.is_popup_open("", imgui.PopupFlags_.any_popup_id):
@@ -180,7 +179,6 @@ def close_weak_popup():
                 imgui.close_current_popup()
                 return True
     return False
-
 
 def popup(label: str, popup_content: typing.Callable, buttons: dict[str, typing.Callable] = None, closable=True, outside=True):
     if buttons is True:
@@ -217,7 +215,6 @@ def popup(label: str, popup_content: typing.Callable, buttons: dict[str, typing.
         opened = 0
         closed = True
     return opened, closed
-
 
 def push_popup(*args, bottom=False, **kwargs):
     if len(args) + len(kwargs) > 1:
