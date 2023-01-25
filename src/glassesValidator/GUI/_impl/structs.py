@@ -123,9 +123,6 @@ class Settings:
     dq_report_data_loss         : bool
     process_workers             : int
     render_when_unfocused       : bool
-    scroll_amount               : float
-    scroll_smooth               : bool
-    scroll_smooth_speed         : float
     show_advanced_options       : bool
     show_remove_btn             : bool
     style_accent                : tuple[float]

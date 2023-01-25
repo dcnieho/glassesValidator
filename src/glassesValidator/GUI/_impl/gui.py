@@ -2116,51 +2116,6 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            imgui.text("Smooth scrolling:")
-            imgui.table_next_column()
-            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("##scroll_smooth", set.scroll_smooth)
-            if changed:
-                set.scroll_smooth = value
-                async_thread.run(db.update_settings("scroll_smooth"))
-
-            if not set.scroll_smooth:
-                utils.push_disabled()
-
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.align_text_to_frame_padding()
-            imgui.text("Smoothness:")
-            imgui.same_line()
-            draw_hover_text(
-                "How fast or slow the smooth scrolling animation is. Default is 8."
-            )
-            imgui.table_next_column()
-            changed, value = imgui.drag_float("##scroll_smooth_speed", set.scroll_smooth_speed, v_speed=0.25, v_min=0.1, v_max=50)
-            set.scroll_smooth_speed = min(max(value, 0.1), 50)
-            if changed:
-                async_thread.run(db.update_settings("scroll_smooth_speed"))
-
-            if not set.scroll_smooth:
-                utils.pop_disabled()
-
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.align_text_to_frame_padding()
-            imgui.text("Scroll mult:")
-            imgui.same_line()
-            draw_hover_text(
-                "Multiplier for how much a single scroll event should actually scroll. Default is 1."
-            )
-            imgui.table_next_column()
-            changed, value = imgui.drag_float("##scroll_amount", set.scroll_amount, v_speed=0.05, v_min=0.1, v_max=10, format="%.2fx")
-            set.scroll_amount = min(max(value, 0.1), 10)
-            if changed:
-                async_thread.run(db.update_settings("scroll_amount"))
-
-            imgui.table_next_row()
-            imgui.table_next_column()
-            imgui.align_text_to_frame_padding()
             imgui.text("Vsync ratio:")
             imgui.same_line()
             draw_hover_text(
