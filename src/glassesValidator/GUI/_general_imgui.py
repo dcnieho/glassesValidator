@@ -101,7 +101,10 @@ def get_monitor_scaling(screen_pos, screen_size):
     # determine what monitor we're (mostly) on
     mon, monitor = get_current_monitor(*screen_pos, *screen_size)
     # get scaling of that monitor
-    xscale, yscale = glfw.get_monitor_content_scale(mon)
+    if sys.platform.startswith("darwin"):
+        xscale, yscale = 1., 1.
+    else:
+        xscale, yscale = glfw.get_monitor_content_scale(mon)
     return monitor, max(xscale, yscale)
 
 def setup_imgui():
