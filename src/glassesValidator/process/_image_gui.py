@@ -18,7 +18,7 @@ class GUI:
         self._interesting_keys = {}
         self._pressed_keys = {}
 
-        self._draw_callback = None
+        self._draw_callback = {'main': None, 'status': None}
 
     def __del__(self):
         self.stop()
@@ -51,9 +51,11 @@ class GUI:
         else:
             self._frame_nr += 1
 
-    def register_draw_callback(self, callback):
+    def register_draw_callback(self, type, callback):
         # e.g. for drawing overlays
-        self._draw_callback = callback
+        if type not in self._draw_callback:
+            raise RuntimeError('Draw callback type unknown')
+        self._draw_callback[type] = callback
 
     def set_interesting_keys(self, keys):
         if isinstance(keys,str):
@@ -172,15 +174,41 @@ class GUI:
         # draw bottom status overlay
         ws = imgui.get_window_size()
         ts = imgui.calc_text_size('')
-        imgui.set_cursor_pos_y(ws[1]-ts[1])
+        imgui.set_cursor_pos_y(ws.y-ts.y)
         imgui.push_style_color(imgui.Col_.child_bg, ( 0.0, 0.0, 0.0, 0.4 ) )
-        imgui.begin_child("##status_overlay", size=(-imgui.FLT_MIN,ts[1]))
+        imgui.begin_child("##status_overlay", size=(-imgui.FLT_MIN,ts.y))
         if (self._frame_pts):
             imgui.text(" %8.3f [%d]" % (self._frame_pts, self._last_frame_nr))
         else:
             imgui.text(" %d" % (self._last_frame_nr,))
+        if self._draw_callback['status']:
+            self._draw_callback['status']()
         imgui.end_child()
         imgui.pop_style_color()
 
-        if self._draw_callback:
-            self._draw_callback()
+        if self._draw_callback['main']:
+            self._draw_callback['main']()
+
+def generic_tooltip(info_dict):
+    ws = imgui.get_window_size()
+    ts = imgui.calc_text_size('(?)')
+    imgui.same_line(ws.x-ts.x)
+    imgui.text('(?)')
+
+    if imgui.is_item_hovered():
+        imgui.begin_tooltip()
+        imgui.push_text_wrap_pos(min(imgui.get_font_size() * 35, ws.x))
+        text = ''
+        for k in info_dict:
+            text += f"'{k}': {info_dict[k]}\n"
+        text = text[:-1]
+        imgui.text_unformatted(text)
+        imgui.pop_text_wrap_pos()
+        imgui.end_tooltip()
+
+def qns_tooltip():
+    return {
+        'q': 'Quit',
+        'n': 'Next',
+        's': 'Screenshot'
+    }

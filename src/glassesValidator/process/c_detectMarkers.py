@@ -7,7 +7,7 @@ import time
 
 from .. import config
 from .. import utils
-from ._image_gui import GUI
+from ._image_gui import GUI, generic_tooltip, qns_tooltip
 
 
 def process(working_dir, config_dir=None, show_visualization=False, show_rejected_markers=False, fps_fac=1):
@@ -64,6 +64,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
     if show_visualization:
         gui = GUI()
         gui.set_interesting_keys('qns')
+        gui.register_draw_callback('status',lambda: generic_tooltip(qns_tooltip()))
         gui.start(working_dir.name)
 
     frame_idx = -1
