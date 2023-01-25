@@ -1129,9 +1129,6 @@ class MainGUI():
             if self.new_screen_size[0]!=0 and self.new_screen_size!=self.screen_size:
                 glfw.set_window_size(self.window, *self.new_screen_size)
                 glfw.poll_events()
-            if not self.focused and glfw.get_window_attrib(self.window, glfw.HOVERED):
-                # GlfwRenderer (self.impl) resets cursor pos if not focused, making it unresponsive
-                imgui.io.mouse_pos = glfw.get_cursor_pos(self.window)
             if self.focused or globals.settings.render_when_unfocused:
                 # Scroll modifiers (must be before new_frame())
                 imgui.io.mouse_wheel *= globals.settings.scroll_amount
