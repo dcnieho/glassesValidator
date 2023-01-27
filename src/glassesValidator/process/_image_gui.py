@@ -225,10 +225,12 @@ class GUI:
         self._draw_gui(next(iter(self._windows)))
 
     def _draw_gui(self, w):
+        if self._last_frame[w] is None or self._texID[w] is None:
+            return
+
         imgui.set_cursor_pos((0,0))
         # draw image
-        if self._last_frame[w] is not None:
-            imgui.image(self._texID[w], imgui.ImVec2(self._last_frame[w].shape[1]*self._dpi_fac, self._last_frame[w].shape[0]*self._dpi_fac))
+        imgui.image(self._texID[w], imgui.ImVec2(self._last_frame[w].shape[1]*self._dpi_fac, self._last_frame[w].shape[0]*self._dpi_fac))
 
         # draw bottom status overlay
         ws = imgui.get_window_size()
