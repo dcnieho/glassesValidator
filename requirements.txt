@@ -1,4 +1,4 @@
-imgui_bundle
+imgui_bundle>=0.8.2
 numpy
 scipy==1.9.1
 pandas
