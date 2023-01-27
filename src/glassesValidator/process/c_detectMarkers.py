@@ -66,7 +66,8 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
         gui = GUI()
         gui.set_interesting_keys('qns')
         gui.register_draw_callback('status',lambda: generic_tooltip(qns_tooltip()))
-        gui.start(working_dir.name)
+        gui.add_window(working_dir.name)
+        gui.start()
 
     frame_idx = -1
     stopAllProcessing = False

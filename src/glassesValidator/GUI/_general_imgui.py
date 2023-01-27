@@ -80,7 +80,7 @@ def get_current_monitor(wx, wy, ww, wh):
     return monitor, ctypes.cast(ctypes.pointer(monitor), ctypes.POINTER(ctypes.c_long)).contents.value
 
 icon_texture = None
-def setup_glfw_window(name: str, size = None, pos = None, hide_main_window = False):
+def setup_glfw_window(name: str, size = (300,300), pos = None, hide_main_window = False):
     window = glfw_init(*size, name, hide_main_window)
     if size and pos:
         if all([isinstance(x, int) for x in pos]) and len(pos) == 2 and validate_geometry(*pos, *size):
