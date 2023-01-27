@@ -6,11 +6,13 @@ import cv2
 import numpy as np
 import csv
 import time
+
 from .. import config
 from .. import utils
+from ._image_gui import GUI, generic_tooltip, qns_tooltip
 
 
-def process(working_dir, config_dir=None, show_visualization=False, show_poster=True, show_only_intervals=True, fps_fac=1):
+def process(working_dir, config_dir=None, show_visualization=False, show_poster=True, show_only_intervals=True):
     # if show_visualization, each frame is shown in a viewer, overlaid with info about detected markers and poster
     # if show_poster, gaze in poster space is also drawn in a separate window
     # if show_only_intervals, only the coded validation episodes (if available) are shown in the viewer while the rest of the scene video is skipped past
@@ -24,14 +26,24 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
     # open file with information about ArUco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
 
+    # prep visualizations, if any
     if show_visualization:
-        cv2.namedWindow("frame")
-        if show_poster:
-            cv2.namedWindow("poster")
-
         poster      = utils.Poster(config_dir, validationSetup)
         centerTarget= poster.targets[validationSetup['centerTarget']].center
         i2t         = utils.Idx2Timestamp(working_dir / 'frameTimestamps.tsv')
+
+        cap         = cv2.VideoCapture(str(working_dir / 'worldCamera.mp4'))
+        width       = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height      = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        gui = GUI()
+        gui.set_interesting_keys('qns')
+        gui.register_draw_callback('status',lambda: generic_tooltip(qns_tooltip()))
+        frame_win_id = gui.add_window(working_dir.name)
+
+        if show_poster:
+            poster_win_id = gui.add_window("poster")
+        gui.start()
 
     # get camera calibration info
     cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(working_dir / "calibration.xml")
@@ -41,13 +53,6 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
     # get interval coded to be analyzed, if any
     analyzeFrames   = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
     hasAnalyzeFrames= show_only_intervals and analyzeFrames is not None
-
-    # open video, if wanted
-    if show_visualization:
-        cap         = cv2.VideoCapture(str(working_dir / 'worldCamera.mp4'))
-        width       = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height      = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        ifi         = 1000./cap.get(cv2.CAP_PROP_FPS)/fps_fac
 
     # Read gaze data
     print('  gazeData')
@@ -118,8 +123,9 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
                     csv_writer.writerow( writeData )
 
         if show_visualization:
+            frame_ts  = i2t.get(frame_idx)
             if show_poster:
-                cv2.imshow("poster", refImg)
+                gui.update_image(refImg, frame_ts/1000., frame_idx, window_id = poster_win_id)
 
             # if we have poster pose, draw poster origin on video
             if frame_idx in poses:
@@ -134,28 +140,31 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
                 utils.drawOpenCVLine(frame, (a[0],0), (a[0],height), (0,255,0), 1, subPixelFac)
                 utils.drawOpenCVLine(frame, (0,a[1]), (width,a[1]) , (0,255,0), 1, subPixelFac)
 
-            frame_ts  = i2t.get(frame_idx)
-            cv2.rectangle(frame,(0,int(height)),(int(0.25*width),int(height)-30),(0,0,0),-1)
-            cv2.putText(frame, '%8.2f [%6d]' % (frame_ts,frame_idx), (0, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255))
-            cv2.imshow('frame',frame)
-            key = cv2.waitKey(max(1,int(round(ifi-(time.perf_counter()-startTime)*1000)))) & 0xFF
-            if key == ord('q'):
+            keys = gui.get_key_presses()
+            if 'q' in keys:
                 # quit fully
                 stopAllProcessing = True
                 break
-            if key == ord('n'):
+            if 'n' in keys:
                 # goto next
                 break
-            if key == ord('s'):
+            if 's' in keys:
                 # screenshot
                 cv2.imwrite(str(working_dir / ('calc_frame_%d.png' % frame_idx)), frame)
-        elif (frame_idx)%100==0:
+
+            gui.update_image(frame, frame_ts/1000., frame_idx, window_id = frame_win_id)
+            closed, = gui.get_state()
+            if closed:
+                stopAllProcessing = True
+                break
+
+        if (frame_idx)%100==0:
             print('  frame {}'.format(frame_idx))
 
     csv_file.close()
     if show_visualization:
         cap.release()
-        cv2.destroyAllWindows()
+        gui.stop()
 
     utils.update_recording_status(working_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Finished)
 
