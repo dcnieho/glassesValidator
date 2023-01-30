@@ -11,12 +11,11 @@ class GUI:
     def __init__(self):
         self._should_exit = False
         self._thread = None
-        self._frame = {}
+        self._new_frame = {}
         self._texID = {}
         self._frame_nr = {}
         self._frame_pts = {}
-        self._last_frame = {}
-        self._last_frame_nr = {}
+        self._current_frame = {}
         self._glfw_window = None
 
         self._next_window_id = 0
@@ -33,12 +32,9 @@ class GUI:
     def add_window(self,name):
         id = self._next_window_id
         self._windows[id] = name
-        self._frame[id] = None
         self._texID[id] = None
-        self._frame_nr[id] = -1
-        self._frame_pts[id] = None
-        self._last_frame[id] = None
-        self._last_frame_nr[id] = -1
+        self._new_frame[id] = (None, None, -1)
+        self._current_frame[id] = (None, None, -1)
 
         self._next_window_id += 1
         return id
@@ -60,7 +56,7 @@ class GUI:
             self._thread.join()
         self._thread = None
 
-    def update_image(self, frame, pts = None, frame_nr = None, window_id = None):
+    def update_image(self, frame, pts, frame_nr, window_id = None):
         # since this has an independently running loop,
         # need to update image whenever new one available
         if window_id is None:
@@ -69,12 +65,7 @@ class GUI:
             else:
                 raise RuntimeError("You have more than one window, you must indicate for which window you are providing an image")
 
-        self._frame[window_id] = frame # just copy ref is enough
-        self._frame_pts[window_id] = pts
-        if frame_nr:
-            self._frame_nr[window_id] = frame_nr
-        else:
-            self._frame_nr[window_id] += 1
+        self._new_frame[window_id] = (frame, pts, frame_nr) # just copy ref to frame is enough
 
     def register_draw_callback(self, type, callback):
         # e.g. for drawing overlays
@@ -128,7 +119,7 @@ class GUI:
             glfw.set_window_close_callback(self._glfw_window, close_callback)
             imgui.get_io().config_viewports_no_decoration = False
 
-        main_window_id = next(iter(self._frame))
+        main_window_id = next(iter(self._new_frame))
         params = hello_imgui.RunnerParams()
         params.app_window_params.window_geometry.size_auto = True
         params.app_window_params.restore_previous_geometry = False
@@ -195,21 +186,9 @@ class GUI:
 
         # upload texture if needed
         for w in self._windows:
-            if self._frame_nr[w] != self._last_frame_nr[w]:
+            if self._new_frame[w][0] is not None:
                 if self._texID[w] is None:
                     self._texID[w] = gl.glGenTextures(1)
-                # if first time we're showing something
-                if self._last_frame[w] is None:
-                    # tell window to resize
-                    if w==0:
-                        hello_imgui.get_runner_params().app_window_params.window_geometry.resize_app_window_at_next_frame = True
-                    else:
-                        hello_imgui.get_runner_params().docking_params.dockable_windows[w-1].window_size = (self._frame[w].shape[1]*self._dpi_fac+6, self._frame[w].shape[0]*self._dpi_fac+6)
-                        hello_imgui.get_runner_params().docking_params.dockable_windows[w-1].is_visible = True
-                    # and show window if needed
-                    if self._hidden:
-                        glfw.show_window(self._glfw_window)
-                        self._hidden = False
                 # upload texture
                 gl.glBindTexture(gl.GL_TEXTURE_2D, self._texID[w])
                 gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
@@ -217,20 +196,35 @@ class GUI:
                 gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_BORDER)
                 gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_BORDER)
                 gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
-                gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, self._frame[w].shape[1], self._frame[w].shape[0], 0, gl.GL_BGR, gl.GL_UNSIGNED_BYTE, self._frame[w])
-                self._last_frame_nr[w] = self._frame_nr[w]
-                self._last_frame[w] = self._frame[w]
+                gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, self._new_frame[w][0].shape[1], self._new_frame[w][0].shape[0], 0, gl.GL_BGR, gl.GL_UNSIGNED_BYTE, self._new_frame[w][0])
+
+                # if first time we're showing something
+                if self._current_frame[w][0] is None:
+                    # tell window to resize
+                    if w==0:
+                        hello_imgui.get_runner_params().app_window_params.window_geometry.resize_app_window_at_next_frame = True
+                    else:
+                        hello_imgui.get_runner_params().docking_params.dockable_windows[w-1].window_size = (self._new_frame[w][0].shape[1]*self._dpi_fac+6, self._new_frame[w][0].shape[0]*self._dpi_fac+6)
+                        hello_imgui.get_runner_params().docking_params.dockable_windows[w-1].is_visible = True
+                    # and show window if needed
+                    if self._hidden:
+                        glfw.show_window(self._glfw_window)
+                        self._hidden = False
+
+                # keep record of what we're showing
+                self._current_frame[w]  = self._new_frame[w]
+                self._new_frame[w]      = (None, None, -1)
 
         # show main window
         self._draw_gui(next(iter(self._windows)))
 
     def _draw_gui(self, w):
-        if self._last_frame[w] is None or self._texID[w] is None:
+        if self._current_frame[w] is None or self._texID[w] is None:
             return
 
         imgui.set_cursor_pos((0,0))
         # draw image
-        imgui.image(self._texID[w], imgui.ImVec2(self._last_frame[w].shape[1]*self._dpi_fac, self._last_frame[w].shape[0]*self._dpi_fac))
+        imgui.image(self._texID[w], imgui.ImVec2(self._current_frame[w][0].shape[1]*self._dpi_fac, self._current_frame[w][0].shape[0]*self._dpi_fac))
 
         # draw bottom status overlay
         ws = imgui.get_window_size()
@@ -238,10 +232,10 @@ class GUI:
         imgui.set_cursor_pos_y(ws.y-ts.y)
         imgui.push_style_color(imgui.Col_.child_bg, (0.0, 0.0, 0.0, 0.6))
         imgui.begin_child("##status_overlay", size=(-imgui.FLT_MIN,ts.y))
-        if (self._frame_pts[w]):
-            imgui.text(" %8.3f [%d]" % (self._frame_pts[w], self._last_frame_nr[w]))
+        if (self._current_frame[w][1]):
+            imgui.text(" %8.3f [%d]" % (self._current_frame[w][1], self._current_frame[w][2]))
         else:
-            imgui.text(" %d" % (self._last_frame_nr[w],))
+            imgui.text(" %d" % (self._current_frame[w][2],))
         if self._draw_callback['status']:
             self._draw_callback['status']()
         imgui.end_child()
