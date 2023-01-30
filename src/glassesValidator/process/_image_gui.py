@@ -191,7 +191,7 @@ class GUI:
         # if user wants to know about keypresses, keep record of them
         for k in self._interesting_keys:
             if imgui.is_key_pressed(self._interesting_keys[k]):
-                self._pressed_keys[k] = [thisT, imgui.is_key_pressed(imgui.Key.im_gui_mod_shift)]
+                self._pressed_keys[k] = [thisT, imgui.is_key_down(imgui.Key.im_gui_mod_shift)]
 
         # upload texture if needed
         for w in self._windows:
