@@ -204,7 +204,7 @@ class GUI:
                     if w==0:
                         hello_imgui.get_runner_params().app_window_params.window_geometry.resize_app_window_at_next_frame = True
                     else:
-                        hello_imgui.get_runner_params().docking_params.dockable_windows[w-1].window_size = (self._frame[w].shape[1]*self._dpi_fac, self._frame[w].shape[0]*self._dpi_fac)
+                        hello_imgui.get_runner_params().docking_params.dockable_windows[w-1].window_size = (self._frame[w].shape[1]*self._dpi_fac+6, self._frame[w].shape[0]*self._dpi_fac+6)
                         hello_imgui.get_runner_params().docking_params.dockable_windows[w-1].is_visible = True
                     # and show window if needed
                     if self._hidden:
