@@ -261,7 +261,7 @@ def generic_tooltip(info_dict):
         imgui.push_text_wrap_pos(min(imgui.get_font_size() * 35, ws.x))
         text = ''
         for k in info_dict:
-            text += f"'{k}': {info_dict[k]}\n"
+            text += f"'{k.upper()}': {info_dict[k]}\n"
         text = text[:-1]
         imgui.text_unformatted(text)
         imgui.pop_text_wrap_pos()
