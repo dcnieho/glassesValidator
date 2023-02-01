@@ -5,6 +5,7 @@ import numpy as np
 
 import cv2
 import csv
+import threading
 
 from ffpyplayer.player import MediaPlayer
 
@@ -28,6 +29,7 @@ from ._image_gui import GUI, generic_tooltip
 # will also be shown if available.
 
 
+stopAllProcessing = False
 def process(working_dir, config_dir=None, show_poster=False):
     # if show_poster, also draw poster with gaze overlaid on it (if available)
     working_dir = pathlib.Path(working_dir)
@@ -35,6 +37,36 @@ def process(working_dir, config_dir=None, show_poster=False):
         config_dir = pathlib.Path(config_dir)
 
     print('processing: {}'.format(working_dir.name))
+
+    # We run processing in a separate thread (GUI needs to be on the main thread for OSX, see https://github.com/pthom/hello_imgui/issues/33)
+    gui = GUI(use_thread = False)
+    key_tooltip = {
+        "h": "Back 1 s, shift+H: back 10 s",
+        "l": "Forward 1 s, shift+L: forward 10 s",
+        "j": "Back 1 frame",
+        "k": "Forward 1 frame",
+        "p": "Pause or resume playback",
+        "f": "Mark frame",
+        "d": "Delete frame or current interval",
+        "s": "Seek to start of next interval, shift+S seek to start of previous interval",
+        "e": "Seek to end of next interval, shift+E seek to end of previous interval",
+        "q": "Quit",
+        'n': 'Next'
+    }
+    gui.set_interesting_keys(list(key_tooltip.keys()))
+    gui.register_draw_callback('status',lambda: generic_tooltip(key_tooltip))
+    main_win_id = gui.add_window(working_dir.name)
+
+    proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, main_win_id, show_poster))
+    proc_thread.start()
+    gui.start()
+    proc_thread.join()
+    return stopAllProcessing
+
+
+def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
+    global stopAllProcessing
+
     utils.update_recording_status(working_dir, utils.Task.Coded, utils.Status.Running)
 
     # open file with information about Aruco marker and Gaze target locations
@@ -74,29 +106,11 @@ def process(working_dir, config_dir=None, show_poster=False):
         analyzeFrames = []
 
     # set up video playback
-    # 1. window for scene video
-    gui = GUI()
-    key_tooltip = {
-        "h": "Back 1 s, shift+H: back 10 s",
-        "l": "Forward 1 s, shift+L: forward 10 s",
-        "j": "Back 1 frame",
-        "k": "Forward 1 frame",
-        "p": "Pause or resume playback",
-        "f": "Mark frame",
-        "d": "Delete frame or current interval",
-        "s": "Seek to start of next interval, shift+S seek to start of previous interval",
-        "e": "Seek to end of next interval, shift+E seek to end of previous interval",
-        "q": "Quit",
-        'n': 'Next'
-    }
-    gui.set_interesting_keys(list(key_tooltip.keys()))
-    gui.register_draw_callback('status',lambda: generic_tooltip(key_tooltip))
-    main_win_id = gui.add_window(working_dir.name)
+    # 1. window for scene video is already set up
     # 2. if wanted and available, second OpenCV window for poster with gaze on that plane
     show_poster &= hasPosterGaze  # no poster if we don't have poster gaze, it'd be empty and pointless
     if show_poster:
         poster_win_id = gui.add_window("poster")
-    gui.start()
     # 3. timestamp info for relating audio to video frames
     t2i = utils.Timestamp2Index( working_dir / 'frameTimestamps.tsv' )
     i2t = utils.Idx2Timestamp( working_dir / 'frameTimestamps.tsv' )

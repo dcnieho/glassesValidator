@@ -5,12 +5,14 @@ import pathlib
 import cv2
 import numpy as np
 import csv
+import threading
 
 from .. import config
 from .. import utils
 from ._image_gui import GUI, generic_tooltip, qns_tooltip
 
 
+stopAllProcessing = False
 def process(working_dir, config_dir=None, show_visualization=False, show_poster=True, show_only_intervals=True):
     # if show_visualization, each frame is shown in a viewer, overlaid with info about detected markers and poster
     # if show_poster, gaze in poster space is also drawn in a separate window
@@ -20,6 +22,30 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
         config_dir = pathlib.Path(config_dir)
 
     print('processing: {}'.format(working_dir.name))
+
+    # if we need gui, we run processing in a separate thread (GUI needs to be on the main thread for OSX, see https://github.com/pthom/hello_imgui/issues/33)
+    if show_visualization:
+        gui = GUI(use_thread = False)
+        gui.set_interesting_keys('qns')
+        gui.register_draw_callback('status',lambda: generic_tooltip(qns_tooltip()))
+        frame_win_id = gui.add_window(working_dir.name)
+        poster_win_id= None
+        if show_poster:
+            poster_win_id = gui.add_window("poster")
+
+        proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, frame_win_id, show_poster, poster_win_id, show_only_intervals))
+        proc_thread.start()
+        gui.start()
+        proc_thread.join()
+        return stopAllProcessing
+    else:
+        return do_the_work(working_dir, config_dir, None, None, False, None, False)
+
+
+def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_win_id, show_only_intervals):
+    global stopAllProcessing
+    show_visualization = gui is not None
+
     utils.update_recording_status(working_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Running)
 
     # open file with information about ArUco marker and Gaze target locations
@@ -34,15 +60,6 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
         cap         = cv2.VideoCapture(str(working_dir / 'worldCamera.mp4'))
         width       = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height      = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-        gui = GUI()
-        gui.set_interesting_keys('qns')
-        gui.register_draw_callback('status',lambda: generic_tooltip(qns_tooltip()))
-        frame_win_id = gui.add_window(working_dir.name)
-
-        if show_poster:
-            poster_win_id = gui.add_window("poster")
-        gui.start()
 
     # get camera calibration info
     cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(working_dir / "calibration.xml")

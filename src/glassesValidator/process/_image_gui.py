@@ -8,8 +8,10 @@ import OpenGL.GL as gl
 # simple GUI provider for viewer and coder windows in glassesValidator.process
 
 class GUI:
-    def __init__(self):
+    def __init__(self, use_thread=True):
         self._should_exit = False
+        self._running = False
+        self._use_thread = use_thread # NB: on MacOSX the GUI needs to be on the main thread, see https://github.com/pthom/hello_imgui/issues/33
         self._thread = None
         self._new_frame = {}
         self._texID = {}
@@ -20,6 +22,7 @@ class GUI:
 
         self._next_window_id = 0
         self._windows = {}
+        self._new_windows = []
 
         self._interesting_keys = {}
         self._pressed_keys = {}
@@ -35,6 +38,8 @@ class GUI:
         self._texID[id] = None
         self._new_frame[id] = (None, None, -1)
         self._current_frame[id] = (None, None, -1)
+        if self._running:
+            self._new_windows.append(id)
 
         self._next_window_id += 1
         return id
@@ -42,10 +47,13 @@ class GUI:
     def start(self):
         if not self._windows:
             raise RuntimeError('add a window (GUI.add_window) before you call start')
-        if self._thread is not None:
-            raise RuntimeError('The gui is already running, cannot start again')
-        self._thread = threading.Thread(target=self._thread_start_fun)
-        self._thread.start()
+        if self._use_thread:
+            if self._thread is not None:
+                raise RuntimeError('The gui is already running, cannot start again')
+            self._thread = threading.Thread(target=self._thread_start_fun)
+            self._thread.start()
+        else:
+            self._thread_start_fun()
 
     def get_state(self):
         return (self._user_closed_window,)
@@ -134,26 +142,31 @@ class GUI:
 
         # abuse dockable windows to get multiple windows through hello_imgui
         if len(self._windows)>1:
-            wins = []
             for w in list(self._windows.keys())[1:]:
-                win = hello_imgui.DockableWindow()
-                win.label = self._windows[w]
-                win.dock_space_name = "MainDockSpace"
-                win.gui_function = lambda: self._draw_gui(w)
-                win.window_size_condition = imgui.Cond_.always
-                win.imgui_window_flags = int(
-                                                imgui.WindowFlags_.no_move |
-                                                imgui.WindowFlags_.no_resize |
-                                                imgui.WindowFlags_.no_collapse |
-                                                imgui.WindowFlags_.no_title_bar |
-                                                imgui.WindowFlags_.no_scrollbar |
-                                                imgui.WindowFlags_.no_scroll_with_mouse
-                                            )
-                win.is_visible = False
-                wins.append(win)
-            params.docking_params.dockable_windows = wins
+                self._open_extra_window(w, params)
 
+        self._running = True
         immapp.run(params)
+        self._running = False
+
+    def _open_extra_window(self, w, params):
+        win = hello_imgui.DockableWindow()
+        win.label = self._windows[w]
+        win.dock_space_name = "MainDockSpace"
+        win.gui_function = lambda: self._draw_gui(w)
+        win.window_size_condition = imgui.Cond_.always
+        win.imgui_window_flags = int(
+                                        imgui.WindowFlags_.no_move |
+                                        imgui.WindowFlags_.no_resize |
+                                        imgui.WindowFlags_.no_collapse |
+                                        imgui.WindowFlags_.no_title_bar |
+                                        imgui.WindowFlags_.no_scrollbar |
+                                        imgui.WindowFlags_.no_scroll_with_mouse
+                                    )
+        win.is_visible = False
+        wins = params.docking_params.dockable_windows
+        wins.append(win)
+        params.docking_params.dockable_windows = wins
 
     def _gui_func(self):
         # check if we should exit
@@ -169,6 +182,10 @@ class GUI:
             hello_imgui.get_runner_params().app_shall_exit = True
             # nothing more to do
             return
+
+        # add new windows, if any
+        for w in self._new_windows:
+            self._open_extra_window(w, hello_imgui.get_runner_params())
 
         # manual vsync with a sleep, so that other thread can run
         # thats crappy vsync, but ok for our purposes
