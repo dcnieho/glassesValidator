@@ -55,7 +55,7 @@ def get_targets(config_dir=None, file='targetPositions.csv'):
 def get_markers(config_dir=None, file='markerPositions.csv'):
     return _getCoordFile(config_dir, file)
 
-            
+
 
 def deploy_validation_config(output_dir):
     output_dir = pathlib.Path(output_dir)

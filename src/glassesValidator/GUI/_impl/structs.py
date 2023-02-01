@@ -26,7 +26,7 @@ class CounterContext:
     def set_count(self, count):
         self._count = count
 
-        
+
 class DefaultStyleDark:
     accent        = "#d46220"
     alt_bg        = "#181818"
@@ -36,7 +36,7 @@ class DefaultStyleDark:
     text          = "#ffffff"
     text_dim      = "#808080"
 
-        
+
 class DefaultStyleLight:
     accent        = "#d46220"
     alt_bg        = "#e1e1e1"
@@ -45,7 +45,7 @@ class DefaultStyleLight:
     corner_radius = 6
     text          = "#000000"
     text_dim      = "#999999"
-    
+
 
 @dataclasses.dataclass
 class SortSpec:
@@ -123,9 +123,6 @@ class Settings:
     dq_report_data_loss         : bool
     process_workers             : int
     render_when_unfocused       : bool
-    scroll_amount               : float
-    scroll_smooth               : bool
-    scroll_smooth_speed         : float
     show_advanced_options       : bool
     show_remove_btn             : bool
     style_accent                : tuple[float]

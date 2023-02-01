@@ -41,7 +41,7 @@ def preprocessData(output_dir, device=None, input_dir=None, rec_info=None):
         raise RuntimeError('Either the "input_dir" or the "rec_info" input argument should be set.')
     else:
         input_dir  = pathlib.Path(rec_info.source_directory)
-    
+
     if rec_info is not None:
         if not rec_info.eye_tracker in [utils.EyeTracker.Pupil_Core, utils.EyeTracker.Pupil_Invisible]:
             raise ValueError(f'Provided rec_info is for a device ({rec_info.eye_tracker.value}) that is not a {utils.EyeTracker.Pupil_Core.value} or a {utils.EyeTracker.Pupil_Invisible.value}. Cannot use.')
@@ -69,7 +69,7 @@ def preprocessData(output_dir, device=None, input_dir=None, rec_info=None):
 
     ### check and copy needed files to the output directory
     print('Check and copy raw data...')
-     ### check pupil recording and get export directory
+    ### check pupil recording and get export directory
     exportFile = checkPupilRecording(input_dir)
     if rec_info is not None:
         checkRecording(input_dir, rec_info)
@@ -92,7 +92,7 @@ def preprocessData(output_dir, device=None, input_dir=None, rec_info=None):
     utils.get_recording_status(newDataDir, create_if_missing=True)
     utils.update_recording_status(newDataDir, utils.Task.Imported, utils.Status.Running)
 
-    
+
     # copy world video
     shutil.copyfile(str(input_dir / 'world.mp4'), str(newDataDir / 'worldCamera.mp4'))
     print(f'Input data copied to: {newDataDir}')
@@ -120,7 +120,7 @@ def preprocessData(output_dir, device=None, input_dir=None, rec_info=None):
     # indicate import finished
     utils.update_recording_status(newDataDir, utils.Task.Imported, utils.Status.Finished)
 
-        
+
 def checkPupilRecording(inputDir):
     """
     This checks that the folder is properly prepared
@@ -139,7 +139,7 @@ def checkPupilRecording(inputDir):
     gpFiles = sorted(list(inputExpDir.rglob('*gaze_positions*.csv')))
     if not gpFiles:
         raise RuntimeError(f'There are no exports in the folder {inputExpDir}. Perform a recording export in Pupil Player before importing into glassesValidator.')
-    
+
     return gpFiles[-1]
 
 
@@ -198,7 +198,7 @@ def getRecordingInfo(inputDir, device):
         case _:
             print(f"Device {device} unknown")
             return None
-       
+
     # we got a valid recording and at least some info if we got here
     # return what we've got
     return recInfo
@@ -208,7 +208,7 @@ def checkRecording(inputDir, recInfo):
     actualRecInfo = getRecordingInfo(inputDir, recInfo.eye_tracker)
     if actualRecInfo is None or recInfo.name!=actualRecInfo.name:
         raise ValueError(f"A recording with the name \"{recInfo.name}\" was not found in the folder {inputDir}.")
-    
+
     # make sure caller did not mess with recInfo
     if recInfo.duration!=actualRecInfo.duration:
         raise ValueError(f"A recording with the duration \"{recInfo.duration}\" was not found in the folder {inputDir}.")
@@ -258,9 +258,9 @@ def getCameraCalFromOnline(inputDir, outputDir, recInfo):
     camInfo = json.loads(urlopen(url).read())
     if camInfo['status'] != 'success':
         raise RuntimeError('Camera calibration could not be loaded, response: %s' % (camInfo['message']))
-    
+
     camInfo = camInfo['result']
-    
+
     # rename some fields, ensure they are numpy arrays
     camInfo['cameraMatrix'] = np.array(camInfo.pop('camera_matrix'))
     camInfo['distCoeff']    = np.array(camInfo.pop('dist_coefs')).flatten()
@@ -340,10 +340,10 @@ def formatGazeData(inputDir, exportFile, sceneVideoDimensions, recInfo):
     t0 = frameTimestamps.iloc[0].to_numpy()
     df.loc[:,'timestamp'] -= t0
     frameTimestamps.loc[:,'timestamp'] -= t0
-    
+
     # set timestamps as index for gaze
     df = df.set_index('timestamp')
-    
+
     # return the gaze data df and frame time stamps array
     return df, frameTimestamps
 
@@ -362,24 +362,24 @@ def readGazeData(file,sceneVideoDimensions, recInfo):
 
     # rename and reorder columns
     lookup = {'gaze_timestamp': 'timestamp',
-               'world_index': 'frame_idx',
-               'eye_center1_3d_x':'l_gaze_ori_x',
-               'eye_center1_3d_y':'l_gaze_ori_y',
-               'eye_center1_3d_z':'l_gaze_ori_z',
-               'gaze_normal1_x':'l_gaze_dir_x',
-               'gaze_normal1_y':'l_gaze_dir_y',
-               'gaze_normal1_z':'l_gaze_dir_z',
-               'eye_center0_3d_x':'r_gaze_ori_x',   # NB: if monocular setup filming left eye, this is the left eye
-               'eye_center0_3d_y':'r_gaze_ori_y',
-               'eye_center0_3d_z':'r_gaze_ori_z',
-               'gaze_normal0_x':'r_gaze_dir_x',
-               'gaze_normal0_y':'r_gaze_dir_y',
-               'gaze_normal0_z':'r_gaze_dir_z',
-               'norm_pos_x':'vid_gaze_pos_x',
-               'norm_pos_y':'vid_gaze_pos_y',
-               'gaze_point_3d_x': '3d_gaze_pos_x',
-               'gaze_point_3d_y': '3d_gaze_pos_y',
-               'gaze_point_3d_z': '3d_gaze_pos_z'}
+              'world_index': 'frame_idx',
+              'eye_center1_3d_x':'l_gaze_ori_x',
+              'eye_center1_3d_y':'l_gaze_ori_y',
+              'eye_center1_3d_z':'l_gaze_ori_z',
+              'gaze_normal1_x':'l_gaze_dir_x',
+              'gaze_normal1_y':'l_gaze_dir_y',
+              'gaze_normal1_z':'l_gaze_dir_z',
+              'eye_center0_3d_x':'r_gaze_ori_x',   # NB: if monocular setup filming left eye, this is the left eye
+              'eye_center0_3d_y':'r_gaze_ori_y',
+              'eye_center0_3d_z':'r_gaze_ori_z',
+              'gaze_normal0_x':'r_gaze_dir_x',
+              'gaze_normal0_y':'r_gaze_dir_y',
+              'gaze_normal0_z':'r_gaze_dir_z',
+              'norm_pos_x':'vid_gaze_pos_x',
+              'norm_pos_y':'vid_gaze_pos_y',
+              'gaze_point_3d_x': '3d_gaze_pos_x',
+              'gaze_point_3d_y': '3d_gaze_pos_y',
+              'gaze_point_3d_z': '3d_gaze_pos_z'}
     df=df.rename(columns=lookup)
     # reorder
     idx = [lookup[k] for k in lookup if lookup[k] in df.columns]

@@ -1,12 +1,9 @@
-git+https://github.com/mcfletch/pyopengl.git@227f9c66976d9f5dadf62b9a97e6beaec84831ca#subdirectory=accelerate&egg=PyOpenGL-accelerate
-git+https://github.com/pyimgui/pyimgui.git@dev/version-2.0#egg=imgui
-glfw
-PyOpenGL==3.1.6
+imgui_bundle>=0.8.2
 numpy
 scipy==1.9.1
 pandas
 matplotlib
-opencv-contrib-python==4.6.0.66
+opencv-contrib-python-headless==4.6.0.66
 ffpyplayer
 I2MC
 msgpack

@@ -20,7 +20,7 @@ from .mp4analyser import iso
 from .. import config as gv_config
 
 from .makeVideo import process as make_video
-        
+
 
 class Timestamp:
     def __init__(self, unix_time: int | float, format="%Y-%m-%d %H:%M:%S"):
@@ -62,7 +62,7 @@ def rgba_0_1_to_hex(rgba):
 class AutoName(Enum):
     def _generate_next_value_(name, start, count, last_values):
         return name.strip("_").replace("__", "-").replace("_", " ")
-    
+
 
 class EyeTracker(AutoName):
     Pupil_Core      = auto()
@@ -223,7 +223,7 @@ def make_fs_dirname(rec: Recording, dir: pathlib.Path = None):
         dirname = f"{rec.eye_tracker.value}_{rec.participant}_{rec.name}"
     else:
         dirname = f"{rec.eye_tracker.value}_{rec.name}"
-        
+
     # make sure its a valid path
     dirname = pathvalidate.sanitize_filename(dirname)
 
@@ -344,7 +344,7 @@ def getFrameTimestampsFromVideo(vid_file):
         while vid.isOpened():
             # get current time (we want start time of frame
             frameTs.append(vid.get(cv2.CAP_PROP_POS_MSEC))
-            
+
             # Capture frame-by-frame
             ret, frame = vid.read()
 
@@ -359,13 +359,13 @@ def getFrameTimestampsFromVideo(vid_file):
     frameIdx = np.arange(0, len(frameTs))
     frameTsDf = pd.DataFrame({'frame_idx': frameIdx, 'timestamp': frameTs})
     frameTsDf.set_index('frame_idx', inplace=True)
-    
+
     return frameTsDf
 
 def tssToFrameNumber(ts,frameTimestamps,mode='nearest'):
     df = pd.DataFrame(index=ts)
     df.insert(0,'frame_idx',np.int64(0))
-    
+
     # get index where this ts would be inserted into the frame_timestamp array
     idxs = np.searchsorted(frameTimestamps, ts)
     if mode=='after':
@@ -411,7 +411,7 @@ def corners_intersection(corners):
 
     div = det(xdiff, ydiff)
     if div == 0:
-       raise Exception('lines do not intersect')
+        raise Exception('lines do not intersect')
 
     d = (det(*line1), det(*line2))
     x = det(d, xdiff) / div
@@ -453,7 +453,7 @@ def arucoRefineDetectedMarkers(image, arucoBoard, detectedCorners, detectedIds, 
     if rejectedImgPoints and rejectedImgPoints[0].shape[0]==4:
         # same as for corners
         rejectedImgPoints = [np.reshape(c,(1,4,2)) for c in rejectedImgPoints]
-    
+
     return corners, ids, rejectedImgPoints, recoveredIds
 
 
@@ -494,7 +494,7 @@ def applyHomography(h, x, y):
 def distortPoint(x, y, cameraMatrix, distCoeff):
     if math.isnan(x) or math.isnan(y):
         return np.array([np.nan, np.nan])
-    
+
     # unproject, ignoring distortion as this is an undistored point
     points_2d = np.asarray([x, y], dtype='float32').reshape((1, -1, 2))
     points_2d = cv2.undistortPoints(points_2d, cameraMatrix, np.asarray([[0.0, 0.0, 0.0, 0.0, 0.0]]))
@@ -535,7 +535,7 @@ def intersect_plane_ray(planeNormal, planePoint, rayDirection, rayPoint, epsilon
     if abs(ndotu) < epsilon:
         # raise RuntimeError("no intersection or line is within plane")
         np.array([np.nan, np.nan, np.nan])
- 
+
     w = rayPoint - planePoint
     si = -planeNormal.dot(w) / ndotu
     return w + si * rayDirection + planePoint
@@ -554,7 +554,7 @@ def drawOpenCVLine(img, start_point, end_point, color, thickness, subPixelFac):
         sp = tuple([int(x) for x in sp])
         ep = tuple([int(x) for x in ep])
         cv2.line(img, sp, ep, color, thickness, lineType=cv2.LINE_AA, shift=int(math.log2(subPixelFac)))
-        
+
 def drawOpenCVRectangle(img, p1, p2, color, thickness, subPixelFac):
     p1 = [np.round(x*subPixelFac) for x in p1]
     p2 = [np.round(x*subPixelFac) for x in p2]
@@ -591,7 +591,7 @@ def drawArucoDetectedMarkers(img,corners,ids,borderColor=(0,255,0), drawIDs = Tr
             p0 = corner[j,:]
             p1 = corner[(j + 1) % 4,:]
             drawOpenCVLine(img, p0, p1, sideColor, 1, subPixelFac)
-        
+
         # draw first corner mark
         p1 = corner[0]
         drawOpenCVRectangle(img, corner[0]-3, corner[0]+3, cornerColor, 1, subPixelFac)
@@ -612,7 +612,7 @@ class Gaze:
         self.lGazeOrigin = lGazeOrigin
         self.rGazeVec= rGazeVec
         self.rGazeOrigin = rGazeOrigin
-        
+
     @staticmethod
     def readDataFromFile(fileName):
         gazes = {}
@@ -622,7 +622,7 @@ class Gaze:
             for entry in reader:
                 frame_idx   = float(entry['frame_idx'])
                 ts          = float(entry['timestamp'])
-                
+
                 vid2D       = dataReaderHelper(entry,'vid_gaze_pos',2)
                 world3D     = dataReaderHelper(entry,'3d_gaze_pos')
                 lGazeVec    = dataReaderHelper(entry,'l_gaze_dir')
@@ -646,7 +646,7 @@ class Gaze:
         if self.world3D is not None and camRot is not None and camPos is not None and cameraMatrix is not None and distCoeff is not None:
             a = cv2.projectPoints(np.array(self.world3D).reshape(1,3),camRot,camPos,cameraMatrix,distCoeff)[0][0][0]
             drawOpenCVCircle(img, a, 5, (0,0,0), -1, subPixelFac)
-            
+
 
 def getMarkerUnrotated(cornerPoints, rot):
     # markers are rotated in multiples of 90 only, so can easily unrotate
@@ -692,7 +692,7 @@ class Poster:
             self._storeReferencePoster(posterImage, validationSetup)
         # 2. read image
         self.img = cv2.imread(str(posterImage), cv2.IMREAD_COLOR)
-        
+
         if useTempDir:
             tempDir.cleanup()
 
@@ -720,7 +720,7 @@ class Poster:
     def _getTargetsAndKnownMarkers(self, config_dir, validationSetup):
         """ poster space: (0,0) is at center target, (-,-) bottom left """
 
-        # read in target positions   
+        # read in target positions
         self.targets = {}
         targets = gv_config.get_targets(config_dir)
         if targets is not None:
@@ -731,7 +731,7 @@ class Poster:
                 self.targets[idx] = Marker(idx, row[['x','y']].values, color=row.color)
         else:
             center = pd.Series(data=[0.,0.],index=['x','y'])
-    
+
 
         # read in aruco marker positions
         markerHalfSizeMm  = self.markerSize/2.
@@ -754,9 +754,9 @@ class Poster:
                 tr = c + np.matmul(R,np.array( [  markerHalfSizeMm , -markerHalfSizeMm ] ))
                 br = c + np.matmul(R,np.array( [  markerHalfSizeMm ,  markerHalfSizeMm ] ))
                 bl = c + np.matmul(R,np.array( [ -markerHalfSizeMm ,  markerHalfSizeMm ] ))
-        
+
                 self.knownMarkers[idx] = Marker(idx, c, corners=[ tl, tr, br, bl ], rot=rot)
-    
+
             # determine bounding box of markers ([left, top, right, bottom])
             # NB: this assumes that poster has an outer edge of markers, i.e.,
             # that it does not have targets at its edges. Also assumes markers
@@ -765,7 +765,7 @@ class Poster:
             self.bbox.append(markerPos.y.min()-markerHalfSizeMm)
             self.bbox.append(markerPos.x.max()+markerHalfSizeMm)
             self.bbox.append(markerPos.y.max()+markerHalfSizeMm)
-    
+
     def getArucoBoard(self, unRotateMarkers=False):
         boardCornerPoints = []
         ids = []
@@ -781,7 +781,7 @@ class Poster:
         boardCornerPoints = np.rollaxis(boardCornerPoints,-1)   # 4x2xN -> Nx4x2
         boardCornerPoints = np.pad(boardCornerPoints,((0,0),(0,0),(0,1)),'constant', constant_values=(0.,0.)) # Nx4x2 -> Nx4x3
         return cv2.aruco.Board_create(boardCornerPoints, self.aruco_dict, np.array(ids))
-            
+
     def _storeReferencePoster(self, posterImage, validationSetup):
         referenceBoard = self.getArucoBoard(unRotateMarkers = True)
         # get image with markers
@@ -828,7 +828,7 @@ class Poster:
                 nCols = int(sizeX / yReduction);
                 xMargin = (refBoardImage.shape[1] - nCols) / 2;
                 yMargin = 0
-        
+
             for r,cpu in zip(rots,cornerPointsU):
                 if r != 0:
                     # figure out where marker is
@@ -914,7 +914,7 @@ class GazePoster:
         writeData.extend(allNanIfNone(self.rGaze2D,2))
 
         return writeData
-    
+
     @staticmethod
     def readDataFromFile(fileName,start=None,end=None,stopOnceExceeded=False):
         gazes = {}
@@ -928,7 +928,7 @@ class GazePoster:
                         break
                     else:
                         continue
-            
+
                 ts = float(entry['gaze_timestamp'])
                 gaze3DRay       = dataReaderHelper(entry,'gazePosCam_vidPos_ray')
                 gaze3DHomography= dataReaderHelper(entry,'gazePosCam_vidPos_homography')
@@ -991,7 +991,7 @@ class GazePoster:
 class PosterPose:
     def __init__(self, frameIdx, nMarkers=0, rVec=None, tVec=None, hMat=None):
         self.frameIdx   = frameIdx
-        
+
         # pose
         self.nMarkers   = nMarkers  # number of Aruco markers this pose estimate is based on
         self.rVec       = rVec
@@ -999,7 +999,7 @@ class PosterPose:
 
         # homography
         self.hMat       = hMat.reshape(3,3) if hMat is not None else hMat
-        
+
         # internals
         self._RMat        = None
         self._RtMat       = None
@@ -1028,7 +1028,7 @@ class PosterPose:
         writeData.extend(allNanIfNone(self.hMat,9).flatten())
 
         return writeData
-    
+
     @staticmethod
     def readDataFromFile(fileName,start=None,end=None,stopOnceExceeded=False):
         poses       = {}
@@ -1048,7 +1048,7 @@ class PosterPose:
 
             # get all values (None if all nan)
             args = tuple(noneIfAnyNan(row[c].to_numpy()) for c in (rCols,tCols,hCols))
-            
+
             # insert if any non-None
             if not np.all([x is None for x in args]):   # check for not all isNone
                 poses[frame_idx] = PosterPose(frame_idx,int(row['poseNMarker']),*args)
@@ -1058,7 +1058,7 @@ class PosterPose:
     def setPose(self,rVec,tVec):
         self.rVec = rVec
         self.tVec = tVec
-        
+
         # clear internal variables
         self._RMat        = None
         self._RtMat       = None
@@ -1100,7 +1100,7 @@ class PosterPose:
                 if self._RMat is None:
                     self._RMat = cv2.Rodrigues(self.rVec)[0]
                 self._RtMat = np.hstack((self._RMat, self.tVec.reshape(3,1)))
-                
+
             # get poster normal
             self._planeNormal = np.matmul(self._RMat, np.array([0., 0., 1.]))
             # get point on poster (just use origin)
@@ -1202,10 +1202,10 @@ def gazeToPlane(gaze,posterPose,cameraRotation,cameraPosition, cameraMatrix=None
         else:
             # turn observed gaze position on video into position on tangent plane
             g3D = unprojectPoint(gaze.vid2D[0],gaze.vid2D[1],cameraMatrix,distCoeffs)
-        
+
         # find intersection of 3D gaze with poster, draw
         gazePoster.gaze3DRay = posterPose.vectorIntersect(g3D)   # default vec origin (0,0,0) because we use g3D from camera's view point
-        
+
         # above intersection is in camera space, turn into poster space to get position on poster
         (x,y,z)   = posterPose.camToWorld(gazePoster.gaze3DRay)  # z should be very close to zero
         gazePoster.gaze2DRay = [x, y]
@@ -1243,7 +1243,7 @@ def gazeToPlane(gaze,posterPose,cameraRotation,cameraPosition, cameraMatrix=None
         # intersect with poster -> yield point on poster in camera reference frame
         gPoster = posterPose.vectorIntersect(gVec, gOri)
         setattr(gazePoster,attr[1],gPoster)
-                        
+
         # transform intersection with poster from camera space to poster space
         if not math.isnan(gPoster[0]):
             (x,y,z)  = posterPose.camToWorld(gPoster)  # z should be very close to zero

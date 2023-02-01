@@ -20,7 +20,7 @@ def process(working_dir, config_dir=None):
 
     print('processing: {}'.format(working_dir.name))
     utils.update_recording_status(working_dir, utils.Task.Fixation_Intervals_Determined, utils.Status.Running)
-    
+
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
 
@@ -37,7 +37,7 @@ def process(working_dir, config_dir=None):
     poster    = utils.Poster(config_dir, validationSetup, imHeight=-1)
     targets   = {ID: poster.targets[ID].center for ID in poster.targets}   # get centers of targets
     markerHalfSizeMm = poster.markerSize/2.
-    
+
     # run I2MC on data in poster space
     # set I2MC options
     opt = {'xres': None, 'yres': None}  # dummy values for required options
@@ -91,7 +91,7 @@ def process(working_dir, config_dir=None):
             data['average_Y']  = np.array([s.gaze2DHomography[1] for v in gazePosterToAnal.values() for s in v])
         else:
             raise RuntimeError('No data available to process')
-        
+
         # run event classification to find fixations
         fix,dat,par = I2MC.I2MC(data,opt,False)
 
@@ -125,7 +125,7 @@ def process(working_dir, config_dir=None):
             if selected[i]==-999:
                 continue
             plt.plot([fix['xpos'][selected[i]], targets[t][0]], [fix['ypos'][selected[i]], targets[t][1]],'r-')
-       
+
         plt.xlabel('mm')
         plt.ylabel('mm')
 
@@ -146,7 +146,7 @@ def process(working_dir, config_dir=None):
             df.loc[t,'marker_interval'] = ival+1
             df.loc[t,'start_timestamp'] = fix['startT'][selected[i]]
             df.loc[t,  'end_timestamp'] = fix[  'endT'][selected[i]]
-        
+
         df.to_csv(str(working_dir / 'analysisInterval.tsv'), mode='w' if ival==0 else 'a', header=ival==0, sep='\t', na_rep='nan', float_format="%.3f")
-        
+
     utils.update_recording_status(working_dir, utils.Task.Fixation_Intervals_Determined, utils.Status.Finished)

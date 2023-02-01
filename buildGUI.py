@@ -60,7 +60,8 @@ build_options = {
         "optimize": 1,
         "packages": [
             'numpy','matplotlib','scipy','pandas','glassesValidator','OpenGL','cv2',
-            'ffpyplayer.player','ffpyplayer.threading'      # some specific subpackages that need to be mentioned to be picked up correctly
+            'ffpyplayer.player','ffpyplayer.threading',      # some specific subpackages that need to be mentioned to be picked up correctly
+            'imgui_bundle._imgui_bundle'
         ],
         "excludes":["tkinter"],
         "zip_includes": get_zip_include_files(),
@@ -68,7 +69,8 @@ build_options = {
         "zip_exclude_packages": [
             "OpenGL_accelerate",
             "glfw",
-            "cv2"
+            "cv2",
+            "imgui_bundle"
         ],
         "silent_level": 1,
         "include_msvcr": True

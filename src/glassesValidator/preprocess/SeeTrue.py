@@ -34,7 +34,7 @@ def preprocessData(output_dir, input_dir=None, rec_info=None, cam_cal_file=None)
         raise RuntimeError('Either the "input_dir" or the "rec_info" input argument should be set.')
     else:
         input_dir  = pathlib.Path(rec_info.source_directory)
-    
+
     if rec_info is not None:
         if rec_info.eye_tracker!=utils.EyeTracker.SeeTrue:
             raise ValueError(f'Provided rec_info is for a device ({rec_info.eye_tracker.value}) that is not an {utils.EyeTracker.SeeTrue.value}. Cannot use.')
@@ -74,7 +74,7 @@ def preprocessData(output_dir, input_dir=None, rec_info=None, cam_cal_file=None)
         utils.get_recording_status(newDataDir, create_if_missing=True)
         utils.update_recording_status(newDataDir, utils.Task.Imported, utils.Status.Running)
 
-        
+
     #### prep the data
     for rec_info in recInfos:
         newDataDir = output_dir / rec_info.proc_directory_name
@@ -103,7 +103,7 @@ def getRecordingInfo(inputDir):
     recInfos = []
 
     # NB: a SeeTrue directory may contain multiple recordings
-    
+
     # get recordings. These are indicated by the sequence number in both EyeData.csv and ScenePics folder names
     for r in inputDir.glob('*.csv'):
         if not str(r.name).startswith('EyeData'):
@@ -126,7 +126,7 @@ def getRecordingInfo(inputDir):
     # should return None if no valid recordings found
     return recInfos if recInfos else None
 
-        
+
 def checkRecording(inputDir, recInfo):
     """
     This checks that the folder is properly prepared
@@ -153,7 +153,7 @@ def copySeeTrueRecording(inputDir, outputDir, recInfo):
     sceneVidDir = inputDir / ('ScenePics_' + recInfo.name)
     frame = next(sceneVidDir.glob('*.jpeg'))
     h,w,_ = cv2.imread(str(frame)).shape
-    
+
     # prep gaze data and get video frame timestamps from it
     print('  Prepping gaze data...')
     file = f'EyeData_{recInfo.name}.csv'
@@ -201,7 +201,7 @@ def copySeeTrueRecording(inputDir, outputDir, recInfo):
         for b,x in zip(frGaps+1,nFrames):
             for y in range(x-1):
                 blackFrames.append(b+y)
-                
+
         # make black frame
         blackIm = np.zeros((h,w,3), np.uint8)   # black image
         for f in blackFrames:
@@ -214,10 +214,10 @@ def copySeeTrueRecording(inputDir, outputDir, recInfo):
     if np.any(frameTsDelta>1):
         # frames missing from frametimestamps
         err
-            
+
     if len(frames) != frameTimestamps.shape[0]:
         raise RuntimeError('Number of frames ({}) isn''t equal to number of frame timestamps ({}) and this couldnt be repaired'.format(len(frames),frameTimestamps.shape[0]))
-        
+
     # 3. make into video
     framerate = "{:.4f}".format(1000./ifi)
     cmd_str = ' '.join(['ffmpeg', '-y', '-f', 'image2', '-framerate', framerate, '-start_number', str(frames[0]), '-i', '"'+str(sceneVidDir / 'frame_%d.jpeg')+'"', '"'+str(outputDir / 'worldCamera.mp4')+'"'])
@@ -240,12 +240,12 @@ def copySeeTrueRecording(inputDir, outputDir, recInfo):
     #    t = (frameTimestamps.index[i]-t0)/1000
     #    print(t, t/(fpsFrac[1]/fpsFrac[0]))
     #    vidOut.write_frame(img=img, pts=t)
-        
+
     # delete the black frames we added, if any
     for f in blackFrames:
         if (sceneVidDir / 'frame_{:d}.jpeg'.format(f)).is_file():
             (sceneVidDir / 'frame_{:d}.jpeg'.format(f)).unlink(missing_ok=True)
-                
+
     # 4. write data to file
     # fix up frame idxs and timestamps
     firstFrame = frameTimestamps['frame_idx'].min()
@@ -262,7 +262,7 @@ def copySeeTrueRecording(inputDir, outputDir, recInfo):
     # have to work with. Note that these do not match gaze data ts, but code nowhere
     # assumes they do
     frameTimestamps = utils.getFrameTimestampsFromVideo(outputDir / 'worldCamera.mp4')
-        
+
     return gazeDf, frameTimestamps
 
 
@@ -303,8 +303,8 @@ def gazedata2df(textFile, sceneVideoDimensions):
     # rename and reorder columns
     lookup = {'Timestamp': 'timestamp',
               'Scene picture number': 'frame_idx',
-               'Gazepoint X': 'vid_gaze_pos_x',
-               'Gazepoint Y': 'vid_gaze_pos_y',}
+              'Gazepoint X': 'vid_gaze_pos_x',
+              'Gazepoint Y': 'vid_gaze_pos_y',}
     df=df.rename(columns=lookup)
     # reorder
     idx = [lookup[k] for k in lookup if lookup[k] in df.columns]

@@ -39,7 +39,7 @@ async def create_table(table_name: str, columns: dict[str, str]):
             {', '.join([f'{column_name} {column_def}' for column_name, column_def in columns.items()])}
         )
     """)
-    
+
     # Add missing and update existing columns for backwards compatibility
     cursor = await connection.execute(f"""
         PRAGMA table_info({table_name})
@@ -91,7 +91,7 @@ async def connect():
     global connection
 
     data_path = utils.get_data_path()
-    
+
     connection = await aiosqlite.connect(data_path / "db.sqlite3")
     connection.row_factory = aiosqlite.Row  # Return sqlite3.Row instead of tuple
 
@@ -109,9 +109,6 @@ async def connect():
         "dq_report_data_loss":         f'INTEGER DEFAULT {int(False)}',
         "process_workers":             f'INTEGER DEFAULT 2',
         "render_when_unfocused":       f'INTEGER DEFAULT {int(True)}',
-        "scroll_amount":               f'REAL    DEFAULT 1.0',
-        "scroll_smooth":               f'INTEGER DEFAULT {int(True)}',
-        "scroll_smooth_speed":         f'REAL    DEFAULT 8.0',
         "show_advanced_options":       f'INTEGER DEFAULT {int(False)}',
         "show_remove_btn":             f'INTEGER DEFAULT {int(True)}',
         "style_accent":                f'TEXT    DEFAULT "{DefaultStyleDark.accent}"',
@@ -239,7 +236,7 @@ async def load():
     settings = dict(await cursor.fetchone())
     settings = {key: sql_to_py(value, types[key]) for key, value in settings.items() if key in types}
     globals.settings = Settings(**settings)
-    
+
     globals.recordings = {}
     globals.selected_recordings = {}
     if globals.project_path is not None:

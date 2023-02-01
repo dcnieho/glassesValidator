@@ -68,7 +68,7 @@ async def remove_recording_working_dir(rec: Recording, project_path: pathlib.Pat
             rec_path = globals.project_path / rec.proc_directory_name
         if rec_path.is_dir():
             shutil.rmtree(rec_path)
-        
+
         # also set recording state back to not imported
         # NB: this might get called from remove_recording.remove_callback() below
         # after the recording is already removed from the database. That is not
@@ -105,7 +105,7 @@ async def _add_recordings(recordings: dict[int, Recording], selected: dict[int, 
             recordings[id].proc_directory_name = make_fs_dirname(recordings[id], globals.project_path)
             rid = await db.add_recording(recordings[id])
             await db.load_recordings(rid)
-        
+
 async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTracker):
     # notify we're preparing the recordings to be opened
     def prepping_recs_popup():
@@ -130,7 +130,7 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
 
     # sort in order natural for OS
     all_recs = natsort.os_sorted(all_recs, lambda rec: rec.source_directory)
-    
+
     # get ready to show result
     # 1. remove progress popup
     del globals.popup_stack[-1]
@@ -174,7 +174,7 @@ def add_recordings(paths: list[pathlib.Path]):
     def add_recs_popup():
         nonlocal combo_value, eye_tracker
         combo_value, eye_tracker = globals.gui.draw_select_eye_tracker_popup(combo_value, eye_tracker)
-                
+
     buttons = {
         "󰄬 Continue": lambda: async_thread.run(_show_addable_recordings(paths, eye_tracker)),
         "󰜺 Cancel": None
@@ -253,7 +253,7 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
             args = (working_dir,)
             if globals.settings.config_dir and (config_dir := globals.project_path / globals.settings.config_dir).is_dir() and task!=Task.Data_Quality_Calculated:
                 kwargs['config_dir'] = config_dir
-         
+
         # other, includes Task.Unknown (all already done, see above), nothing to do if no specific task specified:
         case _:
             fun = None  # nothing to do
@@ -265,7 +265,7 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
     # special case if its a marker coding task, of which we can have only one at a time. If we already have a marker coding task
     # store this task in a separate task queue instead of launching it now
     should_launch_task = task!=Task.Coded or not any((globals.jobs[j].task==Task.Coded for j in globals.jobs))
-    
+
     job = JobDescription(None, rec, globals.project_path, task, chain)
     if should_launch_task:
         # launch task
@@ -292,10 +292,10 @@ async def export_data_quality(ids: list[int]):
     # 1. collect all data quality from the selected recordings
     rec_dirs = [globals.project_path / globals.recordings[id].proc_directory_name for id in ids]
     df, default_dq_type, targets = _collect_data_quality(rec_dirs)
-    
+
     # 2. prep popup
     pop_data = {}
-    
+
     # data wuality type
     typeIdx = df.index.names.index('type')
     pop_data['dq_types'] = sorted(list(df.index.levels[typeIdx]), key=lambda dq: dq.value)
@@ -315,7 +315,7 @@ async def export_data_quality(ids: list[int]):
 
     if not any(pop_data['dq_types_sel']):
         pop_data['dq_types_sel'][pop_data['dq_types'].index(default_dq_type)] = True
-        
+
     # targets
     pop_data['targets']     = targets
     pop_data['targets_sel'] = [True for i in pop_data['targets']]

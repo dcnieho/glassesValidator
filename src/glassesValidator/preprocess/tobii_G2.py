@@ -38,7 +38,7 @@ def preprocessData(output_dir, input_dir=None, rec_info=None):
         raise RuntimeError('Either the "input_dir" or the "rec_info" input argument should be set.')
     else:
         input_dir  = pathlib.Path(rec_info.source_directory)
-    
+
     if rec_info is not None:
         if rec_info.eye_tracker!=utils.EyeTracker.Tobii_Glasses_2:
             raise ValueError(f'Provided rec_info is for a device ({rec_info.eye_tracker.value}) that is not an {utils.EyeTracker.Tobii_Glasses_2.value}. Cannot use.')
@@ -54,7 +54,7 @@ def preprocessData(output_dir, input_dir=None, rec_info=None):
 
     ### check and copy needed files to the output directory
     print('Check and copy raw data...')
-     ### check tobii recording and get export directory
+    ### check tobii recording and get export directory
     if rec_info is not None:
         checkRecording(input_dir, rec_info)
     else:
@@ -108,7 +108,7 @@ def getRecordingInfo(inputDir):
     with open(file, 'r') as j:
         iInfo = json.load(j)
     recInfo.participant = iInfo['pa_info']['Name']
-    
+
     # get recording info
     file = inputDir / 'recording.json'
     if not file.is_file():
@@ -122,7 +122,7 @@ def getRecordingInfo(inputDir):
         # add hour:minute separator for ISO 8601 format that datetime understands
         time_string = time_string[:-2]+':'+time_string[-2:]
     recInfo.start_time = utils.Timestamp(int(datetime.datetime.fromisoformat(time_string).timestamp()))
-    
+
     # get system info
     file = inputDir / 'sysinfo.json'
     if not file.is_file():
@@ -143,7 +143,7 @@ def checkRecording(inputDir, recInfo):
     actualRecInfo = getRecordingInfo(inputDir)
     if actualRecInfo is None or recInfo.name!=actualRecInfo.name:
         raise ValueError(f"A recording with the name \"{recInfo.name}\" was not found in the folder {inputDir}.")
-    
+
     # make sure caller did not mess with recInfo
     if recInfo.participant!=actualRecInfo.participant:
         raise ValueError(f"A recording with the participant \"{recInfo.participant}\" was not found in the folder {inputDir}.")
@@ -189,7 +189,7 @@ def getCameraFromTSLV(inputDir):
                 f.read(payloadLengthPadded)
             else:
                 break
-        
+
         # read info about camera
         camera = {}
         camera['id']       = struct.unpack('b',f.read(1))[0]
@@ -203,7 +203,7 @@ def getCameraFromTSLV(inputDir):
         camera['radialDistortion'] = np.array(struct.unpack('3f',f.read(4*3)))
         camera['tangentialDistortion'] = np.array(struct.unpack('3f',f.read(4*3))[:-1]) # drop last element (always zero), since there are only two tangential distortion parameters
         camera['resolution'] = np.array(struct.unpack('2h',f.read(2*2)))
-    
+
     # turn into camera matrix and distortion coefficients as used by OpenCV
     camera['cameraMatrix'] = np.identity(3)
     camera['cameraMatrix'][0,0] = camera['focalLength'][0]
@@ -246,7 +246,7 @@ def formatGazeData(inputDir, sceneVideoDimensions):
     # read video file, create array of frame timestamps
     frameTimestamps = utils.getFrameTimestampsFromVideo(inputDir / 'worldCamera.mp4')
     frameTimestamps['timestamp'] += scene_video_ts_offset
-    
+
     # use the frame timestamps to assign a frame number to each data point
     frameIdx = utils.tssToFrameNumber(df.index,frameTimestamps['timestamp'].to_numpy())
     df.insert(0,'frame_idx',frameIdx['frame_idx'])
@@ -272,7 +272,7 @@ def json2df(jsonFile,sceneVideoDimensions):
         # loop over all lines in json file, each line represents unique json object
         for line in j:
             entry = json.loads(line)
-            
+
             # if non-zero status (error), ensure data found in packet is marked as missing
             isError = False
             if entry['s'] != 0:
@@ -312,7 +312,7 @@ def json2df(jsonFile,sceneVideoDimensions):
                     df.loc[entry['ts'], '3d_gaze_pos_x'] = entry['gp3'][0] if not isError else math.nan
                     df.loc[entry['ts'], '3d_gaze_pos_y'] = entry['gp3'][1] if not isError else math.nan
                     df.loc[entry['ts'], '3d_gaze_pos_z'] = entry['gp3'][2] if not isError else math.nan
-                    
+
             # ignore anything else
 
     # find out t0. Do the same as GlassesViewer so timestamps are compatible

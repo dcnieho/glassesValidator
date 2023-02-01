@@ -3,13 +3,15 @@ import pathlib
 import cv2
 import numpy as np
 import csv
-import time
+import threading
 
 from .. import config
 from .. import utils
+from ._image_gui import GUI, generic_tooltip, qns_tooltip
 
 
-def process(working_dir, config_dir=None, show_visualization=False, show_rejected_markers=False, fps_fac=1):
+stopAllProcessing = False
+def process(working_dir, config_dir=None, show_visualization=False, show_rejected_markers=False):
     # if show_visualization, each frame is shown in a viewer, overlaid with info about detected markers and poster
     # if show_rejected_markers, rejected ArUco marker candidates are also shown in the viewer. Possibly useful for debug
     working_dir  = pathlib.Path(working_dir)
@@ -17,11 +19,32 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
         config_dir = pathlib.Path(config_dir)
 
     print('processing: {}'.format(working_dir.name))
+
+    # if we need gui, we run processing in a separate thread (GUI needs to be on the main thread for OSX, see https://github.com/pthom/hello_imgui/issues/33)
+    if show_visualization:
+        gui = GUI(use_thread = False)
+        gui.set_interesting_keys('qns')
+        gui.register_draw_callback('status',lambda: generic_tooltip(qns_tooltip()))
+        gui.add_window(working_dir.name)
+
+        proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, show_rejected_markers))
+        proc_thread.start()
+        gui.start()
+        proc_thread.join()
+        return stopAllProcessing
+    else:
+        return do_the_work(working_dir, config_dir, None, False)
+
+
+def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
+    global stopAllProcessing
+    show_visualization = gui is not None
+
     utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Running)
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
-    
+
     # open video file, query it for size
     inVideo = working_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
@@ -31,14 +54,13 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
         raise RuntimeError('the file "{}" could not be opened'.format(str(inVideo)))
     width  = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    ifi    = 1000./cap.get(cv2.CAP_PROP_FPS)/fps_fac
-    
+
     # get info about markers on our poster
     poster          = utils.Poster(config_dir, validationSetup)
     centerTarget    = poster.targets[validationSetup['centerTarget']].center
     # turn into aruco board object to be used for pose estimation
     arucoBoard      = poster.getArucoBoard()
-    
+
     # setup aruco marker detection
     parameters = cv2.aruco.DetectorParameters_create()
     parameters.markerBorderBits       = validationSetup['markerBorderBits']
@@ -59,19 +81,31 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
     header = utils.PosterPose.getWriteHeader()
     csv_writer.writerow(header)
 
+    # prep visualization, if any
+    if show_visualization:
+        i2t = utils.Idx2Timestamp(working_dir / 'frameTimestamps.tsv')
+
     frame_idx = -1
     stopAllProcessing = False
     armLength = poster.markerSize/2 # arms of axis are half a marker long
     subPixelFac = 8   # for sub-pixel positioning
     while True:
-        startTime = time.perf_counter()
-
         # process frame-by-frame
         ret, frame = cap.read()
         frame_idx += 1
         if (not ret) or (hasAnalyzeFrames and frame_idx > analyzeFrames[-1]):
             # done
             break
+
+        if show_visualization:
+            keys = gui.get_key_presses()
+            if 'q' in keys:
+                # quit fully
+                stopAllProcessing = True
+                break
+            if 'n' in keys:
+                # goto next
+                break
 
         if hasAnalyzeFrames:
             # check we're in a current interval, else skip processing
@@ -91,11 +125,11 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
         corners, ids, rejectedImgPoints = \
             cv2.aruco.detectMarkers(frame, poster.aruco_dict, parameters=parameters)
         recoveredIds = None
-        
+
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
                 pose = utils.PosterPose(frame_idx)
-                
+
                 # get camera pose
                 if hasCameraMatrix and hasDistCoeff:
                     # Refine detected markers (eliminates markers not part of our poster, adds missing markers to the poster)
@@ -105,7 +139,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
                             cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
 
                     pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, arucoBoard, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
-                
+
                     if pose.nMarkers>0:
                         # set pose
                         pose.setPose(rVec,tVec)
@@ -143,27 +177,27 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
         # for debug, can draw rejected markers on frame
         if show_visualization and show_rejected_markers:
             cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
-                
+
         if show_visualization:
-            cv2.imshow(working_dir.name,frame)
-            key = cv2.waitKey(max(1,int(round(ifi-(time.perf_counter()-startTime)*1000)))) & 0xFF
-            if key == ord('q'):
-                # quit fully
-                stopAllProcessing = True
-                break
-            if key == ord('n'):
-                # goto next
-                break
-            if key == ord('s'):
+            # keys is populated above
+            if 's' in keys:
                 # screenshot
                 cv2.imwrite(str(working_dir / ('detect_frame_%d.png' % frame_idx)), frame)
-        elif (frame_idx)%100==0:
+            frame_ts  = i2t.get(frame_idx)
+            gui.update_image(frame, frame_ts/1000., frame_idx)
+            closed, = gui.get_state()
+            if closed:
+                stopAllProcessing = True
+                break
+
+        if (frame_idx)%100==0:
             print('  frame {}'.format(frame_idx))
 
     csv_file.close()
     cap.release()
-    cv2.destroyAllWindows()
-    
+    if show_visualization:
+        gui.stop()
+
     utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Finished)
 
     return stopAllProcessing

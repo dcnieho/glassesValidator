@@ -24,14 +24,14 @@ def run(project_dir: str | pathlib.Path = None):
         if not utils.is_project_folder(project_dir):
             raise ValueError(f'Project opening error: The selected folder ({project_dir}) is not a project folder. Cannot open.')
         globals.project_path = pathlib.Path(project_dir)
-        
+
     from ._impl import async_thread, gui, process_pool
     async_thread.setup()
     globals.gui = gui.MainGUI()
-    
+
     while True:
-        # returns true if a new main_loop is needed, or false if all done
-        should_restart = globals.gui.main_loop()
+        # returns true if a new call to run() is needed, or false if all done
+        should_restart = globals.gui.run()
 
         process_pool.cleanup()
 
