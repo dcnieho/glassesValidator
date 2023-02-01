@@ -15,11 +15,8 @@ A data quality tool for eye tracking glasses. Available from https://github.com/
 
 # How to acquire
 The glassesValidator is available from `https://github.com/dcnieho/glassesValidator`, and supports Windows, MacOS and Linux.
-For Windows ~~and MacOS users~~ who wish to use the glassesValidator GUI, the easiest way to acquire glassesValidator is to [download
-a standalone executable](https://github.com/dcnieho/glassesValidator/releases/latest).
-
-For users who wish to use glassesValidator in their Python code, ~~the package can be installed directly from Python using the command
-`python -m pip install glassesValidator`. Should that fail,~~ this repository is pip-installable as well:
+The easiest way to acquire glassesValidator is to install it directly from Python using the command
+`python -m pip install glassesValidator`. Should that fail, this repository is pip-installable as well:
 `python -m pip install git+https://github.com/dcnieho/glassesValidator.git#egg=glassesValidator`. NB: on some platforms you may have
 to replace `python` with `python3` in the above command lines.
 
@@ -27,7 +24,7 @@ Once pip-installed in your Python distribution, running the GUI on any of the su
 ```python
 import glassesValidator
 glassesValidator.GUI.run()
-````
+```
 
 # Usage
 The glassesValidator validation procedure consists of two parts, 1) a poster that is used during a recording, and 2) Python software
