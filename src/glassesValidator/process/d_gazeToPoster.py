@@ -93,6 +93,15 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
                 # done
                 break
 
+            keys = gui.get_key_presses()
+            if 'q' in keys:
+                # quit fully
+                stopAllProcessing = True
+                break
+            if 'n' in keys:
+                # goto next
+                break
+
             if hasAnalyzeFrames:
                 # check we're in a current interval, else skip processing
                 # NB: have to spool through like this, setting specific frame to read
@@ -155,14 +164,7 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
                 utils.drawOpenCVLine(frame, (a[0],0), (a[0],height), (0,255,0), 1, subPixelFac)
                 utils.drawOpenCVLine(frame, (0,a[1]), (width,a[1]) , (0,255,0), 1, subPixelFac)
 
-            keys = gui.get_key_presses()
-            if 'q' in keys:
-                # quit fully
-                stopAllProcessing = True
-                break
-            if 'n' in keys:
-                # goto next
-                break
+            # keys is populated above
             if 's' in keys:
                 # screenshot
                 cv2.imwrite(str(working_dir / ('calc_frame_%d.png' % frame_idx)), frame)

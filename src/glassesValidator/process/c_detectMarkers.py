@@ -97,6 +97,16 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
             # done
             break
 
+        if show_visualization:
+            keys = gui.get_key_presses()
+            if 'q' in keys:
+                # quit fully
+                stopAllProcessing = True
+                break
+            if 'n' in keys:
+                # goto next
+                break
+
         if hasAnalyzeFrames:
             # check we're in a current interval, else skip processing
             # NB: have to spool through like this, setting specific frame to read
@@ -169,14 +179,7 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
             cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
 
         if show_visualization:
-            keys = gui.get_key_presses()
-            if 'q' in keys:
-                # quit fully
-                stopAllProcessing = True
-                break
-            if 'n' in keys:
-                # goto next
-                break
+            # keys is populated above
             if 's' in keys:
                 # screenshot
                 cv2.imwrite(str(working_dir / ('detect_frame_%d.png' % frame_idx)), frame)
