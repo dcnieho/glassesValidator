@@ -5,7 +5,6 @@ import pathlib
 import cv2
 import numpy as np
 import csv
-import time
 
 from .. import config
 from .. import utils
@@ -71,7 +70,6 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
     subPixelFac = 8   # for sub-pixel positioning
     stopAllProcessing = False
     for frame_idx in range(maxFrameIdx+1):
-        startTime = time.perf_counter()
         if show_visualization:
             ret, frame = cap.read()
             if (not ret) or (hasAnalyzeFrames and frame_idx > analyzeFrames[-1]):
