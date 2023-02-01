@@ -1710,7 +1710,7 @@ class MainGUI():
                 if processed_ids:
                     text.append("󰑐 Recalculate data quality")
                     action.append(lambda: async_thread.run(callbacks.process_recordings(processed_ids, task=Task.Markers_Detected)))
-                    hover_text.append("Re-run processing to determine data quality for the selected recordings. Use e.g. if you selected another type of data quality to be coputed in the advanced settings.")
+                    hover_text.append("Re-run processing to determine data quality for the selected recordings. Use e.g. if you selected another type of data quality to be computed in the advanced settings.")
                 # before stage 1
                 not_imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Not_Imported]
                 if not_imported_ids:
