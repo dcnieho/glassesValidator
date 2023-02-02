@@ -10,7 +10,6 @@ import OpenGL.GL as gl
 class GUI:
     def __init__(self, use_thread=True):
         self._should_exit = False
-        self._running = False
         self._use_thread = use_thread # NB: on MacOSX the GUI needs to be on the main thread, see https://github.com/pthom/hello_imgui/issues/33
         self._thread = None
         self._new_frame = {}
@@ -22,7 +21,13 @@ class GUI:
 
         self._next_window_id = 0
         self._windows = {}
-        self._new_windows = []
+        self._window_flags = int(
+                                    imgui.WindowFlags_.no_title_bar |
+                                    imgui.WindowFlags_.no_collapse |
+                                    imgui.WindowFlags_.no_scrollbar |
+                                    imgui.WindowFlags_.no_scroll_with_mouse |
+                                    imgui.WindowFlags_.always_auto_resize
+                                )
 
         self._interesting_keys = {}
         self._pressed_keys = {}
@@ -38,8 +43,6 @@ class GUI:
         self._texID[id] = None
         self._new_frame[id] = (None, None, -1)
         self._current_frame[id] = (None, None, -1)
-        if self._running:
-            self._new_windows.append(id)
 
         self._next_window_id += 1
         return id
@@ -115,9 +118,12 @@ class GUI:
         self._user_closed_window = False
         self._dpi_fac = 1
 
+        def close_callback(window: glfw._GLFWwindow):
+            self._user_closed_window = True
+
         def post_init():
-            def close_callback(window: glfw._GLFWwindow):
-                self._user_closed_window = True
+            imgui.get_io().config_viewports_no_decoration = False
+            imgui.get_io().config_viewports_no_auto_merge = True
 
             glfw.swap_interval(0)
             self._glfw_window = glfw_window_hello_imgui()
@@ -125,7 +131,6 @@ class GUI:
             glfw.hide_window(self._glfw_window)
             self._hidden = True
             glfw.set_window_close_callback(self._glfw_window, close_callback)
-            imgui.get_io().config_viewports_no_decoration = False
 
         main_window_id = next(iter(self._new_frame))
         params = hello_imgui.RunnerParams()
@@ -140,33 +145,7 @@ class GUI:
         params.imgui_window_params.config_windows_move_from_title_bar_only = True
         params.imgui_window_params.enable_viewports = True
 
-        # abuse dockable windows to get multiple windows through hello_imgui
-        if len(self._windows)>1:
-            for w in list(self._windows.keys())[1:]:
-                self._open_extra_window(w, params)
-
-        self._running = True
         immapp.run(params)
-        self._running = False
-
-    def _open_extra_window(self, w, params):
-        win = hello_imgui.DockableWindow()
-        win.label = self._windows[w]
-        win.dock_space_name = "MainDockSpace"
-        win.gui_function = lambda: self._draw_gui(w)
-        win.window_size_condition = imgui.Cond_.always
-        win.imgui_window_flags = int(
-                                        imgui.WindowFlags_.no_move |
-                                        imgui.WindowFlags_.no_resize |
-                                        imgui.WindowFlags_.no_collapse |
-                                        imgui.WindowFlags_.no_title_bar |
-                                        imgui.WindowFlags_.no_scrollbar |
-                                        imgui.WindowFlags_.no_scroll_with_mouse
-                                    )
-        win.is_visible = False
-        wins = params.docking_params.dockable_windows
-        wins.append(win)
-        params.docking_params.dockable_windows = wins
 
     def _gui_func(self):
         # check if we should exit
@@ -182,10 +161,6 @@ class GUI:
             hello_imgui.get_runner_params().app_shall_exit = True
             # nothing more to do
             return
-
-        # add new windows, if any
-        for w in self._new_windows:
-            self._open_extra_window(w, hello_imgui.get_runner_params())
 
         # manual vsync with a sleep, so that other thread can run
         # thats crappy vsync, but ok for our purposes
@@ -220,9 +195,6 @@ class GUI:
                     # tell window to resize
                     if w==0:
                         hello_imgui.get_runner_params().app_window_params.window_geometry.resize_app_window_at_next_frame = True
-                    else:
-                        hello_imgui.get_runner_params().docking_params.dockable_windows[w-1].window_size = (self._new_frame[w][0].shape[1]*self._dpi_fac+6, self._new_frame[w][0].shape[0]*self._dpi_fac+6)
-                        hello_imgui.get_runner_params().docking_params.dockable_windows[w-1].is_visible = True
                     # and show window if needed
                     if self._hidden:
                         glfw.show_window(self._glfw_window)
@@ -232,12 +204,21 @@ class GUI:
                 self._current_frame[w]  = self._new_frame[w]
                 self._new_frame[w]      = (None, None, -1)
 
-        # show main window
-        self._draw_gui(next(iter(self._windows)))
+        if not self._hidden:
+            # show main window
+            self._draw_gui(next(iter(self._windows)), False)
 
-    def _draw_gui(self, w):
+            # if more windows, show as well
+            if len(self._windows)>1:
+                for w in list(self._windows.keys())[1:]:
+                    self._draw_gui(w, True)
+
+    def _draw_gui(self, w, need_begin_end):
         if self._current_frame[w] is None or self._texID[w] is None:
             return
+
+        if need_begin_end:
+            imgui.begin(self._windows[w], None, self._window_flags)
 
         imgui.set_cursor_pos((0,0))
         # draw image
@@ -246,7 +227,8 @@ class GUI:
         # draw bottom status overlay
         ws = imgui.get_window_size()
         ts = imgui.calc_text_size('')
-        imgui.set_cursor_pos_y(ws.y-ts.y)
+        win_bottom = min(self._current_frame[w][0].shape[0]*self._dpi_fac, ws.y+imgui.get_scroll_y())
+        imgui.set_cursor_pos_y(win_bottom-ts.y)
         imgui.push_style_color(imgui.Col_.child_bg, (0.0, 0.0, 0.0, 0.6))
         imgui.begin_child("##status_overlay", size=(-imgui.FLT_MIN,ts.y))
         if (self._current_frame[w][1]):
@@ -260,6 +242,9 @@ class GUI:
 
         if self._draw_callback['main']:
             self._draw_callback['main']()
+
+        if need_begin_end:
+            imgui.end()
 
 def generic_tooltip(info_dict):
     ws = imgui.get_window_size()
