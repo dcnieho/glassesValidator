@@ -111,11 +111,6 @@ def setup_imgui():
     imgui.create_context()
     imgui.io = imgui.get_io()
     imgui.io.config_drag_click_to_input_text = True
-    imgui.io.config_flags |= imgui.ConfigFlags_.viewports_enable # Enable Multi-Viewport / Platform Windows
-    imgui.io.config_viewports_no_auto_merge = True
-    imgui.io.config_viewports_no_decoration = False
-    imgui.io.config_windows_move_from_title_bar_only = True
-    imgui.io.config_windows_resize_from_edges = True
 
 def setup_imgui_impl(window, vsync_ratio):
     # transfer the window address to imgui.backends.glfw_init_for_open_gl

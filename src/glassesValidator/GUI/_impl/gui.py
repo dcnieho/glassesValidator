@@ -1179,15 +1179,7 @@ class MainGUI():
             self.have_set_window_size = True
 
         imgui.push_style_var(imgui.StyleVar_.window_border_size, 0)
-        # https://github.com/ocornut/imgui/issues/4520
-        # temporarily set can_host_other_windows flag on main viewport
-        # and set the next (main) window to be in that viewport so that
-        # our main screen is just the main viewport instead of separate from it,
-        # but all other windows (e.g. pop-ups) remain separate at all times
-        imgui.get_main_viewport().flags |= imgui.ViewportFlags_.can_host_other_windows
-        imgui.set_next_window_viewport(imgui.get_main_viewport().id_)
         imgui.begin("glassesValidator", flags=self.window_flags)
-        imgui.get_main_viewport().flags &= ~imgui.ViewportFlags_.can_host_other_windows
         imgui.pop_style_var()
 
         text = self.watermark_text
