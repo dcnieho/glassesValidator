@@ -17,6 +17,13 @@ def get_include_files():
             for f in d.iterdir():
                 if f.is_file() and f.suffix=='' or f.suffix in ['.dll']:
                     files.append((f,pathlib.Path('lib')/f.name))
+    # opencv dll
+    for d in site.getsitepackages():
+        d=pathlib.Path(d)/'cv2'
+        if d.is_dir():
+            for f in d.iterdir():
+                if f.is_file() and f.suffix=='' or f.suffix in ['.dll']:
+                    files.append((f,pathlib.Path('lib')/f.name))
     # ffpyplayer bin deps
     for d in site.getsitepackages():
         d=pathlib.Path(d)/'share'/'ffpyplayer'

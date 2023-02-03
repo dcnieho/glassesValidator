@@ -1,4 +1,4 @@
-name: Publish Python 🐍 distributions 📦 to PyPI
+name: Build executables and publish 🐍 package 📦 to PyPI
 
 on:
   workflow_dispatch:
@@ -7,6 +7,99 @@ on:
       - "published"
 
 jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - "windows-latest"
+          #- "macos-latest"
+          #- "ubuntu-latest"
+        python:
+          - "3.10.x"
+        cx-freeze:
+          - "v6.14.2"
+    name: "Build exe for ${{ matrix.os }}"
+    runs-on: "${{ matrix.os }}"
+    steps:
+
+      # === SETUP ===
+
+      - name: "Setup python"
+        uses: "actions/setup-python@v4"
+        with:
+          python-version: "${{ matrix.python }}"
+
+      - name: "Install cx_Freeze bootloader"
+        run: |
+          python -m pip install cx_Freeze==${{ matrix.cx-freeze }}
+
+      # === BUILD ===
+
+      - name: "Clone repo"
+        uses: "actions/checkout@v3"
+        with:
+          path: "./src/"
+
+      - name: "Install requirements"
+        run: |
+          cd ./src/
+          python -m pip install -U -r ./requirements.txt
+
+      - name: "Build"
+        if: "runner.os != 'macOS'"
+        run: |
+          cd ./src/
+          python ./buildGUI.py build
+          mv ./build/*/ ./dist/
+
+      - name: "Build macOS"
+        if: "runner.os == 'macOS'"
+        run: |
+          cd ./src/
+          python ./buildGUI.py bdist_mac
+          mkdir ./dist/
+          mv ./build/*.app/ ./dist/
+
+      - name: "Resolve symlinks"
+        if: "runner.os != 'Windows'"
+        run: |
+          cd ./src/dist/
+          find ./ -type l -exec echo Resolving {} \; -exec sed -i '' {} \;
+
+      # export Apple development certificate from Xcode: https://help.apple.com/xcode/mac/current/#/dev154b28f09
+      # base64 CERTIFICATE.p12 | pbcopy -> secrets.CODESIGN_P12_BASE64
+      - name: "Import macOS codesign certificate"
+        if: "runner.os == 'macOS'"
+        uses: "apple-actions/import-codesign-certs@v1"
+        with:
+          p12-file-base64: "${{ secrets.CODESIGN_P12_BASE64 }}"
+          p12-password: "${{ secrets.CODESIGN_P12_PASSWORD }}"
+
+      # security find-identity, returns something like:
+      # A30C8432FADE0B3E7D5BA54034EF2ECA39A0BDD0 "Apple Development: dcnieho@gmail.com (6LR9J7UR6F)"
+      # the first hex string is your identity -> secrets.CODESIGN_P12_NAME
+      - name: "Codesign macOS"
+        if: "runner.os == 'macOS'"
+        run: |
+          cd ./src/dist/
+          find ./ -type f -empty -delete
+          codesign -s "${{ secrets.CODESIGN_P12_NAME }}" --deep -f ./*.app
+
+      # === ARTIFACT ===
+
+      - name: "Zip artifact"
+        run: |
+          7z a -r ./${{ github.event.repository.name }}-${{ runner.os }}.zip ./src/dist/*
+
+      - name: "Upload release artifact"
+        uses: "softprops/action-gh-release@v1"
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          files: "./${{ github.event.repository.name }}-${{ runner.os }}.zip"
+
+
   wheel:
     name: Package 📦 wheel
     runs-on: ubuntu-latest
