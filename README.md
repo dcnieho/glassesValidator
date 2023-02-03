@@ -14,8 +14,13 @@ Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. and Hooge, I.T.C.
 A data quality tool for eye tracking glasses. Available from https://github.com/dcnieho/glassesValidator
 
 # How to acquire
-The glassesValidator is available from `https://github.com/dcnieho/glassesValidator`, and supports Windows, MacOS and Linux.
-The easiest way to acquire glassesValidator is to install it directly from Python using the command
+GlassesValidator is available from `https://github.com/dcnieho/glassesValidator`, and supports Windows, MacOS and Linux.
+
+For Windows users who wish to use the glassesValidator GUI, the easiest way to acquire glassesValidator is to [download
+a standalone executable](https://github.com/dcnieho/glassesValidator/releases/latest).
+
+For users on Windows, Mac or Linux who wish to use glassesValidator in their Python code, the easiest way to acquire
+glassesValidator is to install it directly into your Python distribution using the command
 `python -m pip install glassesValidator`. Should that fail, this repository is pip-installable as well:
 `python -m pip install git+https://github.com/dcnieho/glassesValidator.git#egg=glassesValidator`. NB: on some platforms you may have
 to replace `python` with `python3` in the above command lines.

@@ -101,7 +101,7 @@ jobs:
 
 
   wheel:
-    name: Package 📦 wheel
+    name: Package 📦 wheel and upload to PyPI
     runs-on: ubuntu-latest
     steps:
 
