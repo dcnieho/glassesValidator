@@ -115,13 +115,12 @@ def getRecordingInfo(inputDir):
     recInfo.start_time = utils.Timestamp(int(datetime.datetime.fromisoformat(time_string).timestamp()))
 
 
-    # get participant info
+    # get participant info (if available)
     file = inputDir / rInfo['meta-folder'] / 'participant'
-    if not file.is_file():
-        return None
-    with open(file, 'rb') as j:
-        pInfo = json.load(j)
-    recInfo.participant = pInfo['name']
+    if file.is_file():
+        with open(file, 'rb') as j:
+            pInfo = json.load(j)
+        recInfo.participant = pInfo['name']
 
     # get system info
     recInfo.firmware_version = (inputDir / rInfo['meta-folder'] / 'RuVersion').read_text()
