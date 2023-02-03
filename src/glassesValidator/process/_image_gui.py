@@ -28,6 +28,7 @@ class GUI:
                                     imgui.WindowFlags_.no_scroll_with_mouse |
                                     imgui.WindowFlags_.always_auto_resize
                                 )
+        self._window_visible = {}
 
         self._interesting_keys = {}
         self._pressed_keys = {}
@@ -43,6 +44,7 @@ class GUI:
         self._texID[id] = None
         self._new_frame[id] = (None, None, -1)
         self._current_frame[id] = (None, None, -1)
+        self._window_visible[id] = False
 
         self._next_window_id += 1
         return id
@@ -72,7 +74,7 @@ class GUI:
         # need to update image whenever new one available
         if window_id is None:
             if len(self._windows)==1:
-                window_id = next(iter(self._windows))
+                window_id = self._get_main_window_id()
             else:
                 raise RuntimeError("You have more than one window, you must indicate for which window you are providing an image")
 
@@ -111,10 +113,12 @@ class GUI:
                 self._pressed_keys[k] = [-1, False]
         return out
 
+    def _get_main_window_id(self):
+        return next(iter(self._windows))
+
     def _thread_start_fun(self):
         self._lastT=0.
         self._should_exit = False
-        self._hidden = False
         self._user_closed_window = False
         self._dpi_fac = 1
 
@@ -129,14 +133,13 @@ class GUI:
             self._glfw_window = glfw_window_hello_imgui()
             self._dpi_fac = hello_imgui.dpi_window_size_factor()
             glfw.hide_window(self._glfw_window)
-            self._hidden = True
+            self._window_visible[self._get_main_window_id()] = False
             glfw.set_window_close_callback(self._glfw_window, close_callback)
 
-        main_window_id = next(iter(self._new_frame))
         params = hello_imgui.RunnerParams()
         params.app_window_params.window_geometry.size_auto = True
         params.app_window_params.restore_previous_geometry = False
-        params.app_window_params.window_title = self._windows[main_window_id]
+        params.app_window_params.window_title = self._windows[self._get_main_window_id()]
         params.fps_idling.fps_idle = 0
         params.callbacks.show_gui  = self._gui_func
         params.callbacks.post_init = post_init
@@ -192,33 +195,33 @@ class GUI:
 
                 # if first time we're showing something
                 if self._current_frame[w][0] is None:
-                    # tell window to resize
                     if w==0:
+                        # tell window to resize
                         hello_imgui.get_runner_params().app_window_params.window_geometry.resize_app_window_at_next_frame = True
-                    # and show window if needed
-                    if self._hidden:
-                        glfw.show_window(self._glfw_window)
-                        self._hidden = False
+                        # and show window if needed
+                        if not self._window_visible[w]:
+                            glfw.show_window(self._glfw_window)
+                    # mark window as shown
+                    self._window_visible[w] = True
 
                 # keep record of what we're showing
                 self._current_frame[w]  = self._new_frame[w]
                 self._new_frame[w]      = (None, None, -1)
 
-        if not self._hidden:
-            # show main window
-            self._draw_gui(next(iter(self._windows)), False)
-
-            # if more windows, show as well
-            if len(self._windows)>1:
-                for w in list(self._windows.keys())[1:]:
-                    self._draw_gui(w, True)
+        # show windows
+        for w in self._windows.keys():
+            if self._window_visible[w]:
+                self._draw_gui(w, w>0)
 
     def _draw_gui(self, w, need_begin_end):
         if self._current_frame[w] is None or self._texID[w] is None:
             return
 
         if need_begin_end:
-            imgui.begin(self._windows[w], None, self._window_flags)
+            opened, self._window_visible[w] = imgui.begin(self._windows[w], self._window_visible[w], self._window_flags)
+            if not opened:
+                imgui.end()
+                return
 
         imgui.set_cursor_pos((0,0))
         # draw image
