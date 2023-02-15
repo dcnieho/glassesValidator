@@ -190,7 +190,7 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
                 stopAllProcessing = True
                 break
 
-        if (frame_idx)%100==0:
+        if frame_idx%100==0:
             print('  frame {}'.format(frame_idx))
 
     csv_file.close()
