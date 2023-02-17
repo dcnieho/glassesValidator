@@ -17,7 +17,6 @@ class GUI:
         self._frame_nr = {}
         self._frame_pts = {}
         self._current_frame = {}
-        self._glfw_window = None
 
         self._next_window_id = 0
         self._windows = {}
@@ -130,16 +129,15 @@ class GUI:
             imgui.get_io().config_viewports_no_auto_merge = True
 
             glfw.swap_interval(0)
-            self._glfw_window = glfw_window_hello_imgui()
             self._dpi_fac = hello_imgui.dpi_window_size_factor()
-            glfw.hide_window(self._glfw_window)
             self._window_visible[self._get_main_window_id()] = False
-            glfw.set_window_close_callback(self._glfw_window, close_callback)
+            glfw.set_window_close_callback(glfw_window_hello_imgui(), close_callback)
 
         params = hello_imgui.RunnerParams()
         params.app_window_params.window_geometry.size_auto = True
         params.app_window_params.restore_previous_geometry = False
         params.app_window_params.window_title = self._windows[self._get_main_window_id()]
+        params.app_window_params.hidden = True
         params.fps_idling.fps_idle = 0
         params.callbacks.show_gui  = self._gui_func
         params.callbacks.post_init = post_init
@@ -200,7 +198,7 @@ class GUI:
                         hello_imgui.get_runner_params().app_window_params.window_geometry.resize_app_window_at_next_frame = True
                         # and show window if needed
                         if not self._window_visible[w]:
-                            glfw.show_window(self._glfw_window)
+                            hello_imgui.get_runner_params().app_window_params.hidden = False
                     # mark window as shown
                     self._window_visible[w] = True
 
