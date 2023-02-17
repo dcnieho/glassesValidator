@@ -45,5 +45,4 @@ MANIFEST
 # IDEs
 .idea/
 .vs/
-imgui.ini
-imgui_app_window.ini
+*.ini
