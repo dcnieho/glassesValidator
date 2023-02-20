@@ -42,6 +42,6 @@ setuptools.setup(
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
     include_package_data=True,
-    python_requires="==3.10",
+    python_requires="==3.10.*",
     install_requires=required
 )
