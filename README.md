@@ -108,7 +108,7 @@ The default poster should be printed at A2 size, as defined
 in the pdf file, and is designed to cover a reasonable field of view when participants view it at armslength (i.e., 20 x 17.5 deg
 at 60 cm). In order to check that the poster was printed at the correct scale, one should measure the sides of the ArUco markers.
 We strongly recommend performing this check because printers may not be calibrated. In the case of the default glassesValidator
-poster, each ArUco marker should have sides that are 4.19 cm long. If the poster was printed at the wrong scale, one must adapt
+poster, the distance between the left side of the left-most column of ArUco markers and the right side of the right-most column of ArUco markers should be 35.6 cm (each ArUco marker should have sides that are 4.19 cm long). If the poster was printed at the wrong scale, one must adapt
 the glassesValidator configuration to match the size and position of the ArUco markers and fixation targets on your poster ([see
 "Customizing the poster" below](#customizing-the-poster)).
 
