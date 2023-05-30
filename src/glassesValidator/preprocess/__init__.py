@@ -12,10 +12,13 @@ def pupil_core(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = 
     from .pupilLabs import preprocessData
     preprocessData(output_dir, 'Pupil Core', source_dir, rec_info)
 
-
 def pupil_invisible(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = None, rec_info: _utils.Recording = None):
     from .pupilLabs import preprocessData
     preprocessData(output_dir, 'Pupil Invisible', source_dir, rec_info)
+
+def pupil_neon(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = None, rec_info: _utils.Recording = None):
+    from .pupilLabs import preprocessData
+    preprocessData(output_dir, 'Pupil Neon', source_dir, rec_info)
 
 
 def get_recording_info(source_dir: str | pathlib.Path, device: str | _utils.EyeTracker):
@@ -28,6 +31,9 @@ def get_recording_info(source_dir: str | pathlib.Path, device: str | _utils.EyeT
             from .pupilLabs import getRecordingInfo
             rec_info = getRecordingInfo(source_dir, device)
         case _utils.EyeTracker.Pupil_Invisible:
+            from .pupilLabs import getRecordingInfo
+            rec_info = getRecordingInfo(source_dir, device)
+        case _utils.EyeTracker.Pupil_Neon:
             from .pupilLabs import getRecordingInfo
             rec_info = getRecordingInfo(source_dir, device)
         case _utils.EyeTracker.SeeTrue:
@@ -92,6 +98,8 @@ def do_import(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = N
             rec_info = pupil_core(output_dir, source_dir, rec_info)
         case _utils.EyeTracker.Pupil_Invisible:
             rec_info = pupil_invisible(output_dir, source_dir, rec_info)
+        case _utils.EyeTracker.Pupil_Neon:
+            rec_info = pupil_neon(output_dir, source_dir, rec_info)
         case _utils.EyeTracker.SeeTrue:
             rec_info = SeeTrue(output_dir, source_dir, rec_info)
         case _utils.EyeTracker.SMI_ETG:
@@ -106,5 +114,5 @@ def do_import(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = N
     return rec_info
 
 
-__all__ = ['pupil_core','pupil_invisible','SeeTrue','SMI_ETG','tobii_G2','tobii_G3',
+__all__ = ['pupil_core','pupil_invisible','pupil_neon','SeeTrue','SMI_ETG','tobii_G2','tobii_G3',
            'get_recording_info','do_import']

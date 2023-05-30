@@ -43,8 +43,8 @@ def preprocessData(output_dir, device=None, input_dir=None, rec_info=None):
         input_dir  = pathlib.Path(rec_info.source_directory)
 
     if rec_info is not None:
-        if not rec_info.eye_tracker in [utils.EyeTracker.Pupil_Core, utils.EyeTracker.Pupil_Invisible]:
-            raise ValueError(f'Provided rec_info is for a device ({rec_info.eye_tracker.value}) that is not a {utils.EyeTracker.Pupil_Core.value} or a {utils.EyeTracker.Pupil_Invisible.value}. Cannot use.')
+        if not rec_info.eye_tracker in [utils.EyeTracker.Pupil_Core, utils.EyeTracker.Pupil_Invisible, utils.EyeTracker.Pupil_Neon]:
+            raise ValueError(f'Provided rec_info is for a device ({rec_info.eye_tracker.value}) that is not a {utils.EyeTracker.Pupil_Core.value}, a {utils.EyeTracker.Pupil_Invisible.value} or a {utils.EyeTracker.Pupil_Neon.value}. Cannot use.')
         if not rec_info.proc_directory_name:
             rec_info.proc_directory_name = utils.make_fs_dirname(rec_info, output_dir)
         newDir = output_dir / rec_info.proc_directory_name
@@ -55,8 +55,8 @@ def preprocessData(output_dir, device=None, input_dir=None, rec_info=None):
         raise RuntimeError('Either the "device" or the "rec_info" input argument should be set.')
     if device is not None:
         device = utils.type_string_to_enum(device)
-        if not device in [utils.EyeTracker.Pupil_Core, utils.EyeTracker.Pupil_Invisible]:
-            raise ValueError(f'Provided device ({rec_info.eye_tracker.value}) is not a {utils.EyeTracker.Pupil_Core.value} or a {utils.EyeTracker.Pupil_Invisible.value}.')
+        if not device in [utils.EyeTracker.Pupil_Core, utils.EyeTracker.Pupil_Invisible, utils.EyeTracker.Pupil_Neon]:
+            raise ValueError(f'Provided device ({rec_info.eye_tracker.value}) is not a {utils.EyeTracker.Pupil_Core.value}, a {utils.EyeTracker.Pupil_Invisible.value} or a {utils.EyeTracker.Pupil_Neon.value}.')
     if rec_info is not None:
         if device is not None:
             if rec_info.eye_tracker != device:
@@ -70,7 +70,7 @@ def preprocessData(output_dir, device=None, input_dir=None, rec_info=None):
     ### check and copy needed files to the output directory
     print('Check and copy raw data...')
     ### check pupil recording and get export directory
-    exportFile = checkPupilRecording(input_dir)
+    exportFile, is_cloud_export = checkPupilRecording(input_dir)
     if rec_info is not None:
         checkRecording(input_dir, rec_info)
     else:
@@ -94,22 +94,34 @@ def preprocessData(output_dir, device=None, input_dir=None, rec_info=None):
 
 
     # copy world video
-    shutil.copyfile(str(input_dir / 'world.mp4'), str(newDataDir / 'worldCamera.mp4'))
+    if is_cloud_export:
+        scene_vid = list(input_dir.glob('*.mp4'))
+        if len(scene_vid)!=1:
+            raise RuntimeError(f'Scene video missing or more than one found for Pupil Cloud export in folder {input_dir}')
+        shutil.copyfile(str(scene_vid[0]), str(newDataDir / 'worldCamera.mp4'))
+    else:
+        shutil.copyfile(str(input_dir / 'world.mp4'), str(newDataDir / 'worldCamera.mp4'))
     print(f'Input data copied to: {newDataDir}')
 
 
     ### get camera cal
     print('Getting camera calibration...')
-    match rec_info.eye_tracker:
-        case utils.EyeTracker.Pupil_Core:
-            sceneVideoDimensions = getCameraFromMsgPack(input_dir, newDataDir)
-        case utils.EyeTracker.Pupil_Invisible:
-            sceneVideoDimensions = getCameraCalFromOnline(input_dir, newDataDir, rec_info)
+    if is_cloud_export:
+        sceneVideoDimensions = getCameraCalFromCloudExport(input_dir, newDataDir, rec_info)
+    else:
+        match rec_info.eye_tracker:
+            case utils.EyeTracker.Pupil_Core:
+                sceneVideoDimensions = getCameraFromMsgPack(input_dir, newDataDir)
+            case utils.EyeTracker.Pupil_Invisible:
+                sceneVideoDimensions = getCameraCalFromOnline(input_dir, newDataDir, rec_info)
 
 
     ### get gaze data and video frame timestamps
     print('Prepping gaze data...')
-    gazeDf, frameTimestamps = formatGazeData(input_dir, exportFile, sceneVideoDimensions, rec_info)
+    if is_cloud_export:
+        gazeDf, frameTimestamps = formatGazeDataCloudExport(input_dir, exportFile, sceneVideoDimensions, rec_info)
+    else:
+        gazeDf, frameTimestamps = formatGazeDataPupilPlayer(input_dir, exportFile, sceneVideoDimensions, rec_info)
 
     # write the gaze data to a csv file
     gazeDf.to_csv(str(newDataDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")
@@ -123,81 +135,131 @@ def preprocessData(output_dir, device=None, input_dir=None, rec_info=None):
 
 def checkPupilRecording(inputDir):
     """
-    This checks that the folder is properly prepared
-    (i.e. opened in pupil player and an export was run)
+    This checks that the folder is properly prepared,
+    i.e., either:
+    - opened in pupil player and an export was run (currently Pupil Core or Pupil Invisible)
+    - exported from Pupil Cloud (currently Pupil Invisible or Pupil Neon)
     """
     # check we have an info.player.json file
     if not (inputDir / 'info.player.json').is_file():
-        raise RuntimeError(f'info.player.json file not found for {inputDir}. Open the recording in Pupil Player before importing into glassesValidator.')
+        # possibly a pupil cloud export
+        if not (inputDir / 'info.json').is_file() or not (inputDir / 'gaze.csv').is_file():
+            raise RuntimeError(f'Neither the info.player.json file nor the info.json and gaze.csv files are found for {inputDir}. Either export from Pupil Cloud or, if the folder contains raw sensor data, open the recording in Pupil Player and run an export before importing into glassesValidator.')
+        return inputDir / 'gaze.csv', True
 
-    # check we have an export in the input dir
-    inputExpDir = inputDir / 'exports'
-    if not inputExpDir.is_dir():
-        raise RuntimeError(f'no exports folder for {inputDir}. Perform a recording export in Pupil Player before importing into glassesValidator.')
+    else:
+        # check we have an export in the input dir
+        inputExpDir = inputDir / 'exports'
+        if not inputExpDir.is_dir():
+            raise RuntimeError(f'no exports folder for {inputDir}. Perform a recording export in Pupil Player before importing into glassesValidator.')
 
-    # get latest export in that folder that contain a gaze position file
-    gpFiles = sorted(list(inputExpDir.rglob('*gaze_positions*.csv')))
-    if not gpFiles:
-        raise RuntimeError(f'There are no exports in the folder {inputExpDir}. Perform a recording export in Pupil Player before importing into glassesValidator.')
+        # get latest export in that folder that contain a gaze position file
+        gpFiles = sorted(list(inputExpDir.rglob('*gaze_positions*.csv')))
+        if not gpFiles:
+            raise RuntimeError(f'There are no exports in the folder {inputExpDir}. Perform a recording export in Pupil Player before importing into glassesValidator.')
 
-    return gpFiles[-1]
+        return gpFiles[-1], False
 
 
 def getRecordingInfo(inputDir, device):
     # returns None if not a recording directory
     recInfo = utils.Recording(source_directory=inputDir, eye_tracker=device)
 
-    match device:
-        case utils.EyeTracker.Pupil_Core:
-            # check this is not an invisible recording
-            file = inputDir / 'info.invisible.json'
-            if file.is_file():
-                return None
+    if (inputDir / 'info.player.json').is_file():
+        # Pupil player export
+        match device:
+            case utils.EyeTracker.Pupil_Core:
+                # check this is not an invisible recording
+                file = inputDir / 'info.invisible.json'
+                if file.is_file():
+                    return None
 
-            file = inputDir / 'info.player.json'
-            if not file.is_file():
-                return None
-            with open(file, 'r') as j:
-                iInfo = json.load(j)
-            recInfo.name = iInfo['recording_name']
-            recInfo.start_time = utils.Timestamp(int(iInfo['start_time_system_s'])) # UTC in seconds, keep second part
-            recInfo.duration   = int(iInfo['duration_s']*1000)                      # in seconds, convert to ms
-            recInfo.recording_software_version = iInfo['recording_software_version']
-
-            # get user name, if any
-            user_info_file = inputDir / 'user_info.csv'
-            if user_info_file.is_file():
-                df = pd.read_csv(user_info_file)
-                nameRow = df['key'].str.contains('name')
-                if any(nameRow):
-                    if not pd.isnull(df[nameRow].value).to_numpy()[0]:
-                        recInfo.participant = df.loc[nameRow,'value'].to_numpy()[0]
-
-        case utils.EyeTracker.Pupil_Invisible:
-            file = inputDir / 'info.invisible.json'
-            if not file.is_file():
-                return None
-            with open(file, 'r') as j:
-                iInfo = json.load(j)
-            recInfo.name = iInfo['template_data']['recording_name']
-            recInfo.recording_software_version = iInfo['app_version']
-            recInfo.start_time = utils.Timestamp(int(iInfo['start_time']//1000000000))  # UTC in nanoseconds, keep second part
-            recInfo.duration   = int(iInfo['duration']//1000000)                        # in nanoseconds, convert to ms
-            recInfo.glasses_serial = iInfo['glasses_serial_number']
-            recInfo.recording_unit_serial = iInfo['android_device_id']
-            recInfo.scene_camera_serial = iInfo['scene_camera_serial_number']
-            # get participant name
-            file = inputDir / 'wearer.json'
-            if file.is_file():
-                wearer_id = iInfo['wearer_id']
+                file = inputDir / 'info.player.json'
+                if not file.is_file():
+                    return None
                 with open(file, 'r') as j:
                     iInfo = json.load(j)
-                if wearer_id==iInfo['uuid']:
-                    recInfo.participant = iInfo['name']
+                recInfo.name = iInfo['recording_name']
+                recInfo.start_time = utils.Timestamp(int(iInfo['start_time_system_s'])) # UTC in seconds, keep second part
+                recInfo.duration   = int(iInfo['duration_s']*1000)                      # in seconds, convert to ms
+                recInfo.recording_software_version = iInfo['recording_software_version']
 
-        case _:
-            print(f"Device {device} unknown")
+                # get user name, if any
+                user_info_file = inputDir / 'user_info.csv'
+                if user_info_file.is_file():
+                    df = pd.read_csv(user_info_file)
+                    nameRow = df['key'].str.contains('name')
+                    if any(nameRow):
+                        if not pd.isnull(df[nameRow].value).to_numpy()[0]:
+                            recInfo.participant = df.loc[nameRow,'value'].to_numpy()[0]
+
+            case utils.EyeTracker.Pupil_Invisible:
+                file = inputDir / 'info.invisible.json'
+                if not file.is_file():
+                    return None
+                with open(file, 'r') as j:
+                    iInfo = json.load(j)
+                recInfo.name = iInfo['template_data']['recording_name']
+                recInfo.recording_software_version = iInfo['app_version']
+                recInfo.start_time = utils.Timestamp(int(iInfo['start_time']//1000000000))  # UTC in nanoseconds, keep second part
+                recInfo.duration   = int(iInfo['duration']//1000000)                        # in nanoseconds, convert to ms
+                recInfo.glasses_serial = iInfo['glasses_serial_number']
+                recInfo.recording_unit_serial = iInfo['android_device_id']
+                recInfo.scene_camera_serial = iInfo['scene_camera_serial_number']
+                # get participant name
+                file = inputDir / 'wearer.json'
+                if file.is_file():
+                    wearer_id = iInfo['wearer_id']
+                    with open(file, 'r') as j:
+                        iInfo = json.load(j)
+                    if wearer_id==iInfo['uuid']:
+                        recInfo.participant = iInfo['name']
+
+            case utils.EyeTracker.Pupil_Neon:
+                return None # there are no pupil player exports for the Neon eye tracker
+
+            case _:
+                print(f"Device {device} unknown")
+                return None
+    else:
+        # pupil cloud export, for either Pupil Invisible or Pupil Neon
+        if device==utils.EyeTracker.Pupil_Core:
             return None
+
+        # raw sensor data also contain an info.json (checked below), so checking
+        # that file is not enough to see if this is a Cloud Export. Check gaze.csv
+        # presence
+        if not (inputDir / 'gaze.csv').is_file():
+            return None
+
+        file = inputDir / 'info.json'
+        if not file.is_file():
+            return None
+        with open(file, 'r') as j:
+            iInfo = json.load(j)
+
+        # check this is for the expected device
+        is_neon = 'Neon' in iInfo['android_device_name'] or 'frame_name' in iInfo
+        if device==utils.EyeTracker.Pupil_Invisible and is_neon:
+            return None
+        elif device==utils.EyeTracker.Pupil_Neon and not is_neon:
+            return None
+
+        recInfo.name = iInfo['template_data']['recording_name']
+        recInfo.recording_software_version = iInfo['app_version']
+        recInfo.start_time = utils.Timestamp(int(iInfo['start_time']//1000000000))  # UTC in nanoseconds, keep second part
+        recInfo.duration   = int(iInfo['duration']//1000000)                        # in nanoseconds, convert to ms
+        if is_neon:
+            recInfo.glasses_serial = iInfo['module_serial_number']
+        else:
+            recInfo.glasses_serial = iInfo['glasses_serial_number']
+            recInfo.scene_camera_serial = iInfo['scene_camera_serial_number']
+        recInfo.recording_unit_serial = iInfo['android_device_id']
+        if is_neon:
+            recInfo.firmware_version = f"{iInfo['pipeline_version']} ({iInfo['firmware_version'][0]}.{iInfo['firmware_version'][1]})"
+        else:
+            recInfo.firmware_version = iInfo['pipeline_version']
+        recInfo.participant = iInfo['wearer_name']
 
     # we got a valid recording and at least some info if we got here
     # return what we've got
@@ -217,13 +279,13 @@ def checkRecording(inputDir, recInfo):
     if recInfo.recording_software_version!=actualRecInfo.recording_software_version:
         raise ValueError(f"A recording with the duration \"{recInfo.duration}\" was not found in the folder {inputDir}.")
 
-    if recInfo.eye_tracker==utils.EyeTracker.Pupil_Invisible:
-        # for invisible recordings we have a bit more info
+    # for invisible and neon recordings we have a bit more info
+    if recInfo.eye_tracker in [utils.EyeTracker.Pupil_Invisible, utils.EyeTracker.Pupil_Neon]:
         if recInfo.glasses_serial!=actualRecInfo.glasses_serial:
             raise ValueError(f"A recording with the glasses_serial \"{recInfo.glasses_serial}\" was not found in the folder {inputDir}.")
         if recInfo.recording_unit_serial!=actualRecInfo.recording_unit_serial:
             raise ValueError(f"A recording with the recording_unit_serial \"{recInfo.recording_unit_serial}\" was not found in the folder {inputDir}.")
-        if recInfo.scene_camera_serial!=actualRecInfo.scene_camera_serial:
+        if recInfo.eye_tracker==utils.EyeTracker.Pupil_Invisible and recInfo.scene_camera_serial!=actualRecInfo.scene_camera_serial:
             raise ValueError(f"A recording with the scene_camera_serial \"{recInfo.scene_camera_serial}\" was not found in the folder {inputDir}.")
         if (recInfo.participant is not None or actualRecInfo.participant is not None) and recInfo.participant!=actualRecInfo.participant:
             raise ValueError(f"A recording with the participant \"{recInfo.participant}\" was not found in the folder {inputDir}.")
@@ -233,20 +295,17 @@ def getCameraFromMsgPack(inputDir, outputDir):
     """
     Read camera calibration from recording information file
     """
-    camera = getCamInfo(inputDir / 'world.intrinsics')
+    camInfo = getCamInfo(inputDir / 'world.intrinsics')
 
     # rename some fields, ensure they are numpy arrays
-    camera['cameraMatrix'] = np.array(camera.pop('camera_matrix'))
-    camera['distCoeff']    = np.array(camera.pop('dist_coefs')).flatten()
-    camera['resolution']   = np.array(camera['resolution'])
+    camInfo['cameraMatrix'] = np.array(camInfo.pop('camera_matrix'))
+    camInfo['distCoeff']    = np.array(camInfo.pop('dist_coefs')).flatten()
+    camInfo['resolution']   = np.array(camInfo['resolution'])
 
     # store to file
-    fs = cv2.FileStorage(str(outputDir / 'calibration.xml'), cv2.FILE_STORAGE_WRITE)
-    for key,value in camera.items():
-        fs.write(name=key,val=value)
-    fs.release()
+    storeCameraCalibration(camInfo, outputDir)
 
-    return camera['resolution']
+    return camInfo['resolution']
 
 
 def getCameraCalFromOnline(inputDir, outputDir, recInfo):
@@ -266,17 +325,40 @@ def getCameraCalFromOnline(inputDir, outputDir, recInfo):
     camInfo['distCoeff']    = np.array(camInfo.pop('dist_coefs')).flatten()
     camInfo['rotation']     = np.reshape(np.array(camInfo.pop('rotation_matrix')),(3,3))
 
-    # get resolution from the local intrinsics file
-    camInfo['resolution']   = np.array(getCamInfo(inputDir / 'world.intrinsics')['resolution'])
+    # get resolution from the local intrinsics file or scene video
+    camInfo['resolution']   = getSceneCameraResolution(inputDir, outputDir)
 
     # store to xml file
+    storeCameraCalibration(camInfo, outputDir)
+
+    return camInfo['resolution']
+
+def getCameraCalFromCloudExport(inputDir, outputDir, recInfo):
+    file = inputDir / 'scene_camera.json'
+    if not file.is_file():
+        return None
+    with open(file, 'r') as j:
+        camInfo = json.load(j)
+
+    camInfo['cameraMatrix'] = np.array(camInfo.pop('camera_matrix'))
+    if 'dist_coefs' in camInfo:
+        camInfo['distCoeff']    = np.array(camInfo.pop('dist_coefs')).flatten()
+    else:
+        camInfo['distCoeff']    = np.array(camInfo.pop('distortion_coefficients')).flatten()
+
+    # get resolution from the scene video
+    camInfo['resolution']   = getSceneCameraResolution(inputDir, outputDir)
+
+    # store to xml file
+    storeCameraCalibration(camInfo, outputDir)
+
+    return camInfo['resolution']
+
+def storeCameraCalibration(camInfo, outputDir):
     fs = cv2.FileStorage(str(outputDir / 'calibration.xml'), cv2.FILE_STORAGE_WRITE)
     for key,value in camInfo.items():
         fs.write(name=key,val=value)
     fs.release()
-
-    return camInfo['resolution']
-
 
 def getCamInfo(camInfoFile):
     with open(camInfoFile, 'rb') as f:
@@ -290,8 +372,20 @@ def getCamInfo(camInfoFile):
         raise RuntimeError('No camera intrinsics or intrinsics for more than one camera found')
     return camInfo[keys[0]]
 
+def getSceneCameraResolution(inputDir, outputDir):
+    if (inputDir / 'world.intrinsics').is_file():
+        return np.array(getCamInfo(inputDir / 'world.intrinsics')['resolution'])
+    else:
+        import cv2
+        cap = cv2.VideoCapture(str(outputDir / 'worldCamera.mp4'))
+        if cap.isOpened():
+            width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            cap.release()
+        return np.array([width, height])
 
-def formatGazeData(inputDir, exportFile, sceneVideoDimensions, recInfo):
+
+def formatGazeDataPupilPlayer(inputDir, exportFile, sceneVideoDimensions, recInfo):
     """
     load gazedata json file
     format to get the gaze coordinates w/r/t world camera, and timestamps for every frame of video
@@ -302,7 +396,7 @@ def formatGazeData(inputDir, exportFile, sceneVideoDimensions, recInfo):
     """
 
     # convert the json file to pandas dataframe
-    df = readGazeData(exportFile, sceneVideoDimensions, recInfo)
+    df = readGazeDataPupilPlayer(exportFile, sceneVideoDimensions, recInfo)
 
     # read video file, create array of frame timestamps
     if (inputDir / 'world_lookup.npy').is_file():
@@ -344,11 +438,10 @@ def formatGazeData(inputDir, exportFile, sceneVideoDimensions, recInfo):
     # set timestamps as index for gaze
     df = df.set_index('timestamp')
 
-    # return the gaze data df and frame time stamps array
     return df, frameTimestamps
 
 
-def readGazeData(file,sceneVideoDimensions, recInfo):
+def readGazeDataPupilPlayer(file, sceneVideoDimensions, recInfo):
     """
     convert the gaze_positions.csv file to a pandas dataframe
     """
@@ -404,4 +497,52 @@ def readGazeData(file,sceneVideoDimensions, recInfo):
     df.loc[:,'vid_gaze_pos_y'] = (1-df.loc[:,'vid_gaze_pos_y'])*sceneVideoDimensions[1] # turn origin from bottom-left to top-left
 
     # return the dataframe
+    return df
+
+def formatGazeDataCloudExport(inputDir, exportFile, sceneVideoDimensions, recInfo):
+    
+    df = readGazeDataCloudExport(exportFile, sceneVideoDimensions, recInfo)
+
+    frameTimestamps = pd.read_csv(inputDir/'world_timestamps.csv')
+    frameTimestamps = frameTimestamps.rename(columns={'timestamp [ns]': 'timestamp'})
+    frameTimestamps = frameTimestamps.drop(columns=[x for x in frameTimestamps.columns if x not in ['timestamp']])
+    frameTimestamps['frame_idx'] = frameTimestamps.index
+    frameTimestamps = frameTimestamps.set_index('frame_idx')
+    frameTimestamps.loc[:,'timestamp'] /= 1000000.0     # convert timestamps from ns to ms
+
+
+    # set t=0 to video start time
+    t0 = frameTimestamps.iloc[0].to_numpy()
+    df.loc[:,'timestamp'] -= t0
+    frameTimestamps.loc[:,'timestamp'] -= t0
+
+    # set timestamps as index for gaze
+    df = df.set_index('timestamp')
+
+    # use the frame timestamps to assign a frame number to each data point
+    frameIdx = utils.tssToFrameNumber(df.index,frameTimestamps['timestamp'].to_numpy())
+    df.insert(0,'frame_idx',frameIdx['frame_idx'])
+
+    return df, frameTimestamps
+
+
+def readGazeDataCloudExport(file, sceneVideoDimensions, recInfo):
+    df = pd.read_csv(file)
+
+    # rename and reorder columns
+    lookup = {'timestamp [ns]': 'timestamp',
+              'gaze x [px]': 'vid_gaze_pos_x',
+              'gaze y [px]': 'vid_gaze_pos_y'}
+    df=df.rename(columns=lookup)
+    df=df.drop(columns=[x for x in df.columns if x not in ['timestamp','vid_gaze_pos_x','vid_gaze_pos_y','worn']])
+
+    # mark data where eye tracker is not worn as missing
+    todo = [lookup[k] for k in lookup if lookup[k] in df.columns]
+    toRemove = df.worn == 0
+    for c in todo[2:]:
+        df.loc[toRemove,c] = np.nan
+
+    # convert timestamps from ns to ms
+    df.loc[:,'timestamp'] /= 1000000.0
+
     return df

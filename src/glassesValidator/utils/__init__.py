@@ -67,6 +67,7 @@ class AutoName(Enum):
 class EyeTracker(AutoName):
     Pupil_Core      = auto()
     Pupil_Invisible = auto()
+    Pupil_Neon      = auto()
     SMI_ETG         = auto()
     SeeTrue         = auto()
     Tobii_Glasses_2 = auto()
@@ -76,6 +77,7 @@ eye_tracker_names = [x.value for x in EyeTracker if x!=EyeTracker.Unknown]
 
 EyeTracker.Pupil_Core     .color = hex_to_rgba_0_1("#E6194B")
 EyeTracker.Pupil_Invisible.color = hex_to_rgba_0_1("#3CB44B")
+EyeTracker.Pupil_Neon     .color = hex_to_rgba_0_1("#C6B41E")
 EyeTracker.SMI_ETG        .color = hex_to_rgba_0_1("#4363D8")
 EyeTracker.SeeTrue        .color = hex_to_rgba_0_1("#911EB4")
 EyeTracker.Tobii_Glasses_2.color = hex_to_rgba_0_1("#F58231")

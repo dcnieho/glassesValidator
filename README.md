@@ -51,6 +51,7 @@ settings are automatically used), and can be deployed with the `Deploy config` b
 glassesValidator supports the following eye trackers:
 - Pupil Core
 - Pupil Invisible
+- Pupil Neon
 - SeeTrue
 - SMI ETG 1 and ETG 2
 - Tobii Pro Glasses 2
@@ -64,9 +65,12 @@ the [`glassesValidator.utils.EyeTracker` `Enum`](#glassesValidatorutils).
 For some eye trackers, the recording delivered by the eye tracker's recording unit or software can be directly imported into
 glassesValidator. Recordings from some other eye trackers however require some steps to be performed in the manufacturer's
 software before they can be imported into glassesValidator. These are:
-- *Pupil Core* and *Pupil Invisible*: Each recording should 1) be opened in Pupil Player, and 2) an export of the recording
-  (`e` hotkey) should be run from pupil player. Make sure to disable the `World Video Exporter` in the `Plugin Manager` before
-  exporting, as the exported video is not used by glassesValidator and takes a long time to create.
+- *Pupil eye trackers*: Recordings should either be preprocessed using Pupil Player (*Pupil Core* and *Pupil Invisible*) or exported
+  from Pupil Cloud (*Pupil Invisible* and *Pupil Neon*).
+  - Using Pupil Player (*Pupil Core* and *Pupil Invisible*): Each recording should 1) be opened in Pupil Player, and 2) an export of the
+    recording (`e` hotkey) should be run from pupil player. Make sure to disable the `World Video Exporter` in the `Plugin Manager`
+    before exporting, as the exported video is not used by glassesValidator and takes a long time to create.
+  - Using Pupil Cloud (*Pupil Invisible* and *Pupil Neon*): Export the recordings using the `Timeseries data + Scene video` action.
 - *SMI ETG*: For SMI ETG recordings, access to BeGaze is required and the following steps should be performed:
   - Export gaze data: `Export` -> `Legacy: Export Raw Data to File`.
     - In the `General` tab, make sure you select the following:
