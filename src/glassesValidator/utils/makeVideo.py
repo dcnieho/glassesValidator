@@ -205,7 +205,8 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
     vidIn.release()
     vidOutScene.close()
     vidOutPoster.close()
-    cv2.destroyAllWindows()
+    if show_visualization:
+        cv2.destroyAllWindows()
 
     # if ffmpeg is on path, add audio to scene and optionally poster video
     if shutil.which('ffmpeg') is not None:
