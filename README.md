@@ -69,7 +69,9 @@ software before they can be imported into glassesValidator. These are:
   from Pupil Cloud (*Pupil Invisible* and *Pupil Neon*).
   - Using Pupil Player (*Pupil Core* and *Pupil Invisible*): Each recording should 1) be opened in Pupil Player, and 2) an export of the
     recording (`e` hotkey) should be run from pupil player. Make sure to disable the `World Video Exporter` in the `Plugin Manager`
-    before exporting, as the exported video is not used by glassesValidator and takes a long time to create.
+    before exporting, as the exported video is not used by glassesValidator and takes a long time to create. Note that importing a Pupil
+    Player export of a Pupil Invisible export requires an internet connection, which is used to retrieve the scene camera calibration
+    from Pupil Lab's servers.
   - Using Pupil Cloud (*Pupil Invisible* and *Pupil Neon*): Export the recordings using the `Timeseries data + Scene video` action.
 - *SMI ETG*: For SMI ETG recordings, access to BeGaze is required and the following steps should be performed:
   - Export gaze data: `Export` -> `Legacy: Export Raw Data to File`.
