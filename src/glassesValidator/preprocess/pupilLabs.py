@@ -500,7 +500,6 @@ def readGazeDataPupilPlayer(file, sceneVideoDimensions, recInfo):
     return df
 
 def formatGazeDataCloudExport(inputDir, exportFile, sceneVideoDimensions, recInfo):
-    
     df = readGazeDataCloudExport(exportFile, sceneVideoDimensions, recInfo)
 
     frameTimestamps = pd.read_csv(inputDir/'world_timestamps.csv')
@@ -509,7 +508,6 @@ def formatGazeDataCloudExport(inputDir, exportFile, sceneVideoDimensions, recInf
     frameTimestamps['frame_idx'] = frameTimestamps.index
     frameTimestamps = frameTimestamps.set_index('frame_idx')
     frameTimestamps.loc[:,'timestamp'] /= 1000000.0     # convert timestamps from ns to ms
-
 
     # set t=0 to video start time
     t0 = frameTimestamps.iloc[0].to_numpy()
