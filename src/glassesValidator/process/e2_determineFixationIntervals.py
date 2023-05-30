@@ -116,11 +116,12 @@ def process(working_dir, config_dir=None):
         # make plot of data overlaid on poster, and show for each target which fixation
         # was selected
         f       = plt.figure(dpi=300)
-        imgplot = plt.imshow(poster.getImgCopy(asRGB=True),extent=(np.array(poster.bbox)[[0,2,1,3]]),alpha=.5)
+        imgplot = plt.imshow(poster.getImgCopy(asRGB=True),extent=(np.array(poster.bbox)[[0,2,3,1]]),alpha=.5)
         plt.plot(fix['xpos'],fix['ypos'],'b-')
         plt.plot(fix['xpos'],fix['ypos'],'go')
         plt.xlim([poster.bbox[0]-markerHalfSizeMm, poster.bbox[2]+markerHalfSizeMm])
         plt.ylim([poster.bbox[1]-markerHalfSizeMm, poster.bbox[3]+markerHalfSizeMm])
+        plt.gca().invert_yaxis()
         for i,t in zip(range(len(targets)),targets):
             if selected[i]==-999:
                 continue
@@ -134,6 +135,7 @@ def process(working_dir, config_dir=None):
 
         # also make timseries plot of gaze data with fixations
         f = I2MC.plot.data_and_fixations(data, fix, fix_as_line=True, unit='mm', res=[[poster.bbox[0]-2*markerHalfSizeMm, poster.bbox[2]+2*markerHalfSizeMm], [poster.bbox[1]-2*markerHalfSizeMm, poster.bbox[3]+2*markerHalfSizeMm]])
+        plt.gca().invert_yaxis()
         f.savefig(str(working_dir / 'targetSelection_I2MC_interval_{}_fixations.png'.format(ival)))
         plt.close(f)
 
