@@ -35,8 +35,38 @@ glassesValidator.GUI.run()
 ```
 
 # Usage
-The glassesValidator validation procedure consists of two parts, 1) a poster that is used during a recording, and 2) Python software
-for offline processing of the recording to estimate data quality measures.
+The glassesValidator validation procedure consists of two parts, 1) a poster and validation procedure that is used during a recording, and 2) Python software
+for offline processing of the recording to estimate data quality measures. The glassesValidator package includes a graphical user interface (GUI)
+that can be used to perform all processing. Below we describe an example workflow using the GUI. Advanced users can however opt to call all the GUI's
+functionality directly from their own Python scripts without making use of the graphical user interface. The interested reader is referred to the glassesValidator
+manual for further details regarding how to use the glassesValidator functionality directly from their own scripts. 
+
+## Workflow and example data
+Here we first present an example workflow using the GUI. More detailed information about [using the GUI](#the-gui), or [the programming API](#api), are provided
+below.
+
+1. Before recording, the researcher prints [the poster](#the-poster) included with glassesValidator on A2 paper. See the instructions in [the section about the
+   poster](#the-poster) for checking if the poster is printed correctly.
+2. Before recording, the researcher hangs the printed poster on a flat surface, such as a wall. Vertical positioning of the poster depends on the experiment
+   setting, but we think that a suitable default is to hang the poster such that the top row of fixation targets is at eye height for an average-length participant.
+3. The operator positions the participant in front of the glassesValidator poster. An easy method for positioning the participant is to ask them to stretch their
+   arm out straight forward and stand at a distance where their fist touches the poster. The operator then issues the following suggested instructions:
+   `Look at the nine fixation targets in reading order for one second each. Start with the top-left (red) target. When looking at the fixation targets, keep your
+   head as still as possible, move only your eyes.` These verbal instructions could be accompanied by pointing at the fixation targets in the desired looking order
+   to further help the participant to follow the instructions.
+4. To start calculating accuracy and precision, the researcher imports the recordings for which data quality should be determined into a glassesValidator project
+   (after any [preprocessing if required](#required-preprocessing-outside-glassesvalidator), for instance by drag-dropping a folder with recordings onto the
+   glassesValidator GUI window and selecting the import action.
+5. Once imported, the researcher indicates which episode(s) of each recording contain a validation using a graphical interface included with glassesValidator.
+6. The recordings are then further processed automatically, and data quality is determined for validation episodes in the recording.
+7. Finally, once all recordings have been processed, the researcher exports the data quality measures from the recordings in the project into a summary Excel file.
+   This summary function can optionally average the data quality values over the fixation targets for each recording.
+
+Example recordings with which steps 4-7 can be practiced is included in the [example_data subfolder](/example_data). This folder contains example recordings of a
+participant executing the validation procedure with a Pupil Invisible and a Tobii Pro Glasses 2. You can import these recordings directly into glassesValidator.
+Also included in each recordings subfolder is an example `analysisInterval.tsv` file for denoting where the validation interval is in the recording (step 5 above).
+To use these files, after importing a recording into your [glassesValidator project](#glassesvalidator-projects) (step 4 above), copy the corresponding
+`analysisInterval.tsv` to the recording's folder in the glassesValidator project before running the `Code validation intervals` action.
 
 ## glassesValidator projects
 The glassesValidator GUI organizes recordings into a project folder. Each recording to be processed is imported into this project folder
@@ -45,7 +75,6 @@ glassesValidator. The glassesValidator project folder can furthermore contain a 
 Such a configuration should be made if you used a poster different from the default (if no configuration folder is present, the default
 settings are automatically used), and can be deployed with the `Deploy config` button in the GUI, or the
 `glassesValidator.config.deploy_validation_config()` call from Python.
-
 
 ## Eye trackers
 glassesValidator supports the following eye trackers:
@@ -119,9 +148,10 @@ The default poster should be printed at A2 size, as defined
 in the pdf file, and is designed to cover a reasonable field of view when participants view it at armslength (i.e., 20 x 17.5 deg
 at 60 cm). In order to check that the poster was printed at the correct scale, one should measure the sides of the ArUco markers.
 We strongly recommend performing this check because printers may not be calibrated. In the case of the default glassesValidator
-poster, the distance between the left side of the left-most column of ArUco markers and the right side of the right-most column of ArUco markers should be 35.6 cm (each ArUco marker should have sides that are 4.19 cm long). If the poster was printed at the wrong scale, one must adapt
-the glassesValidator configuration to match the size and position of the ArUco markers and fixation targets on your poster ([see
-"Customizing the poster" below](#customizing-the-poster)).
+poster, the distance between the left side of the left-most column of ArUco markers and the right side of the right-most column of
+ArUco markers should be 35.6 cm (each ArUco marker should have sides that are 4.19 cm long). If the poster was printed at the wrong
+scale, one must adapt the glassesValidator configuration to match the size and position of the ArUco markers and fixation targets
+on your poster ([see "Customizing the poster" below](#customizing-the-poster)).
 
 ### Customizing the poster
 The poster pdf file is generated by the [LaTeX file in the same folder as the pdf](/src/glassesValidator/config/poster/poster.tex).
@@ -183,7 +213,7 @@ Click the screenshot to see a full-size version.
 The simplest way to use glassesValidator is by means of its GUI, see above. The full workflow can be performed in the GUI.
 Specifically, it supports:
 
-- GlassesValidator project management, such as making new projects or opening them
+- GlassesValidator project management, such as making new projects or opening them.
 - Importing recordings into a glassesValidator project. Recordings can be found by glassesValidator by drag-dropping one or multiple
   directories onto the GUI or by clicking the `Add recordings` button (not shown) and selecting one or multiple directories. The
   selected directories and all their subdirectories are then searched for recordings, and the user can select which of the found
