@@ -113,7 +113,10 @@ def preprocessData(output_dir, device=None, input_dir=None, rec_info=None):
             case utils.EyeTracker.Pupil_Core:
                 sceneVideoDimensions = getCameraFromMsgPack(input_dir, newDataDir)
             case utils.EyeTracker.Pupil_Invisible:
-                sceneVideoDimensions = getCameraCalFromOnline(input_dir, newDataDir, rec_info)
+                if (source_dir/'calibration.bin').is_file():
+                    sceneVideoDimensions = getCameraCalFromBinFile(input_dir, newDataDir)
+                else:
+                    sceneVideoDimensions = getCameraCalFromOnline(input_dir, newDataDir, rec_info)
 
 
     ### get gaze data and video frame timestamps
@@ -303,6 +306,33 @@ def getCameraFromMsgPack(inputDir, outputDir):
     camInfo['resolution']   = np.array(camInfo['resolution'])
 
     # store to file
+    storeCameraCalibration(camInfo, outputDir)
+
+    return camInfo['resolution']
+
+def getCameraCalFromBinFile(inputDir, outputDir):
+    # provided by pupil-labs
+    cal = np.fromfile(
+        inputDir / 'calibration.bin',
+        np.dtype(
+            [
+                ("serial", "5a"),
+                ("scene_camera_matrix", "(3,3)d"),
+                ("scene_distortion_coefficients", "8d"),
+                ("scene_extrinsics_affine_matrix", "(3,3)d"),
+            ]
+        ),
+    )
+    camInfo = {}
+    camInfo['serial_number']= str(cal["serial"])
+    camInfo['cameraMatrix'] = cal["scene_camera_matrix"].reshape((3,3))
+    camInfo['distCoeff']    = cal["scene_distortion_coefficients"].reshape((8,1))
+    camInfo['extrinsic']    = cal["scene_extrinsics_affine_matrix"].reshape((3,3))
+
+    # get resolution from the local intrinsics file or scene video
+    camInfo['resolution']   = getSceneCameraResolution(inputDir, outputDir)
+
+    # store to xml file
     storeCameraCalibration(camInfo, outputDir)
 
     return camInfo['resolution']
