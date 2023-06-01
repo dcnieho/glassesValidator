@@ -28,19 +28,19 @@ from urllib.request import urlopen
 from .. import utils
 
 
-def preprocessData(output_dir, device=None, input_dir=None, rec_info=None):
+def preprocessData(output_dir, device=None, source_dir=None, rec_info=None):
     """
     Run all preprocessing steps on pupil data
     """
     output_dir = pathlib.Path(output_dir)
-    if input_dir is not None:
-        input_dir  = pathlib.Path(input_dir)
-        if rec_info is not None and pathlib.Path(rec_info.source_directory) != input_dir:
-            raise ValueError(f"The provided source_dir ({input_dir}) does not equal the source directory set in rec_info ({rec_info.source_directory}).")
+    if source_dir is not None:
+        source_dir  = pathlib.Path(source_dir)
+        if rec_info is not None and pathlib.Path(rec_info.source_directory) != source_dir:
+            raise ValueError(f"The provided source_dir ({source_dir}) does not equal the source directory set in rec_info ({rec_info.source_directory}).")
     elif rec_info is None:
         raise RuntimeError('Either the "input_dir" or the "rec_info" input argument should be set.')
     else:
-        input_dir  = pathlib.Path(rec_info.source_directory)
+        source_dir  = pathlib.Path(rec_info.source_directory)
 
     if rec_info is not None:
         if not rec_info.eye_tracker in [utils.EyeTracker.Pupil_Core, utils.EyeTracker.Pupil_Invisible, utils.EyeTracker.Pupil_Neon]:
@@ -64,19 +64,19 @@ def preprocessData(output_dir, device=None, input_dir=None, rec_info=None):
         else:
             device = rec_info.eye_tracker
 
-    print(f'processing: {input_dir.name}')
+    print(f'processing: {source_dir.name}')
 
 
     ### check and copy needed files to the output directory
     print('Check and copy raw data...')
     ### check pupil recording and get export directory
-    exportFile, is_cloud_export = checkPupilRecording(input_dir)
+    exportFile, is_cloud_export = checkPupilRecording(source_dir)
     if rec_info is not None:
-        checkRecording(input_dir, rec_info)
+        checkRecording(source_dir, rec_info)
     else:
-        rec_info = getRecordingInfo(input_dir, device)
+        rec_info = getRecordingInfo(source_dir, device)
         if rec_info is None:
-            raise RuntimeError(f"The folder {input_dir} is not recognized as a {device.value} recording.")
+            raise RuntimeError(f"The folder {source_dir} is not recognized as a {device.value} recording.")
 
     # make output dir
     if rec_info.proc_directory_name is None or not rec_info.proc_directory_name:
@@ -95,36 +95,36 @@ def preprocessData(output_dir, device=None, input_dir=None, rec_info=None):
 
     # copy world video
     if is_cloud_export:
-        scene_vid = list(input_dir.glob('*.mp4'))
+        scene_vid = list(source_dir.glob('*.mp4'))
         if len(scene_vid)!=1:
-            raise RuntimeError(f'Scene video missing or more than one found for Pupil Cloud export in folder {input_dir}')
+            raise RuntimeError(f'Scene video missing or more than one found for Pupil Cloud export in folder {source_dir}')
         shutil.copyfile(str(scene_vid[0]), str(newDataDir / 'worldCamera.mp4'))
     else:
-        shutil.copyfile(str(input_dir / 'world.mp4'), str(newDataDir / 'worldCamera.mp4'))
+        shutil.copyfile(str(source_dir / 'world.mp4'), str(newDataDir / 'worldCamera.mp4'))
     print(f'Input data copied to: {newDataDir}')
 
 
     ### get camera cal
     print('Getting camera calibration...')
     if is_cloud_export:
-        sceneVideoDimensions = getCameraCalFromCloudExport(input_dir, newDataDir, rec_info)
+        sceneVideoDimensions = getCameraCalFromCloudExport(source_dir, newDataDir, rec_info)
     else:
         match rec_info.eye_tracker:
             case utils.EyeTracker.Pupil_Core:
-                sceneVideoDimensions = getCameraFromMsgPack(input_dir, newDataDir)
+                sceneVideoDimensions = getCameraFromMsgPack(source_dir, newDataDir)
             case utils.EyeTracker.Pupil_Invisible:
                 if (source_dir/'calibration.bin').is_file():
-                    sceneVideoDimensions = getCameraCalFromBinFile(input_dir, newDataDir)
+                    sceneVideoDimensions = getCameraCalFromBinFile(source_dir, newDataDir)
                 else:
-                    sceneVideoDimensions = getCameraCalFromOnline(input_dir, newDataDir, rec_info)
+                    sceneVideoDimensions = getCameraCalFromOnline(source_dir, newDataDir, rec_info)
 
 
     ### get gaze data and video frame timestamps
     print('Prepping gaze data...')
     if is_cloud_export:
-        gazeDf, frameTimestamps = formatGazeDataCloudExport(input_dir, exportFile, sceneVideoDimensions, rec_info)
+        gazeDf, frameTimestamps = formatGazeDataCloudExport(source_dir, exportFile, sceneVideoDimensions, rec_info)
     else:
-        gazeDf, frameTimestamps = formatGazeDataPupilPlayer(input_dir, exportFile, sceneVideoDimensions, rec_info)
+        gazeDf, frameTimestamps = formatGazeDataPupilPlayer(source_dir, exportFile, sceneVideoDimensions, rec_info)
 
     # write the gaze data to a csv file
     gazeDf.to_csv(str(newDataDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")

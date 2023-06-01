@@ -24,19 +24,19 @@ import datetime
 from .. import utils
 
 
-def preprocessData(output_dir, input_dir=None, rec_info=None):
+def preprocessData(output_dir, source_dir=None, rec_info=None):
     """
     Run all preprocessing steps on tobii data
     """
     output_dir = pathlib.Path(output_dir)
-    if input_dir is not None:
-        input_dir  = pathlib.Path(input_dir)
-        if rec_info is not None and pathlib.Path(rec_info.source_directory) != input_dir:
-            raise ValueError(f"The provided source_dir ({input_dir}) does not equal the source directory set in rec_info ({rec_info.source_directory}).")
+    if source_dir is not None:
+        source_dir  = pathlib.Path(source_dir)
+        if rec_info is not None and pathlib.Path(rec_info.source_directory) != source_dir:
+            raise ValueError(f"The provided source_dir ({source_dir}) does not equal the source directory set in rec_info ({rec_info.source_directory}).")
     elif rec_info is None:
         raise RuntimeError('Either the "input_dir" or the "rec_info" input argument should be set.')
     else:
-        input_dir  = pathlib.Path(rec_info.source_directory)
+        source_dir  = pathlib.Path(rec_info.source_directory)
 
     if rec_info is not None:
         if rec_info.eye_tracker!=utils.EyeTracker.Tobii_Glasses_3:
@@ -48,18 +48,18 @@ def preprocessData(output_dir, input_dir=None, rec_info=None):
             raise RuntimeError(f'Output directory specified in rec_info ({rec_info.proc_directory_name}) already exists in the outputDir ({output_dir}). Cannot use.')
 
 
-    print(f'processing: {input_dir.name}')
+    print(f'processing: {source_dir.name}')
 
 
     ### check and copy needed files to the output directory
     print('Check and copy raw data...')
     ### check tobii recording and get export directory
     if rec_info is not None:
-        checkRecording(input_dir, rec_info)
+        checkRecording(source_dir, rec_info)
     else:
-        rec_info = getRecordingInfo(input_dir)
+        rec_info = getRecordingInfo(source_dir)
         if rec_info is None:
-            raise RuntimeError(f"The folder {input_dir} is not recognized as a Tobii Glasses 3 recording.")
+            raise RuntimeError(f"The folder {source_dir} is not recognized as a Tobii Glasses 3 recording.")
 
     # make output dir
     if rec_info.proc_directory_name is None or not rec_info.proc_directory_name:
@@ -77,12 +77,12 @@ def preprocessData(output_dir, input_dir=None, rec_info=None):
 
 
     ### copy the raw data to the output directory
-    copyTobiiRecording(input_dir, newDataDir)
+    copyTobiiRecording(source_dir, newDataDir)
     print(f'Input data copied to: {newDataDir}')
 
     #### prep the copied data...
     print('Getting camera calibration...')
-    sceneVideoDimensions = getCameraFromJson(input_dir, newDataDir)
+    sceneVideoDimensions = getCameraFromJson(source_dir, newDataDir)
     print('Prepping gaze data...')
     gazeDf, frameTimestamps = formatGazeData(newDataDir, sceneVideoDimensions)
 

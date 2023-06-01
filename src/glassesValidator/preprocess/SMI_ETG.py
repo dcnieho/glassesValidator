@@ -25,19 +25,19 @@ from scipy.spatial.transform import Rotation
 from .. import utils
 
 
-def preprocessData(output_dir, input_dir=None, rec_info=None):
+def preprocessData(output_dir, source_dir=None, rec_info=None):
     """
     Run all preprocessing steps on SMI data
     """
     output_dir = pathlib.Path(output_dir)
-    if input_dir is not None:
-        input_dir  = pathlib.Path(input_dir)
-        if rec_info is not None and pathlib.Path(rec_info.source_directory) != input_dir:
-            raise ValueError(f"The provided source_dir ({input_dir}) does not equal the source directory set in rec_info ({rec_info.source_directory}).")
+    if source_dir is not None:
+        source_dir  = pathlib.Path(source_dir)
+        if rec_info is not None and pathlib.Path(rec_info.source_directory) != source_dir:
+            raise ValueError(f"The provided source_dir ({source_dir}) does not equal the source directory set in rec_info ({rec_info.source_directory}).")
     elif rec_info is None:
         raise RuntimeError('Either the "input_dir" or the "rec_info" input argument should be set.')
     else:
-        input_dir  = pathlib.Path(rec_info.source_directory)
+        source_dir  = pathlib.Path(rec_info.source_directory)
 
     if rec_info is not None:
         if rec_info.eye_tracker!=utils.EyeTracker.SMI_ETG:
@@ -49,19 +49,19 @@ def preprocessData(output_dir, input_dir=None, rec_info=None):
             raise RuntimeError(f'Output directory specified in rec_info ({rec_info.proc_directory_name}) already exists in the outputDir ({output_dir}). Cannot use.')
 
 
-    print(f'processing: {input_dir.name}')
+    print(f'processing: {source_dir.name}')
 
 
     ### check and copy needed files to the output directory
     print('Check and copy raw data...')
     if rec_info is not None:
-        if not checkRecording(input_dir, rec_info, use_return=True):
-            raise ValueError(f"A recording with the name \"{rec_info.name}\" was not found in the folder {input_dir}. Check that the name is correct and make sure that you export the scene video and gaze data using BeGaze as described in the glassesValidator manual.")
+        if not checkRecording(source_dir, rec_info, use_return=True):
+            raise ValueError(f"A recording with the name \"{rec_info.name}\" was not found in the folder {source_dir}. Check that the name is correct and make sure that you export the scene video and gaze data using BeGaze as described in the glassesValidator manual.")
         recInfos = [rec_info]
     else:
-        recInfos = getRecordingInfo(input_dir)
+        recInfos = getRecordingInfo(source_dir)
         if recInfos is None:
-            raise RuntimeError(f"The folder {input_dir} does not contain SMI ETG recordings prepared for glassesValidator. If this is an SMI recording folder, you may not have run the required gaze data and scene video exports yet. See the glassesValidator manual for which exports you should perform with BeGaze first as well as the file naming scheme.")
+            raise RuntimeError(f"The folder {source_dir} does not contain SMI ETG recordings prepared for glassesValidator. If this is an SMI recording folder, you may not have run the required gaze data and scene video exports yet. See the glassesValidator manual for which exports you should perform with BeGaze first as well as the file naming scheme.")
 
     # make output dirs
     for i in range(len(recInfos)):
@@ -82,8 +82,8 @@ def preprocessData(output_dir, input_dir=None, rec_info=None):
     ### copy the raw data to the output directory
     for rec_info in recInfos:
         newDataDir = output_dir / rec_info.proc_directory_name
-        checkRecording(input_dir, rec_info)
-        copySMIRecordings(input_dir, newDataDir, rec_info)
+        checkRecording(source_dir, rec_info)
+        copySMIRecordings(source_dir, newDataDir, rec_info)
         print(f'Input data copied to: {newDataDir}')
 
     #### prep the data
@@ -91,9 +91,9 @@ def preprocessData(output_dir, input_dir=None, rec_info=None):
         newDataDir = output_dir / rec_info.proc_directory_name
         print(f'{newDataDir.name}...')
         print('  Getting camera calibration...')
-        sceneVideoDimensions = getCameraFromFile(input_dir, newDataDir)
+        sceneVideoDimensions = getCameraFromFile(source_dir, newDataDir)
         print('  Prepping gaze data...')
-        gazeDf, frameTimestamps = formatGazeData(input_dir, newDataDir, rec_info, sceneVideoDimensions)
+        gazeDf, frameTimestamps = formatGazeData(source_dir, newDataDir, rec_info, sceneVideoDimensions)
 
         # write the gaze data to a csv file
         gazeDf.to_csv(str(newDataDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")

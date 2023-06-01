@@ -17,7 +17,7 @@ import numpy as np
 from .. import utils
 
 
-def preprocessData(output_dir, input_dir=None, rec_info=None, cam_cal_file=None):
+def preprocessData(output_dir, source_dir=None, rec_info=None, cam_cal_file=None):
 
     if shutil.which('ffmpeg') is None:
         RuntimeError('ffmpeg must be on path to prep SeeTrue recording for processing with GlassesValidator')
@@ -26,14 +26,14 @@ def preprocessData(output_dir, input_dir=None, rec_info=None, cam_cal_file=None)
     Run all preprocessing steps on SeeTrue data
     """
     output_dir = pathlib.Path(output_dir)
-    if input_dir is not None:
-        input_dir  = pathlib.Path(input_dir)
-        if rec_info is not None and pathlib.Path(rec_info.source_directory) != input_dir:
-            raise ValueError(f"The provided source_dir ({input_dir}) does not equal the source directory set in rec_info ({rec_info.source_directory}).")
+    if source_dir is not None:
+        source_dir  = pathlib.Path(source_dir)
+        if rec_info is not None and pathlib.Path(rec_info.source_directory) != source_dir:
+            raise ValueError(f"The provided source_dir ({source_dir}) does not equal the source directory set in rec_info ({rec_info.source_directory}).")
     elif rec_info is None:
         raise RuntimeError('Either the "input_dir" or the "rec_info" input argument should be set.')
     else:
-        input_dir  = pathlib.Path(rec_info.source_directory)
+        source_dir  = pathlib.Path(rec_info.source_directory)
 
     if rec_info is not None:
         if rec_info.eye_tracker!=utils.EyeTracker.SeeTrue:
@@ -45,19 +45,19 @@ def preprocessData(output_dir, input_dir=None, rec_info=None, cam_cal_file=None)
             raise RuntimeError(f'Output directory specified in rec_info ({rec_info.proc_directory_name}) already exists in the outputDir ({output_dir}). Cannot use.')
 
 
-    print(f'processing: {input_dir.name}')
+    print(f'processing: {source_dir.name}')
 
 
     ### check and copy needed files to the output directory
     print('Check and copy raw data...')
     if rec_info is not None:
-        if not checkRecording(input_dir, rec_info):
-            raise ValueError(f"A recording with the name \"{rec_info.name}\" was not found in the folder {input_dir}.")
+        if not checkRecording(source_dir, rec_info):
+            raise ValueError(f"A recording with the name \"{rec_info.name}\" was not found in the folder {source_dir}.")
         recInfos = [rec_info]
     else:
-        recInfos = getRecordingInfo(input_dir)
+        recInfos = getRecordingInfo(source_dir)
         if recInfos is None:
-            raise RuntimeError(f"The folder {input_dir} does not contain SeeTrue recordings.")
+            raise RuntimeError(f"The folder {source_dir} does not contain SeeTrue recordings.")
 
     # make output dirs
     for i in range(len(recInfos)):
@@ -86,7 +86,7 @@ def preprocessData(output_dir, input_dir=None, rec_info=None, cam_cal_file=None)
             print('    !! No camera calibration provided!')
 
         # NB: gaze data and scene video prep are intertwined, status messages are output inside this function
-        gazeDf, frameTimestamps = copySeeTrueRecording(input_dir, newDataDir, rec_info)
+        gazeDf, frameTimestamps = copySeeTrueRecording(source_dir, newDataDir, rec_info)
 
         # write the gaze data to a csv file
         gazeDf.to_csv(str(newDataDir / 'gazeData.tsv'), sep='\t', na_rep='nan', float_format="%.8f")
