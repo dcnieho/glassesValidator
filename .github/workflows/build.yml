@@ -93,7 +93,12 @@ jobs:
         run: |
           7z a -r ./${{ github.event.repository.name }}-${{ runner.os }}.zip ./src/dist/*
 
-      - name: "Upload release artifact"
+      - name: "Upload artifact to workflow run"
+        uses: actions/upload-artifact@v3
+        with:
+          path: "./${{ github.event.repository.name }}-${{ runner.os }}.zip"
+
+      - name: "Upload artifact to release"
         uses: "softprops/action-gh-release@v1"
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -128,6 +133,11 @@ jobs:
         --sdist
         --wheel
         --outdir dist/
+
+    - name: "Upload wheel as workflow artifact"
+      uses: actions/upload-artifact@v3
+      with:
+        path: "./dist/*.whl"
 
     - name: Upload wheel as release artifact
       uses: softprops/action-gh-release@v1
