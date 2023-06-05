@@ -41,9 +41,10 @@ jobs:
         with:
           path: "./src/"
 
-      - name: "Install requirements"
+      - name: "Install requirements"  # N.B.: First install a forced fixed SciPy version instead of latest, as anything after 1.9.1 doesn't package correctly with cx_Freeze
         run: |
           cd ./src/
+          python -m pip install scipy==1.9.1
           python -m pip install -U -r ./requirements.txt
 
       - name: "Build"

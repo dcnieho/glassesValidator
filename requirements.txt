@@ -1,6 +1,6 @@
 imgui_bundle>=0.8.5
 numpy
-scipy==1.9.1
+scipy
 pandas
 matplotlib
 opencv-contrib-python-headless==4.6.0.66
