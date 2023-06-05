@@ -1,10 +1,7 @@
 import setuptools
-from distutils.util import convert_path
+import runpy
 
-main_ns = {}
-ver_path = convert_path('src/glassesValidator/version.py')
-with open(ver_path) as ver_file:
-    exec(ver_file.read(), main_ns)
+info = runpy.run_path("src/glassesValidator/version.py")
 
 with open('LICENSE') as f:
     license = f.read()
@@ -23,15 +20,15 @@ for line in requirements:
 #reference = utils.Reference(configDir, validationSetup)
 
 setuptools.setup(
-    name=main_ns['__title__'],
-    version=main_ns['__version__'],
-    author=main_ns['__author__'],
-    author_email=main_ns['__email__'],
-    description=main_ns['__description__'],
+    name=info['__title__'],
+    version=info['__version__'],
+    author=info['__author__'],
+    author_email=info['__email__'],
+    description=info['__description__'],
     long_description_content_type="text/markdown",
-    url=main_ns['__url__'],
+    url=info['__url__'],
     project_urls={
-        "Source Code": main_ns['__url__'],
+        "Source Code": info['__url__'],
     },
     classifiers=[
         "Programming Language :: Python :: 3.10",
