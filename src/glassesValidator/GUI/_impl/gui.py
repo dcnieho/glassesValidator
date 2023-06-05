@@ -1551,14 +1551,17 @@ class MainGUI():
             imgui.end_group()
             imgui.spacing()
             width = imgui.get_content_region_avail().x
-            btn_width = (width - 2 * imgui.style.item_spacing.x) / 3
-            if imgui.button("󰌠 PyPI", size=(btn_width, 0)):
+            btn_tot_width = (width - 2 * imgui.style.item_spacing.x)
+            if imgui.button("󰌠 PyPI", size=(btn_tot_width/6, 0)):
                 callbacks.open_url(globals.pypi_page)
             imgui.same_line()
-            if imgui.button("󰊤 GitHub repo", size=(btn_width, 0)):
+            if imgui.button("󱓷 Paper", size=(btn_tot_width/6, 0)):
+                callbacks.open_url(globals.paper_page)
+            imgui.same_line()
+            if imgui.button("󰊤 GitHub repo", size=(btn_tot_width/3, 0)):
                 callbacks.open_url(globals.github_page)
             imgui.same_line()
-            if imgui.button("󰖟 Researcher homepage", size=(btn_width, 0)):
+            if imgui.button("󰖟 Researcher homepage", size=(btn_tot_width/3, 0)):
                 callbacks.open_url(globals.developer_page)
 
             imgui.spacing()
