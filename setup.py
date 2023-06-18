@@ -3,6 +3,9 @@ import runpy
 
 info = runpy.run_path("src/glassesValidator/version.py")
 
+with open('README.md') as f:
+    readme = f.read()
+
 with open('LICENSE') as f:
     license = f.read()
 
@@ -25,6 +28,7 @@ setuptools.setup(
     author=info['__author__'],
     author_email=info['__email__'],
     description=info['__description__'],
+    long_description=readme,
     long_description_content_type="text/markdown",
     url=info['__url__'],
     project_urls={
