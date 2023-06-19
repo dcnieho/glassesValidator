@@ -30,6 +30,12 @@ the terminal. From Python, running the GUI requires only the following two lines
 import glassesValidator
 glassesValidator.GUI.run()
 ```
+If you put these in a script, make sure to `if __name__=="__main__"`, this is required for correct operation from a script:
+```python
+if __name__=="__main__":
+    import glassesValidator
+    glassesValidator.GUI.run()
+```
 
 # Usage
 The glassesValidator validation procedure consists of two parts, 1) a poster and validation procedure that is used during a recording, and 2) Python software
