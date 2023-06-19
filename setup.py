@@ -36,6 +36,7 @@ setuptools.setup(
     },
     classifiers=[
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
@@ -43,7 +44,7 @@ setuptools.setup(
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
     include_package_data=True,
-    python_requires="==3.10.*",
+    python_requires=">=3.10",
     install_requires=required,
     entry_points={
         "gui_scripts": [
