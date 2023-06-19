@@ -1,4 +1,4 @@
-from imgui_bundle import imgui, immapp, hello_imgui, glfw_window_hello_imgui
+from imgui_bundle import imgui, immapp, hello_imgui, glfw_utils
 import glfw
 import time
 import threading
@@ -131,7 +131,7 @@ class GUI:
             glfw.swap_interval(0)
             self._dpi_fac = hello_imgui.dpi_window_size_factor()
             self._window_visible[self._get_main_window_id()] = False
-            glfw.set_window_close_callback(glfw_window_hello_imgui(), close_callback)
+            glfw.set_window_close_callback(glfw_utils.glfw_window_hello_imgui(), close_callback)
 
         params = hello_imgui.RunnerParams()
         params.app_window_params.window_geometry.size_auto = True
