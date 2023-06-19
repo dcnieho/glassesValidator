@@ -28,7 +28,7 @@ the terminal. From Python, running the GUI requires only the following two lines
 import glassesValidator
 glassesValidator.GUI.run()
 ```
-If you put these in a script, make sure to `if __name__=="__main__"`, this is required for correct operation from a script:
+If you use glassesValidator's GUI in a script, make sure to wrap your script in `if __name__=="__main__"`. This is required for correct operation from a script because the GUI uses multiprocessing functionality. Do as follows:
 ```python
 if __name__=="__main__":
     import glassesValidator
