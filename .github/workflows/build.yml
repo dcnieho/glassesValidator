@@ -18,7 +18,7 @@ jobs:
         python:
           - "3.10.x"
         cx-freeze:
-          - "v6.15.1"
+          - "v6.15.2"
     name: "Build exe for ${{ matrix.os }}"
     runs-on: "${{ matrix.os }}"
     steps:
