@@ -1205,7 +1205,7 @@ def gazeToPlane(gaze,posterPose,cameraRotation,cameraPosition, cameraMatrix=None
             # turn observed gaze position on video into position on tangent plane
             g3D = unprojectPoint(gaze.vid2D[0],gaze.vid2D[1],cameraMatrix,distCoeffs)
 
-        # find intersection of 3D gaze with poster, draw
+        # find intersection of 3D gaze with poster
         gazePoster.gaze3DRay = posterPose.vectorIntersect(g3D)   # default vec origin (0,0,0) because we use g3D from camera's view point
 
         # above intersection is in camera space, turn into poster space to get position on poster
