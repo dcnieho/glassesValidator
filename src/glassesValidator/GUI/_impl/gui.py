@@ -1958,7 +1958,7 @@ class MainGUI():
                     "Select here the types of data quality you would like to calculate "
                     "for each of the recordings. When none selected, a good default is "
                     "used for each recording. When none of the selected types is available, "
-                    "that same default is used instead. Whether a data qaulity type is "
+                    "that same default is used instead. Whether a data quality type is "
                     "available depends on what type of gaze information is available for a "
                     "recording, as well as whether the camera is calibrated. Hover over a "
                     "data quality type below to see what its prerequisites are.", text="(help)"
