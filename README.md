@@ -79,6 +79,7 @@ settings are automatically used), and can be deployed with the `Deploy config` b
 
 ## Eye trackers
 glassesValidator supports the following eye trackers:
+- AdHawk MindLink
 - Pupil Core
 - Pupil Invisible
 - Pupil Neon

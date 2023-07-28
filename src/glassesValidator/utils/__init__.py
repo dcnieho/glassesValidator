@@ -65,6 +65,7 @@ class AutoName(Enum):
 
 
 class EyeTracker(AutoName):
+    AdHawk_MindLink = auto()
     Pupil_Core      = auto()
     Pupil_Invisible = auto()
     Pupil_Neon      = auto()
@@ -75,6 +76,7 @@ class EyeTracker(AutoName):
     Unknown         = auto()
 eye_tracker_names = [x.value for x in EyeTracker if x!=EyeTracker.Unknown]
 
+EyeTracker.AdHawk_MindLink.color = hex_to_rgba_0_1("#001D7A")
 EyeTracker.Pupil_Core     .color = hex_to_rgba_0_1("#E6194B")
 EyeTracker.Pupil_Invisible.color = hex_to_rgba_0_1("#3CB44B")
 EyeTracker.Pupil_Neon     .color = hex_to_rgba_0_1("#C6B41E")
