@@ -59,7 +59,7 @@ def preprocessData(output_dir, source_dir=None, rec_info=None):
     else:
         rec_info = getRecordingInfo(source_dir)
         if rec_info is None:
-            raise RuntimeError(f"The folder {source_dir} is not recognized as a Tobii Glasses 3 recording.")
+            raise RuntimeError(f"The folder {source_dir} is not recognized as a {utils.EyeTracker.Tobii_Glasses_3.value} recording.")
 
     # make output dir
     if rec_info.proc_directory_name is None or not rec_info.proc_directory_name:
