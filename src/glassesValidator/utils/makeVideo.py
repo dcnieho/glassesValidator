@@ -65,9 +65,10 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
     vidOutPoster = MediaWriter(str(working_dir / 'detectOutput_poster.mp4'), [out_opts], overwrite=True)
 
     # setup aruco marker detection
-    parameters = cv2.aruco.DetectorParameters_create()
+    parameters      = cv2.aruco.DetectorParameters()
     parameters.markerBorderBits       = validationSetup['markerBorderBits']
     parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
+    aruco_detector  = cv2.aruco.ArucoDetector(poster.aruco_dict, parameters)
 
     # get frame timestamps lookup file
     i2t = utils.Idx2Timestamp(working_dir / 'frameTimestamps.tsv')
@@ -97,32 +98,27 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
         refImg = poster.getImgCopy()
 
         # detect markers, undistort
-        corners, ids, rejectedImgPoints = \
-            cv2.aruco.detectMarkers(frame, poster.aruco_dict, parameters=parameters)
+        corners, ids, rejectedImgPoints = aruco_detector.detectMarkers(frame)
         recoveredIds = None
 
         # get camera pose w.r.t. poster, draw marker and poster pose
-        gotPose = False
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
                 pose = utils.PosterPose(frame_idx)
                 # get camera pose
                 if hasCameraMatrix and hasDistCoeff:
                     # Refine detected markers (eliminates markers not part of our poster, adds missing markers to the poster)
-                    corners, ids, rejectedImgPoints, recoveredIds = utils.arucoRefineDetectedMarkers(
+                    corners, ids, rejectedImgPoints, recoveredIds = utils.arucoRefineDetectedMarkers(aruco_detector,
                             image = frame, arucoBoard = arucoBoard,
                             detectedCorners = corners, detectedIds = ids, rejectedCorners = rejectedImgPoints,
                             cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
 
-                    pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, arucoBoard, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
+                    objP, imgP = arucoBoard.matchImagePoints(corners, ids)
+                    pose.poseOk, pose.rVec, pose.tVec = cv2.solvePnP(objP, imgP, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
 
                     # draw axis indicating poster pose (origin and orientation)
-                    if pose.nMarkers>0:
-                        # set pose
-                        pose.setPose(rVec,tVec)
-                        # and draw
+                    if pose.poseOk:
                         utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, pose.rVec, pose.tVec, armLength, 3, subPixelFac)
-                        gotPose = True
 
                 # also get homography (direct image plane to plane in world transform). Use undistorted marker corners
                 if hasCameraMatrix and hasDistCoeff:
@@ -159,7 +155,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
                 # intersect with poster. Do same for 3D gaze point
                 # (the projection of which coincides with 2D gaze provided by
                 # the eye tracker)
-                if gotPose:
+                if pose.poseOk:
                     gazePoster = utils.gazeToPlane(gaze,pose,cameraRotation,cameraPosition, cameraMatrix, distCoeff)
 
                     # draw gazes on video and poster

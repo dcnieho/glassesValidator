@@ -62,9 +62,10 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     arucoBoard      = poster.getArucoBoard()
 
     # setup aruco marker detection
-    parameters = cv2.aruco.DetectorParameters_create()
+    parameters      = cv2.aruco.DetectorParameters()
     parameters.markerBorderBits       = validationSetup['markerBorderBits']
     parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
+    aruco_detector  = cv2.aruco.ArucoDetector(poster.aruco_dict, parameters)
 
     # get camera calibration info
     cameraMatrix,distCoeff = utils.readCameraCalibrationFile(working_dir / "calibration.xml")[0:2]
@@ -122,8 +123,7 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
                 continue
 
         # detect markers, undistort
-        corners, ids, rejectedImgPoints = \
-            cv2.aruco.detectMarkers(frame, poster.aruco_dict, parameters=parameters)
+        corners, ids, rejectedImgPoints = aruco_detector.detectMarkers(frame)
         recoveredIds = None
 
         if np.all(ids != None):
@@ -133,20 +133,18 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
                 # get camera pose
                 if hasCameraMatrix and hasDistCoeff:
                     # Refine detected markers (eliminates markers not part of our poster, adds missing markers to the poster)
-                    corners, ids, rejectedImgPoints, recoveredIds = utils.arucoRefineDetectedMarkers(
+                    corners, ids, rejectedImgPoints, recoveredIds = utils.arucoRefineDetectedMarkers(aruco_detector,
                             image = frame, arucoBoard = arucoBoard,
                             detectedCorners = corners, detectedIds = ids, rejectedCorners = rejectedImgPoints,
                             cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
 
-                    pose.nMarkers, rVec, tVec = cv2.aruco.estimatePoseBoard(corners, ids, arucoBoard, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
+                    objP, imgP = arucoBoard.matchImagePoints(corners, ids)
+                    pose.poseOk, pose.rVec, pose.tVec = cv2.solvePnP(objP, imgP, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
 
-                    if pose.nMarkers>0:
-                        # set pose
-                        pose.setPose(rVec,tVec)
-                        # and draw if wanted
-                        if show_visualization:
-                            # draw axis indicating poster pose (origin and orientation)
-                            utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, pose.rVec, pose.tVec, armLength, 3, subPixelFac)
+                    # draw pose if wanted
+                    if pose.poseOk and show_visualization:
+                        # draw axis indicating poster pose (origin and orientation)
+                        utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, pose.rVec, pose.tVec, armLength, 3, subPixelFac)
 
                 # also get homography (direct image plane to plane in world transform). Use undistorted marker corners
                 if hasCameraMatrix and hasDistCoeff:
@@ -167,7 +165,7 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
                         if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
                             utils.drawOpenCVCircle(frame, target, 3, (0,0,0), -1, subPixelFac)
 
-                if pose.nMarkers>0 or status:
+                if pose.poseOk or status:
                     csv_writer.writerow( pose.getWriteData() )
 
             # if any markers were detected, draw where on the frame

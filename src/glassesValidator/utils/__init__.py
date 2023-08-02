@@ -444,8 +444,8 @@ def toImagePos(x,y,bbox,imSize,margin=[0,0]):
     pos = [p*s+m for p,s,m in zip(pos,imSize,margin)]
     return pos
 
-def arucoRefineDetectedMarkers(image, arucoBoard, detectedCorners, detectedIds, rejectedCorners, cameraMatrix = None, distCoeffs= None):
-    corners, ids, rejectedImgPoints, recoveredIds = cv2.aruco.refineDetectedMarkers(
+def arucoRefineDetectedMarkers(detector, image, arucoBoard, detectedCorners, detectedIds, rejectedCorners, cameraMatrix = None, distCoeffs= None):
+    corners, ids, rejectedImgPoints, recoveredIds = detector.refineDetectedMarkers(
                             image = image, board = arucoBoard,
                             detectedCorners = detectedCorners, detectedIds = detectedIds, rejectedCorners = rejectedCorners,
                             cameraMatrix = cameraMatrix, distCoeffs = distCoeffs)
@@ -665,8 +665,8 @@ def getMarkerUnrotated(cornerPoints, rot):
     return cornerPoints
 
 class Poster:
-    posterImageFilename= 'referencePoster.png'
-    aruco_dict         = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
+    posterImageFilename = 'referencePoster.png'
+    aruco_dict          = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
 
     def __init__(self, configDir, validationSetup, imHeight = 400):
         if configDir is not None:
@@ -782,7 +782,7 @@ class Poster:
         boardCornerPoints = np.dstack(boardCornerPoints)        # list of 2D arrays -> 3D array
         boardCornerPoints = np.rollaxis(boardCornerPoints,-1)   # 4x2xN -> Nx4x2
         boardCornerPoints = np.pad(boardCornerPoints,((0,0),(0,0),(0,1)),'constant', constant_values=(0.,0.)) # Nx4x2 -> Nx4x3
-        return cv2.aruco.Board_create(boardCornerPoints, self.aruco_dict, np.array(ids))
+        return cv2.aruco.Board(boardCornerPoints, self.aruco_dict, np.array(ids))
 
     def _storeReferencePoster(self, posterImage, validationSetup):
         referenceBoard = self.getArucoBoard(unRotateMarkers = True)
@@ -792,9 +792,10 @@ class Poster:
         refBoardWidth  = validationSetup['referencePosterWidth']
         refBoardHeight = math.ceil(refBoardWidth/aspectRatio)
         margin         = 1  # always 1 pixel, anything else behaves strangely (markers are drawn over margin as well)
+
         refBoardImage  = cv2.cvtColor(
-            cv2.aruco.drawPlanarBoard(
-                referenceBoard,(refBoardWidth+2*margin,refBoardHeight+2*margin),margin,validationSetup['markerBorderBits']),
+            referenceBoard.generateImage(
+                (refBoardWidth+2*margin,refBoardHeight+2*margin),margin,validationSetup['markerBorderBits']),
             cv2.COLOR_GRAY2RGB
         )
         # cut off this 1-pix margin
@@ -991,11 +992,11 @@ class GazePoster:
             reference.draw(img, self.gaze2DRay[0],self.gaze2DRay[1], subPixelFac, (0,0,0), 3)
 
 class PosterPose:
-    def __init__(self, frameIdx, nMarkers=0, rVec=None, tVec=None, hMat=None):
+    def __init__(self, frameIdx, poseOk=False, rVec=None, tVec=None, hMat=None):
         self.frameIdx   = frameIdx
 
         # pose
-        self.nMarkers   = nMarkers  # number of Aruco markers this pose estimate is based on
+        self.poseOk     = poseOk    # Output of SolvePnP, whether successful or not
         self.rVec       = rVec
         self.tVec       = tVec
 
@@ -1012,7 +1013,7 @@ class PosterPose:
 
     @staticmethod
     def getWriteHeader():
-        header = ['frame_idx','poseNMarker']
+        header = ['frame_idx']
         header.extend(getXYZLabels(['poseRvec','poseTvec']))
         header.extend(['homography[%d,%d]' % (r,c) for r in range(3) for c in range(3)])
         return header
@@ -1023,11 +1024,14 @@ class PosterPose:
         return dat.extend([math.nan for x in range(15)])
 
     def getWriteData(self):
-        writeData = [self.frameIdx, self.nMarkers]
-        # in camera space
-        writeData.extend(allNanIfNone(self.rVec,3).flatten())
-        writeData.extend(allNanIfNone(self.tVec,3).flatten())
-        writeData.extend(allNanIfNone(self.hMat,9).flatten())
+        writeData = [self.frameIdx]
+        if not self.poseOk:
+            writeData.extend(self.getMissingWriteData())
+        else:
+            # in camera space
+            writeData.extend(allNanIfNone(self.rVec,3).flatten())
+            writeData.extend(allNanIfNone(self.tVec,3).flatten())
+            writeData.extend(allNanIfNone(self.hMat,9).flatten())
 
         return writeData
 
@@ -1053,21 +1057,9 @@ class PosterPose:
 
             # insert if any non-None
             if not np.all([x is None for x in args]):   # check for not all isNone
-                poses[frame_idx] = PosterPose(frame_idx,int(row['poseNMarker']),*args)
+                poses[frame_idx] = PosterPose(frame_idx,True,*args)
 
         return poses
-
-    def setPose(self,rVec,tVec):
-        self.rVec = rVec
-        self.tVec = tVec
-
-        # clear internal variables
-        self._RMat        = None
-        self._RtMat       = None
-        self._planeNormal = None
-        self._planePoint  = None
-        self._RMatInv     = None
-        self._RtMatInv    = None
 
     def camToWorld(self, point):
         if (self.rVec is None) or (self.tVec is None) or np.any(np.isnan(point)):

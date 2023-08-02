@@ -3,7 +3,7 @@ numpy
 scipy
 pandas
 matplotlib
-opencv-contrib-python-headless==4.6.0.66
+opencv-python-headless==4.8.0.74
 ffpyplayer
 I2MC
 msgpack
