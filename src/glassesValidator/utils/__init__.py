@@ -1185,7 +1185,6 @@ def readMarkerIntervalsFile(fileName):
     return None if len(analyzeFrames)==0 else analyzeFrames
 
 def gazeToPlane(gaze,posterPose,cameraRotation,cameraPosition, cameraMatrix=None, distCoeffs=None):
-
     hasCameraPose = (posterPose.rVec is not None) and (posterPose.tVec is not None)
     gazePoster    = GazePoster(gaze.ts)
     if hasCameraPose:
