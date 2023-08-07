@@ -88,8 +88,8 @@ glassesValidator supports the following eye trackers:
 - Tobii Pro Glasses 3
 
 Pull requests or partial help implementing support for further wearable eye trackers are gladly received. To support a new eye tracker,
-device support in [`glassesValidator.preprocess`](#glassesValidatorpreprocess) should be implemented and the new eye tracker added to
-the [`glassesValidator.utils.EyeTracker` `Enum`](#glassesValidatorutils).
+device support in [`glassesValidator.preprocess`](#glassesvalidatorpreprocess) should be implemented and the new eye tracker added to
+the [`glassesValidator.utils.EyeTracker` `Enum`](#glassesvalidatorutils).
 
 ### Required preprocessing outside glassesValidator
 For some eye trackers, the recording delivered by the eye tracker's recording unit or software can be directly imported into
