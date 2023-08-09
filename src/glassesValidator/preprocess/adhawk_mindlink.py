@@ -214,7 +214,9 @@ def csv2df(inputDir, sceneVideoDimensions):
     convert the gaze_data.csv file to a pandas dataframe
     """
 
+    vid_entry = getMetaEntry(inputDir, 'video')
     gaze_entry = getMetaEntry(inputDir, 'gaze')
+
     file = inputDir / gaze_entry['file_name']
     df = pd.read_csv(file)
 
@@ -266,6 +268,10 @@ def csv2df(inputDir, sceneVideoDimensions):
 
     # convert timestamps from s to ms and set as index
     df.loc[:,'timestamp'] *= 1000.0
+    # set first gaze timestamp to 0 and express gaze timestamps in video time
+    df.loc[:,'timestamp'] -= (df.loc[0,'timestamp'] - (gaze_entry['attribute']['start_time_ms'] - vid_entry['attribute']['start_time_ms']))
+    # remove data with negative timestamps
+    df = df[df.timestamp >= 0]
     df = df.set_index('timestamp')
 
     # binocular gaze data
