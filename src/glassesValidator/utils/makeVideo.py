@@ -102,9 +102,9 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
         recoveredIds = None
 
         # get camera pose w.r.t. poster, draw marker and poster pose
+        pose = utils.PosterPose(frame_idx)
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
-                pose = utils.PosterPose(frame_idx)
                 # get camera pose
                 if hasCameraMatrix and hasDistCoeff:
                     # Refine detected markers (eliminates markers not part of our poster, adds missing markers to the poster)
