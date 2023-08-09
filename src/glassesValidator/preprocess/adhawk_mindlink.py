@@ -166,19 +166,18 @@ def copyAdhawkRecording(inputDir, outputDir):
 
 def getCameraFromYaml(inputDir, outputDir):
     """
-    Read camera calibration from recording information file
+    Get camera calibration
+    Hardcoded as per info received from AdHawk
     """
-    camera_config = getMeta(inputDir, key='camera_config')
-    cam_cal_path = pathlib.Path(camera_config['config_file'])
-    fs = cv2.FileStorage(str(inputDir / cam_cal_path.name), cv2.FILE_STORAGE_READ)
-
-
     # turn into camera matrix and distortion coefficients as used by OpenCV
     camera = {}
-    camera['cameraMatrix'] = fs.getNode("mtx").mat()
-    camera['distCoeff'] = np.trim_zeros(fs.getNode("dist").mat().flatten())
-    camera['resolution'] = fs.getNode("resolution").mat()
-    fs.release()
+    camera['cameraMatrix'] = np.array([[8.6175611023603130e+02, 0.                    , 6.4220317156609758e+02],
+                                       [0.                    , 8.6411314484767183e+02, 3.4611059418088462e+02],
+                                       [0.                    , 0.                    , 1.                    ]])
+    camera['distCoeff'] = np.array([6.4704736326069179e-01, 6.9842325204621162e+01, -3.8446374749176787e-03, -6.5685769622407693e-03, 3.3239962207009803e+01, 5.0824354805695138e-01, 6.9018441628550974e+01, 3.1191976852198923e+01])
+    camera['resolution'] = np.array([1280, 720])
+    camera['position'] = np.array([0.0683000000000028, 0.0163349459352645, 0.00282292669066985])
+    camera['rotation'] = cv2.Rodrigues(np.radians(np.array([-12.000000000000043, 0.0, 0.0])))[0]
 
     # store to file
     fs = cv2.FileStorage(str(outputDir / 'calibration.xml'), cv2.FILE_STORAGE_WRITE)
