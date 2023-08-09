@@ -277,20 +277,19 @@ def csv2df(inputDir, sceneVideoDimensions):
     df.loc[:,'vid_gaze_pos_x'] *= sceneVideoDimensions[0]
     df.loc[:,'vid_gaze_pos_y'] *= sceneVideoDimensions[1]
 
-    # THESE TWO BLOCKS probably need to go! Camera Extrinsics take care of these rotations.
-    # adhawk positive x is rightward, ours is leftward
-    df.loc[:,'l_gaze_ori_x'] = -df.loc[:,'l_gaze_ori_x']
-    df.loc[:,'l_gaze_dir_x'] = -df.loc[:,'l_gaze_dir_x']
-    df.loc[:,'r_gaze_ori_x'] = -df.loc[:,'r_gaze_ori_x']
-    df.loc[:,'r_gaze_dir_x'] = -df.loc[:,'r_gaze_dir_x']
-    df.loc[:,'3d_gaze_pos_x'] = -df.loc[:,'3d_gaze_pos_x']
-
     # adhawk positive z is backward, ours is forward
     df.loc[:,'l_gaze_ori_z'] = -df.loc[:,'l_gaze_ori_z']
     df.loc[:,'l_gaze_dir_z'] = -df.loc[:,'l_gaze_dir_z']
     df.loc[:,'r_gaze_ori_z'] = -df.loc[:,'r_gaze_ori_z']
     df.loc[:,'r_gaze_dir_z'] = -df.loc[:,'r_gaze_dir_z']
     df.loc[:,'3d_gaze_pos_z'] = -df.loc[:,'3d_gaze_pos_z']
+
+    # adhawk positive y is upward, ours is downward
+    df.loc[:,'l_gaze_ori_y'] = -df.loc[:,'l_gaze_ori_y']
+    df.loc[:,'l_gaze_dir_y'] = -df.loc[:,'l_gaze_dir_y']
+    df.loc[:,'r_gaze_ori_y'] = -df.loc[:,'r_gaze_ori_y']
+    df.loc[:,'r_gaze_dir_y'] = -df.loc[:,'r_gaze_dir_y']
+    df.loc[:,'3d_gaze_pos_y'] = -df.loc[:,'3d_gaze_pos_y']
 
     # adhawk gaze pos is in m, ours is in mm
     # NB: gaze ori is in mm!
