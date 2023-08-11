@@ -649,7 +649,7 @@ class Gaze:
         # draw 3D gaze point as well, should coincide with 2D gaze point
         if self.world3D is not None and camRot is not None and camPos is not None and cameraMatrix is not None and distCoeff is not None:
             a = cv2.projectPoints(np.array(self.world3D).reshape(1,3),camRot,camPos,cameraMatrix,distCoeff)[0][0][0]
-            drawOpenCVCircle(img, a, 5, (0,0,0), -1, subPixelFac)
+            drawOpenCVCircle(img, a, 5, (0,255,255), -1, subPixelFac)
 
 
 def getMarkerUnrotated(cornerPoints, rot):
