@@ -1193,7 +1193,7 @@ def gazeToPlane(gaze,posterPose,cameraRotation,cameraPosition, cameraMatrix=None
         # project gaze to reference poster using camera pose
         if gaze.world3D is not None:
             # turn 3D gaze point provided by eye tracker into ray from camera
-            g3D = np.matmul(RCam,np.array(gaze.world3D).reshape(3,1))
+            g3D = np.matmul(RtCam,np.array(np.append(gaze.world3D, 1)).reshape(4,1))
         else:
             # turn observed gaze position on video into position on tangent plane
             g3D = unprojectPoint(gaze.vid2D[0],gaze.vid2D[1],cameraMatrix,distCoeffs)
