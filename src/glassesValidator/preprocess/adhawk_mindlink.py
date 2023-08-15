@@ -176,7 +176,7 @@ def getCameraFromYaml(inputDir, outputDir):
                                        [0.                    , 0.                    , 1.                    ]])
     camera['distCoeff'] = np.array([6.4704736326069179e-01, 6.9842325204621162e+01, -3.8446374749176787e-03, -6.5685769622407693e-03, 3.3239962207009803e+01, 5.0824354805695138e-01, 6.9018441628550974e+01, 3.1191976852198923e+01])
     camera['resolution'] = np.array([1280, 720])
-    camera['position'] = -np.array([0.0683000000000028, 0.0163349459352645, 0.00282292669066985])
+    camera['position'] = np.array([-0.0685, 0.0152028, 0.00340752])*1000  # our positions are in mm, not m
     camera['rotation'] = cv2.Rodrigues(np.radians(np.array([12.000000000000043, 0.0, 0.0])))[0]
 
     # store to file
