@@ -2006,6 +2006,19 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
+            t,ht = get_DataQualityType_explanation(DataQualityType.pose_world_eye)
+            imgui.text(t+':')
+            draw_hover_text(ht, text="")
+            imgui.table_next_column()
+            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+            changed, value = imgui.checkbox("##dq_use_pose_world_eye", set.dq_use_pose_world_eye)
+            if changed:
+                set.dq_use_pose_world_eye = value
+                async_thread.run(db.update_settings("dq_use_pose_world_eye"))
+
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
             t,ht = get_DataQualityType_explanation(DataQualityType.pose_left_eye)
             imgui.text(t+':')
             draw_hover_text(ht, text="")

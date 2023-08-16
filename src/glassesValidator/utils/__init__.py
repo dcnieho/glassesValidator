@@ -65,6 +65,7 @@ class AutoName(Enum):
 
 
 class EyeTracker(AutoName):
+    AdHawk_MindLink = auto()
     Pupil_Core      = auto()
     Pupil_Invisible = auto()
     Pupil_Neon      = auto()
@@ -75,6 +76,7 @@ class EyeTracker(AutoName):
     Unknown         = auto()
 eye_tracker_names = [x.value for x in EyeTracker if x!=EyeTracker.Unknown]
 
+EyeTracker.AdHawk_MindLink.color = hex_to_rgba_0_1("#001D7A")
 EyeTracker.Pupil_Core     .color = hex_to_rgba_0_1("#E6194B")
 EyeTracker.Pupil_Invisible.color = hex_to_rgba_0_1("#3CB44B")
 EyeTracker.Pupil_Neon     .color = hex_to_rgba_0_1("#C6B41E")
@@ -302,7 +304,8 @@ def cartesian_product(*arrays):
 
 def getFrameTimestampsFromVideo(vid_file):
     """
-    Parse the supplied video, return an array of frame timestamps
+    Parse the supplied video, return an array of frame timestamps. If there are multiple video streams in the video file,
+    we assume the first stream is the correct stream
     """
     if vid_file.suffix in ['.mp4', '.mov']:
         # parse mp4 file
@@ -608,8 +611,8 @@ def drawArucoDetectedMarkers(img,corners,ids,borderColor=(0,255,0), drawIDs = Tr
 class Gaze:
     def __init__(self, ts, vid2D, world3D=None, lGazeVec=None, lGazeOrigin=None, rGazeVec=None, rGazeOrigin=None):
         self.ts = ts
-        self.vid2D = vid2D
-        self.world3D = world3D
+        self.vid2D = vid2D              # gaze point on the scene video
+        self.world3D = world3D          # gaze point in the world (often binocular gaze point)
         self.lGazeVec= lGazeVec
         self.lGazeOrigin = lGazeOrigin
         self.rGazeVec= rGazeVec
@@ -644,10 +647,11 @@ class Gaze:
 
     def draw(self, img, subPixelFac=1, camRot=None, camPos=None, cameraMatrix=None, distCoeff=None):
         drawOpenCVCircle(img, self.vid2D, 8, (0,255,0), 2, subPixelFac)
-        # draw 3D gaze point as well, should coincide with 2D gaze point
+        # draw 3D gaze point as well, usually coincides with 2D gaze point, but not always. E.g. the Adhawk MindLink may
+        # apply a correction for parallax error to the projected gaze point using the vergence signal.
         if self.world3D is not None and camRot is not None and camPos is not None and cameraMatrix is not None and distCoeff is not None:
             a = cv2.projectPoints(np.array(self.world3D).reshape(1,3),camRot,camPos,cameraMatrix,distCoeff)[0][0][0]
-            drawOpenCVCircle(img, a, 5, (0,0,0), -1, subPixelFac)
+            drawOpenCVCircle(img, a, 5, (0,255,255), -1, subPixelFac)
 
 
 def getMarkerUnrotated(cornerPoints, rot):
@@ -866,22 +870,24 @@ class Poster:
         cv2.imwrite(str(posterImage), refBoardImage)
 
 class GazePoster:
-    def __init__(self, ts, gaze3DRay=None, gaze3DHomography=None, lGazeOrigin=None, lGaze3D=None, rGazeOrigin=None, rGaze3D=None, gaze2DRay=None, gaze2DHomography=None, lGaze2D=None, rGaze2D=None):
+    def __init__(self, ts, gaze3DRay=None, gaze3DHomography=None, wGaze3D=None, lGazeOrigin=None, lGaze3D=None, rGazeOrigin=None, rGaze3D=None, gaze2DRay=None, gaze2DHomography=None, wGaze2D=None, lGaze2D=None, rGaze2D=None):
         # 3D gaze is in world space, w.r.t. scene camera
         # 2D gaze is on the poster
         self.ts = ts
 
-        # in camera space
-        self.gaze3DRay        = gaze3DRay           # 3D gaze point on plane (3D gaze point <-> camera ray intersected with plane)
+        # in camera space (3D coordinates)
+        self.gaze3DRay        = gaze3DRay           # video gaze position on plane (camera ray intersected with plane)
         self.gaze3DHomography = gaze3DHomography    # gaze2DHomography in camera space
+        self.wGaze3D          = wGaze3D             # 3D gaze point on plane (world-space gaze point, turned into direction ray and intersected with plane)
         self.lGazeOrigin      = lGazeOrigin
         self.lGaze3D          = lGaze3D             # 3D gaze point on plane ( left eye gaze vector intersected with plane)
         self.rGazeOrigin      = rGazeOrigin
         self.rGaze3D          = rGaze3D             # 3D gaze point on plane (right eye gaze vector intersected with plane)
 
-        # in poster space
-        self.gaze2DRay        = gaze2DRay           # gaze3DRay in poster space
+        # in poster space (2D coordinates)
+        self.gaze2DRay        = gaze2DRay           # Video gaze point mapped to poster by turning into direction ray and intersecting with poster
         self.gaze2DHomography = gaze2DHomography    # Video gaze point directly mapped to poster through homography transformation
+        self.wGaze2D          = wGaze2D             # wGaze3D in poster space
         self.lGaze2D          = lGaze2D             # lGaze3D in poster space
         self.rGaze2D          = rGaze2D             # rGaze3D in poster space
 
@@ -889,23 +895,26 @@ class GazePoster:
     def getWriteHeader():
         header = ['gaze_timestamp']
         header.extend(getXYZLabels(['gazePosCam_vidPos_ray','gazePosCam_vidPos_homography']))
+        header.extend(getXYZLabels(['gazePosCamWorld']))
         header.extend(getXYZLabels(['gazeOriCamLeft','gazePosCamLeft']))
         header.extend(getXYZLabels(['gazeOriCamRight','gazePosCamRight']))
         header.extend(getXYZLabels('gazePosPoster2D_vidPos_ray',2))
         header.extend(getXYZLabels('gazePosPoster2D_vidPos_homography',2))
+        header.extend(getXYZLabels('gazePosPoster2DWorld',2))
         header.extend(getXYZLabels('gazePosPoster2DLeft',2))
         header.extend(getXYZLabels('gazePosPoster2DRight',2))
         return header
 
     @staticmethod
     def getMissingWriteData():
-        return [math.nan for x in range(24)]
+        return [math.nan for x in range(29)]
 
     def getWriteData(self):
         writeData = [self.ts]
         # in camera space
         writeData.extend(allNanIfNone(self.gaze3DRay,3))
         writeData.extend(allNanIfNone(self.gaze3DHomography,3))
+        writeData.extend(allNanIfNone(self.wGaze3D,3))
         writeData.extend(allNanIfNone(self.lGazeOrigin,3))
         writeData.extend(allNanIfNone(self.lGaze3D,3))
         writeData.extend(allNanIfNone(self.rGazeOrigin,3))
@@ -913,6 +922,7 @@ class GazePoster:
         # in poster space
         writeData.extend(allNanIfNone(self.gaze2DRay,2))
         writeData.extend(allNanIfNone(self.gaze2DHomography,2))
+        writeData.extend(allNanIfNone(self.wGaze2D,2))
         writeData.extend(allNanIfNone(self.lGaze2D,2))
         writeData.extend(allNanIfNone(self.rGaze2D,2))
 
@@ -935,15 +945,17 @@ class GazePoster:
                 ts = float(entry['gaze_timestamp'])
                 gaze3DRay       = dataReaderHelper(entry,'gazePosCam_vidPos_ray')
                 gaze3DHomography= dataReaderHelper(entry,'gazePosCam_vidPos_homography')
+                wGaze3D         = dataReaderHelper(entry,'gazePosCamWorld')
                 lGazeOrigin     = dataReaderHelper(entry,'gazeOriCamLeft')
                 lGaze3D         = dataReaderHelper(entry,'gazePosCamLeft')
                 rGazeOrigin     = dataReaderHelper(entry,'gazeOriCamRight')
                 rGaze3D         = dataReaderHelper(entry,'gazePosCamRight')
                 gaze2DRay       = dataReaderHelper(entry,'gazePosPoster2D_vidPos_ray',2)
                 gaze2DHomography= dataReaderHelper(entry,'gazePosPoster2D_vidPos_homography',2)
+                wGaze2D         = dataReaderHelper(entry,'gazePosPoster2DWorld',2)
                 lGaze2D         = dataReaderHelper(entry,'gazePosPoster2DLeft',2)
                 rGaze2D         = dataReaderHelper(entry,'gazePosPoster2DRight',2)
-                gaze = GazePoster(ts, gaze3DRay, gaze3DHomography, lGazeOrigin, lGaze3D, rGazeOrigin, rGaze3D, gaze2DRay, gaze2DHomography, lGaze2D, rGaze2D)
+                gaze = GazePoster(ts, gaze3DRay, gaze3DHomography, wGaze3D, lGazeOrigin, lGaze3D, rGazeOrigin, rGaze3D, gaze2DRay, gaze2DHomography, wGaze2D, lGaze2D, rGaze2D)
 
                 if frame_idx in gazes:
                     gazes[frame_idx].append(gaze)
@@ -957,6 +969,10 @@ class GazePoster:
         # gaze ray
         if self.gaze3DRay is not None:
             pPointCam = cv2.projectPoints(self.gaze3DRay.reshape(1,3),np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
+            drawOpenCVCircle(img, pPointCam, 3, (255,255,0), -1, subPixelFac)
+        # binocular gaze point
+        if self.wGaze3D is not None:
+            pPointCam = cv2.projectPoints(self.wGaze3D.reshape(1,3),np.zeros((1,3)),np.zeros((1,3)),cameraMatrix,distCoeff)[0][0][0]
             drawOpenCVCircle(img, pPointCam, 3, (255,0,255), -1, subPixelFac)
         # left eye
         if self.lGaze3D is not None:
@@ -974,6 +990,9 @@ class GazePoster:
                 drawOpenCVCircle(img, pPointCam, 6, (255,0,255), -1, subPixelFac)
 
     def drawOnPoster(self, img, reference, subPixelFac=1):
+        # binocular gaze point
+        if self.wGaze2D is not None:
+            reference.draw(img, self.wGaze2D[0],self.wGaze2D[1], subPixelFac, (0,255,255), 3)
         # left eye
         if self.lGaze2D is not None:
             reference.draw(img, self.lGaze2D[0],self.lGaze2D[1], subPixelFac, (0,0,255), 3)
@@ -989,14 +1008,14 @@ class GazePoster:
         if self.gaze2DHomography is not None:
             reference.draw(img, self.gaze2DHomography[0],self.gaze2DHomography[1], subPixelFac, (0,255,0), 5)
         if self.gaze2DRay is not None:
-            reference.draw(img, self.gaze2DRay[0],self.gaze2DRay[1], subPixelFac, (0,0,0), 3)
+            reference.draw(img, self.gaze2DRay[0],self.gaze2DRay[1], subPixelFac, (255,255,0), 3)
 
 class PosterPose:
     def __init__(self, frameIdx, poseOk=False, rVec=None, tVec=None, hMat=None):
         self.frameIdx   = frameIdx
 
         # pose
-        self.poseOk     = poseOk    # Output of SolvePnP, whether successful or not
+        self.poseOk     = poseOk    # Output of cv2.SolvePnP(), whether successful or not
         self.rVec       = rVec
         self.tVec       = tVec
 
@@ -1188,23 +1207,33 @@ def gazeToPlane(gaze,posterPose,cameraRotation,cameraPosition, cameraMatrix=None
             cameraPosition = np.zeros((3,1))
         RtCam = np.hstack((RCam, cameraPosition))
 
-        # project gaze to reference poster using camera pose
-        if gaze.world3D is not None:
-            # turn 3D gaze point provided by eye tracker into ray from camera
-            g3D = np.matmul(RCam,np.array(gaze.world3D).reshape(3,1))
-        else:
-            # turn observed gaze position on video into position on tangent plane
-            g3D = unprojectPoint(gaze.vid2D[0],gaze.vid2D[1],cameraMatrix,distCoeffs)
+        # project gaze on video to reference poster using camera pose
+        # turn observed gaze position on video into position on tangent plane
+        g3D = unprojectPoint(gaze.vid2D[0],gaze.vid2D[1],cameraMatrix,distCoeffs)
 
         # find intersection of 3D gaze with poster
-        gazePoster.gaze3DRay = posterPose.vectorIntersect(g3D)   # default vec origin (0,0,0) because we use g3D from camera's view point
+        gazePoster.gaze3DRay = posterPose.vectorIntersect(g3D)  # default vec origin (0,0,0) because we use g3D from camera's view point
 
         # above intersection is in camera space, turn into poster space to get position on poster
-        (x,y,z)   = posterPose.camToWorld(gazePoster.gaze3DRay)  # z should be very close to zero
+        (x,y,z)   = posterPose.camToWorld(gazePoster.gaze3DRay) # z should be very close to zero
         gazePoster.gaze2DRay = [x, y]
 
+        # project world-space gaze point (often binocular gaze point) to plane
+        if gaze.world3D is not None:
+            # transform 3D gaze point from eye tracker space to camera space
+            g3D = np.matmul(RtCam,np.array(np.append(gaze.world3D, 1)).reshape(4,1))
+
+            # find intersection with poster (NB: pose is in camera reference frame)
+            gazePoster.wGaze3D = posterPose.vectorIntersect(g3D)    # default vec origin (0,0,0) is fine because we work from camera's view point
+
+            # above intersection is in camera space, turn into poster space to get position on poster
+            (x,y,z)   = posterPose.camToWorld(gazePoster.wGaze3D)   # z should be very close to zero
+            gazePoster.wGaze2D = [x, y]
+
     # unproject 2D gaze point on video to point on poster (should yield values very close to
-    # the above method of intersecting 3D gaze point ray with poster)
+    # the above method of intersecting video gaze point ray with poster, and usually also very
+    # close to binocular gaze point (though for at least one tracker the latter is not the case;
+    # the AdHawk has an optional parallax correction using a vergence signal))
     if posterPose.hMat is not None:
         ux, uy   = gaze.vid2D
         if (cameraMatrix is not None) and (distCoeffs is not None):
@@ -1227,7 +1256,7 @@ def gazeToPlane(gaze,posterPose,cameraRotation,cameraPosition, cameraMatrix=None
     for gVec,gOri,attr in zip(gazeVecs,gazeOrigins,attrs):
         if gVec is None or gOri is None:
             continue
-        # get gaze vector and point on vector (pupil center) ->
+        # get gaze vector and point on vector (origin, e.g. pupil center) ->
         # transform from ET data coordinate frame into camera coordinate frame
         gVec    = np.matmul(RCam ,          gVec    )
         gOri    = np.matmul(RtCam,np.append(gOri,1.))
@@ -1238,12 +1267,8 @@ def gazeToPlane(gaze,posterPose,cameraRotation,cameraPosition, cameraMatrix=None
         setattr(gazePoster,attr[1],gPoster)
 
         # transform intersection with poster from camera space to poster space
-        if not math.isnan(gPoster[0]):
-            (x,y,z)  = posterPose.camToWorld(gPoster)  # z should be very close to zero
-            pgPoster = [x, y]
-        else:
-            pgPoster = [np.nan, np.nan]
-        setattr(gazePoster,attr[2],pgPoster)
+        (x,y,z)  = posterPose.camToWorld(gPoster)  # z should be very close to zero
+        setattr(gazePoster,attr[2],[x, y])
 
     return gazePoster
 

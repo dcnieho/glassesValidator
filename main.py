@@ -15,4 +15,5 @@ if __name__=="__main__":
     multiprocessing.freeze_support()
 
     import glassesValidator
-    glassesValidator.GUI.run()
+    glassesValidator.GUI.run(r"C:\Users\huml-dkn\Downloads\Adhawk\proj")
+    #glassesValidator.preprocess.adhawk_mindlink(r"C:\Users\huml-dkn\Downloads\Adhawk\proj", r"C:\Users\huml-dkn\Downloads\Adhawk\diako_2023-07-25_125351_poster")

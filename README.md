@@ -79,6 +79,7 @@ settings are automatically used), and can be deployed with the `Deploy config` b
 
 ## Eye trackers
 glassesValidator supports the following eye trackers:
+- AdHawk MindLink
 - Pupil Core
 - Pupil Invisible
 - Pupil Neon
@@ -283,16 +284,22 @@ section, but another configuration might be more suited for some advanced use ca
 3) Which data is used for determining gaze position on the validation poster:
 
    1. The gaze position in the scene camera image.
-   2. Gaze direction vectors in a head reference frame.
+   2. The gaze position in the world (often binocular gaze point).
+   3. Gaze direction vectors in a head reference frame.
 
    When operating in mode i, the eye tracker's estimate of the (binocular) gaze point in the scene camera image is used. This is
    the appropriate choice for most wearable eye tracking research, as it is this gaze point that is normally used for further
-   analysis. However, in some settings and when the eye tracker provides gaze direction vectors for the individual eyes along with
-   their origin, a different mode of operation may be more appropriate. Specifically, when using the wearable eye tracker's gaze
-   vectors instead of the gaze point in the scene video in their analysis, the researcher should compute the accuracy and precision
-   of these gaze vectors.
+   analysis. However, in some settings and when the eye tracker provides a (3D) gaze position in the world and/or gaze direction
+   vectors for the individual eyes along with their origin, a different mode of operation may be more appropriate. Specifically,
+   when using the wearable eye tracker's world gaze point or gaze vectors instead of the gaze point in the scene video in their
+   analysis, the researcher should compute the accuracy and precision of this world gaze point/gaze vectors. NB: for most of the
+   currently supported eye trackers, modes i and ii are equivalent (i.e., the gaze position in the camera image is simply the
+   gaze position in the world projected to the camera image). This is however not always the case. The AdHawk MindLink for instance
+   has an operating mode that corrects for parallax error in the projected gaze point using the vergence signal, which leads to
+   the eye tracker reporting a different gaze position in the scene video than a direct projection of gaze position in the world
+   to the scene camera image.
 
-Altogether, combining these decisions, the following six types of data quality can be calculated using glassesValidator. NB: All API
+Altogether, combining these decisions, the following seven types of data quality can be calculated using glassesValidator. NB: All API
 names are members of the `enum.Enum` `glassesValidator.process.DataQualityType`
 
 |Name in GUI|Name in API|description|
@@ -300,20 +307,22 @@ names are members of the `enum.Enum` `glassesValidator.process.DataQualityType`
 |Homography + view distance|`viewpos_vidpos_homography`|Use a homography tranformation to map gaze position from the scene video to the validation poster, and use an assumed viewing distance (see the project's configuration) to compute data quality measures in degrees with respect to the scene camera. In this mode, it is assumed that the eye is located exactly in front of the center of the poster and that the poster is oriented perpendicularly to the line of sight from this assumed viewing position. *Default mode when no camera calibration is available.*|
 |Homography + pose|`pose_vidpos_homography`|Use a homography tranformation to map gaze position from the scene video to the validation poster, and use the determined pose of the scene camera (requires a calibrated camera) to compute data quality measures in degrees with respect to the scene camera.|
 |Video ray + pose|`pose_vidpos_ray`|Use camera calibration to turn gaze position from the scene video into a direction vector, and determine gaze position on the validation poster by intersecting this vector with the poster. Then, use the determined pose of the scene camera (requires a calibrated camera) to compute data quality measures in degrees. If the eye tracker provides a 3D gaze point (e.g. the Tobii Pro Glasses 2 and 3), this 3D gaze point is used in lieu of a gaze direction vector derived from the gaze position in the scene camera with respect to the scene camera. *Default mode when a camera calibration is available.*|
+|World gaze position + pose|`pose_world_eye`|Use the gaze position in the world provided by the eye tracker (often a binocular gaze point) to determine gaze position on the validation poster by turning it into a direction vector with respect to the scene camera and intersecting this vector with the poster. Then, use the determined pose of the scene camera (requires a calibrated camera) to compute data quality measures in degrees with respect to the scene camera.|
 |Left eye ray + pose|`pose_left_eye`|Use the gaze direction vector for the left eye provided by the eye tracker to determine gaze position on the validation poster by intersecting this vector with the poster. Then, use the determined pose of the scene camera (requires a camera calibration) to compute data quality measures in degrees with respect to the left eye.|
 |Right eye ray + pose|`pose_right_eye`|Use the gaze direction vector for the right eye provided by the eye tracker to determine gaze position on the validation poster by intersecting this vector with the poster. Then, use the determined pose of the scene camera (requires a camera calibration) to compute data quality measures in degrees with respect to the right eye.|
 |Average eye rays + pose|`pose_left_right_avg`|For each time point, take angular offset between the left and right gaze positions and the fixation target and average them to compute data quality measures in degrees. Requires 'Left eye ray + pose' and 'Right eye ray + pose' to be enabled|
 
-In summary, by default for eye trackers for which a camera calibration is available the gaze position in the scene camera is
+In summary, _by default_ for eye trackers for which a camera calibration is available the gaze position in the scene camera is
 transformed to a gaze position on the validation poster by means of intersecting a camera-relative gaze direction vector with the
 validation poster plane. Accuracy and precision are then computed using the angle between the vectors from the scene camera to the
-fixation target and to the gaze position on the poster. For eye trackers for which no camera calibration is available, a
-homography transformation is used to determine gaze position on the poster and accuracy and precision are computed using an assumed
-viewing distance configured in the glassesValidator project's configuration file, along with the assumptions that the eye is located
-exactly in front of the center of the poster and that the poster is oriented perpendicularly to the line of sight. As discussed in
-the "Assuming a fixed viewing distance" section of the glassesValidator paper (Niehorster et al., submitted), differences in computed
-values between these two modes are generally small. Nonetheless, it is up to the researcher to decide whether the level of error
-introduced when operating without a camera calibration is acceptable and whether they should perform their own camera calibration.
+fixation target and to the gaze position on the poster (`glassesValidator.process.DataQualityType.pose_vidpos_ray`). For eye trackers
+for which no camera calibration is available, a homography transformation is used to determine gaze position on the poster and accuracy
+and precision are computed using an assumed viewing distance configured in the glassesValidator project's configuration file, along
+with the assumptions that the eye is located exactly in front of the center of the poster and that the poster is oriented perpendicularly
+to the line of sight (`glassesValidator.process.DataQualityType.viewpos_vidpos_homography`). As discussed in the "Assuming a fixed
+viewing distance" section of the glassesValidator paper (Niehorster et al., 2023), differences in computed values between these two
+modes are generally small. Nonetheless, it is up to the researcher to decide whether the level of error introduced when operating
+without a camera calibration is acceptable and whether they should perform their own camera calibration.
 
 ### Matching gaze data to fixation targets
 This section discusses how to decide which part of the gaze data constitutes a fixation on each of the fixation targets.
@@ -369,6 +378,7 @@ overview below.
 |`get_recording_info()`|<ol><li>[`source_dir`](#common-input-arguments)</li><li>`device`: `glassesValidator.utils.EyeTracker`</li></ol>|Determine if provided path contains a recording/recordings made with the specified eye tracker (`device`) and if so, get info about these recordings.|
 |`do_import()`|<ol><li>[`output_dir`](#common-input-arguments)</li><li>[`source_dir`](#common-input-arguments)</li><li>`device`: `glassesValidator.utils.EyeTracker`</li><li>[`rec_info`](#common-input-arguments)</li></ol>|Import the specified recording to a subdirectory of `output_dir`. Either `device` or `rec_info` must be specified. Does nothing if directory does not contain a recording made with the specified eye tracker.|
 |  |  |  |
+|`adhawk_mindlink()`|<ol><li>[`output_dir`](#common-input-arguments)</li><li>[`source_dir`](#common-input-arguments)</li><li>[`rec_info`](#common-input-arguments)</li></ol>|Import an AdHawk MindLink recording to a subdirectory of `output_dir`. Does nothing if directory does not contain an AdHawk MindLink recording. `rec_info` is optional.|
 |`pupil_core()`|<ol><li>[`output_dir`](#common-input-arguments)</li><li>[`source_dir`](#common-input-arguments)</li><li>[`rec_info`](#common-input-arguments)</li></ol>|Import a Pupil Core recording to a subdirectory of `output_dir`. Does nothing if directory does not contain a Pupil Core recording. `rec_info` is optional.|
 |`pupil_invisible()`|<ol><li>[`output_dir`](#common-input-arguments)</li><li>[`source_dir`](#common-input-arguments)</li><li>[`rec_info`](#common-input-arguments)</li></ol>|Import a Pupil Invisible recording to a subdirectory of `output_dir`. Does nothing if directory does not contain a Pupil Invisible recording. `rec_info` is optional.|
 |`pupil_neon()`|<ol><li>[`output_dir`](#common-input-arguments)</li><li>[`source_dir`](#common-input-arguments)</li><li>[`rec_info`](#common-input-arguments)</li></ol>|Import a Pupil Neon recording to a subdirectory of `output_dir`. Does nothing if directory does not contain a Pupil Neon recording. `rec_info` is optional.|
@@ -391,7 +401,7 @@ overview below.
 |`determine_fixation_intervals()`|<ol><li>[`working_dir`](#common-input-arguments)</li><li>[`config_dir`](#common-input-arguments)</li></ol>|Automatically determine using [I2MC](https://github.com/dcnieho/I2MC_Python) which episodes during the validation constitute looks to each fixation target.|
 |`calculate_data_quality()`|<ol><li>[`working_dir`](#common-input-arguments)</li><li>`dq_types`: `list` of `glassesValidator.process.DataQualityType`s to compute.</li><li>`allow_dq_fallback`: if `True`, fall back to most suitable data quality type if none of the types requested in `dq_types` are available. If False, a `RuntimeError` error is raised instead.</li><li>`include_data_loss`: if `True`, data loss is also included among the computed data quality metrics. **Note however** that this data loss is computed during the episode selected for each fixation target on the validation poster. This is **NOT** the data loss of the whole recording and thus not what you want to report in your paper.</li></ol>|Compute data quality for all fixation targets.|
 |  |  |  |
-|`DataQualityType`|`enum.Enum`<ul><li>`DataQualityType.viewpos_vidpos_homography`</li><li>`DataQualityType.pose_vidpos_homography`</li><li>`DataQualityType.pose_vidpos_ray`</li><li>`DataQualityType.pose_left_eye`</li><li>`DataQualityType.pose_right_eye`</li><li>`DataQualityType.pose_left_right_avg`</li></ul>|See [Advanced settings section in The GUI section](#advanced-settings) above.|
+|`DataQualityType`|`enum.Enum`<ul><li>`DataQualityType.viewpos_vidpos_homography`</li><li>`DataQualityType.pose_vidpos_homography`</li><li>`DataQualityType.pose_vidpos_ray`</li><li>`DataQualityType.pose_world_eye`</li><li>`DataQualityType.pose_left_eye`</li><li>`DataQualityType.pose_right_eye`</li><li>`DataQualityType.pose_left_right_avg`</li></ul>|See [Advanced settings section in The GUI section](#advanced-settings) above.|
 
 ### glassesValidator.utils
 |function|inputs/members|description|

@@ -241,6 +241,8 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
                         kwargs['dq_types'].append(DataQualityType.pose_vidpos_homography)
                     if globals.settings.dq_use_pose_vidpos_ray:
                         kwargs['dq_types'].append(DataQualityType.pose_vidpos_ray)
+                    if globals.settings.dq_use_pose_world_eye:
+                        kwargs['dq_types'].append(DataQualityType.pose_world_eye)
                     if globals.settings.dq_use_pose_left_eye:
                         kwargs['dq_types'].append(DataQualityType.pose_left_eye)
                     if globals.settings.dq_use_pose_right_eye:

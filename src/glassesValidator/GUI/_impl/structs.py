@@ -117,6 +117,7 @@ class Settings:
     dq_use_viewpos_vidpos_homography : bool
     dq_use_pose_vidpos_homography : bool
     dq_use_pose_vidpos_ray      : bool
+    dq_use_pose_world_eye       : bool
     dq_use_pose_left_eye        : bool
     dq_use_pose_right_eye       : bool
     dq_use_pose_left_right_avg  : bool

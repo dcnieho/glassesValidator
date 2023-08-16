@@ -40,7 +40,7 @@ def process(working_dir, config_dir=None):
     targets = {ID: poster.targets[ID].center for ID in poster.targets}   # get centers of targets
 
     # get types of data quality to compute
-    dq_types = [DataQualityType.viewpos_vidpos_homography,DataQualityType.pose_vidpos_homography,DataQualityType.pose_vidpos_ray,DataQualityType.pose_left_eye,DataQualityType.pose_right_eye]
+    dq_types = [DataQualityType.viewpos_vidpos_homography,DataQualityType.pose_vidpos_homography,DataQualityType.pose_vidpos_ray,DataQualityType.pose_world_eye,DataQualityType.pose_left_eye,DataQualityType.pose_right_eye]
 
     # for each frame during analysis interval, determine offset
     # (angle) of gaze (each eye) to each of the targets
@@ -54,6 +54,8 @@ def process(working_dir, config_dir=None):
         gaze3DRight      = np.vstack([s.rGaze3D          for v in gazesPosterToAnal.values() for s in v])
         gaze2DLeft       = np.vstack([s.lGaze2D          for v in gazesPosterToAnal.values() for s in v])
         gaze2DRight      = np.vstack([s.rGaze2D          for v in gazesPosterToAnal.values() for s in v])
+        gaze3DWorld      = np.vstack([s.wGaze3D          for v in gazesPosterToAnal.values() for s in v])
+        gaze2DWorld      = np.vstack([s.wGaze2D          for v in gazesPosterToAnal.values() for s in v])
         gaze3DRay        = np.vstack([s.gaze3DRay        for v in gazesPosterToAnal.values() for s in v])
         gaze2DRay        = np.vstack([s.gaze2DRay        for v in gazesPosterToAnal.values() for s in v])
         gaze3DHomography = np.vstack([s.gaze3DHomography for v in gazesPosterToAnal.values() for s in v])
@@ -65,11 +67,6 @@ def process(working_dir, config_dir=None):
         for s in range(oriLeft.shape[0]):
             if frameIdxs[s] not in poses:
                 continue
-            if poses[frameIdxs[s]].rVec is not None:
-                RPoster  = cv2.Rodrigues(poses[frameIdxs[s]].rVec)[0]
-                RtPoster = np.hstack((RPoster, poses[frameIdxs[s]].tVec.reshape(3,1)))
-            else:
-                RtPoster = np.full([3,4], np.nan)
 
             # all based on pose info
             for e in range(len(dq_types)):
@@ -86,6 +83,11 @@ def process(working_dir, config_dir=None):
                         ori         = np.zeros(3)
                         gaze        = gaze3DRay[s,:]
                         gazePoster  = gaze2DRay[s,:]
+                    case DataQualityType.pose_world_eye:
+                        # using 3D world gaze position, with respect to eye tracker reference frame's origin
+                        ori         = np.zeros(3)
+                        gaze        = gaze3DWorld[s,:]
+                        gazePoster  = gaze2DWorld[s,:]
                     case DataQualityType.pose_left_eye:
                         ori         = oriLeft[s,:]
                         gaze        = gaze3DLeft[s,:]
@@ -104,7 +106,7 @@ def process(working_dir, config_dir=None):
                         vTarget = np.array([targets[t][0], targets[t][1], distMm])
                     else:
                         # use 3D vectors known given pose information
-                        target  = np.matmul(RtPoster,np.array([targets[t][0], targets[t][1], 0., 1.]))
+                        target  = poses[frameIdxs[s]].worldToCam(np.array([targets[t][0], targets[t][1], 0.]))
 
                         # get vectors from origin to target and to gaze point
                         vGaze   = gaze  -ori
@@ -119,7 +121,7 @@ def process(working_dir, config_dir=None):
         # organize for output and write to file
         # 1. create cartesian product of sample index, eye and target indices
         # order of inputs needed to get expected output is a mystery to me, but screw it, works
-        dat = utils.cartesian_product(np.arange(5),np.arange(offset.shape[0]),[t for t in targets])
+        dat = utils.cartesian_product(np.arange(len(dq_types)),np.arange(offset.shape[0]),[t for t in targets])
         # 2. put into data frame
         df                      = pd.DataFrame()
         df['timestamp']         = ts[dat[:,1],0]

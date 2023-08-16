@@ -3,6 +3,7 @@ import pathlib
 
 from .. import utils as _utils
 
+from .adhawk_mindlink import preprocessData as adhawk_mindlink
 from .SeeTrue import preprocessData as SeeTrue
 from .SMI_ETG import preprocessData as SMI_ETG
 from .tobii_G2 import preprocessData as tobii_G2
@@ -47,6 +48,9 @@ def get_recording_info(source_dir: str | pathlib.Path, device: str | _utils.EyeT
             rec_info = getRecordingInfo(source_dir)
         case _utils.EyeTracker.Tobii_Glasses_3:
             from .tobii_G3 import getRecordingInfo
+            rec_info = getRecordingInfo(source_dir)
+        case _utils.EyeTracker.AdHawk_MindLink:
+            from .adhawk_mindlink import getRecordingInfo
             rec_info = getRecordingInfo(source_dir)
 
     if rec_info is not None and not isinstance(rec_info,list):
@@ -108,11 +112,13 @@ def do_import(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = N
             rec_info = tobii_G2(output_dir, source_dir, rec_info)
         case _utils.EyeTracker.Tobii_Glasses_3:
             rec_info = tobii_G3(output_dir, source_dir, rec_info)
+        case _utils.EyeTracker.AdHawk_MindLink:
+            rec_info = adhawk_mindlink(output_dir, source_dir, rec_info)
 
     if rec_info is not None and not isinstance(rec_info,list):
         rec_info = [rec_info]
     return rec_info
 
 
-__all__ = ['pupil_core','pupil_invisible','pupil_neon','SeeTrue','SMI_ETG','tobii_G2','tobii_G3',
+__all__ = ['pupil_core','pupil_invisible','pupil_neon','SeeTrue','SMI_ETG','tobii_G2','tobii_G3','adhawk_mindlink',
            'get_recording_info','do_import']
