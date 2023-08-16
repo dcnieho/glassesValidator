@@ -29,7 +29,8 @@ def do_process(working_dir: str | pathlib.Path, config_dir=None):
 class DataQualityType(Enum):
     viewpos_vidpos_homography   = auto()    # use homography to map gaze from video to poster, and viewing distance defined in config (combined with the assumptions that the viewing position (eye) is located directly in front of the poster's center and that the poster is oriented perpendicularly to the line of sight) to compute angular measures
     pose_vidpos_homography      = auto()    # use homography to map gaze from video to poster, and pose information w.r.t. poster to compute angular measures
-    pose_vidpos_ray             = auto()    # use camera calibration to map gaze postion in scene video to cyclopean gaze vector, and pose information w.r.t. poster to compute angular measures
+    pose_vidpos_ray             = auto()    # use camera calibration to map gaze postion on scene video to cyclopean gaze vector, and pose information w.r.t. poster to compute angular measures
+    pose_world_eye              = auto()    # use provided gaze position in world (often a binocular gaze point), and pose information w.r.t. poster to compute angular measures
     pose_left_eye               = auto()    # use provided left eye gaze vector, and pose information w.r.t. poster to compute angular measures
     pose_right_eye              = auto()    # use provided right eye gaze vector, and pose information w.r.t. poster to compute angular measures
     pose_left_right_avg         = auto()    # report average of left (pose_left_eye) and right (pose_right_eye) eye angular values
@@ -63,6 +64,15 @@ def get_DataQualityType_explanation(dq: DataQualityType):
                    "video into a direction vector, and determine gaze position on " \
                    "the validation poster by intersecting this vector with the " \
                    "poster. Then, use the determined pose of the scene camera " \
+                   "(requires a calibrated camera) to compute data quality " \
+                   "measures in degrees with respect to the scene camera."
+        case DataQualityType.pose_world_eye:
+            return "World gaze position + pose", \
+                   "Use the gaze position in the world provided by the eye tracker " \
+                   "(often a binocular gaze point) to determine gaze position on the " \
+                   "validation poster by turning it into a direction vector with respect " \
+                   "to the scene camera and intersecting this vector with the poster. " \
+                   "Then, use the determined pose of the scene camera " \
                    "(requires a calibrated camera) to compute data quality " \
                    "measures in degrees with respect to the scene camera."
         case DataQualityType.pose_left_eye:

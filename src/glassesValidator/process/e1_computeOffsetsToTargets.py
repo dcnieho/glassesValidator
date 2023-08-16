@@ -40,7 +40,7 @@ def process(working_dir, config_dir=None):
     targets = {ID: poster.targets[ID].center for ID in poster.targets}   # get centers of targets
 
     # get types of data quality to compute
-    dq_types = [DataQualityType.viewpos_vidpos_homography,DataQualityType.pose_vidpos_homography,DataQualityType.pose_vidpos_ray,DataQualityType.pose_left_eye,DataQualityType.pose_right_eye]
+    dq_types = [DataQualityType.viewpos_vidpos_homography,DataQualityType.pose_vidpos_homography,DataQualityType.pose_vidpos_ray,DataQualityType.pose_world_eye,DataQualityType.pose_left_eye,DataQualityType.pose_right_eye]
 
     # for each frame during analysis interval, determine offset
     # (angle) of gaze (each eye) to each of the targets
@@ -54,6 +54,8 @@ def process(working_dir, config_dir=None):
         gaze3DRight      = np.vstack([s.rGaze3D          for v in gazesPosterToAnal.values() for s in v])
         gaze2DLeft       = np.vstack([s.lGaze2D          for v in gazesPosterToAnal.values() for s in v])
         gaze2DRight      = np.vstack([s.rGaze2D          for v in gazesPosterToAnal.values() for s in v])
+        gaze3DWorld      = np.vstack([s.wGaze3D          for v in gazesPosterToAnal.values() for s in v])
+        gaze2DWorld      = np.vstack([s.wGaze2D          for v in gazesPosterToAnal.values() for s in v])
         gaze3DRay        = np.vstack([s.gaze3DRay        for v in gazesPosterToAnal.values() for s in v])
         gaze2DRay        = np.vstack([s.gaze2DRay        for v in gazesPosterToAnal.values() for s in v])
         gaze3DHomography = np.vstack([s.gaze3DHomography for v in gazesPosterToAnal.values() for s in v])
@@ -81,6 +83,11 @@ def process(working_dir, config_dir=None):
                         ori         = np.zeros(3)
                         gaze        = gaze3DRay[s,:]
                         gazePoster  = gaze2DRay[s,:]
+                    case DataQualityType.pose_world_eye:
+                        # using 3D world gaze position, with respect to eye tracker reference frame's origin
+                        ori         = np.zeros(3)
+                        gaze        = gaze3DWorld[s,:]
+                        gazePoster  = gaze2DWorld[s,:]
                     case DataQualityType.pose_left_eye:
                         ori         = oriLeft[s,:]
                         gaze        = gaze3DLeft[s,:]
