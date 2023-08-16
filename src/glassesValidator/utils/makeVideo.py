@@ -8,9 +8,16 @@ import pathlib
 
 import cv2
 import numpy as np
+import threading
+
+import sys
+isMacOS = sys.platform.startswith("darwin")
+if isMacOS:
+    import AppKit
 
 from .. import config
 from .. import utils
+from ..process._image_gui import GUI, generic_tooltip
 
 from ffpyplayer.writer import MediaWriter
 from ffpyplayer.pic import Image
@@ -18,6 +25,7 @@ import ffpyplayer.tools
 from fractions import Fraction
 
 
+stopAllProcessing = False
 def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio_to_poster_video=False, show_visualization=False):
     # if show_rejected_markers, rejected ArUco marker candidates are also drawn on the video. Possibly useful for debug
     # if add_audio_to_poster_video, audio is added to poster video, not only to the scene video
@@ -28,12 +36,30 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
 
     print('processing: {}'.format(working_dir.name))
 
+    if show_visualization:
+        # We run processing in a separate thread (GUI needs to be on the main thread for OSX, see https://github.com/pthom/hello_imgui/issues/33)
+        gui = GUI(use_thread = False)
+        key_tooltip = {
+            "q": "Quit",
+            'n': 'Next'
+        }
+        gui.set_interesting_keys(list(key_tooltip.keys()))
+        gui.register_draw_callback('status',lambda: generic_tooltip(key_tooltip))
+        main_win_id = gui.add_window(working_dir.name)
+
+        proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, main_win_id, show_rejected_markers, add_audio_to_poster_video, show_visualization))
+        proc_thread.start()
+        gui.start()
+        proc_thread.join()
+    else:
+        do_the_work(working_dir, config_dir, None, None, show_rejected_markers, add_audio_to_poster_video, show_visualization)
+    return stopAllProcessing
+
+def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers, add_audio_to_poster_video, show_visualization):
+    global stopAllProcessing
+
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
-
-    if show_visualization:
-        cv2.namedWindow("scene camera")
-        cv2.namedWindow("poster")
 
     # open input video file, query it for size
     inVideo = working_dir / 'worldCamera.mp4'
@@ -90,6 +116,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
     armLength = poster.markerSize/2 # arms of axis are half a marker long
     subPixelFac = 8   # for sub-pixel positioning
     stopAllProcessing = False
+    hasRequestedFocus = not isMacOS # False only if on Mac OS, else True since its a no-op
     while True:
         # process frame-by-frame
         ret, frame = vidIn.read()
@@ -184,15 +211,24 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
 
 
         if show_visualization:
-            cv2.imshow('scene camera',frame)
-            cv2.imshow('poster',refImg)
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
+            gui.update_image(frame, frame_ts/1000., frame_idx, window_id = main_win_id)
+
+            if not hasRequestedFocus:
+                AppKit.NSApplication.sharedApplication().activateIgnoringOtherApps_(1)
+                hasRequestedFocus = True
+
+            keys = gui.get_key_presses()
+            if 'q' in keys:
                 # quit fully
                 stopAllProcessing = True
                 break
-            if key == ord('n'):
+            if 'n' in keys:
                 # goto next
+                break
+
+            closed, = gui.get_state()
+            if closed:
+                stopAllProcessing = True
                 break
         elif (frame_idx+1)%100==0:
             print('  frame {}'.format(frame_idx+1))
@@ -203,7 +239,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
     vidOutScene.close()
     vidOutPoster.close()
     if show_visualization:
-        cv2.destroyAllWindows()
+        gui.stop()
 
     # if ffmpeg is on path, add audio to scene and optionally poster video
     if shutil.which('ffmpeg') is not None:
