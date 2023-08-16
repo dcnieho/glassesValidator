@@ -114,7 +114,7 @@ def process(working_dir, config_dir=None):
         # organize for output and write to file
         # 1. create cartesian product of sample index, eye and target indices
         # order of inputs needed to get expected output is a mystery to me, but screw it, works
-        dat = utils.cartesian_product(np.arange(5),np.arange(offset.shape[0]),[t for t in targets])
+        dat = utils.cartesian_product(np.arange(len(dq_types)),np.arange(offset.shape[0]),[t for t in targets])
         # 2. put into data frame
         df                      = pd.DataFrame()
         df['timestamp']         = ts[dat[:,1],0]
