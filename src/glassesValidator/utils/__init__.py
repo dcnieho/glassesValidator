@@ -304,7 +304,8 @@ def cartesian_product(*arrays):
 
 def getFrameTimestampsFromVideo(vid_file):
     """
-    Parse the supplied video, return an array of frame timestamps
+    Parse the supplied video, return an array of frame timestamps. If there are multiple video streams in the video file,
+    we assume the first stream is the correct stream
     """
     if vid_file.suffix in ['.mp4', '.mov']:
         # parse mp4 file
@@ -610,8 +611,8 @@ def drawArucoDetectedMarkers(img,corners,ids,borderColor=(0,255,0), drawIDs = Tr
 class Gaze:
     def __init__(self, ts, vid2D, world3D=None, lGazeVec=None, lGazeOrigin=None, rGazeVec=None, rGazeOrigin=None):
         self.ts = ts
-        self.vid2D = vid2D
-        self.world3D = world3D
+        self.vid2D = vid2D              # gaze point on the scene video
+        self.world3D = world3D          # gaze point in the world (often binocular gaze point)
         self.lGazeVec= lGazeVec
         self.lGazeOrigin = lGazeOrigin
         self.rGazeVec= rGazeVec
@@ -873,16 +874,16 @@ class GazePoster:
         # 2D gaze is on the poster
         self.ts = ts
 
-        # in camera space
-        self.gaze3DRay        = gaze3DRay           # 3D gaze point on plane (3D gaze point <-> camera ray intersected with plane)
+        # in camera space (3D coordinates)
+        self.gaze3DRay        = gaze3DRay           # video gaze position on plane (camera ray intersected with plane)
         self.gaze3DHomography = gaze3DHomography    # gaze2DHomography in camera space
         self.lGazeOrigin      = lGazeOrigin
         self.lGaze3D          = lGaze3D             # 3D gaze point on plane ( left eye gaze vector intersected with plane)
         self.rGazeOrigin      = rGazeOrigin
         self.rGaze3D          = rGaze3D             # 3D gaze point on plane (right eye gaze vector intersected with plane)
 
-        # in poster space
-        self.gaze2DRay        = gaze2DRay           # gaze3DRay in poster space
+        # in poster space (2D coordinates)
+        self.gaze2DRay        = gaze2DRay           # Video gaze point mapped to poster by turning into direction ray and intersecting with poster
         self.gaze2DHomography = gaze2DHomography    # Video gaze point directly mapped to poster through homography transformation
         self.lGaze2D          = lGaze2D             # lGaze3D in poster space
         self.rGaze2D          = rGaze2D             # rGaze3D in poster space
