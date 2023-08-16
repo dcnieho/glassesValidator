@@ -1230,7 +1230,7 @@ def gazeToPlane(gaze,posterPose,cameraRotation,cameraPosition, cameraMatrix=None
     for gVec,gOri,attr in zip(gazeVecs,gazeOrigins,attrs):
         if gVec is None or gOri is None:
             continue
-        # get gaze vector and point on vector (pupil center) ->
+        # get gaze vector and point on vector (origin, e.g. pupil center) ->
         # transform from ET data coordinate frame into camera coordinate frame
         gVec    = np.matmul(RCam ,          gVec    )
         gOri    = np.matmul(RtCam,np.append(gOri,1.))
@@ -1241,12 +1241,8 @@ def gazeToPlane(gaze,posterPose,cameraRotation,cameraPosition, cameraMatrix=None
         setattr(gazePoster,attr[1],gPoster)
 
         # transform intersection with poster from camera space to poster space
-        if not math.isnan(gPoster[0]):
-            (x,y,z)  = posterPose.camToWorld(gPoster)  # z should be very close to zero
-            pgPoster = [x, y]
-        else:
-            pgPoster = [np.nan, np.nan]
-        setattr(gazePoster,attr[2],pgPoster)
+        (x,y,z)  = posterPose.camToWorld(gPoster)  # z should be very close to zero
+        setattr(gazePoster,attr[2],[x, y])
 
     return gazePoster
 
