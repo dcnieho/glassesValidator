@@ -115,6 +115,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
 
                     objP, imgP = arucoBoard.matchImagePoints(corners, ids)
                     pose.poseOk, pose.rVec, pose.tVec = cv2.solvePnP(objP, imgP, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
+                    pose.nMarkers = int(objP.shape[0]/4)
 
                     # draw axis indicating poster pose (origin and orientation)
                     if pose.poseOk:
@@ -170,7 +171,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
         frameClr = (0,0,255) if analysisIntervalIdx is not None else (0,0,0)
 
         frame_ts  = i2t.get(frame_idx)
-        text = '%6.3f [%6d]' % (frame_ts/1000.,frame_idx)
+        text = '%6.3f [%6d] (%s markers)' % (frame_ts/1000.,frame_idx, pose.nMarkers)
         textSize,baseline = cv2.getTextSize(text,cv2.FONT_HERSHEY_PLAIN,2,2)
         cv2.rectangle(frame,(0,int(height)),(textSize[0]+2,int(height)-textSize[1]-baseline-5), frameClr, -1)
         cv2.putText(frame, (text), (2, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)

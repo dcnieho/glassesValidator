@@ -1011,11 +1011,12 @@ class GazePoster:
             reference.draw(img, self.gaze2DRay[0],self.gaze2DRay[1], subPixelFac, (255,255,0), 3)
 
 class PosterPose:
-    def __init__(self, frameIdx, poseOk=False, rVec=None, tVec=None, hMat=None):
+    def __init__(self, frameIdx, poseOk=False, nMarkers=0, rVec=None, tVec=None, hMat=None):
         self.frameIdx   = frameIdx
 
         # pose
         self.poseOk     = poseOk    # Output of cv2.SolvePnP(), whether successful or not
+        self.nMarkers   = nMarkers  # number of Aruco markers this pose estimate is based on
         self.rVec       = rVec
         self.tVec       = tVec
 
@@ -1032,15 +1033,16 @@ class PosterPose:
 
     @staticmethod
     def getWriteHeader():
-        header = ['frame_idx']
+        header = ['frame_idx','poseOk','poseNMarker']
         header.extend(getXYZLabels(['poseRvec','poseTvec']))
         header.extend(['homography[%d,%d]' % (r,c) for r in range(3) for c in range(3)])
         return header
 
     @staticmethod
     def getMissingWriteData():
-        dat = [0]
-        return dat.extend([math.nan for x in range(15)])
+        dat = [False,0]
+        dat.extend([math.nan for x in range(15)])
+        return dat
 
     def getWriteData(self):
         writeData = [self.frameIdx]
@@ -1048,6 +1050,7 @@ class PosterPose:
             writeData.extend(self.getMissingWriteData())
         else:
             # in camera space
+            writeData.extend([True, self.nMarkers])
             writeData.extend(allNanIfNone(self.rVec,3).flatten())
             writeData.extend(allNanIfNone(self.tVec,3).flatten())
             writeData.extend(allNanIfNone(self.hMat,9).flatten())
@@ -1072,11 +1075,11 @@ class PosterPose:
                     continue
 
             # get all values (None if all nan)
-            args = tuple(noneIfAnyNan(row[c].to_numpy()) for c in (rCols,tCols,hCols))
+            args = tuple(noneIfAnyNan(row[c].to_numpy().astype('float')) for c in (rCols,tCols,hCols))
 
             # insert if any non-None
             if not np.all([x is None for x in args]):   # check for not all isNone
-                poses[frame_idx] = PosterPose(frame_idx,True,*args)
+                poses[frame_idx] = PosterPose(frame_idx,bool(row['poseOk']),int(row['poseNMarker']),*args)
 
         return poses
 
