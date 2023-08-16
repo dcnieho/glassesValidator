@@ -65,11 +65,6 @@ def process(working_dir, config_dir=None):
         for s in range(oriLeft.shape[0]):
             if frameIdxs[s] not in poses:
                 continue
-            if poses[frameIdxs[s]].rVec is not None:
-                RPoster  = cv2.Rodrigues(poses[frameIdxs[s]].rVec)[0]
-                RtPoster = np.hstack((RPoster, poses[frameIdxs[s]].tVec.reshape(3,1)))
-            else:
-                RtPoster = np.full([3,4], np.nan)
 
             # all based on pose info
             for e in range(len(dq_types)):
@@ -104,7 +99,7 @@ def process(working_dir, config_dir=None):
                         vTarget = np.array([targets[t][0], targets[t][1], distMm])
                     else:
                         # use 3D vectors known given pose information
-                        target  = np.matmul(RtPoster,np.array([targets[t][0], targets[t][1], 0., 1.]))
+                        target  = poses[frameIdxs[s]].worldToCam(np.array([targets[t][0], targets[t][1], 0.]))
 
                         # get vectors from origin to target and to gaze point
                         vGaze   = gaze  -ori
