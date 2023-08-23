@@ -139,8 +139,9 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
                             cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
 
                     objP, imgP = arucoBoard.matchImagePoints(corners, ids)
-                    pose.poseOk, pose.rVec, pose.tVec = cv2.solvePnP(objP, imgP, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
-                    pose.nMarkers = int(objP.shape[0]/4)
+                    pose.nMarkers = 0 if objP is None else int(objP.shape[0]/4)
+                    if pose.nMarkers>0:
+                        pose.poseOk, pose.rVec, pose.tVec = cv2.solvePnP(objP, imgP, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
 
                     # draw pose if wanted
                     if pose.poseOk and show_visualization:
