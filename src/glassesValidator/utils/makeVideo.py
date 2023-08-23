@@ -71,6 +71,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     width  = vidIn.get(cv2.CAP_PROP_FRAME_WIDTH)
     height = vidIn.get(cv2.CAP_PROP_FRAME_HEIGHT)
     fps    = vidIn.get(cv2.CAP_PROP_FPS)
+    nframes= float(vidIn.get(cv2.CAP_PROP_FRAME_COUNT))
 
     # get info about markers on our poster
     poster      = utils.Poster(config_dir, validationSetup)
@@ -120,7 +121,8 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     while True:
         # process frame-by-frame
         ret, frame = vidIn.read()
-        if not ret:
+        # check if we're done. Can't trust ret==False to indicate we're at end of video, as it may also return false for some frames when video has errors in the middle that we can just read past
+        if not ret and (frame_idx==0 or frame_idx/nframes>.99):
             break
         refImg = poster.getImgCopy()
 
