@@ -46,6 +46,9 @@ def process(working_dir, config_dir=None):
     # (angle) of gaze (each eye) to each of the targets
     for ival in range(0,len(analyzeFrames)//2):
         gazesPosterToAnal= {k:v for (k,v) in gazesPoster.items() if k>=analyzeFrames[ival*2] and k<=analyzeFrames[ival*2+1]}
+        if not gazesPosterToAnal:
+            raise RuntimeError(f'There is no gaze data on the poster for validation interval {ival+1} (frames {analyzeFrames[ival*2]} to {analyzeFrames[ival*2+1]}), cannot proceed. This may be because there was no gaze during this interval or because the poster was not detected.')
+
         frameIdxs        =           [k                for k,v in gazesPosterToAnal.items()  for s in v]
         ts               = np.vstack([s.ts               for v in gazesPosterToAnal.values() for s in v])
         oriLeft          = np.vstack([s.lGazeOrigin      for v in gazesPosterToAnal.values() for s in v])
