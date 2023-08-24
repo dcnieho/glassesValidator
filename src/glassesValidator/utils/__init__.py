@@ -125,7 +125,7 @@ def get_task_name_friendly(name: str | Task):
         case 'Imported':
             return 'Import'
         case 'Coded':
-            return 'Code'
+            return 'Code Intervals'
         case 'Markers_Detected':
             return 'Detect Markers'
         case 'Gaze_Tranformed_To_Poster':
