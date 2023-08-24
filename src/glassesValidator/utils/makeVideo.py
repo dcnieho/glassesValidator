@@ -113,7 +113,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     if analyzeFrames is None:
         analyzeFrames = []
 
-    frame_idx = 0
+    frame_idx = -1
     armLength = poster.markerSize/2 # arms of axis are half a marker long
     subPixelFac = 8   # for sub-pixel positioning
     stopAllProcessing = False
@@ -121,9 +121,16 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     while True:
         # process frame-by-frame
         ret, frame = vidIn.read()
+        frame_idx += 1
+
         # check if we're done. Can't trust ret==False to indicate we're at end of video, as it may also return false for some frames when video has errors in the middle that we can just read past
         if not ret and (frame_idx==0 or frame_idx/nframes>.99):
             break
+        if not show_visualization and frame_idx%100==0:
+            print('  frame {}'.format(frame_idx))
+        if not ret or frame is None:
+            # we don't have a valid frame, use a fully black frame
+            frame = np.zeros((int(height),int(width),3), np.uint8)   # black image
         refImg = poster.getImgCopy()
 
         # detect markers, undistort
@@ -233,10 +240,6 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
             if closed:
                 stopAllProcessing = True
                 break
-        elif (frame_idx+1)%100==0:
-            print('  frame {}'.format(frame_idx+1))
-
-        frame_idx += 1
 
     vidIn.release()
     vidOutScene.close()

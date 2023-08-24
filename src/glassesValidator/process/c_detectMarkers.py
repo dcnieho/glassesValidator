@@ -95,10 +95,16 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
         # process frame-by-frame
         ret, frame = cap.read()
         frame_idx += 1
+
         # check if we're done. Can't trust ret==False to indicate we're at end of video, as it may also return false for some frames when video has errors in the middle that we can just read past
         if (not ret and (frame_idx==0 or frame_idx/nframes>.99)) or (hasAnalyzeFrames and frame_idx > analyzeFrames[-1]):
             # done
             break
+        if frame_idx%100==0:
+            print('  frame {}'.format(frame_idx))
+        if not ret or frame is None:
+            # we don't have a valid frame, continue to next
+            continue
 
         if show_visualization:
             keys = gui.get_key_presses()
@@ -191,9 +197,6 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
             if closed:
                 stopAllProcessing = True
                 break
-
-        if frame_idx%100==0:
-            print('  frame {}'.format(frame_idx))
 
     csv_file.close()
     cap.release()
