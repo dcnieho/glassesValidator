@@ -724,8 +724,8 @@ class MainGUI():
                 if job.task==Task.Imported:
                     # remove working directory if this was an import task
                     async_thread.run(callbacks.remove_recording_working_dir(rec, job.project_path))
-                else:
-                    # reset status of this aborted task
+                elif job.task!=Task.Make_Video:
+                    # reset status of this aborted task (unless exporting video, that is optional not encoded in the task status file)
                     update_recording_status(job.project_path/rec.proc_directory_name, job.task, Status.Not_Started)
 
             # special case: the ended task was a coding task, we have further coding tasks to enqueue, and there are none currently enqueued
