@@ -143,6 +143,33 @@ def get_task_name_friendly(name: str | Task):
 task_names = [x.value for x in Task]
 task_names_friendly = [get_task_name_friendly(x) for x in Task]   # non verb version
 
+def get_next_task(task: Task) -> Task:
+    match task:
+        # stage 1
+        case Task.Not_Imported:
+            next_task = Task.Imported
+
+        # stage 2
+        case Task.Imported:
+            next_task = Task.Coded
+
+        # stage 3 substeps
+        case Task.Coded:
+            next_task = Task.Markers_Detected
+        case Task.Markers_Detected:
+            next_task = Task.Gaze_Tranformed_To_Poster
+        case Task.Gaze_Tranformed_To_Poster:
+            next_task = Task.Target_Offsets_Computed
+        case Task.Target_Offsets_Computed:
+            next_task = Task.Fixation_Intervals_Determined
+        case Task.Fixation_Intervals_Determined:
+            next_task = Task.Data_Quality_Calculated
+
+        # other, includes Task.Data_Quality_Calculated (all already done), nothing to do if no specific task specified:
+        case _:
+            next_task = None
+    return next_task
+
 class Status(AutoName):
     Not_Started     = auto()
     Running         = auto()

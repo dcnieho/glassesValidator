@@ -9,7 +9,7 @@ import pandas as pd
 
 from .structs import JobDescription, MsgBox, Os
 from . import globals, async_thread, db, gui, msgbox, process_pool, utils
-from ...utils import EyeTracker, Recording, Task, eye_tracker_names, make_fs_dirname
+from ...utils import EyeTracker, Recording, Task, eye_tracker_names, get_next_task, make_fs_dirname
 from ... import config, preprocess, process, utils as gv_utils
 from ...process import DataQualityType, _collect_data_quality, _summarize_and_store_data_quality
 
@@ -186,30 +186,7 @@ def add_recordings(paths: list[pathlib.Path]):
 async def process_recording(rec: Recording, task: Task=None, chain=True):
     # find what is the next task to do for this recording
     if task is None:
-        match rec.task:
-            # stage 1
-            case Task.Not_Imported:
-                task = Task.Imported
-
-            # stage 2
-            case Task.Imported:
-                task = Task.Coded
-
-            # stage 3 substeps
-            case Task.Coded:
-                task = Task.Markers_Detected
-            case Task.Markers_Detected:
-                task = Task.Gaze_Tranformed_To_Poster
-            case Task.Gaze_Tranformed_To_Poster:
-                task = Task.Target_Offsets_Computed
-            case Task.Target_Offsets_Computed:
-                task = Task.Fixation_Intervals_Determined
-            case Task.Fixation_Intervals_Determined:
-                task = Task.Data_Quality_Calculated
-
-            # other, includes Task.Data_Quality_Calculated (all already done), nothing to do if no specific task specified:
-            case _:
-                task = Task.Unknown
+        task = get_next_task(rec.task)
 
     # get function for task
     working_dir = globals.project_path / rec.proc_directory_name
@@ -256,7 +233,7 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
             if globals.settings.config_dir and (config_dir := globals.project_path / globals.settings.config_dir).is_dir() and task!=Task.Data_Quality_Calculated:
                 kwargs['config_dir'] = config_dir
 
-        # other, includes Task.Unknown (all already done, see above), nothing to do if no specific task specified:
+        # other, includes Task.Unknown and None (occurs when all already done), nothing to do if no specific task specified:
         case _:
             fun = None  # nothing to do
 

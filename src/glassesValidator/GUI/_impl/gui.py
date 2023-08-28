@@ -22,7 +22,7 @@ import importlib.resources
 from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, SortSpec, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
 from . import globals, async_thread, callbacks, db, filepicker, imagehelper, msgbox, process_pool, utils
 from .. import _general_imgui
-from ...utils import EyeTracker, Recording, Task, Status, hex_to_rgba_0_1, eye_tracker_names, get_task_name_friendly, task_names, update_recording_status
+from ...utils import EyeTracker, Recording, Task, Status, hex_to_rgba_0_1, eye_tracker_names, get_task_name_friendly, get_next_task, task_names, update_recording_status
 from ...process import DataQualityType, get_DataQualityType_explanation
 
 imgui.io = None
@@ -693,22 +693,8 @@ class MainGUI():
                         async_thread.run(db.update_recording(rec, "task"))
                     # start next step, if wanted
                     if job.should_chain_next:
-                        match job.task:
-                            case Task.Coded:
-                                if globals.settings.continue_process_after_code:
-                                    task = Task.Markers_Detected
-                                else:
-                                    task = None
-                            case Task.Markers_Detected:
-                                task = Task.Gaze_Tranformed_To_Poster
-                            case Task.Gaze_Tranformed_To_Poster:
-                                task = Task.Target_Offsets_Computed
-                            case Task.Target_Offsets_Computed:
-                                task = Task.Fixation_Intervals_Determined
-                            case Task.Fixation_Intervals_Determined:
-                                task = Task.Data_Quality_Calculated
-                            case _: # this includes when fully done (job.task==Task.Data_Quality_Calculated)
-                                task = None
+                        if (job.task==Task.Coded and globals.settings.continue_process_after_code) or job.task!=Task.Imported:
+                            task = get_next_task(job.task)
                         if task:
                             async_thread.run(callbacks.process_recordings([rec_id], task=task, chain=True))
                 case ProcessState.Failed:
