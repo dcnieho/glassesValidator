@@ -200,7 +200,12 @@ def get_recording_status(path: str | pathlib.Path, create_if_missing = False):
 def update_recording_status(path: str | pathlib.Path, task: Task, status: Status):
     rec_status = get_recording_status(path)
 
+    # set status of indicated task
     rec_status[str(task)] = status
+    # set all later tasks to not started as they would have to be rerun when an earlier tasks is rerun
+    next_task = task
+    while (next_task:=get_next_task(next_task)) is not None:
+        rec_status[str(next_task)] = Status.Not_Started
 
     file = path / _status_file
     with open(file, 'w') as f:
