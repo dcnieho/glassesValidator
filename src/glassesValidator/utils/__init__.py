@@ -196,6 +196,14 @@ def get_recording_status(path: str | pathlib.Path, create_if_missing = False):
     with open(file, 'r') as f:
         return json.load(f, object_hook=json_reconstitute)
 
+def get_last_finished_step(status: typing.Dict[str,Status]):
+    last = Task.Not_Imported
+    while (next_task:=get_next_task(last)) is not None:
+        if status[str(next_task)] != Status.Finished:
+            break
+        last = next_task
+
+    return last
 
 def update_recording_status(path: str | pathlib.Path, task: Task, status: Status):
     rec_status = get_recording_status(path)

@@ -22,7 +22,7 @@ import importlib.resources
 from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, SortSpec, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
 from . import globals, async_thread, callbacks, db, filepicker, imagehelper, msgbox, process_pool, utils
 from .. import _general_imgui
-from ...utils import EyeTracker, Recording, Task, Status, hex_to_rgba_0_1, eye_tracker_names, get_task_name_friendly, get_next_task, task_names, update_recording_status
+from ...utils import EyeTracker, Recording, Task, Status, hex_to_rgba_0_1, eye_tracker_names, get_task_name_friendly, get_next_task, task_names, get_last_finished_step, get_recording_status, update_recording_status
 from ...process import DataQualityType, get_DataQualityType_explanation
 
 imgui.io = None
@@ -1061,9 +1061,17 @@ class MainGUI():
             globals.project_path = None if self.project_to_load=="" else self.project_to_load
             self.project_to_load = None
         db.setup()
+        self.update_recordings()
         self.init_imgui_glfw(is_reload=is_reload)
         if globals.project_path is not None:
             self.recording_list = RecordingTable(globals.recordings, globals.selected_recordings)
+
+    def update_recordings(self):
+        for recid in globals.recordings:
+            if globals.recordings[recid].task not in [Task.Not_Imported, Task.Unknown]:
+                last_task = get_last_finished_step(get_recording_status(globals.project_path / globals.recordings[recid].proc_directory_name))
+                globals.recordings[recid].task = last_task
+                async_thread.run(db.update_recording(globals.recordings[recid], "task"))
 
     def run(self):
         globals.jobs = {}
