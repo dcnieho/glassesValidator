@@ -37,7 +37,7 @@ jobs:
       # === BUILD ===
 
       - name: "Clone repo"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
         with:
           path: "./src/"
 
@@ -111,7 +111,7 @@ jobs:
     steps:
 
     - name: Clone repo
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup python
       uses: actions/setup-python@v4
