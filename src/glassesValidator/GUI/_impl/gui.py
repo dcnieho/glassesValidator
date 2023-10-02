@@ -207,7 +207,7 @@ class RecordingTable():
                         imgui.push_style_color(imgui.Col_.header_active , (0., 0., 0., 0.))
                         imgui.push_style_color(imgui.Col_.header        , (0., 0., 0., 0.))
                         imgui.push_style_color(imgui.Col_.header_hovered, (0., 0., 0., 0.))
-                        selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox{extra}", self.selected_recordings[id], flags=imgui.SelectableFlags_.span_all_columns|imgui.SelectableFlags_.allow_item_overlap|imgui.internal.SelectableFlagsPrivate_.select_on_click, size=(0,frame_height+cell_padding_y))
+                        selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox{extra}", self.selected_recordings[id], flags=imgui.SelectableFlags_.span_all_columns|imgui.SelectableFlags_.allow_overlap|imgui.internal.SelectableFlagsPrivate_.select_on_click, size=(0,frame_height+cell_padding_y))
                         # instead override table row background color
                         if selectable_out:
                             imgui.table_set_bg_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(style_selected_row))
