@@ -104,7 +104,7 @@ def _collect_data_quality(rec_dirs: list[str | pathlib.Path]):
     rec_dirs = [pathlib.Path(rec) for rec in rec_dirs]
     df = pd.concat((pd.read_csv(rec/'dataQuality.tsv', delimiter='\t').assign(recording=rec.name) for rec in rec_dirs), ignore_index=True)
     if df.empty:
-        return
+        return None, None, None
     # set indices
     df = df.set_index(['recording','marker_interval','type','target'])
     # change type index into enum
