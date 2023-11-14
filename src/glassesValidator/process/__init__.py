@@ -101,8 +101,11 @@ def get_DataQualityType_explanation(dq: DataQualityType):
 
 def _collect_data_quality(rec_dirs: list[str | pathlib.Path]):
     # 1. collect all data quality from the selected
-    rec_dirs = [pathlib.Path(rec) for rec in rec_dirs]
-    df = pd.concat((pd.read_csv(rec/'dataQuality.tsv', delimiter='\t').assign(recording=rec.name) for rec in rec_dirs), ignore_index=True)
+    rec_files = [pathlib.Path(rec)/'dataQuality.tsv' for rec in rec_dirs]
+    rec_files = [f for f in rec_files if f.is_file()]
+    if not rec_files:
+        return None, None, None
+    df = pd.concat((pd.read_csv(rec, delimiter='\t').assign(recording=rec.parent.name) for rec in rec_files), ignore_index=True)
     if df.empty:
         return None, None, None
     # set indices
