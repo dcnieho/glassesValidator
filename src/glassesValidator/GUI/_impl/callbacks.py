@@ -271,11 +271,14 @@ async def export_data_quality(ids: list[int]):
     # 1. collect all data quality from the selected recordings
     rec_dirs = [globals.project_path / globals.recordings[id].proc_directory_name for id in ids]
     df, default_dq_type, targets = _collect_data_quality(rec_dirs)
+    if df is None:
+        utils.push_popup(msgbox.msgbox, "Export error", "There is no data quality for the selected recordings. Did you code any validation intervals (see manual)?", MsgBox.error)
+        return
 
     # 2. prep popup
     pop_data = {}
 
-    # data wuality type
+    # data quality type
     typeIdx = df.index.names.index('type')
     pop_data['dq_types'] = sorted(list(df.index.levels[typeIdx]), key=lambda dq: dq.value)
     pop_data['dq_types_sel'] = [False for i in pop_data['dq_types']]
