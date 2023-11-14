@@ -58,12 +58,20 @@ below.
 4. To start calculating accuracy and precision, the researcher imports the recordings for which data quality should be determined into a glassesValidator project
    (after any [preprocessing if required](#required-preprocessing-outside-glassesvalidator), for instance by drag-dropping a folder with recordings onto the
    glassesValidator GUI window and selecting the import action.
-5. Once imported, the researcher indicates which episode(s) of each recording contain a validation using a graphical interface included with glassesValidator.
+5. Once imported, the researcher indicates which episode(s) of each recording contain a validation using a graphical interface included with glassesValidator. When performing this step, a GUI appears for each recording, playing back the scene video with gaze overlaid. To code one or multiple validation intervals, do the following:
+  - The scene video will start playing automatically. You can perform action in the GUI using keypresses (make sure scene video GUI has focus so that the keypresses are received). All actions you can perform are listed by hovering your mouse over the `(?)` icon in the bottom right of the GUI.
+  - Seek in the video to the start of the validation interval. To skip forward one second in the video, press `L`. For 10 seconds, press `shift+L`. To go one or ten seconds backward in the video, press `H` or `shift+H`.
+  - Pause playback, and use the `J` and `K` keys to go forward and backward by one frame to precisely locate where the observer starts fixating the first validation target.
+  - Press `F` to mark this frame as the start of a validation interval.
+  - Seek in the video to the end of the validation interval. Pressing `P` restarts playback of the video. Once at the end of the validation interval, pause again and again use `J` and `K` to find the precise frame where the fixation on the last validation target ends.
+  - Press `F` to mark this frame as the end of a validation interval.
+  - If you have more validation intervals in the video, then seek further in the video to the next interval(s) and repeat the above actions to mark each.
+  - Once done, press `Q` to close the GUI.
 6. The recordings are then further processed automatically, and data quality is determined for validation episodes in the recording.
 7. Finally, once all recordings have been processed, the researcher exports the data quality measures from the recordings in the project into a summary Excel file.
    This summary function can optionally average the data quality values over the fixation targets for each recording.
 
-Example recordings with which steps 4-7 can be practiced is included in the [example_data subfolder](/example_data). This folder contains example recordings of a
+Example recordings with which steps 4-7 can be practiced are included in the [example_data subfolder](/example_data). This folder contains example recordings of a
 participant executing the validation procedure with a Pupil Invisible and a Tobii Pro Glasses 2. You can import these recordings directly into glassesValidator.
 Also included in each recordings subfolder is an example `analysisInterval.tsv` file for denoting where the validation interval is in the recording (step 5 above).
 To use these files, after importing a recording into your [glassesValidator project](#glassesvalidator-projects) (step 4 above), copy the corresponding
