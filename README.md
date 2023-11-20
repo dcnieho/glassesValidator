@@ -23,12 +23,12 @@ glassesValidator is to install it directly into your Python distribution using t
 to replace `python` with `python3` in the above command lines.
 
 Once pip-installed in your Python distribution, the GUI can be run on any of the supported operating systems by typing `glassesValidator` in
-the terminal. From Python, running the GUI requires only the following two lines of code:
+the terminal. In a Python console, running the GUI requires only the following two lines of code:
 ```python
 import glassesValidator
 glassesValidator.GUI.run()
 ```
-If you use glassesValidator's GUI in a script, make sure to wrap your script in `if __name__=="__main__"`. This is required for correct operation from a script because the GUI uses multiprocessing functionality. Do as follows:
+If you use the glassesValidator's GUI from a script, make sure to wrap your script in `if __name__=="__main__"`. This is required for correct operation from a script because the GUI uses multiprocessing functionality. Do as follows:
 ```python
 if __name__=="__main__":
     import glassesValidator
