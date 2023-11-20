@@ -22,18 +22,19 @@ glassesValidator is to install it directly into your Python distribution using t
 `python -m pip install git+https://github.com/dcnieho/glassesValidator.git#egg=glassesValidator`. NB: on some platforms you may have
 to replace `python` with `python3` in the above command lines.
 
-Once pip-installed in your Python distribution, the GUI can be run on any of the supported operating systems by typing `glassesValidator` in
-the terminal. In a Python console, running the GUI requires only the following two lines of code:
-```python
-import glassesValidator
-glassesValidator.GUI.run()
-```
-If you use the glassesValidator's GUI from a script, make sure to wrap your script in `if __name__=="__main__"`. This is required for correct operation from a script because the GUI uses multiprocessing functionality. Do as follows:
-```python
-if __name__=="__main__":
+Once pip-installed in your Python distribution, there are three ways to run the GUI on any of the supported operating systems:
+1. Directly in the terminal of your operating system, type `glassesValidator` and run it.
+2. Open a Python console. From such a console, running the GUI requires only the following two lines of code:
+    ```python
     import glassesValidator
     glassesValidator.GUI.run()
-```
+    ```
+3. If you run the glassesValidator's GUI from a script, make sure to wrap your script in `if __name__=="__main__"`. This is required for correct operation from a script because the GUI uses multiprocessing functionality. Do as follows:
+    ```python
+    if __name__=="__main__":
+        import glassesValidator
+        glassesValidator.GUI.run()
+    ```
 
 # Usage
 The glassesValidator validation procedure consists of two parts, 1) a poster and validation procedure that is used during a recording, and 2) Python software
