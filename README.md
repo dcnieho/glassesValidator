@@ -1,3 +1,4 @@
+[![Downloads](https://static.pepy.tech/badge/glassesvalidator)](https://pepy.tech/project/glassesvalidator)
 [![PyPI Latest Release](https://img.shields.io/pypi/v/glassesValidator.svg)](https://pypi.org/project/glassesValidator/)
 [![image](https://img.shields.io/pypi/pyversions/glassesValidator.svg)](https://pypi.org/project/glassesValidator/)
 [![DOI](https://zenodo.org/badge/DOI/10.3758/s13428-023-02105-5.svg)](https://doi.org/10.3758/s13428-023-02105-5)
