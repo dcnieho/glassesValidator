@@ -1561,8 +1561,8 @@ class MainGUI():
             imgui.spacing()
             imgui.spacing()
             imgui.push_text_wrap_pos(width)
-            imgui.text("This software is licensed under the 3rd revision of the GNU General Public License (GPLv3) and is provided to you for free. "
-                       "Furthermore, due to its license, it is also free as in freedom: you are free to use, study, modify and share this software "
+            imgui.text("This software is licensed under the MIT license and is provided to you for free. Furthermore, due to "
+                       "its license, it is also free as in freedom: you are free to use, study, modify and share this software "
                        "in whatever way you wish as long as you keep the same license.")
             imgui.spacing()
             imgui.spacing()
