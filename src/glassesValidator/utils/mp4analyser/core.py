@@ -18,7 +18,7 @@ class Mp4Box:
         self.header = header
         self.parent = parent
         self.start_of_box = fp.tell() - self.header.header_size
-        self.child_boxes = []
+        self.children = []
         self.box_info = {}
         self.byte_string = None
         # only top-level boxes contain an actual byte array for displaying the hex view, lower-level boxes simply
@@ -55,14 +55,28 @@ class Mp4Box:
         offset = self.start_of_box - top_box.start_of_box
         return top_box.byte_string[offset:offset + self.size]
 
+    def search_child_boxes_for_type(self, box_type):
+        type_matches = []
+        for box in self.children:
+            if box.type == box_type:
+                # append object onto array
+                type_matches.append(box)
+            if box.children:
+                # add array onto array
+                type_matches += box.search_child_boxes_for_type(box_type)
+        return type_matches
+
 
 class Mp4FullBox(Mp4Box):
-    """ Derived from Mp4Box, but with version and flags.  """
+    """
+    Derived from Mp4Box, but with version and flags.
+    """
     def __init__(self, fp, header, parent):
         """ The file pointer, fp will move forward 4 bytes """
         super().__init__(fp, header, parent)
         four_bytes = read_u32(fp)
-        self.box_info = {'version': four_bytes // 16777216, 'flags': "{0:#08x}".format(four_bytes % 16777216)}
+        self.version = four_bytes >> 24
+        self.flags = four_bytes & 0xFFFFFF
 
 
 class Header:
@@ -77,9 +91,9 @@ class Header:
         self._size = read_u32(fp)
         my_4bytes = fp.read(4)
         if (struct.unpack('>I', my_4bytes)[0]) >> 24 == 169:
-            self.type = my_4bytes[1:].decode('utf-8')
+            self.type = my_4bytes[1:].decode('utf-8', errors='ignore')
         else:
-            self.type = my_4bytes.decode('utf-8')
+            self.type = my_4bytes.decode('utf-8', errors='ignore')
         if self._size == 1:
             self._largesize = read_u64(fp)
         if self.type == 'uuid':

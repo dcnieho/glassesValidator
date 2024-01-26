@@ -351,22 +351,22 @@ def getFrameTimestampsFromVideo(vid_file):
         # parse mp4 file
         boxes   = iso.Mp4File(str(vid_file))
         # 1. find mdat box
-        moov    = boxes.child_boxes[[i for i,x in enumerate(boxes.child_boxes) if x.type=='moov'][0]]
+        moov    = boxes.children[[i for i,x in enumerate(boxes.children) if x.type=='moov'][0]]
         # 2. find track boxes
-        trakIdxs= [i for i,x in enumerate(moov.child_boxes) if x.type=='trak']
+        trakIdxs= [i for i,x in enumerate(moov.children) if x.type=='trak']
         # 3. check which track contains video
         trakIdx = [i for i,x in enumerate(boxes.get_summary()['track_list']) if x['media_type']=='video'][0]
-        trak    = moov.child_boxes[trakIdxs[trakIdx]]
+        trak    = moov.children[trakIdxs[trakIdx]]
         # 4. get mdia
-        mdia    = trak.child_boxes[[i for i,x in enumerate(trak.child_boxes) if x.type=='mdia'][0]]
+        mdia    = trak.children[[i for i,x in enumerate(trak.children) if x.type=='mdia'][0]]
         # 5. get time_scale field from mdhd
-        time_base = mdia.child_boxes[[i for i,x in enumerate(mdia.child_boxes) if x.type=='mdhd'][0]].box_info['timescale']
+        time_base = mdia.children[[i for i,x in enumerate(mdia.children) if x.type=='mdhd'][0]].box_info['timescale']
         # 6. get minf
-        minf    = mdia.child_boxes[[i for i,x in enumerate(mdia.child_boxes) if x.type=='minf'][0]]
+        minf    = mdia.children[[i for i,x in enumerate(mdia.children) if x.type=='minf'][0]]
         # 7. get stbl
-        stbl    = minf.child_boxes[[i for i,x in enumerate(minf.child_boxes) if x.type=='stbl'][0]]
+        stbl    = minf.children[[i for i,x in enumerate(minf.children) if x.type=='stbl'][0]]
         # 8. get sample table from stts
-        samp_table = stbl.child_boxes[[i for i,x in enumerate(stbl.child_boxes) if x.type=='stts'][0]].box_info['entry_list']
+        samp_table = stbl.children[[i for i,x in enumerate(stbl.children) if x.type=='stts'][0]].box_info['entry_list']
         # 9. now we have all the info to determine the timestamps of each frame
         df = pd.DataFrame(samp_table) # easier to use that way
         totalFrames = df['sample_count'].sum()

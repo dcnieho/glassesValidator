@@ -60,7 +60,7 @@ class Avc1Box(Mp4FullBox):
             while bytes_left > 7:
                 current_header = Header(fp)
                 current_box = iso.box_factory(fp, current_header, self)
-                self.child_boxes.append(current_box)
+                self.children.append(current_box)
                 bytes_left -= current_box.size
         finally:
             fp.seek(self.start_of_box + self.size)
@@ -69,6 +69,7 @@ class Avc1Box(Mp4FullBox):
 DvheBox = Dvh1Box = DvavBox = Dva1Box = Avc1Box
 Hvc1Box = Hev1Box = Av01Box = Avc1Box
 Avc4Box = Avc3Box = Avc2Box = Mp4vBox = Avc1Box
+EncvBox = Avc1Box
 
 
 class AvccBox(Mp4Box):
@@ -167,7 +168,7 @@ class Av1cBox(Mp4Box):
         try:
             first_byte = read_u8(fp)
             self.box_info['marker'] = (first_byte >> 7) & 0x01
-            self.box_info['version'] = first_byte & 0x7f
+            self.version = first_byte & 0x7f
             second_byte = read_u8(fp)
             self.box_info['seq_profile'] = (second_byte >> 5) & 0x07
             self.box_info['seq_level_idx_0'] = second_byte & 0x1f
@@ -252,13 +253,13 @@ class Mp4aBox(Mp4Box):
             while bytes_left > 7:
                 current_header = Header(fp)
                 current_box = iso.box_factory(fp, current_header, self)
-                self.child_boxes.append(current_box)
+                self.children.append(current_box)
                 bytes_left -= current_box.size
         finally:
             fp.seek(self.start_of_box + self.size)
 
 
-Ac_3Box = Ec_3Box = Mp4aBox
+Ac_3Box = Ec_3Box = EncaBox = Mp4aBox
 
 
 class EsdsBox(Mp4FullBox):
@@ -426,40 +427,62 @@ class PsshBox(Mp4FullBox):
             fp.seek(self.start_of_box + self.size)
 
 
+class TencBox(Mp4FullBox):
+
+    def __init__(self, fp, header, parent):
+        super().__init__(fp, header, parent)
+        try:
+            self.box_info['reserved'] = read_u8(fp)
+            byte_block = read_u8(fp)
+            if self.version == 1:
+                self.box_info['default_crypt_byte_block'] = byte_block >> 4
+                self.box_info['default_skip_byte_block'] = byte_block & 15
+            self.box_info['default_isProtected'] = read_u8(fp)
+            self.box_info['default_Per_Sample_IV_Size'] = read_u8(fp)
+            self.box_info['default_KID'] = binascii.b2a_hex(fp.read(16)).decode('utf-8')
+            if self.box_info['default_isProtected'] == 1 and self.box_info['default_Per_Sample_IV_Size'] == 0:
+                self.box_info['default_constant_IV_size'] = read_u8(fp)
+                self.box_info['default_constant_IV'] = binascii.b2a_hex(fp.read(self.box_info['default_constant_IV_size'])).decode('utf-8')
+        finally:
+            fp.seek(self.start_of_box + self.size)
+
+
 class SencBox(Mp4FullBox):
 
     def __init__(self, fp, header, parent):
         super().__init__(fp, header, parent)
         try:
+            # to read this box, we need to know IV size
             self.box_info['sample_count'] = read_u32(fp)
             iv_size_guess = ((self.size - 16) // self.box_info['sample_count'])
-            if int(self.box_info['flags'][-1], 16) & 2:
-                # I don't think this logic is infallible
-                if iv_size_guess < 10:
-                    iv_size = 0
-                elif 10 <= iv_size_guess < 18:
-                    iv_size = 8
-                else:
-                    iv_size = 16
-                self.box_info['iv_size'] = iv_size
-                self.box_info['sample_list'] = []
-                for i in range(self.box_info['sample_count']):
-                    sample_dict = {'iv': binascii.b2a_hex(fp.read(iv_size)).decode('utf-8'),
-                                   'subsample_count': read_u16(fp), 'subsample_list': []}
-                    for j in range(sample_dict['subsample_count']):
-                        sample_dict['subsample_list'].append({
-                                                            'BytesOfClearData': read_u16(fp),
-                                                            'BytesOfEncryptedData': read_u32(fp)
-                                                            })
-                    self.box_info['sample_list'].append(sample_dict)
-            else:
-                iv_size = iv_size_guess
-                self.box_info['iv_size'] = iv_size
+            if self.flags & 0x000002 != 0x000002:
+                # if no sub-sampling, assume IV has a fixed size 8 or 16 bytes
+                iv_size = 16 if (self.box_info['sample_count'] * 16) <= (self.size - 16) else 8
                 self.box_info['sample_list'] = []
                 for i in range(self.box_info['sample_count']):
                     self.box_info['sample_list'].append({'iv': binascii.b2a_hex(fp.read(iv_size)).decode('utf-8')})
         finally:
             fp.seek(self.start_of_box + self.size)
+
+    def populate_sample_table(self, fp, iv_size):
+        # called if sub-sampling used, once we've determined IV size (N.B. assumes IV size constant)
+        try:
+            fp_orig = fp.tell()
+            # move fp to start of list
+            fp.seek(self.start_of_box + self.header.header_size + 8)
+            self.box_info['sample_list'] = []
+            for i in range(self.box_info['sample_count']):
+                sample_dict = {'iv': binascii.b2a_hex(fp.read(iv_size)).decode('utf-8')} if iv_size else {}
+                sample_dict['subsample_count'] = read_u16(fp)
+                sample_dict['subsample_list'] = []
+                for j in range(sample_dict['subsample_count']):
+                    sample_dict['subsample_list'].append({
+                        'BytesOfClearData': read_u16(fp),
+                        'BytesOfEncryptedData': read_u32(fp)
+                    })
+                self.box_info['sample_list'].append(sample_dict)
+        finally:
+            fp.seek(fp_orig)
 
 
 class GminBox(Mp4FullBox):
@@ -505,7 +528,7 @@ class IlstBox(Mp4Box):
                     current_header.type = "#{0:#d}".format(struct.unpack('>I', current_header.type.encode('utf-8'))[0])
                 # create box directly, not through box factory
                 current_box = ItemBox(fp, current_header, self)
-                self.child_boxes.append(current_box)
+                self.children.append(current_box)
                 bytes_left -= current_box.size
         finally:
             fp.seek(self.start_of_box + self.size)
@@ -519,7 +542,7 @@ class ItemBox(Mp4Box):
             while bytes_left > 7:
                 current_header = Header(fp)
                 current_box = iso.box_factory(fp, current_header, self)
-                self.child_boxes.append(current_box)
+                self.children.append(current_box)
                 bytes_left -= current_box.size
         finally:
             fp.seek(self.start_of_box + self.size)
@@ -547,6 +570,66 @@ class IodsBox(Mp4FullBox):
             object_dict['graphics_profile_level'] = read_u8(fp)
             # unsure if further optional tags can exist
             self.box_info['initial_object_descriptor'] = object_dict
-            #self.box_info['message'] = 'TODO'
+        finally:
+            fp.seek(self.start_of_box + self.size)
+
+class Tx3gBox(Mp4FullBox):
+
+    def __init__(self, fp, header, parent):
+        super().__init__(fp, header, parent)
+        try:
+            self.box_info['displayFlags'] = read_u32(fp)
+            self.box_info['horizontal_justification'] = read_i8(fp)
+            self.box_info['vertical_justification'] = read_i8(fp)
+            self.box_info['background_color_rgba'] = {'red': read_u8(fp), 'green': read_u8(fp), 'blue': read_u8(fp), 'alpha': read_u8(fp)}
+            read_u32(fp)
+            self.box_info['default_text_box'] = {'top': read_i16(fp), 'left': read_i16(fp), 'bottom': read_i16(fp), 'right': read_i16(fp)}
+            self.box_info['default_style'] = {
+                'startChar': read_u16(fp),
+                'endChar': read_u16(fp),
+                'font_ID': read_u16(fp),
+                'face_style_flags': read_u8(fp),
+                'font_size': read_u8(fp)
+            }
+            self.box_info['text_color_rgba'] = {'red': read_u8(fp), 'green': read_u8(fp), 'blue': read_u8(fp), 'alpha': read_u8(fp)}
+            current_header = Header(fp)
+            current_box = iso.box_factory(fp, current_header, self)
+            self.children.append(current_box)
+        finally:
+            fp.seek(self.start_of_box + self.size)
+
+class FtabBox(Mp4Box):
+
+    def __init__(self, fp, header, parent):
+        super().__init__(fp, header, parent)
+        try:
+            self.box_info['entry_count'] = read_u16(fp)
+            self.box_info['entry_list'] = []
+            for i in range(self.box_info['entry_count']):
+                fontID = read_u16(fp)
+                fnl = read_u8(fp)
+                self.box_info['entry_list'].append({
+                    'font_ID': fontID,
+                    'font_name_length': fnl,
+                    'font_name': fp.read(fnl).decode('utf-8')
+                })
+        finally:
+            fp.seek(self.start_of_box + self.size)
+
+class XyzBox(Mp4Box):
+
+    def __init__(self, fp, header, parent):
+        super().__init__(fp, header, parent)
+        try:
+            self.box_info['data_size'] = read_u16(fp)
+            lang = read_u16(fp)
+            if lang == 0:
+                self.box_info['language'] = '0x00'
+            else:
+                ch1 = str(chr(96 + (lang >> 10 & 31)))
+                ch2 = str(chr(96 + (lang >> 5 & 31)))
+                ch3 = str(chr(96 + (lang & 31)))
+                self.box_info['language'] = ch1 + ch2 + ch3
+            self.box_info['data'] = fp.read(self.box_info['data_size']).decode('utf-8', errors="ignore")
         finally:
             fp.seek(self.start_of_box + self.size)
