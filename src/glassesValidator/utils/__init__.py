@@ -350,24 +350,39 @@ def getFrameTimestampsFromVideo(vid_file):
     if vid_file.suffix in ['.mov', '.mp4', '.m4a', '.3gp', '.3g2', '.mj2']:
         # parse mp4 file
         boxes   = iso.Mp4File(str(vid_file))
+        summary = boxes.get_summary()
         # 1. find mdat box
         moov    = boxes.children[[i for i,x in enumerate(boxes.children) if x.type=='moov'][0]]
-        # 2. find track boxes
+        # 2. get globasl time scale
+        global_time_scale = moov.children[[i for i,x in enumerate(moov.children) if x.type=='mvhd'][0]].box_info['timescale']
+        # 3. find video track boxes
         trakIdxs= [i for i,x in enumerate(moov.children) if x.type=='trak']
-        # 3. check which track contains video
-        trakIdx = [i for i,x in enumerate(boxes.get_summary()['track_list']) if x['media_type']=='video'][0]
-        trak    = moov.children[trakIdxs[trakIdx]]
-        # 4. get mdia
+        trakIdxs= [x for i,x in enumerate(trakIdxs) if summary['track_list'][i]['media_type']=='video']
+        assert len(trakIdxs)==1, f"Found {len(trakIdxs)} video tracks, not supported"
+        trak    = moov.children[trakIdxs[0]]
+        # 4. check for presence of edit list, read it if its there
+        elst    = None
+        edts_idx= [i for i,x in enumerate(trak.children) if x.type=='edts']
+        if edts_idx:
+            elst    = trak.children[edts_idx[0]].children[0]
+        # 5. get mdia box
         mdia    = trak.children[[i for i,x in enumerate(trak.children) if x.type=='mdia'][0]]
-        # 5. get time_scale field from mdhd
-        time_base = mdia.children[[i for i,x in enumerate(mdia.children) if x.type=='mdhd'][0]].box_info['timescale']
-        # 6. get minf
+        # 6. get track time_scale and duration fields from mdhd
+        mdhd        = mdia.children[[i for i,x in enumerate(mdia.children) if x.type=='mdhd'][0]]
+        time_scale  = mdhd.box_info['timescale']
+        duration    = mdhd.box_info['duration']
+        # 7. get minf
         minf    = mdia.children[[i for i,x in enumerate(mdia.children) if x.type=='minf'][0]]
-        # 7. get stbl
+        # 8. get stbl
         stbl    = minf.children[[i for i,x in enumerate(minf.children) if x.type=='stbl'][0]]
-        # 8. get sample table from stts
+        # 9. check that stbl does NOT have a ctts atom, we don't know how to deal with those.
+        # if we need to deal with them, we'd probably want to completely port mov_build_index() and/or mov_fix_index() in ffmpeg's libavformat/mov.c
+        ctts_idx= [i for i,x in enumerate(stbl.children) if x.type=='ctts']
+        if ctts_idx:
+            raise RuntimeError('Encountered an ctts (Composition offset) atom, cannot handle that. aborting.')
+        # 10. get sample table from stts
         samp_table = stbl.children[[i for i,x in enumerate(stbl.children) if x.type=='stts'][0]].box_info['entry_list']
-        # 9. now we have all the info to determine the timestamps of each frame
+        # 11. now we have all the info to determine the timestamps of each frame
         df = pd.DataFrame(samp_table) # easier to use that way
         totalFrames = df['sample_count'].sum()
         frameTs = np.zeros(totalFrames)
@@ -376,12 +391,35 @@ def getFrameTimestampsFromVideo(vid_file):
         for count,dur in zip(df['sample_count'], df['sample_delta']):
             frameTs[idx:idx+count] = dur
             idx = idx+count
-        # turn into timestamps, first in time_base units
-        frameTs = np.roll(frameTs,1)
-        frameTs[0] = 0.
-        frameTs = np.cumsum(frameTs)
+        # turn into timestamps, in time_base units
+        frameTs = np.cumsum(np.insert(frameTs, 0, 0.0))
+        # if we have an edit list, check its a simple one we understand, and apply it. Else abort
+        empty_duration = 0
+        if elst:
+            edit_start_index = 0
+            if elst.box_info['entry_count'] not in [1,2]:
+                # if we run into this, we'd probably want to completely port mov_build_index() and/or mov_fix_index() in ffmpeg's libavformat/mov.c
+                raise RuntimeError('File contains an edit list that is too complicated for this parser, not supported')
+            # logic ported from mov_build_index() in ffmpeg's libavformat/mov.c
+            for i in range(elst.box_info['entry_count']):
+                if i==0 and elst.box_info['entry_list'][i]['media_time'] == -1:
+                    # if empty, the first entry is the start time of the stream
+                    # relative to the presentation itself
+                    empty_duration = elst.box_info['entry_list'][i]['segment_duration']
+                    edit_start_index = 1
+                elif i==edit_start_index and  elst.box_info['entry_list'][i]['media_time'] > 0:
+                    raise RuntimeError('File contains an edit list that is too complicated (start time is not 0) for this parser, not supported')
+                elif i>edit_start_index:
+                    raise RuntimeError('File contains an edit list that is too complicated (multiple edits) for this parser, not supported')
+            # durations are in global timescale units; convert to ms
+            empty_duration = empty_duration/global_time_scale*1000
+
+        # check last duration matches last timestamp
+        if duration not in [frameTs[-1], frameTs[-1]+empty_duration/1000*time_scale]:   # also check duration without taking edit into account, duration in track header should include edit but may not
+            raise RuntimeError("Sum of all frame durations does not match duration of video, this video file is not understood")
+
         # now into timestamps in ms
-        frameTs = frameTs/time_base*1000
+        frameTs = frameTs/time_scale*1000 + empty_duration
     else:
         # open file with opencv and get timestamps of each frame
         vid = cv2.VideoCapture(str(vid_file))
