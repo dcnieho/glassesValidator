@@ -380,7 +380,7 @@ def getFrameTimestampsFromVideo(vid_file):
         if ctts_idx:
             raise RuntimeError('Encountered an ctts (Composition offset) atom, cannot handle that. aborting.')
         # 10. get sample table from stts
-        samp_table = stbl.children[[i for i,x in enumerate(stbl.children) if x.type=='stts'][0]].box_info['entry_list']
+        samp_table  = stbl.children[[i for i,x in enumerate(stbl.children) if x.type=='stts'][0]].box_info['entry_list']
         # 11. now we have all the info to determine the timestamps of each frame
         df = pd.DataFrame(samp_table) # easier to use that way
         totalFrames = df['sample_count'].sum()
@@ -404,9 +404,9 @@ def getFrameTimestampsFromVideo(vid_file):
                 if i==0 and elst.box_info['entry_list'][i]['media_time'] == -1:
                     # if empty, the first entry is the start time of the stream
                     # relative to the presentation itself
-                    empty_duration = elst.box_info['entry_list'][i]['segment_duration']
-                    edit_start_index = 1
-                elif i==edit_start_index and  elst.box_info['entry_list'][i]['media_time'] > 0:
+                    empty_duration  = elst.box_info['entry_list'][i]['segment_duration']
+                    edit_start_index= 1
+                elif i==edit_start_index and elst.box_info['entry_list'][i]['media_time'] > 0:
                     raise RuntimeError('File contains an edit list that is too complicated (start time is not 0) for this parser, not supported')
                 elif i>edit_start_index:
                     raise RuntimeError('File contains an edit list that is too complicated (multiple edits) for this parser, not supported')
