@@ -348,17 +348,19 @@ def getFrameTimestampsFromVideo(vid_file):
     """
     if vid_file.suffix in ['.mov', '.mp4', '.m4a', '.3gp', '.3g2', '.mj2']:
         # parse mp4 file
-        boxes   = iso.Mp4File(str(vid_file))
-        summary = boxes.get_summary()
+        boxes       = iso.Mp4File(str(vid_file))
+        summary     = boxes.get_summary()
+        vid_tracks  = [t for t in summary['track_list'] if t['media_type']=='video']
+        assert len(vid_tracks)==1, f"File has {len(vid_tracks)} video tracks (more than one), not supported"
         # 1. find mdat box
-        moov    = boxes.children[[i for i,x in enumerate(boxes.children) if x.type=='moov'][0]]
+        moov        = boxes.children[[i for i,x in enumerate(boxes.children) if x.type=='moov'][0]]
         # 2. get globasl time scale
         global_time_scale = moov.children[[i for i,x in enumerate(moov.children) if x.type=='mvhd'][0]].box_info['timescale']
         # 3. find video track boxes
-        trakIdxs= [i for i,x in enumerate(moov.children) if x.type=='trak']
-        trakIdxs= [x for i,x in enumerate(trakIdxs) if summary['track_list'][i]['media_type']=='video']
-        assert len(trakIdxs)==1, f"Found {len(trakIdxs)} video tracks, not supported"
-        trak    = moov.children[trakIdxs[0]]
+        trak_idxs   = [i for i,x in enumerate(moov.children) if x.type=='trak']
+        trak_idxs   = [x for i,x in enumerate(trak_idxs) if summary['track_list'][i]['media_type']=='video']
+        assert len(trak_idxs)==1
+        trak    = moov.children[trak_idxs[0]]
         # 4. check for presence of edit list, read it if its there
         elst    = None
         edts_idx= [i for i,x in enumerate(trak.children) if x.type=='edts']
