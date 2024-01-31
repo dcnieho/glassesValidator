@@ -414,7 +414,7 @@ def getFrameTimestampsFromVideo(vid_file):
             empty_duration = empty_duration/global_time_scale*1000
 
         # check last duration matches last timestamp
-        if duration not in [frameTs[-1], frameTs[-1]+empty_duration/1000*time_scale]:   # also check duration without taking edit into account, duration in track header should include edit but may not
+        if duration not in [frameTs[-1], frameTs[-1]+empty_duration/1000*time_scale]:   # also check duration without taking edit list into account, duration in track header should include edit list but may not
             raise RuntimeError("Sum of all frame durations does not match duration of video, this video file is not understood")
 
         # now into timestamps in ms
