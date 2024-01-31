@@ -404,15 +404,13 @@ class ElstBox(Mp4FullBox):
                     self.box_info['entry_list'].append({
                         'segment_duration': read_u64(fp),
                         'media_time': read_i64(fp),
-                        'media_rate_integer': read_i16(fp),
-                        'media_rate_fraction': read_i16(fp)
+                        'media_rate': read_i32(fp) / 2.**16,
                     })
                 else:
                     self.box_info['entry_list'].append({
                         'segment_duration': read_u32(fp),
                         'media_time': read_i32(fp),
-                        'media_rate_integer': read_i16(fp),
-                        'media_rate_fraction': read_i16(fp)
+                        'media_rate': read_i32(fp) / 2.**16,
                     })
         finally:
             fp.seek(self.start_of_box + self.size)
