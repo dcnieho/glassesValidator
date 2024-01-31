@@ -423,16 +423,29 @@ def getFrameTimestampsFromVideo(vid_file):
     else:
         # open file with opencv and get timestamps of each frame
         vid = cv2.VideoCapture(str(vid_file))
+        nframes = float(vid.get(cv2.CAP_PROP_FRAME_COUNT))
         frameTs = []
+        frame_idx = 0
         while vid.isOpened():
-            # get current time (we want start time of frame
-            frameTs.append(vid.get(cv2.CAP_PROP_POS_MSEC))
+            # read timestamp _before_ reading the frame, so we get position at start of the frame, not at
+            # end
+            ts = vid.get(cv2.CAP_PROP_POS_MSEC)
 
-            # Capture frame-by-frame
             ret, frame = vid.read()
+            frame_idx += 1
 
-            if not ret == True:
-                break
+            # You'd think to get the time at the start of the frame, which is what we want, you'd need to
+            # read the time _before_ reading the frame. But there seems to be an off-by-one here for some
+            # files, like at least some MP4s, but not in some AVIs in my testing. Catch this off-by-one
+            # and to correct for it, do not store the first timestamp. This ensures we get a sensible
+            # output (else first two frames have timestamp 0.0 ms).
+            if frame_idx==1 and ts==vid.get(cv2.CAP_PROP_POS_MSEC):
+                continue
+
+            frameTs.append(ts)
+            # check if we're done. Can't trust ret==False to indicate we're at end of video, as it may also return false for some frames when video has errors in the middle that we can just read past
+            if (not ret and frame_idx>0 and frame_idx/nframes<.99):
+                raise RuntimeError("The video file is corrupt. Testing has shown that it cannot be guaranteed that timestamps remain correct when trying to read past the hole. So abort, cannot process this video.")
 
         # release the video capture object
         vid.release()
