@@ -343,8 +343,8 @@ def cartesian_product(*arrays):
 
 def getFrameTimestampsFromVideo(vid_file):
     """
-    Parse the supplied video, return an array of frame timestamps. If there are multiple video streams in the video file,
-    we assume the first stream is the correct stream
+    Parse the supplied video, return an array of frame timestamps. There must be only one video stream
+    in the video file, because otherwise we do not know which is the correct stream.
     """
     if vid_file.suffix in ['.mov', '.mp4', '.m4a', '.3gp', '.3g2', '.mj2']:
         # parse mp4 file
