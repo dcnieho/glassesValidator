@@ -55,11 +55,10 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
     if show_visualization:
         poster      = utils.Poster(config_dir, validationSetup)
         centerTarget= poster.targets[validationSetup['centerTarget']].center
-        i2t         = utils.Idx2Timestamp(working_dir / 'frameTimestamps.tsv')
 
-        cap         = cv2.VideoCapture(str(working_dir / 'worldCamera.mp4'))
-        width       = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height      = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        cap         = utils.CV2VideoReader(working_dir / 'worldCamera.mp4', utils.get_timestamps_from_file(working_dir / 'frameTimestamps.tsv'))
+        width       = cap.get_prop(cv2.CAP_PROP_FRAME_WIDTH)
+        height      = cap.get_prop(cv2.CAP_PROP_FRAME_HEIGHT)
 
     # get camera calibration info
     cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(working_dir / "calibration.xml")
@@ -88,8 +87,8 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
     stopAllProcessing = False
     for frame_idx in range(maxFrameIdx+1):
         if show_visualization:
-            ret, frame = cap.read()
-            if (not ret) or (hasAnalyzeFrames and frame_idx > analyzeFrames[-1]):
+            done, frame, frame_idx, frame_ts = cap.read_frame()
+            if done or (hasAnalyzeFrames and frame_idx > analyzeFrames[-1]):
                 # done
                 break
 
@@ -147,7 +146,6 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
                     csv_writer.writerow( writeData )
 
         if show_visualization:
-            frame_ts  = i2t.get(frame_idx)
             if show_poster:
                 gui.update_image(refImg, frame_ts/1000., frame_idx, window_id = poster_win_id)
 
@@ -180,7 +178,6 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
 
     csv_file.close()
     if show_visualization:
-        cap.release()
         gui.stop()
 
     utils.update_recording_status(working_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Finished)

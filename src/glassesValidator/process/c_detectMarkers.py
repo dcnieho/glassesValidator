@@ -49,12 +49,9 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     inVideo = working_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
         inVideo = working_dir / 'worldCamera.avi'
-    cap    = cv2.VideoCapture(str(inVideo))
-    if not cap.isOpened():
-        raise RuntimeError('the file "{}" could not be opened'.format(str(inVideo)))
-    width  = float(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = float(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    nframes= float(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    cap     = utils.CV2VideoReader(inVideo, utils.get_timestamps_from_file(working_dir / 'frameTimestamps.tsv'))
+    width   = cap.get_prop(cv2.CAP_PROP_FRAME_WIDTH)
+    height  = cap.get_prop(cv2.CAP_PROP_FRAME_HEIGHT)
 
     # get info about markers on our poster
     poster          = utils.Poster(config_dir, validationSetup)
@@ -83,26 +80,24 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     header = utils.PosterPose.getWriteHeader()
     csv_writer.writerow(header)
 
-    # prep visualization, if any
-    if show_visualization:
-        i2t = utils.Idx2Timestamp(working_dir / 'frameTimestamps.tsv')
-
-    frame_idx = -1
     stopAllProcessing = False
     armLength = poster.markerSize/2 # arms of axis are half a marker long
     subPixelFac = 8   # for sub-pixel positioning
+    last_frame_idx = -1
     while True:
         # process frame-by-frame
-        ret, frame = cap.read()
-        frame_idx += 1
+        done, frame, frame_idx, frame_ts = cap.read_frame()
+        if frame_idx is not None and frame_idx-last_frame_idx>1:
+            print(f'Frame discontinuity detected (jumped from {last_frame_idx} to {frame_idx}), there are probably corrupt frames in your video')
+        last_frame_idx = frame_idx
 
-        # check if we're done. Can't trust ret==False to indicate we're at end of video, as it may also return false for some frames when video has errors in the middle that we can just read past
-        if (not ret and (frame_idx==0 or frame_idx/nframes>.99)) or (hasAnalyzeFrames and frame_idx > analyzeFrames[-1]):
+        # check if we're done
+        if done or (hasAnalyzeFrames and frame_idx > analyzeFrames[-1]):
             # done
             break
         if frame_idx%100==0:
             print('  frame {}'.format(frame_idx))
-        if not ret or frame is None:
+        if frame is None:
             # we don't have a valid frame, continue to next
             continue
 
@@ -119,7 +114,7 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
         if hasAnalyzeFrames:
             # check we're in a current interval, else skip processing
             # NB: have to spool through like this, setting specific frame to read
-            # with cap.get(cv2.CAP_PROP_POS_FRAMES) doesn't seem to work reliably
+            # with cap.set(cv2.CAP_PROP_POS_FRAMES) doesn't seem to work reliably
             # for VFR video files
             inIval = False
             for f in range(0,len(analyzeFrames),2):
@@ -191,7 +186,6 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
             if 's' in keys:
                 # screenshot
                 cv2.imwrite(str(working_dir / ('detect_frame_%d.png' % frame_idx)), frame)
-            frame_ts  = i2t.get(frame_idx)
             gui.update_image(frame, frame_ts/1000., frame_idx)
             closed, = gui.get_state()
             if closed:
@@ -199,7 +193,6 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
                 break
 
     csv_file.close()
-    cap.release()
     if show_visualization:
         gui.stop()
 

@@ -65,13 +65,10 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     inVideo = working_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
         inVideo = working_dir / 'worldCamera.avi'
-    vidIn  = cv2.VideoCapture( str(inVideo) )
-    if not vidIn.isOpened():
-        raise RuntimeError('the file "{}" could not be opened'.format(str(inVideo)))
-    width  = vidIn.get(cv2.CAP_PROP_FRAME_WIDTH)
-    height = vidIn.get(cv2.CAP_PROP_FRAME_HEIGHT)
-    fps    = vidIn.get(cv2.CAP_PROP_FPS)
-    nframes= float(vidIn.get(cv2.CAP_PROP_FRAME_COUNT))
+    vidIn   = utils.CV2VideoReader(inVideo, utils.get_timestamps_from_file(working_dir / 'frameTimestamps.tsv'))
+    width   = vidIn.get_prop(cv2.CAP_PROP_FRAME_WIDTH)
+    height  = vidIn.get_prop(cv2.CAP_PROP_FRAME_HEIGHT)
+    fps     = vidIn.get_prop(cv2.CAP_PROP_FPS)
 
     # get info about markers on our poster
     poster      = utils.Poster(config_dir, validationSetup)
@@ -97,9 +94,6 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
     aruco_detector  = cv2.aruco.ArucoDetector(poster.aruco_dict, parameters)
 
-    # get frame timestamps lookup file
-    i2t = utils.Idx2Timestamp(working_dir / 'frameTimestamps.tsv')
-
     # get camera calibration info
     cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(working_dir / "calibration.xml")
     hasCameraMatrix = cameraMatrix is not None
@@ -118,17 +112,21 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     subPixelFac = 8   # for sub-pixel positioning
     stopAllProcessing = False
     hasRequestedFocus = not isMacOS # False only if on Mac OS, else True since its a no-op
+    last_frame_idx = -1
     while True:
         # process frame-by-frame
-        ret, frame = vidIn.read()
-        frame_idx += 1
+        done, frame, frame_idx, frame_ts = vidIn.read_frame()
+        if frame_idx is not None and frame_idx-last_frame_idx>1:
+            print(f'Frame discontinuity detected (jumped from {last_frame_idx} to {frame_idx}), there are probably corrupt frames in your video')
+            # TODO: fill in the missing frames so we stay in sync
+        last_frame_idx = frame_idx
 
-        # check if we're done. Can't trust ret==False to indicate we're at end of video, as it may also return false for some frames when video has errors in the middle that we can just read past
-        if not ret and (frame_idx==0 or frame_idx/nframes>.99):
+        # check if we're done
+        if done:
             break
         if not show_visualization and frame_idx%100==0:
             print('  frame {}'.format(frame_idx))
-        if not ret or frame is None:
+        if frame is None:
             # we don't have a valid frame, use a fully black frame
             frame = np.zeros((int(height),int(width),3), np.uint8)   # black image
         refImg = poster.getImgCopy()
@@ -207,7 +205,6 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
                 analysisIntervalIdx = f
         frameClr = (0,0,255) if analysisIntervalIdx is not None else (0,0,0)
 
-        frame_ts  = i2t.get(frame_idx)
         text = '%6.3f [%6d] (%s markers)' % (frame_ts/1000.,frame_idx, pose.nMarkers)
         textSize,baseline = cv2.getTextSize(text,cv2.FONT_HERSHEY_PLAIN,2,2)
         cv2.rectangle(frame,(0,int(height)),(textSize[0]+2,int(height)-textSize[1]-baseline-5), frameClr, -1)
@@ -241,7 +238,6 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
                 stopAllProcessing = True
                 break
 
-    vidIn.release()
     vidOutScene.close()
     vidOutPoster.close()
     if show_visualization:
