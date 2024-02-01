@@ -484,6 +484,9 @@ class CV2VideoReader:
     def get_prop(self, cv2_prop):
         return self.cap.get(cv2_prop)
 
+    def set_prop(self, cv2_prop, val):
+        return self.cap.set(cv2_prop, val)
+
     def read_frame(self):
         ts0 = self.cap.get(cv2.CAP_PROP_POS_MSEC)
         ret, frame = self.cap.read()
