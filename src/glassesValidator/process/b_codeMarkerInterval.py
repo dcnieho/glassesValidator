@@ -80,7 +80,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
     hasPosterPose = False
     if (working_dir / 'posterPose.tsv').is_file():
         try:
-            poses = utils.PosterPose.readDataFromFile(working_dir / 'poasterPose.tsv')
+            poses = utils.PosterPose.readDataFromFile(working_dir / 'posterPose.tsv')
             hasPosterPose = True
         except:
             # ignore when file can't be read or is empty
