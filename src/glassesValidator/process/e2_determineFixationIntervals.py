@@ -21,6 +21,9 @@ def process(working_dir, config_dir=None):
     print('processing: {}'.format(working_dir.name))
     utils.update_recording_status(working_dir, utils.Task.Fixation_Intervals_Determined, utils.Status.Running)
 
+    # get info about this recording
+    rec_info = utils.Recording.load_from_json(working_dir / utils.Recording.default_json_file_name)
+
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
 
@@ -48,6 +51,8 @@ def process(working_dir, config_dir=None):
     opt['maxMergeDist']     = 20        # mm
     opt['maxMergeTime']     = 81        # ms
     opt['minFixDur']        = 50        # ms
+    if rec_info.eye_tracker in [utils.EyeTracker.Tobii_Glasses_2, utils.EyeTracker.Tobii_Glasses_3]:
+        opt['cutoffstd'] = 1.8
     # decide what sampling frequency to tell I2MC about. It doesn't work with varying sampling frequency, nor
     # any random sampling frequency. For our purposes, getting it right is not important (internally I2MC only
     # uses sampling frequency for converting some of the time units to samples, other things are taken directly
