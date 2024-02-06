@@ -537,12 +537,13 @@ def formatGazeDataCloudExport(inputDir, exportFile, sceneVideoDimensions, recInf
     frameTimestamps = frameTimestamps.drop(columns=[x for x in frameTimestamps.columns if x not in ['timestamp']])
     frameTimestamps['frame_idx'] = frameTimestamps.index
     frameTimestamps = frameTimestamps.set_index('frame_idx')
-    frameTimestamps.loc[:,'timestamp'] /= 1000000.0     # convert timestamps from ns to ms
 
     # set t=0 to video start time
-    t0 = frameTimestamps.iloc[0].to_numpy()
-    df.loc[:,'timestamp'] -= t0
-    frameTimestamps.loc[:,'timestamp'] -= t0
+    t0_ns = frameTimestamps['timestamp'].iloc[0]
+    df.loc[:,'timestamp']               -= t0_ns
+    frameTimestamps.loc[:,'timestamp']  -= t0_ns
+    df.loc[:,'timestamp']               /= 1000000.0    # convert timestamps from ns to ms
+    frameTimestamps.loc[:,'timestamp']  /= 1000000.0
 
     # set timestamps as index for gaze
     df = df.set_index('timestamp')
@@ -569,8 +570,5 @@ def readGazeDataCloudExport(file, sceneVideoDimensions, recInfo):
     toRemove = df.worn == 0
     for c in todo[2:]:
         df.loc[toRemove,c] = np.nan
-
-    # convert timestamps from ns to ms
-    df.loc[:,'timestamp'] /= 1000000.0
 
     return df
