@@ -107,7 +107,7 @@ def process(working_dir, config_dir=None):
         fix,data_I2MC,_ = I2MC.I2MC(data,opt,False)
 
         # for each target, find closest fixation
-        minDur      = 150       # ms
+        minDur      = 100       # ms
         used        = np.zeros((fix['start'].size),dtype='bool')
         selected    = np.empty((len(targets),),dtype='int')
         selected[:] = -999
