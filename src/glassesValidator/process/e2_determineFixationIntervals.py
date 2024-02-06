@@ -124,6 +124,17 @@ def process(working_dir, config_dir=None):
         off_t_x = t_x.mean()
         off_t_y = t_y.mean()
 
+        # we furthermore do not assign a fixation to a target if the closest fixation is more than
+        # half the intertarget distance away
+        # determine intertarget distance, if possible
+        dist_lim = np.inf
+        if len(t_x)>1:
+            # arbitrarily take first target and find closest target to it
+            dist = np.hypot(t_x[0]-t_x[1:], t_y[0]-t_y[1:])
+            min_dist = dist.min()
+            if min_dist > 0:
+                dist_lim = min_dist/2
+
         for i,t in zip(range(len(targets)),targets):
             if np.all(used):
                 # all fixations used up, can't assign anything to remaining targets
@@ -133,8 +144,9 @@ def process(working_dir, config_dir=None):
             dist[used]              = np.inf    # make sure fixations already bound to a target are not used again
             dist[fix['dur']<minDur] = np.inf    # make sure that fixations that are too short are not selected
             iFix        = np.argmin(dist)
-            selected[i] = iFix
-            used[iFix]  = True
+            if dist[iFix]<=dist_lim:
+                selected[i] = iFix
+                used[iFix]  = True
 
         # make plot of data overlaid on poster, and show for each target which fixation
         # was selected
