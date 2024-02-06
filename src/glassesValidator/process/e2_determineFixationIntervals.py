@@ -104,7 +104,7 @@ def process(working_dir, config_dir=None):
             raise RuntimeError('No data available to process')
 
         # run event classification to find fixations
-        fix,dat,par = I2MC.I2MC(data,opt,False)
+        fix,data_I2MC,_ = I2MC.I2MC(data,opt,False)
 
         # for each target, find closest fixation
         minDur      = 150       # ms
@@ -112,14 +112,26 @@ def process(working_dir, config_dir=None):
         selected    = np.empty((len(targets),),dtype='int')
         selected[:] = -999
 
+        # first, center the problem. That means determine and remove any overall shift from the
+        # data and the targets, to improve robustness of assigning fixations points to targets.
+        # Else, if all data is e.g. shifted up by more than half the distance between
+        # validation targets, target assignment would fail
+        # N.B.: use output data from I2MC, which always has an average gaze signal
+        off_x = data_I2MC['average_X'].mean()
+        off_y = data_I2MC['average_Y'].mean()
+        t_x = np.array([targets[t][0] for t in targets])
+        t_y = np.array([targets[t][1] for t in targets])
+        off_t_x = t_x.mean()
+        off_t_y = t_y.mean()
+
         for i,t in zip(range(len(targets)),targets):
             if np.all(used):
                 # all fixations used up, can't assign anything to remaining targets
                 continue
             # select fixation
-            dist                    = np.hypot(fix['xpos']-targets[t][0], fix['ypos']-targets[t][1])
-            dist[used]              = math.inf  # make sure fixations already bound to a target are not used again
-            dist[fix['dur']<minDur] = math.inf  # make sure that fixations that are too short are not selected
+            dist                    = np.hypot(fix['xpos']-off_x-(targets[t][0]-off_t_x), fix['ypos']-off_y-(targets[t][1]-off_t_y))
+            dist[used]              = np.inf    # make sure fixations already bound to a target are not used again
+            dist[fix['dur']<minDur] = np.inf    # make sure that fixations that are too short are not selected
             iFix        = np.argmin(dist)
             selected[i] = iFix
             used[iFix]  = True
