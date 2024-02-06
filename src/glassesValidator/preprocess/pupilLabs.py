@@ -416,59 +416,47 @@ def getSceneCameraResolution(inputDir, outputDir):
 
 
 def formatGazeDataPupilPlayer(inputDir, exportFile, sceneVideoDimensions, recInfo):
-    """
-    load gazedata json file
-    format to get the gaze coordinates w/r/t world camera, and timestamps for every frame of video
-
-    Returns:
-        - formatted dataframe with cols for timestamp, frame_idx, and gaze data
-        - np array of frame timestamps
-    """
-
     # convert the json file to pandas dataframe
     df = readGazeDataPupilPlayer(exportFile, sceneVideoDimensions, recInfo)
 
-    # read video file, create array of frame timestamps
+    # get timestamps for the scene video
+    frameTs = utils.getFrameTimestampsFromVideo(inputDir / 'world.mp4')
+
+    # check pupil-labs' frame timestamps because we may need to correct
+    # frame indices in case of holes in the video
+    # also need this to correctly timestamp gaze samples
     if (inputDir / 'world_lookup.npy').is_file():
-        frameTimestamps = pd.DataFrame(np.load(str(inputDir / 'world_lookup.npy')))
-        frameTimestamps['timestamp'] *= 1000.0
-        frameTimestamps['frame_idx'] = frameTimestamps.index
-        frameTimestamps.loc[frameTimestamps['container_idx']==-1,'container_frame_idx'] = -1
-        needsAdjust = not frameTimestamps['frame_idx'].equals(frameTimestamps['container_frame_idx'])
+        ft = pd.DataFrame(np.load(str(inputDir / 'world_lookup.npy')))
+        ft['frame_idx'] = ft.index
+        ft.loc[ft['container_idx']==-1,'container_frame_idx'] = -1
+        needsAdjust = not ft['frame_idx'].equals(ft['container_frame_idx'])
         # prep for later clean up
-        toDrop = [x for x in frameTimestamps.columns if x not in ['frame_idx','timestamp']]
+        toDrop = [x for x in ft.columns if x not in ['frame_idx','timestamp']]
         # do further adjustment that may be needed
         if needsAdjust:
             # not all video frames were encoded into the video file. Need to adjust
             # frame_idx in the gaze data to match actual video file
-            temp = pd.merge(df,frameTimestamps,on='frame_idx')
+            temp = pd.merge(df,ft,on='frame_idx')
             temp['frame_idx'] = temp['container_frame_idx']
             temp = temp.rename(columns={'timestamp_x':'timestamp'})
             toDrop.append('timestamp_y')
             df   = temp.drop(columns=toDrop)
-
-        # final setup for output to file
-        frameTimestamps['frame_idx'] = frameTimestamps['container_frame_idx']
-        frameTimestamps = frameTimestamps.drop(columns=toDrop,errors='ignore')
-        frameTimestamps = frameTimestamps[frameTimestamps['frame_idx']!=-1]
-        frameTimestamps = frameTimestamps.set_index('frame_idx')
     else:
-        frameTimestamps = pd.DataFrame()
-        frameTimestamps['timestamp'] = np.load(str(inputDir / 'world_timestamps.npy'))*1000.0
-        frameTimestamps.index.name = 'frame_idx'
+        ft = pd.DataFrame()
+        ft['timestamp'] = np.load(str(inputDir / 'world_timestamps.npy'))*1000.0
+        ft.index.name = 'frame_idx'
         # check there are no gaps in the video file
-        if df['frame_idx'].max() > frameTimestamps.index.max():
+        if df['frame_idx'].max() > ft.index.max():
             raise RuntimeError('It appears there are frames missing in the scene video, but the file world_lookup.npy that would be needed to deal with that is missing. You can generate it by opening the recording in pupil player.')
 
     # set t=0 to video start time
-    t0 = frameTimestamps.iloc[0].to_numpy()
+    t0 = ft['timestamp'].iloc[0]*1000-frameTs['timestamp'].iloc[0]
     df.loc[:,'timestamp'] -= t0
-    frameTimestamps.loc[:,'timestamp'] -= t0
 
     # set timestamps as index for gaze
     df = df.set_index('timestamp')
 
-    return df, frameTimestamps
+    return df, frameTs
 
 
 def readGazeDataPupilPlayer(file, sceneVideoDimensions, recInfo):
