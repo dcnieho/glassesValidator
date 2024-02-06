@@ -248,9 +248,10 @@ class Recording:
             path /= self.default_json_file_name
         with open(path, 'w') as f:
             data = dataclasses.asdict(self)
-            # dump these two which are not properties of the project per se
+            # remove these two properties which are ephemeral and for the GUI
             del data['id']
             del data['task']
+            # store the rest to file
             json.dump(data, f, cls=CustomTypeEncoder)
 
     @classmethod
@@ -377,9 +378,9 @@ def getFrameTimestampsFromVideo(vid_file):
         # if its there, check its one we understand (one or multiple empty list at the beginning
         # to shift movie start, and/or a single non-empty edit list), and parse it. Else abort
         edts_idx= [i for i,x in enumerate(trak.children) if x.type=='edts']
-        empty_duration = np.int64(0)
-        media_start_time = np.int64(-1)
-        media_duration = np.int64(-1)
+        empty_duration  = np.int64(0)
+        media_start_time= np.int64(-1)
+        media_duration  = np.int64(-1)
         if edts_idx:
             elst = trak.children[edts_idx[0]].children[0]
             edit_start_index = 0
@@ -390,8 +391,8 @@ def getFrameTimestampsFromVideo(vid_file):
                     # relative to the presentation itself
                     this_empty_duration  = np.int64(elst.box_info['entry_list'][i]['segment_duration'])  # NB: in movie time scale
                     # convert duration from edit list from global timescale to track timescale
-                    empty_duration += av_rescale(this_empty_duration,media_time_scale,movie_time_scale)
-                    edit_start_index += 1
+                    empty_duration  += av_rescale(this_empty_duration,media_time_scale,movie_time_scale)
+                    edit_start_index+= 1
                 elif i==edit_start_index and elst.box_info['entry_list'][i]['media_time'] > 0:
                     media_start_time = np.int64(elst.box_info['entry_list'][i]['media_time'])   # NB: already in track timescale, do not scale
                     media_duration   = av_rescale(np.int64(elst.box_info['entry_list'][i]['segment_duration']),media_time_scale,movie_time_scale)   # as above, scale to track timescale
