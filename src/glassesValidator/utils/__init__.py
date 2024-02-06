@@ -374,8 +374,8 @@ def getFrameTimestampsFromVideo(vid_file):
         mdhd            = mdia.children[[i for i,x in enumerate(mdia.children) if x.type=='mdhd'][0]]
         media_time_scale= mdhd.box_info['timescale']
         # 6. check for presence of edit list
-        # if its there, check its a simple one we understand (just an empty list at
-        # the beginning to shift movie start), and parse it. Else abort
+        # if its there, check its one we understand (one or multiple empty list at the beginning
+        # to shift movie start, and/or a single non-empty edit list), and parse it. Else abort
         edts_idx= [i for i,x in enumerate(trak.children) if x.type=='edts']
         empty_duration = np.int64(0)
         media_start_time = np.int64(-1)
@@ -409,7 +409,7 @@ def getFrameTimestampsFromVideo(vid_file):
         if ctts_idx:
             ctts_ = stbl.children[ctts_idx[0]].box_info['entry_list']
             if any([e['sample_offset']<0 for e in ctts_]):
-                # if we need to deal with them, we'd probably want to completely port mov_build_index() and/or mov_fix_index() in ffmpeg's libavformat/mov.c
+                # if we need to deal with them, we'd probably want to completely port mov_build_index() and mov_fix_index() in ffmpeg's libavformat/mov.c
                 raise RuntimeError('Encountered a ctts (composition offset) atom with negative sample offsets, cannot handle that. aborting.')
             # uncompress
             total_frames_ctts = sum([e['sample_count'] for e in ctts_])
