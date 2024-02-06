@@ -71,6 +71,7 @@ def process(working_dir, config_dir=None):
     # collect data
     qHasLeft        = np.any(np.logical_not(np.isnan([s.lGaze2D          for v in gazePoster.values() for s in v])))
     qHasRight       = np.any(np.logical_not(np.isnan([s.rGaze2D          for v in gazePoster.values() for s in v])))
+    qHasWorld       = np.any(np.logical_not(np.isnan([s.wGaze2D          for v in gazePoster.values() for s in v])))
     qHasRay         = np.any(np.logical_not(np.isnan([s.gaze2DRay        for v in gazePoster.values() for s in v])))
     qHasHomography  = np.any(np.logical_not(np.isnan([s.gaze2DHomography for v in gazePoster.values() for s in v])))
     for ival in range(0,len(analyzeFrames)//2):
@@ -83,6 +84,11 @@ def process(working_dir, config_dir=None):
             data['L_Y']  = np.array([s.lGaze2D[1] for v in gazePosterToAnal.values() for s in v])
             data['R_X']  = np.array([s.rGaze2D[0] for v in gazePosterToAnal.values() for s in v])
             data['R_Y']  = np.array([s.rGaze2D[1] for v in gazePosterToAnal.values() for s in v])
+        elif qHasWorld:
+            # prefer over the below if provided, eye tracker may provide an 'improved' signal
+            # here, e.g. AdHawk has an optional parallax correction
+            data['average_X']  = np.array([s.wGaze2D[0] for v in gazePosterToAnal.values() for s in v])
+            data['average_Y']  = np.array([s.wGaze2D[1] for v in gazePosterToAnal.values() for s in v])
         elif qHasRay:
             data['average_X']  = np.array([s.gaze2DRay[0] for v in gazePosterToAnal.values() for s in v])
             data['average_Y']  = np.array([s.gaze2DRay[1] for v in gazePosterToAnal.values() for s in v])
