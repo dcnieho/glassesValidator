@@ -754,14 +754,15 @@ class MainGUI():
             self.style_imgui_functions()
 
     def get_imgui_config(self):
-        imgui.io.set_ini_filename(str(utils.get_data_path() / "imgui.ini"))
+        ini_filename = utils.get_ini_file_name()
+        imgui.io.set_ini_filename(ini_filename)
 
         size = tuple()
         pos = tuple()
         is_default = False
         try:
             # Get window size
-            with open(imgui.io.ini_filename, "r") as f:
+            with open(ini_filename, "r") as f:
                 ini = f.read()
             imgui.load_ini_settings_from_memory(ini)
             # subpart of ini file is valid input to config parser, parse that part of it
@@ -1187,7 +1188,7 @@ class MainGUI():
             sidebar_size = self.scaled(self.sidebar_size)
 
             imgui.begin_child("##main_frame", size=(-(sidebar_size+self.scaled(4)),0))
-            imgui.begin_child("##recording_list_frame", size=(0,-imgui.get_frame_height_with_spacing()), flags=imgui.WindowFlags_.horizontal_scrollbar)
+            imgui.begin_child("##recording_list_frame", size=(0,-imgui.get_frame_height_with_spacing()), window_flags=imgui.WindowFlags_.horizontal_scrollbar)
             self.recording_list.draw()
             imgui.end_child()
             imgui.begin_child("##bottombar_frame")
@@ -1260,7 +1261,7 @@ class MainGUI():
 
     def save_imgui_ini(self, path: str | pathlib.Path = None):
         if path is None:
-            path = imgui.io.ini_filename
+            path = utils.get_ini_file_name()
         imgui.save_ini_settings_to_disk(str(path))
         ini = imgui.save_ini_settings_to_memory()
 
@@ -1409,7 +1410,7 @@ class MainGUI():
         imgui.dummy((0,1*imgui.style.item_spacing.y))
 
         imgui.begin_child("##main_frame_adder", size=(self.scaled(800),min(self.scaled(300),(len(recording_list.recordings)+2)*imgui.get_frame_height_with_spacing())))
-        imgui.begin_child("##recording_list_frame_adder", size=(0,-imgui.get_frame_height_with_spacing()), flags=imgui.WindowFlags_.horizontal_scrollbar)
+        imgui.begin_child("##recording_list_frame_adder", size=(0,-imgui.get_frame_height_with_spacing()), window_flags=imgui.WindowFlags_.horizontal_scrollbar)
         recording_list.draw()
         imgui.end_child()
         imgui.begin_child("##bottombar_frame_adder")
