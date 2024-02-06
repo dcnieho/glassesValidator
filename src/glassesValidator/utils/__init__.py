@@ -367,35 +367,40 @@ def getFrameTimestampsFromVideo(vid_file):
         trak_idxs   = [i for i,x in enumerate(moov.children) if x.type=='trak']
         trak_idxs   = [x for i,x in enumerate(trak_idxs) if summary['track_list'][i]['media_type']=='video']
         assert len(trak_idxs)==1
-        trak    = moov.children[trak_idxs[0]]
-        # 4. check for presence of edit list
+        trak        = moov.children[trak_idxs[0]]
+        # 4. get mdia box
+        mdia        = trak.children[[i for i,x in enumerate(trak.children) if x.type=='mdia'][0]]
+        # 5. get media/track time_scale and duration fields from mdhd
+        mdhd            = mdia.children[[i for i,x in enumerate(mdia.children) if x.type=='mdhd'][0]]
+        media_time_scale= mdhd.box_info['timescale']
+        # 6. check for presence of edit list
         # if its there, check its a simple one we understand (just an empty list at
         # the beginning to shift movie start), and parse it. Else abort
         edts_idx= [i for i,x in enumerate(trak.children) if x.type=='edts']
         empty_duration = np.int64(0)
+        media_start_time = np.int64(-1)
+        media_duration = np.int64(-1)
         if edts_idx:
             elst = trak.children[edts_idx[0]].children[0]
             edit_start_index = 0
-            if elst.box_info['entry_count'] not in [1,2]:
-                # if we run into this, we'd probably want to completely port mov_build_index() and/or mov_fix_index() in ffmpeg's libavformat/mov.c
-                raise RuntimeError('File contains an edit list that is too complicated for this parser, not supported')
-            # logic ported from mov_build_index() in ffmpeg's libavformat/mov.c
+            # logic ported from mov_build_index()/mov_fix_index() in ffmpeg's libavformat/mov.c
             for i in range(elst.box_info['entry_count']):
-                if i==0 and elst.box_info['entry_list'][i]['media_time'] == -1:
+                if i==edit_start_index and elst.box_info['entry_list'][i]['media_time'] == -1:
                     # empty edit list, indicates the start time of the stream
                     # relative to the presentation itself
-                    empty_duration  = np.int64(elst.box_info['entry_list'][i]['segment_duration'])  # NB: in movie time scale
-                    edit_start_index= 1
+                    this_empty_duration  = np.int64(elst.box_info['entry_list'][i]['segment_duration'])  # NB: in movie time scale
+                    # convert duration from edit list from global timescale to track timescale
+                    empty_duration += av_rescale(this_empty_duration,media_time_scale,movie_time_scale)
+                    edit_start_index += 1
                 elif i==edit_start_index and elst.box_info['entry_list'][i]['media_time'] > 0:
-                    raise RuntimeError('File contains an edit list that is too complicated (start time is not 0) for this parser, not supported')
+                    media_start_time = np.int64(elst.box_info['entry_list'][i]['media_time'])   # NB: already in track timescale, do not scale
+                    media_duration   = av_rescale(np.int64(elst.box_info['entry_list'][i]['segment_duration']),media_time_scale,movie_time_scale)   # as above, scale to track timescale
+                    if media_start_time<0:
+                        raise RuntimeError('File contains an edit list that is too complicated (media start time < 0) for this parser, not supported')
+                    if elst.box_info['entry_list'][i]['media_rate']!=1.0:
+                        raise RuntimeError('File contains an edit list that is too complicated (media time is not 1.0) for this parser, not supported')
                 elif i>edit_start_index:
-                    raise RuntimeError('File contains an edit list that is too complicated (multiple edits) for this parser, not supported')
-        # 5. get mdia box
-        mdia    = trak.children[[i for i,x in enumerate(trak.children) if x.type=='mdia'][0]]
-        # 6. get media/track time_scale and duration fields from mdhd
-        mdhd            = mdia.children[[i for i,x in enumerate(mdia.children) if x.type=='mdhd'][0]]
-        media_time_scale= mdhd.box_info['timescale']
-        duration        = mdhd.box_info['duration']
+                    raise RuntimeError('File contains an edit list that is too complicated (multiple non-empty edits) for this parser, not supported')
         # 7. get stbl
         minf    = mdia.children[[i for i,x in enumerate(mdia.children) if x.type=='minf'][0]]
         stbl    = minf.children[[i for i,x in enumerate(minf.children) if x.type=='stbl'][0]]
@@ -414,7 +419,7 @@ def getFrameTimestampsFromVideo(vid_file):
                 ctts[idx:idx+e['sample_count']] = e['sample_offset']
                 idx = idx+e['sample_count']
         # 9. get sample table from stts
-        stts    = stbl.children[[i for i,x in enumerate(stbl.children) if x.type=='stts'][0]].box_info['entry_list']
+        stts = stbl.children[[i for i,x in enumerate(stbl.children) if x.type=='stts'][0]].box_info['entry_list']
         # uncompress the delta table
         total_frames_stts = sum([e['sample_count'] for e in stts])
         dts = np.zeros(total_frames_stts, dtype=np.int64)
@@ -422,25 +427,29 @@ def getFrameTimestampsFromVideo(vid_file):
         for e in stts:
             dts[idx:idx+e['sample_count']] = e['sample_delta']
             idx = idx+e['sample_count']
-        # turn into timestamps
-        dts = np.cumsum(np.insert(dts, 0, 0))
-        duration_from_dts = dts[-1]
-        dts = np.delete(dts,-1) # remove last, since that denotes _end_ of last frame, and we only need timestamps for frame onsets
 
         # 10. now put it all together
-        # convert duration from edit list from global timescale to track timescale
-        empty_duration = av_rescale(empty_duration,media_time_scale,movie_time_scale)
-
-        # check last duration matches last timestamp
-        if duration not in [duration_from_dts, duration_from_dts+empty_duration]:   # also check duration without taking edit list into account, duration in track header should include edit list but may not
-            raise RuntimeError("Sum of all frame durations does not match duration of video, this video file is not understood")
-
-        # if we have ctts, apply to all samples
+        # turn into timestamps
+        dts = np.cumsum(np.insert(dts, 0, 0))
+        dts = np.delete(dts,-1) # remove last, since that denotes _end_ of last frame, and we only need timestamps for frame onsets
+        # apply ctts
         if ctts_idx:
-            if len(ctts)!=len(dts):
-                raise RuntimeError("ctts doesn't have the same number of entries as stts table")
-            dts = dts+ctts
-        # now into timestamps in ms
+            dts += ctts
+            # ctts should lead to a reordering of frames, so sort
+            dts = np.sort(dts)
+        # if we have a non-empty edit list, apply
+        if media_start_time!=-1:
+            # remove all timestamps before start or after end of edit list
+            to_keep = np.logical_or(dts >= media_start_time, dts < (media_duration + media_start_time))
+            dts = dts[to_keep]
+            min_corrected_pts = dts[0]  # already sorted, this is the first frame's pts
+            # If there are empty edits, then min_corrected_pts might be positive
+            # intentionally. So we subtract the sum duration of emtpy edits here.
+            min_corrected_pts -= empty_duration
+            # If the minimum pts turns out to be greater than zero,
+            # then we subtract the dts by that amount to make the first pts zero.
+            dts -= min_corrected_pts
+        # now turn into timestamps in ms
         frameTs = (dts+empty_duration)/media_time_scale*1000
     else:
         # open file with opencv and get timestamps of each frame
@@ -453,7 +462,7 @@ def getFrameTimestampsFromVideo(vid_file):
             # end
             ts = vid.get(cv2.CAP_PROP_POS_MSEC)
 
-            ret, frame = vid.read()
+            ret, _ = vid.read()
             frame_idx += 1
 
             # You'd think to get the time at the start of the frame, which is what we want, you'd need to
