@@ -122,6 +122,8 @@ class Settings:
     dq_use_pose_right_eye       : bool
     dq_use_pose_left_right_avg  : bool
     dq_report_data_loss         : bool
+    fix_assign_do_global_shift  : bool
+    fix_assign_max_dist_fac     : float
     process_workers             : int
     render_when_unfocused       : bool
     show_advanced_options       : bool

@@ -2083,6 +2083,43 @@ class MainGUI():
             imgui.end_table()
             imgui.spacing()
 
+        
+        if set.show_advanced_options and self.start_settings_section("Fixation matching", right_width):
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
+            imgui.text("Use global shift:")
+            imgui.same_line()
+            draw_hover_text(
+                "If selected, for each validation interval the mean position of the data and the targets will be removed, correcting any overall shift of the data. This will improve the matching of fixations to targets when there is a significant overall offset in the data. It may fail (backfire) if there are data samples far outside the range of the validation targets, or if there is no data for some targets."
+            )
+            imgui.table_next_column()
+            imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+            changed, value = imgui.checkbox("##use_global_shift", set.fix_assign_do_global_shift)
+            if changed:
+                set.fix_assign_do_global_shift = value
+                async_thread.run(db.update_settings("fix_assign_do_global_shift"))
+
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.align_text_to_frame_padding()
+            imgui.text("Matching distance factor:")
+            imgui.same_line()
+            draw_hover_text(
+                "Factor for determining distance limit when assigning fixation points to validation target. If for a given target the closest fixation point is further away than <factor>*[minimum intertarget distance], then no fixation point will be assigned to this target, i.e., it will not be matched to any fixation point. Set to a large value to essentially disable."
+            )
+            imgui.table_next_column()
+            imgui.table_next_row()
+            imgui.table_next_column()
+            imgui.table_next_column()
+            changed, value = imgui.drag_float("##fix_assign_max_dist_fac", set.fix_assign_max_dist_fac, v_speed=0.04, v_min=0.01, v_max=10)
+            if changed:
+                set.fix_assign_max_dist_fac = min(max(value, 0.01), 10)
+                async_thread.run(db.update_settings("fix_assign_max_dist_fac"))
+
+            imgui.end_table()
+            imgui.spacing()
+
         if set.show_advanced_options and self.start_settings_section("Interface", right_width):
             imgui.table_next_row()
             imgui.table_next_column()

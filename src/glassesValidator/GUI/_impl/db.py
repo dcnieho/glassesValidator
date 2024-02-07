@@ -108,6 +108,8 @@ async def connect():
         "dq_use_pose_right_eye":       f'INTEGER DEFAULT {int(False)}',
         "dq_use_pose_left_right_avg":  f'INTEGER DEFAULT {int(False)}',
         "dq_report_data_loss":         f'INTEGER DEFAULT {int(False)}',
+        "fix_assign_do_global_shift":  f'INTEGER DEFAULT {int(True)}',
+        "fix_assign_max_dist_fac":     f'FLOAT DEFAULT .5',
         "process_workers":             f'INTEGER DEFAULT 2',
         "render_when_unfocused":       f'INTEGER DEFAULT {int(True)}',
         "show_advanced_options":       f'INTEGER DEFAULT {int(False)}',
@@ -188,6 +190,11 @@ def sql_to_py(value: str | int | float, data_type: typing.Type):
             else:
                 value = data_type(value)
         case "int":
+            if value=='null':
+                value = None
+            else:
+                value = data_type(value)
+        case "float":
             if value=='null':
                 value = None
             else:
