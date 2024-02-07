@@ -1930,7 +1930,7 @@ class MainGUI():
                     "Each recording is processed by a worker and each worker can handle 1 "
                     "recording at a time. Having more workers means more recordings are processed "
                     "simultaneously, but having too many will not provide any gain and might freeze "
-                    "the program and your whole program. Since much of the processing utilizes more "
+                    "the program and your whole computer. Since much of the processing utilizes more "
                     "than one processor thread, set this value to signficantly less than the number "
                     "of threads available in your system. In most cases 2--3 workers should provide "
                     "a good experience. NB: If you currently have running or enqueued jobs, the "
