@@ -20,9 +20,6 @@ def get_data_path():
     else:
         return globals.data_path
 
-def get_ini_file_name():
-    return str(get_data_path() / "imgui.ini")
-
 def is_project_folder(folder: str | pathlib.Path):
     folder = pathlib.Path(folder)
     if not folder.is_dir():

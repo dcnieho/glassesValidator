@@ -755,15 +755,14 @@ class MainGUI():
             self.style_imgui_functions()
 
     def get_imgui_config(self):
-        ini_filename = utils.get_ini_file_name()
-        imgui.io.set_ini_filename(ini_filename)
+        imgui.io.set_ini_filename(str(utils.get_data_path() / "imgui.ini"))
 
         size = tuple()
         pos = tuple()
         is_default = False
         try:
             # Get window size
-            with open(ini_filename, "r") as f:
+            with open(imgui.io.get_ini_filename(), "r") as f:
                 ini = f.read()
             imgui.load_ini_settings_from_memory(ini)
             # subpart of ini file is valid input to config parser, parse that part of it
@@ -1262,7 +1261,7 @@ class MainGUI():
 
     def save_imgui_ini(self, path: str | pathlib.Path = None):
         if path is None:
-            path = utils.get_ini_file_name()
+            path = imgui.io.get_ini_filename()
         imgui.save_ini_settings_to_disk(str(path))
         ini = imgui.save_ini_settings_to_memory()
 
