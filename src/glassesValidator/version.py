@@ -1,4 +1,4 @@
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 __title__ = "glassesValidator"
 __description__ = "Automatic determination of accuracy of wearable eye tracker recordings."
