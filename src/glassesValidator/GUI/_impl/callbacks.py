@@ -208,6 +208,8 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
                     fun = process.compute_offsets_to_targets
                 case Task.Fixation_Intervals_Determined:
                     fun = process.determine_fixation_intervals
+                    kwargs['do_global_shift'] = globals.settings.fix_assign_do_global_shift
+                    kwargs['max_dist_fac']    = globals.settings.fix_assign_max_dist_fac
                 case Task.Data_Quality_Calculated:
                     fun = process.calculate_data_quality
                     kwargs['allow_dq_fallback'] = True

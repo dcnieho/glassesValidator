@@ -13,7 +13,7 @@ from .. import config
 from .. import utils
 
 
-def process(working_dir, config_dir=None):
+def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None):
     working_dir  = pathlib.Path(working_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)
@@ -112,17 +112,19 @@ def process(working_dir, config_dir=None):
         selected    = np.empty((len(targets),),dtype='int')
         selected[:] = -999
 
-        # first, center the problem. That means determine and remove any overall shift from the
-        # data and the targets, to improve robustness of assigning fixations points to targets.
-        # Else, if all data is e.g. shifted up by more than half the distance between
-        # validation targets, target assignment would fail
-        # N.B.: use output data from I2MC, which always has an average gaze signal
-        off_x = data_I2MC['average_X'].mean()
-        off_y = data_I2MC['average_Y'].mean()
         t_x = np.array([targets[t][0] for t in targets])
         t_y = np.array([targets[t][1] for t in targets])
-        off_t_x = t_x.mean()
-        off_t_y = t_y.mean()
+        off_x = off_y = off_t_x = off_t_y = 0.
+        if do_global_shift:
+            # first, center the problem. That means determine and remove any overall shift from the
+            # data and the targets, to improve robustness of assigning fixations points to targets.
+            # Else, if all data is e.g. shifted up by more than half the distance between
+            # validation targets, target assignment would fail
+            # N.B.: use output data from I2MC, which always has an average gaze signal
+            off_x = data_I2MC['average_X'].mean()
+            off_y = data_I2MC['average_Y'].mean()
+            off_t_x = t_x.mean()
+            off_t_y = t_y.mean()
 
         # we furthermore do not assign a fixation to a target if the closest fixation is more than
         # half the intertarget distance away
@@ -133,7 +135,7 @@ def process(working_dir, config_dir=None):
             dist = np.hypot(t_x[0]-t_x[1:], t_y[0]-t_y[1:])
             min_dist = dist.min()
             if min_dist > 0:
-                dist_lim = min_dist/2
+                dist_lim = min_dist*max_dist_fac
 
         for i,t in zip(range(len(targets)),targets):
             if np.all(used):

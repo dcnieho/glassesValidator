@@ -2106,7 +2106,7 @@ class MainGUI():
             imgui.text("Matching distance factor:")
             imgui.same_line()
             draw_hover_text(
-                "Factor for determining distance limit when assigning fixation points to validation target. If for a given target the closest fixation point is further away than <factor>*[minimum intertarget distance], then no fixation point will be assigned to this target, i.e., it will not be matched to any fixation point. Set to a large value to essentially disable."
+                "Factor for determining distance limit when assigning fixation points to validation targets. If for a given target the closest fixation point is further away than <factor>*[minimum intertarget distance], then no fixation point will be assigned to this target, i.e., it will not be matched to any fixation point. Set to a large value to essentially disable."
             )
             imgui.table_next_column()
             imgui.table_next_row()
