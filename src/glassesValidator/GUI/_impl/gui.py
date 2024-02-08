@@ -2091,7 +2091,7 @@ class MainGUI():
             imgui.text("Use global shift:")
             imgui.same_line()
             draw_hover_text(
-                "If selected, for each validation interval the mean position of the data and the targets will be removed, correcting any overall shift of the data. This will improve the matching of fixations to targets when there is a significant overall offset in the data. It may fail (backfire) if there are data samples far outside the range of the validation targets, or if there is no data for some targets."
+                "If selected, for each validation interval the mean position will be removed from the gaze data and the targets, removing any overall shift of the data. This improves the matching of fixations to targets when there is a significant overall offset in the data. It may fail (backfire) if there are data samples far outside the range of the validation targets, or if there is no data for some targets."
             )
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
