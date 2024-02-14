@@ -28,13 +28,13 @@ def deploy_marker_images(output_dir):
     validationSetup = get_validation_setup()
 
     # Load the predefined dictionary
-    dictionary = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
+    dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
 
     # Generate the marker
     sz = 1000
     for i in range(250):
         markerImage = np.zeros((sz, sz), dtype=np.uint8)
-        markerImage = cv2.aruco.drawMarker(dictionary, i, sz, markerImage, validationSetup['markerBorderBits'])
+        markerImage = cv2.aruco.generateImageMarker(dictionary, i, sz, markerImage, validationSetup['markerBorderBits'])
 
         cv2.imwrite(str(output_dir / "{}.png".format(i)), markerImage)
 
