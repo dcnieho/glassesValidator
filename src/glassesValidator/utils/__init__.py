@@ -1198,7 +1198,7 @@ class GazePoster:
             reference.draw(img, self.gaze2DRay[0],self.gaze2DRay[1], subPixelFac, (255,255,0), 3)
 
 class PosterPose:
-    def __init__(self, frameIdx, poseOk=False, nMarkers=0, rVec=None, tVec=None, hMat=None):
+    def __init__(self, frameIdx, poseOk=False, nMarkers=0, rVec=None, tVec=None, nMarkersH=0, hMat=None):
         self.frameIdx   = frameIdx
 
         # pose
@@ -1208,6 +1208,7 @@ class PosterPose:
         self.tVec       = tVec
 
         # homography
+        self.nMarkersH  = nMarkersH  # number of Aruco markers this homongraphy estimate is based on
         self.hMat       = hMat.reshape(3,3) if hMat is not None else hMat
 
         # internals
@@ -1222,25 +1223,26 @@ class PosterPose:
     def getWriteHeader():
         header = ['frame_idx','poseOk','poseNMarker']
         header.extend(getXYZLabels(['poseRvec','poseTvec']))
+        header.append('homographyNMarker')
         header.extend(['homography[%d,%d]' % (r,c) for r in range(3) for c in range(3)])
         return header
 
     @staticmethod
     def getMissingWriteData():
         dat = [False,0]
-        dat.extend([math.nan for x in range(15)])
+        dat.extend([math.nan for x in range(6)])
+        dat.append(0)
+        dat.extend([math.nan for x in range(9)])
         return dat
 
     def getWriteData(self):
         writeData = [self.frameIdx]
-        if not self.poseOk:
-            writeData.extend(self.getMissingWriteData())
-        else:
-            # in camera space
-            writeData.extend([True, self.nMarkers])
-            writeData.extend(allNanIfNone(self.rVec,3).flatten())
-            writeData.extend(allNanIfNone(self.tVec,3).flatten())
-            writeData.extend(allNanIfNone(self.hMat,9).flatten())
+        # in camera space
+        writeData.extend([self.poseOk, self.nMarkers])
+        writeData.extend(allNanIfNone(self.rVec,3).flatten())
+        writeData.extend(allNanIfNone(self.tVec,3).flatten())
+        writeData.append(self.nMarkersH)
+        writeData.extend(allNanIfNone(self.hMat,9).flatten())
 
         return writeData
 
@@ -1251,7 +1253,7 @@ class PosterPose:
         data        = pd.read_csv(str(fileName), delimiter='\t',index_col=False)
         rCols       = [col for col in data.columns if 'poseRvec' in col]
         tCols       = [col for col in data.columns if 'poseTvec' in col]
-        hCols       = [col for col in data.columns if 'homography' in col]
+        hCols       = [col for col in data.columns if 'homography[' in col]
         # run through all columns
         for idx, row in data.iterrows():
             frame_idx = int(row['frame_idx'])
@@ -1262,11 +1264,12 @@ class PosterPose:
                     continue
 
             # get all values (None if all nan)
-            args = tuple(noneIfAnyNan(row[c].to_numpy().astype('float')) for c in (rCols,tCols,hCols))
+            args = tuple(noneIfAnyNan(row[  c  ].to_numpy().astype('float')) for c in (rCols,tCols))
+            argsH=       noneIfAnyNan(row[hCols].to_numpy().astype('float'))
 
             # insert if any non-None
-            if not np.all([x is None for x in args]):   # check for not all isNone
-                poses[frame_idx] = PosterPose(frame_idx,bool(row['poseOk']),int(row['poseNMarker']),*args)
+            if not np.all([x is None for x in args]) or argsH is not None:   # check for not all isNone
+                poses[frame_idx] = PosterPose(frame_idx,bool(row['poseOk']),int(row['poseNMarker']),*args,int(row['homographyNMarker']),argsH)
 
         return poses
 

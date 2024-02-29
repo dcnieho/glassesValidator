@@ -160,6 +160,7 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
 
                 if status:
                     pose.hMat = H
+                    pose.nMarkersH = len(cornersU)
                     if show_visualization:
                         # find where target is expected to be in the image
                         iH = np.linalg.inv(pose.hMat)
