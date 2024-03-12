@@ -15,7 +15,7 @@ import datetime
 from .. import utils
 
 
-def preprocessData(output_dir, source_dir=None, rec_info=None):
+def preprocessData(output_dir, source_dir=None, rec_info=None, cam_cal_file=None):
     """
     Run all preprocessing steps on tobii data
     """
@@ -72,8 +72,13 @@ def preprocessData(output_dir, source_dir=None, rec_info=None):
     print(f'Input data copied to: {newDataDir}')
 
     #### prep the copied data...
-    print('Getting camera calibration...')
-    sceneVideoDimensions = getCameraFromYaml(source_dir, newDataDir)
+    print('  Getting camera calibration...')
+    if cam_cal_file is not None:
+        shutil.copyfile(str(cam_cal_file), str(newDataDir / 'calibration.xml'))
+        sceneVideoDimensions = np.array([1280, 720])
+    else:
+        print('    !! No camera calibration provided! Defaulting to hardcoded')
+        sceneVideoDimensions = getCameraHardcoded(newDataDir)
     print('Prepping gaze data...')
     gazeDf, frameTimestamps = formatGazeData(source_dir, newDataDir, sceneVideoDimensions)
 
@@ -164,7 +169,7 @@ def copyAdhawkRecording(inputDir, outputDir):
     # Copy relevent files to new directory
     shutil.copyfile(str(inputDir / vid_entry['file_name']), str(outputDir / 'worldCamera.mp4'))
 
-def getCameraFromYaml(inputDir, outputDir):
+def getCameraHardcoded(outputDir):
     """
     Get camera calibration
     Hardcoded as per info received from AdHawk
