@@ -23,7 +23,7 @@ def preprocessData(output_dir, source_dir=None, rec_info=None, cam_cal_file=None
         RuntimeError('ffmpeg must be on path to prep SeeTrue recording for processing with GlassesValidator')
 
     """
-    Run all preprocessing steps on SeeTrue data
+    Run all preprocessing steps on SeeTrue STONE data
     """
     output_dir = pathlib.Path(output_dir)
     if source_dir is not None:
@@ -36,8 +36,8 @@ def preprocessData(output_dir, source_dir=None, rec_info=None, cam_cal_file=None
         source_dir  = pathlib.Path(rec_info.source_directory)
 
     if rec_info is not None:
-        if rec_info.eye_tracker!=utils.EyeTracker.SeeTrue:
-            raise ValueError(f'Provided rec_info is for a device ({rec_info.eye_tracker.value}) that is not an {utils.EyeTracker.SeeTrue.value}. Cannot use.')
+        if rec_info.eye_tracker!=utils.EyeTracker.SeeTrue_STONE:
+            raise ValueError(f'Provided rec_info is for a device ({rec_info.eye_tracker.value}) that is not an {utils.EyeTracker.SeeTrue_STONE.value}. Cannot use.')
         if not rec_info.proc_directory_name:
             rec_info.proc_directory_name = utils.make_fs_dirname(rec_info, output_dir)
         newDir = output_dir / rec_info.proc_directory_name
@@ -57,7 +57,7 @@ def preprocessData(output_dir, source_dir=None, rec_info=None, cam_cal_file=None
     else:
         recInfos = getRecordingInfo(source_dir)
         if recInfos is None:
-            raise RuntimeError(f"The folder {source_dir} does not contain SeeTrue recordings.")
+            raise RuntimeError(f"The folder {source_dir} does not contain SeeTrue STONE recordings.")
 
     # make output dirs
     for i in range(len(recInfos)):
@@ -83,7 +83,8 @@ def preprocessData(output_dir, source_dir=None, rec_info=None, cam_cal_file=None
         if cam_cal_file is not None:
             shutil.copyfile(str(cam_cal_file), str(newDataDir / 'calibration.xml'))
         else:
-            print('    !! No camera calibration provided!')
+            print('    !! No camera calibration provided! Defaulting to hardcoded')
+            getCameraHardcoded(newDataDir)
 
         # NB: gaze data and scene video prep are intertwined, status messages are output inside this function
         gazeDf, frameTimestamps = copySeeTrueRecording(source_dir, newDataDir, rec_info)
@@ -119,7 +120,7 @@ def getRecordingInfo(inputDir):
             # print(f"folder {sceneVidDir} not found, meaning there is no scene video for this recording, skipping")
             continue
 
-        recInfos.append(utils.Recording(source_directory=inputDir, eye_tracker=utils.EyeTracker.SeeTrue))
+        recInfos.append(utils.Recording(source_directory=inputDir, eye_tracker=utils.EyeTracker.SeeTrue_STONE))
         recInfos[-1].participant = inputDir.name
         recInfos[-1].name = recording
 
@@ -265,6 +266,25 @@ def copySeeTrueRecording(inputDir, outputDir, recInfo):
 
     return gazeDf, frameTimestamps
 
+
+def getCameraHardcoded(outputDir):
+    """
+    Get camera calibration
+    Hardcoded as per info received from SeeTrue
+    """
+    # turn into camera matrix and distortion coefficients as used by OpenCV
+    camera = {}
+    camera['cameraMatrix'] = np.array([[495,   0, 300],
+                                       [  0, 495, 255],
+                                       [  0,   0,   1]], dtype=np.float64)
+    camera['distCoeff'] = np.array([-0.55, 0.4, 0, 0, -0.2])
+    camera['resolution'] = np.array([640, 480])
+
+    # store to file
+    fs = cv2.FileStorage(str(outputDir / 'calibration.xml'), cv2.FILE_STORAGE_WRITE)
+    for key,value in camera.items():
+        fs.write(name=key,val=value)
+    fs.release()
 
 
 def formatGazeData(inputFile, sceneVideoDimensions):

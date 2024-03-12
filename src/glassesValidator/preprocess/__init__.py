@@ -4,7 +4,7 @@ import pathlib
 from .. import utils as _utils
 
 from .adhawk_mindlink import preprocessData as adhawk_mindlink
-from .SeeTrue import preprocessData as SeeTrue
+from .SeeTrue_STONE import preprocessData as SeeTrue_STONE
 from .SMI_ETG import preprocessData as SMI_ETG
 from .tobii_G2 import preprocessData as tobii_G2
 from .tobii_G3 import preprocessData as tobii_G3
@@ -37,8 +37,8 @@ def get_recording_info(source_dir: str | pathlib.Path, device: str | _utils.EyeT
         case _utils.EyeTracker.Pupil_Neon:
             from .pupilLabs import getRecordingInfo
             rec_info = getRecordingInfo(source_dir, device)
-        case _utils.EyeTracker.SeeTrue:
-            from .SeeTrue import getRecordingInfo
+        case _utils.EyeTracker.SeeTrue_STONE:
+            from .SeeTrue_STONE import getRecordingInfo
             rec_info = getRecordingInfo(source_dir)
         case _utils.EyeTracker.SMI_ETG:
             from .SMI_ETG import getRecordingInfo
@@ -104,8 +104,8 @@ def do_import(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = N
             rec_info = pupil_invisible(output_dir, source_dir, rec_info)
         case _utils.EyeTracker.Pupil_Neon:
             rec_info = pupil_neon(output_dir, source_dir, rec_info)
-        case _utils.EyeTracker.SeeTrue:
-            rec_info = SeeTrue(output_dir, source_dir, rec_info)
+        case _utils.EyeTracker.SeeTrue_STONE:
+            rec_info = SeeTrue_STONE(output_dir, source_dir, rec_info)
         case _utils.EyeTracker.SMI_ETG:
             rec_info = SMI_ETG(output_dir, source_dir, rec_info)
         case _utils.EyeTracker.Tobii_Glasses_2:
@@ -120,5 +120,5 @@ def do_import(output_dir: str | pathlib.Path, source_dir: str | pathlib.Path = N
     return rec_info
 
 
-__all__ = ['pupil_core','pupil_invisible','pupil_neon','SeeTrue','SMI_ETG','tobii_G2','tobii_G3','adhawk_mindlink',
+__all__ = ['pupil_core','pupil_invisible','pupil_neon','SeeTrue_STONE','SMI_ETG','tobii_G2','tobii_G3','adhawk_mindlink',
            'get_recording_info','do_import']
