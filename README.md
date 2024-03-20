@@ -42,8 +42,7 @@ Once pip-installed in your Python distribution, there are three ways to run the 
 The glassesValidator validation procedure consists of two parts, 1) a poster and validation procedure that is used during a recording, and 2) Python software
 for offline processing of the recording to estimate data quality measures. The glassesValidator package includes a graphical user interface (GUI)
 that can be used to perform all processing. Below we describe an example workflow using the GUI. Advanced users can however opt to call all the GUI's
-functionality directly from their own Python scripts without making use of the graphical user interface. The interested reader is referred to the glassesValidator
-manual for further details regarding how to use the glassesValidator functionality directly from their own scripts.
+functionality directly from their own Python scripts without making use of the graphical user interface. The interested reader is referred to the [API section below](#api) for further details regarding how to use the glassesValidator functionality directly from their own scripts.
 
 ## Workflow and example data
 Here we first present an example workflow using the GUI. More detailed information about [using the GUI](#the-gui), or [the programming API](#api), are provided
