@@ -513,10 +513,10 @@ class RecordingTable():
                 self.draw_recording_process_button(not_imported_ids, label="󰼛 Import", action=Task.Imported)
                 # after stage 1
                 imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Imported]
-                self.draw_recording_process_button(imported_ids, label="󰼛 Code validation intervals", action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
+                self.draw_recording_process_button(imported_ids, label="󰼛 Code validation interval(s)", action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
                 # already coded, recode
                 recoded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task) in [TaskSimplified.Coded, TaskSimplified.Processed]]
-                self.draw_recording_process_button(recoded_ids, label="󰑐 Edit validation intervals", action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
+                self.draw_recording_process_button(recoded_ids, label="󰑐 Edit validation interval(s)", action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
                 # after stage 2 / during stage 3
                 coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Coded]
                 # NB: don't send action, so that callback code figures out where we we left off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
@@ -1692,7 +1692,7 @@ class MainGUI():
                 # already coded, recode
                 recoded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task) in [TaskSimplified.Coded, TaskSimplified.Processed]]
                 if recoded_ids:
-                    text.append("󰑐 Edit validation intervals")
+                    text.append("󰑐 Edit validation interval(s)")
                     action.append(lambda: async_thread.run(callbacks.process_recordings(recoded_ids, task=Task.Coded, chain=set.continue_process_after_code)))
                     hover_text.append("Edit validation interval coding for the selected recordings.")
                 # already fully done, recompute or export results
@@ -1710,7 +1710,7 @@ class MainGUI():
                 # after stage 1
                 imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Imported]
                 if imported_ids:
-                    text.append("󰼛 Code validation intervals")
+                    text.append("󰼛 Code validation interval(s)")
                     action.append(lambda: async_thread.run(callbacks.process_recordings(imported_ids, task=Task.Coded, chain=set.continue_process_after_code)))
                     hover_text.append("Code validation intervals for the selected recordings.")
                 # after stage 2 / during stage 3
