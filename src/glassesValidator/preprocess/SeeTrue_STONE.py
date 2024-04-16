@@ -167,6 +167,7 @@ def copySeeTrueRecording(inputDir, outputDir, recInfo):
     for f in sceneVidDir.glob('*.jpeg'):
         _,fr = f.stem.split('_')
         frames.append(int(fr))
+    frames = sorted(frames)
 
     # 2. see if framenumbers are as expected from the gaze data file
     # get average ifi
