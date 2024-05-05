@@ -46,13 +46,13 @@ def msgbox(title: str, msg: str, type: MsgBox = None, buttons: dict[str, typing.
         imgui.text_unformatted(msg)
         if more:
             imgui.text("")
-            if imgui.tree_node("More info", flags=imgui.TreeNodeFlags_.span_avail_width):
+            if imgui.tree_node_ex("More info", flags=imgui.TreeNodeFlags_.span_avail_width):
                 size = imgui.io.display_size
                 more_size = imgui.calc_text_size(more)
                 _36 = globals.gui.scaled(26) + imgui.style.scrollbar_size
                 width = min(more_size.x + _36, size.x * 0.8 - icon_size.x)
                 height = min(more_size.y + _36, size.y * 0.7 - msg_size_y)
-                imgui.input_text_multiline(f"###more_info_{title}", more,  width=width, height=height, flags=imgui.InputTextFlags_.read_only)
+                imgui.input_text_multiline(f"###more_info_{title}", more,  (width, height), flags=imgui.InputTextFlags_.read_only)
                 imgui.tree_pop()
         imgui.end_group()
         imgui.same_line(spacing=spacing)
