@@ -212,11 +212,6 @@ def copySeeTrueRecording(inputDir, outputDir, recInfo):
             frames.append(f)
         frames = sorted(frames)
 
-    frameTsDelta = np.diff(frameTimestamps.frame_idx)
-    if np.any(frameTsDelta>1):
-        # frames missing from frametimestamps
-        err
-
     if len(frames) != frameTimestamps.shape[0]:
         raise RuntimeError('Number of frames ({}) isn''t equal to number of frame timestamps ({}) and this couldnt be repaired'.format(len(frames),frameTimestamps.shape[0]))
 
