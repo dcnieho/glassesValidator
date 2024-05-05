@@ -212,9 +212,6 @@ def copySeeTrueRecording(inputDir, outputDir, recInfo):
             frames.append(f)
         frames = sorted(frames)
 
-    if len(frames) != frameTimestamps.shape[0]:
-        raise RuntimeError('Number of frames ({}) isn''t equal to number of frame timestamps ({}) and this couldnt be repaired'.format(len(frames),frameTimestamps.shape[0]))
-
     # 3. make into video
     framerate = "{:.4f}".format(1000./ifi)
     cmd_str = ' '.join(['ffmpeg', '-y', '-f', 'image2', '-framerate', framerate, '-start_number', str(frames[0]), '-i', '"'+str(sceneVidDir / 'frame_%d.jpeg')+'"', '"'+str(outputDir / 'worldCamera.mp4')+'"'])
