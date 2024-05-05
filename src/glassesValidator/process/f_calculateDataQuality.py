@@ -118,9 +118,9 @@ def process(working_dir, dq_types=[], allow_dq_fallback=False, include_data_loss
                             df.loc[(i,e,t),'data_loss'] = np.nan
 
                     if hasData:
-                        df.loc[(i,e,t),'acc_x'] = np.nanmean(data['offset_x'])
-                        df.loc[(i,e,t),'acc_y'] = np.nanmean(data['offset_y'])
-                        df.loc[(i,e,t),'acc'  ] = np.nanmean(np.hypot(data['offset_x'],data['offset_y']))
+                        df.loc[(i,e,t),'acc_x'] = np.nanmedian(data['offset_x'])
+                        df.loc[(i,e,t),'acc_y'] = np.nanmedian(data['offset_y'])
+                        df.loc[(i,e,t),'acc'  ] = np.nanmedian(np.hypot(data['offset_x'],data['offset_y']))
 
                         df.loc[(i,e,t),'rms_x'] = np.sqrt(np.nanmean(np.diff(data['offset_x'])**2))
                         df.loc[(i,e,t),'rms_y'] = np.sqrt(np.nanmean(np.diff(data['offset_y'])**2))
