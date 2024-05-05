@@ -158,7 +158,10 @@ pdf` button, and 3) can also be acquired from a Python script by calling
 `glassesValidator.config.poster.deploy_default_pdf()`.
 The default poster should be printed at A2 size, as defined
 in the pdf file, and is designed to cover a reasonable field of view when participants view it at armslength (i.e., 20 x 17.5 deg
-at 60 cm). In order to check that the poster was printed at the correct scale, one should measure the sides of the ArUco markers.
+at 60 cm).
+A version of the default poster that is printed as two A3 files that you can then put together into one poster is available 
+[here](/extras/poster_two_A3.pdf).
+In order to check that the poster was printed at the correct scale, one should measure the sides of the ArUco markers.
 We strongly recommend performing this check because printers may not be calibrated. In the case of the default glassesValidator
 poster, the distance between the left side of the left-most column of ArUco markers and the right side of the right-most column of
 ArUco markers should be 35.6 cm (each ArUco marker should have sides that are 4.19 cm long). If the poster was printed at the wrong
