@@ -81,11 +81,53 @@ To use these files, after importing a recording into your [glassesValidator proj
 
 ## glassesValidator projects
 The glassesValidator GUI organizes recordings into a project folder. Each recording to be processed is imported into this project folder
-and all further processing is done inside it. The source directories containing the original recordings remain untouched when running
-glassesValidator. The glassesValidator project folder can furthermore contain a folder specifying the configuration of the project.
-Such a configuration should be made if you used a poster different from the default (if no configuration folder is present, the default
-settings are automatically used), and can be deployed with the `Deploy config` button in the GUI, or the
-`glassesValidator.config.deploy_validation_config()` call from Python.
+(one folder per recording) and all further processing is done inside it. The source directories containing the original recordings remain
+untouched when running glassesValidator. The glassesValidator project folder can furthermore contain a folder specifying the configuration
+of the project. Such a configuration should be made if you used a poster different from the default (if no configuration folder is present,
+the default settings are automatically used), and can be deployed with the `Deploy config` button in the GUI, or the
+[`glassesValidator.config.deploy_validation_config()`](#glassesvalidatorconfig) call from Python.
+
+When not using the GUI and running glassesValidator using your own scripts, such a project folder organization is not required. Working folders
+for a recording can be placed anywhere, and a folder for a custom configuration, if used can also be placed anywhere. The
+`glassesValidator.process`](#glassesvalidatorprocess) functions simply take the path to a working folder and, optionally, the path to a configuration
+folder.
+
+## Output
+During the importing and processing of a recording, a series of files are created in the working folder of a recording. These are the following:
+|file|produced<br>by|input<br>for|description|
+| --- | --- | --- | --- |
+|`worldCamera.mp4`|[`glassesValidator.preprocess`](#glassesvalidatorpreprocess) functions||Copy of the scene camera video.|
+|`recording_glassesValidator.json`|[`glassesValidator.preprocess`](#glassesvalidatorpreprocess) functions||Information about the recording.|
+|`gazeData.tsv`|[`glassesValidator.preprocess`](#glassesvalidatorpreprocess) functions||Gaze data cast into a common format understood by glassesValidator.|
+|`frameTimestamps.tsv`|[`glassesValidator.preprocess`](#glassesvalidatorpreprocess) functions||Timestamps for each frame in the scene camera video.|
+|`calibration.xml`|[`glassesValidator.preprocess`](#glassesvalidatorpreprocess) functions||Camera calibration parameters for the scene camera.|
+|`markerInterval.tsv`|[`glassesValidator.process.code_marker_interval`](#glassesvalidatorprocess)||File denoting the validation intervals to be processed. This is produced with the coding interface included with glassesValidator. Can be manually created or edited to override the coded intervals.|
+|`posterPose.tsv`|[`glassesValidator.process.detect_markers`](#glassesvalidatorprocess)||File with information about poster pose w.r.t. the scene camera for each frame where the poster was detected.|
+|`gazePosterPos.tsv`|[`glassesValidator.process.gaze_to_poster`](#glassesvalidatorprocess)||File with gaze data projected to the poster surface.|
+|`gazeTargetOffset.tsv`|[`glassesValidator.process.compute_offsets_to_targets`](#glassesvalidatorprocess)||File with offsets between gaze and each of the validation targets on the poster.|
+|`analysisInterval.tsv`|[`glassesValidator.process.determine_fixation_intervals`](#glassesvalidatorprocess)||File containing the time interval in the recording for each validation target for which the data quality measures should be calculated. These are determined by a fixation classification procedure using [I2MC](https://link.springer.com/article/10.3758/s13428-016-0822-1) and a procedure to match fixations to validation targets. Can be manually created or edited to override the episode in the recording used for each validation target.|
+|`targetSelection_I2MC_interval_*.tsv`|[`glassesValidator.process.determine_fixation_intervals`](#glassesvalidatorprocess)||x-y plot of the detected fixation on the poster and matching of fixations to validation targets.|
+|`targetSelection_I2MC_interval_*_fixations.tsv`|[`glassesValidator.process.determine_fixation_intervals`](#glassesvalidatorprocess)||Timeseries plot of the detected fixation on the poster.|
+|`dataQuality.tsv`|[`glassesValidator.process.export_data_quality`](#glassesvalidatorprocess)||See below.|
+
+### `dataQuality.tsv`
+The `dataQuality.tsv` file in the working folder of a recording contains the information we're after when using glassesValidator: information about the accuracy/offset of fixations during validation, and other data quality measures. The `dataQuality.tsv` file produced when pressing the "Export data quality" button in the GUI to export the data quality values of multiple recordings, or when using a call to the [`glassesValidator.process.export_data_quality`](#glassesvalidatorprocess) function to do so, contains the same information, possibly for a subset of validation targets and possible averaged over the validation targets.
+Both files are tab-separated spreadsheet files that contain the following columns:
+|column name|description|
+| --- | --- |
+|`acc_x`|The horizontal (signed) offset between the fixation and the validation target.|
+|`acc_y`|The vertical (signed) offset between the fixation and the validation target.|
+|`acc`|The 2D offset (unsigned) between the fixation and the validation target.|
+|`rms_x`|The RMS-S2S noise level in the horizontal eye movement data during the fixation on the validation target. See Niehorster et al. (2020).|
+|`rms_y`|The RMS-S2S noise level in the vertical eye movement data during the fixation on the validation target. See Niehorster et al. (2020).|
+|`rms`|The total RMS-S2S noise level in the eye movement data during the fixation on the validation target. See Niehorster et al. (2020).|
+|`std_x`|The standard deviation (noise level) of the horizontal eye movement data during the fixation on the validation target. See Niehorster et al. (2020).|
+|`std_y`|The standard deviation (noise level) of the horizontal eye movement data during the fixation on the validation target. See Niehorster et al. (2020).|
+|`std`|The total standard deviation (noise level) of the eye movement data during the fixation on the validation target. See Niehorster et al. (2020).|
+|`data_loss`|Data loss during the fixation on the validation target. This field is optional and by default not produced.|
+
+For the noise measures, see:
+[Niehorster, D. C., Zemblys, R., Beelders, T., & Holmqvist, K. (2020). Characterizing gaze position signals and synthesizing noise during fixations in eye-tracking data. Behavior Research Methods, 52(6), 2515–2534. doi: 10.3758/s13428-020-01400-9](https://doi.org/10.3758/s13428-020-01400-9)
 
 ## Eye trackers
 glassesValidator supports the following eye trackers:
