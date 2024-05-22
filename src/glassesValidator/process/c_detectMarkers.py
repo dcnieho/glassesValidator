@@ -54,7 +54,7 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     height  = cap.get_prop(cv2.CAP_PROP_FRAME_HEIGHT)
 
     # get info about markers on our poster
-    poster          = utils.Poster(config_dir, validationSetup)
+    poster          = config.poster.Poster(config_dir, validationSetup)
     centerTarget    = poster.targets[validationSetup['centerTarget']].center
     # turn into aruco board object to be used for pose estimation
     arucoBoard      = poster.getArucoBoard()

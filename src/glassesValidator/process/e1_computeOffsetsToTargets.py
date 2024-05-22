@@ -3,7 +3,6 @@
 import pathlib
 import math
 
-import cv2
 import numpy as np
 import pandas as pd
 
@@ -36,7 +35,7 @@ def process(working_dir, config_dir=None):
     gazesPoster = utils.GazePoster.readDataFromFile(working_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
     # get info about markers on our poster
-    poster  = utils.Poster(config_dir, validationSetup)
+    poster  = config.poster.Poster(config_dir, validationSetup)
     targets = {ID: poster.targets[ID].center for ID in poster.targets}   # get centers of targets
 
     # get types of data quality to compute

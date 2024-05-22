@@ -37,7 +37,7 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
     gazePoster = utils.GazePoster.readDataFromFile(working_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
 
     # get info about markers on our poster
-    poster    = utils.Poster(config_dir, validationSetup, imHeight=-1)
+    poster    = config.poster.Poster(config_dir, validationSetup, imHeight=-1)
     targets   = {ID: poster.targets[ID].center for ID in poster.targets}   # get centers of targets
     markerHalfSizeMm = poster.markerSize/2.
 

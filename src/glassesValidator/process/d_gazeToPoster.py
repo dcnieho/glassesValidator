@@ -53,7 +53,7 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
 
     # prep visualizations, if any
     if show_visualization:
-        poster      = utils.Poster(config_dir, validationSetup)
+        poster      = config.poster.Poster(config_dir, validationSetup)
         centerTarget= poster.targets[validationSetup['centerTarget']].center
 
         cap         = utils.CV2VideoReader(working_dir / 'worldCamera.mp4', utils.get_timestamps_from_file(working_dir / 'frameTimestamps.tsv'))

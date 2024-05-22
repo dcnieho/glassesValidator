@@ -71,7 +71,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
-    poster = utils.Poster(config_dir, validationSetup)
+    poster = config.poster.Poster(config_dir, validationSetup)
 
     # Read gaze data
     gazes,maxFrameIdx = utils.Gaze.readDataFromFile(working_dir / 'gazeData.tsv')
