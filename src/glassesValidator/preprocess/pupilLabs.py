@@ -122,7 +122,7 @@ def preprocessData(output_dir, device=None, source_dir=None, rec_info=None):
     ### get gaze data and video frame timestamps
     print('Prepping gaze data...')
     if is_cloud_export:
-        gazeDf, frameTimestamps = formatGazeDataCloudExport(source_dir, exportFile, sceneVideoDimensions, rec_info)
+        gazeDf, frameTimestamps = formatGazeDataCloudExport(source_dir, exportFile)
     else:
         gazeDf, frameTimestamps = formatGazeDataPupilPlayer(source_dir, exportFile, sceneVideoDimensions, rec_info)
 
@@ -517,8 +517,8 @@ def readGazeDataPupilPlayer(file, sceneVideoDimensions, recInfo):
     # return the dataframe
     return df
 
-def formatGazeDataCloudExport(inputDir, exportFile, sceneVideoDimensions, recInfo):
-    df = readGazeDataCloudExport(exportFile, sceneVideoDimensions, recInfo)
+def formatGazeDataCloudExport(inputDir, exportFile):
+    df = readGazeDataCloudExport(exportFile)
 
     frameTimestamps = pd.read_csv(inputDir/'world_timestamps.csv')
     frameTimestamps = frameTimestamps.rename(columns={'timestamp [ns]': 'timestamp'})
@@ -543,7 +543,7 @@ def formatGazeDataCloudExport(inputDir, exportFile, sceneVideoDimensions, recInf
     return df, frameTimestamps
 
 
-def readGazeDataCloudExport(file: pathlib.Path, sceneVideoDimensions, recInfo):
+def readGazeDataCloudExport(file: pathlib.Path):
     df = pd.read_csv(file)
 
     # rename and reorder columns
