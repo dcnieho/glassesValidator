@@ -15,6 +15,7 @@ import datetime
 import json
 import pathvalidate
 import typing
+from collections import defaultdict
 
 from .mp4analyser import iso
 from .. import config as gv_config
@@ -717,7 +718,7 @@ def unprojectPoint(x, y, cameraMatrix, distCoeff):
     return points_3d.flatten()
 
 
-def angle_between(v1, v2): 
+def angle_between(v1, v2):
     return (180.0 / math.pi) * math.atan2(np.linalg.norm(np.cross(v1,v2)), np.dot(v1,v2))
 
 def intersect_plane_ray(planeNormal, planePoint, rayDirection, rayPoint, epsilon=1e-6):
@@ -797,39 +798,34 @@ def drawArucoDetectedMarkers(img,corners,ids,borderColor=(0,255,0), drawIDs = Tr
 
 class Gaze:
     def __init__(self, ts, vid2D, world3D=None, lGazeVec=None, lGazeOrigin=None, rGazeVec=None, rGazeOrigin=None):
-        self.ts = ts
-        self.vid2D = vid2D              # gaze point on the scene video
-        self.world3D = world3D          # gaze point in the world (often binocular gaze point)
-        self.lGazeVec= lGazeVec
+        self.ts          = ts
+        self.vid2D       = vid2D            # gaze point on the scene video
+        self.world3D     = world3D          # gaze point in the world (often binocular gaze point)
+        self.lGazeVec    = lGazeVec
         self.lGazeOrigin = lGazeOrigin
-        self.rGazeVec= rGazeVec
+        self.rGazeVec    = rGazeVec
         self.rGazeOrigin = rGazeOrigin
 
     @staticmethod
     def readDataFromFile(fileName):
         gazes = {}
-        maxFrameIdx = 0
-        with open(str(fileName), 'r' ) as f:
-            reader = csv.DictReader(f, delimiter='\t')
-            for entry in reader:
-                frame_idx   = float(entry['frame_idx'])
-                ts          = float(entry['timestamp'])
+        data    = pd.read_csv(str(fileName), delimiter='\t', index_col=False, dtype=defaultdict(lambda: float, frame_idx=int))
+        allCols = tuple([c for c in data.columns if col in c] for col in (
+            'vid_gaze_pos','3d_gaze_pos','l_gaze_dir','l_gaze_ori','r_gaze_dir','r_gaze_ori'))
+        # run through all columns
+        for idx, row in data.iterrows():
+            frame_idx = int(row['frame_idx'])
+            ts        = row['timestamp']
 
-                vid2D       = dataReaderHelper(entry,'vid_gaze_pos',2)
-                world3D     = dataReaderHelper(entry,'3d_gaze_pos')
-                lGazeVec    = dataReaderHelper(entry,'l_gaze_dir')
-                lGazeOrigin = dataReaderHelper(entry,'l_gaze_ori')
-                rGazeVec    = dataReaderHelper(entry,'r_gaze_dir')
-                rGazeOrigin = dataReaderHelper(entry,'r_gaze_ori')
-                gaze = Gaze(ts, vid2D, world3D, lGazeVec, lGazeOrigin, rGazeVec, rGazeOrigin)
+            # get all values (None if any nan)
+            args = tuple(noneIfAnyNan(row[c].astype('float').to_numpy()) if c else None for c in allCols)
+            gaze = Gaze(ts, *args)
+            if frame_idx in gazes:
+                gazes[frame_idx].append(gaze)
+            else:
+                gazes[frame_idx] = [gaze]
 
-                if frame_idx in gazes:
-                    gazes[frame_idx].append(gaze)
-                else:
-                    gazes[frame_idx] = [gaze]
-
-                maxFrameIdx = int(max(maxFrameIdx,frame_idx))
-
+        maxFrameIdx = max(gazes.keys())
         return gazes,maxFrameIdx
 
     def draw(self, img, subPixelFac=1, camRot=None, camPos=None, cameraMatrix=None, distCoeff=None):
@@ -1057,6 +1053,10 @@ class Poster:
         cv2.imwrite(str(posterImage), refBoardImage)
 
 class GazePoster:
+    _column_labels = {'gazePosCam_vidPos_ray':3,'gazePosCam_vidPos_homography':3,'gazePosCamWorld':3,'gazeOriCamLeft':3,'gazePosCamLeft':3,'gazeOriCamRight':3,'gazePosCamRight':3,
+                      'gazePosPoster2D_vidPos_ray':2,'gazePosPoster2D_vidPos_homography':2,'gazePosPoster2DWorld':2,'gazePosPoster2DLeft':2,'gazePosPoster2DRight':2}
+    _num_columns   = 1+sum(_column_labels.values())
+
     def __init__(self, ts, gaze3DRay=None, gaze3DHomography=None, wGaze3D=None, lGazeOrigin=None, lGaze3D=None, rGazeOrigin=None, rGaze3D=None, gaze2DRay=None, gaze2DHomography=None, wGaze2D=None, lGaze2D=None, rGaze2D=None):
         # 3D gaze is in world space, w.r.t. scene camera
         # 2D gaze is on the poster
@@ -1081,20 +1081,13 @@ class GazePoster:
     @staticmethod
     def getWriteHeader():
         header = ['gaze_timestamp']
-        header.extend(getXYZLabels(['gazePosCam_vidPos_ray','gazePosCam_vidPos_homography']))
-        header.extend(getXYZLabels(['gazePosCamWorld']))
-        header.extend(getXYZLabels(['gazeOriCamLeft','gazePosCamLeft']))
-        header.extend(getXYZLabels(['gazeOriCamRight','gazePosCamRight']))
-        header.extend(getXYZLabels('gazePosPoster2D_vidPos_ray',2))
-        header.extend(getXYZLabels('gazePosPoster2D_vidPos_homography',2))
-        header.extend(getXYZLabels('gazePosPoster2DWorld',2))
-        header.extend(getXYZLabels('gazePosPoster2DLeft',2))
-        header.extend(getXYZLabels('gazePosPoster2DRight',2))
+        for k in GazePoster._column_labels:
+            header.extend(getXYZLabels(k,GazePoster._column_labels[k]))
         return header
 
     @staticmethod
     def getMissingWriteData():
-        return [math.nan for x in range(29)]
+        return [math.nan for x in range(GazePoster._num_columns)]
 
     def getWriteData(self):
         writeData = [self.ts]
@@ -1118,36 +1111,28 @@ class GazePoster:
     @staticmethod
     def readDataFromFile(fileName,start=None,end=None,stopOnceExceeded=False):
         gazes = {}
-        readSubset = start is not None and end is not None
-        with open(str(fileName), 'r' ) as f:
-            reader = csv.DictReader(f, delimiter='\t')
-            for entry in reader:
-                frame_idx = int(entry['frame_idx'])
-                if readSubset and (frame_idx<start or frame_idx>end):
-                    if stopOnceExceeded and frame_idx>end:
-                        break
-                    else:
-                        continue
+        readSubset  = start is not None and end is not None
+        data        = pd.read_csv(str(fileName), delimiter='\t', index_col=False, dtype=defaultdict(lambda: float, frame_idx=int))
+        allCols     = tuple([c for c in data.columns if col in c] for col in GazePoster._column_labels.keys())
 
-                ts = float(entry['gaze_timestamp'])
-                gaze3DRay       = dataReaderHelper(entry,'gazePosCam_vidPos_ray')
-                gaze3DHomography= dataReaderHelper(entry,'gazePosCam_vidPos_homography')
-                wGaze3D         = dataReaderHelper(entry,'gazePosCamWorld')
-                lGazeOrigin     = dataReaderHelper(entry,'gazeOriCamLeft')
-                lGaze3D         = dataReaderHelper(entry,'gazePosCamLeft')
-                rGazeOrigin     = dataReaderHelper(entry,'gazeOriCamRight')
-                rGaze3D         = dataReaderHelper(entry,'gazePosCamRight')
-                gaze2DRay       = dataReaderHelper(entry,'gazePosPoster2D_vidPos_ray',2)
-                gaze2DHomography= dataReaderHelper(entry,'gazePosPoster2D_vidPos_homography',2)
-                wGaze2D         = dataReaderHelper(entry,'gazePosPoster2DWorld',2)
-                lGaze2D         = dataReaderHelper(entry,'gazePosPoster2DLeft',2)
-                rGaze2D         = dataReaderHelper(entry,'gazePosPoster2DRight',2)
-                gaze = GazePoster(ts, gaze3DRay, gaze3DHomography, wGaze3D, lGazeOrigin, lGaze3D, rGazeOrigin, rGaze3D, gaze2DRay, gaze2DHomography, wGaze2D, lGaze2D, rGaze2D)
-
-                if frame_idx in gazes:
-                    gazes[frame_idx].append(gaze)
+        # run through all columns
+        for idx, row in data.iterrows():
+            frame_idx = int(row['frame_idx'])
+            if readSubset and (frame_idx<start or frame_idx>end):
+                if stopOnceExceeded and frame_idx>end:
+                    break
                 else:
-                    gazes[frame_idx] = [gaze]
+                    continue
+
+            # get all values (None if any nan)
+            ts = row['gaze_timestamp']
+            args = tuple(row[c].astype('float').to_numpy() if c else None for c in allCols)
+
+            gaze = GazePoster(ts, *args)
+            if frame_idx in gazes:
+                gazes[frame_idx].append(gaze)
+            else:
+                gazes[frame_idx] = [gaze]
 
         return gazes
 
@@ -1250,13 +1235,13 @@ class PosterPose:
     def readDataFromFile(fileName,start=None,end=None,stopOnceExceeded=False):
         poses       = {}
         readSubset  = start is not None and end is not None
-        data        = pd.read_csv(str(fileName), delimiter='\t',index_col=False)
+        data        = pd.read_csv(str(fileName), delimiter='\t', index_col=False, dtype=defaultdict(lambda: float, frame_idx=int, poseOk=bool, poseNMarker=int, homographyNMarker=int))
         rCols       = [col for col in data.columns if 'poseRvec' in col]
         tCols       = [col for col in data.columns if 'poseTvec' in col]
         hCols       = [col for col in data.columns if 'homography[' in col]
         # run through all columns
         for idx, row in data.iterrows():
-            frame_idx = int(row['frame_idx'])
+            frame_idx = row['frame_idx']
             if readSubset and (frame_idx<start or frame_idx>end):
                 if stopOnceExceeded and frame_idx>end:
                     break
@@ -1264,12 +1249,12 @@ class PosterPose:
                     continue
 
             # get all values (None if all nan)
-            args = tuple(noneIfAnyNan(row[  c  ].to_numpy().astype('float')) for c in (rCols,tCols))
-            argsH=       noneIfAnyNan(row[hCols].to_numpy().astype('float'))
+            args = tuple(noneIfAnyNan(row[  c  ].astype('float').to_numpy()) for c in (rCols,tCols))
+            argsH=       noneIfAnyNan(row[hCols].astype('float').to_numpy())
 
             # insert if any non-None
             if not np.all([x is None for x in args]) or argsH is not None:   # check for not all isNone
-                poses[frame_idx] = PosterPose(frame_idx,bool(row['poseOk']),int(row['poseNMarker']),*args,int(row['homographyNMarker']),argsH)
+                poses[frame_idx] = PosterPose(frame_idx,row['poseOk'],row['poseNMarker'],*args,row['homographyNMarker'],argsH)
 
         return poses
 
