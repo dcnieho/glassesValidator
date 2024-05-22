@@ -543,20 +543,48 @@ def formatGazeDataCloudExport(inputDir, exportFile, sceneVideoDimensions, recInf
     return df, frameTimestamps
 
 
-def readGazeDataCloudExport(file, sceneVideoDimensions, recInfo):
+def readGazeDataCloudExport(file: pathlib.Path, sceneVideoDimensions, recInfo):
     df = pd.read_csv(file)
 
     # rename and reorder columns
     lookup = {'timestamp [ns]': 'timestamp',
               'gaze x [px]': 'vid_gaze_pos_x',
-              'gaze y [px]': 'vid_gaze_pos_y'}
+              'gaze y [px]': 'vid_gaze_pos_y',
+              'pupil diameter left [mm]': 'l_pup_diam',
+              'pupil diameter right [mm]': 'r_pup_diam',
+              'eyeball center left x [mm]': 'l_gaze_ori_x',
+              'eyeball center left y [mm]': 'l_gaze_ori_y',
+              'eyeball center left z [mm]': 'l_gaze_ori_z',
+              'eyeball center right x [mm]': 'r_gaze_ori_x',
+              'eyeball center right y [mm]': 'r_gaze_ori_y',
+              'eyeball center right z [mm]': 'r_gaze_ori_z',
+              'optical axis left x': 'l_gaze_dir_x',
+              'optical axis left y': 'l_gaze_dir_y',
+              'optical axis left z': 'l_gaze_dir_z',
+              'optical axis right x': 'r_gaze_dir_x',
+              'optical axis right y': 'r_gaze_dir_y',
+              'optical axis right z': 'r_gaze_dir_z',
+    }
+    df=df.drop(columns=[x for x in df.columns if x not in lookup and x not in ['worn','blink id']])
     df=df.rename(columns=lookup)
-    df=df.drop(columns=[x for x in df.columns if x not in ['timestamp','vid_gaze_pos_x','vid_gaze_pos_y','worn']])
 
-    # mark data where eye tracker is not worn as missing
-    todo = [lookup[k] for k in lookup if lookup[k] in df.columns]
+    # check if there is an eye states file
+    eye_state_file = file.parent / '3d_eye_states.csv'
+    if eye_state_file.exists():
+        df_eye = pd.read_csv(eye_state_file)
+        df_eye = df_eye.drop(columns=[x for x in df_eye.columns if x not in lookup])
+        df_eye = df_eye.rename(columns=lookup)
+        df = df.join(df_eye.set_index('timestamp'), on='timestamp')
+
+    # mark data where eye tracker is not worn or during blink as missing
+    todo = [lookup[k] for k in lookup if lookup[k] in df.columns and lookup[k]!='timestamp']
     toRemove = df.worn == 0
-    for c in todo[2:]:
+    if 'blink id' in df:
+        toRemove = np.logical_or(toRemove, df['blink id']>0)
+    for c in todo:
         df.loc[toRemove,c] = np.nan
+
+    # remove last columns we don't need anymore
+    df=df.drop(columns=[x for x in df.columns if x in ['worn','blink id']])
 
     return df
