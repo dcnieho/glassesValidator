@@ -214,7 +214,7 @@ def copySeeTrueRecording(inputDir, outputDir, recInfo):
 
     # 3. make into video
     framerate = "{:.4f}".format(1000./ifi)
-    cmd_str = ' '.join(['ffmpeg', '-y', '-f', 'image2', '-framerate', framerate, '-start_number', str(frames[0]), '-i', '"'+str(sceneVidDir / 'frame_%d.jpeg')+'"', '"'+str(outputDir / 'worldCamera.mp4')+'"'])
+    cmd_str = ' '.join(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'image2', '-framerate', framerate, '-start_number', str(frames[0]), '-i', '"'+str(sceneVidDir / 'frame_%d.jpeg')+'"', '"'+str(outputDir / 'worldCamera.mp4')+'"'])
     os.system(cmd_str)
 
     # attempt 2 that should allow correct VFR video files, but doesn't work with current MediaWriter
