@@ -20,9 +20,8 @@ reference_bibtex  = r"""@article{niehorster2023glassesValidator,
 """
 
 
-from .structs import CounterContext, JobDescription, Os, Settings
+from .structs import CounterContext, JobDescription, Os, Recording, Settings
 from .gui import MainGUI
-from ...utils import Recording
 
 frozen = getattr(sys, "frozen", False)
 if sys.platform.startswith("win"):

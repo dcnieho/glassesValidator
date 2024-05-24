@@ -8,9 +8,13 @@ import pathlib
 import re
 from concurrent.futures import Future
 
-from .structs import DefaultStyleDark, Settings
+from glassesTools.eyetracker import EyeTracker
+from glassesTools.recording import Recording as base_rec
+from glassesTools.utils import hex_to_rgba_0_1, rgba_0_1_to_hex
+
+from .structs import DefaultStyleDark, Recording, Settings
 from . import globals, utils, async_thread
-from ...utils import EyeTracker, Recording, Task, hex_to_rgba_0_1, rgba_0_1_to_hex
+from ...utils import Task
 
 connection: aiosqlite.Connection = None
 db_save_future: Future = None
@@ -137,7 +141,7 @@ async def connect():
             "id":                           f'INTEGER PRIMARY KEY',
             "name":                         f'TEXT    DEFAULT ""',
             "source_directory":             f'TEXT    DEFAULT ""',
-            "proc_directory_name":          f'TEXT    DEFAULT ""',
+            "working_directory":            f'TEXT    DEFAULT ""',
             "start_time":                   f'INTEGER DEFAULT 0',
             "duration":                     f'INTEGER DEFAULT 0',
             "eye_tracker":                  f'TEXT    DEFAULT "{EyeTracker.Unknown.value}"',
@@ -209,7 +213,7 @@ def sql_to_py(value: str | int | float, data_type: typing.Type):
 
 
 async def load_recordings(id: int = None):
-    types = Recording.__annotations__
+    types = Recording.__annotations__|base_rec.__annotations__
     query = """
         SELECT *
         FROM recordings
@@ -228,11 +232,9 @@ async def load_recordings(id: int = None):
 
         # check if working dir exists. If not, ensure recording status is not imported
         rec = globals.recordings[recording["id"]]
-        if rec.proc_directory_name:
-            rec_path = globals.project_path / rec.proc_directory_name
-            if not rec_path.is_dir():
-                rec.task = Task.Not_Imported
-                async_thread.run(update_recording(rec, "task"))
+        if rec.working_directory and not rec.working_directory.is_dir():
+            rec.task = Task.Not_Imported
+            async_thread.run(update_recording(rec, "task"))
 
 
 async def load():

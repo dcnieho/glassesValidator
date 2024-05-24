@@ -1,9 +1,17 @@
 import dataclasses
 from enum import Enum, auto
-import pathlib
 
-from ...utils import AutoName, Recording, Task
+from glassesTools.utils import AutoName
+from glassesTools.recording import Recording as gt_rec
 
+from ...utils import Task
+
+
+@dataclasses.dataclass
+class Recording(gt_rec):
+    # two more members needed for just the GUI
+    id  : int           = None
+    task: Task          = Task.Unknown
 
 class CounterContext:
     _count = -1     # so that first number is 0
@@ -142,7 +150,6 @@ class Settings:
 class JobDescription:
     id:                 int
     payload:            Recording
-    project_path:       pathlib.Path
     task:               Task
     should_chain_next:  bool
 

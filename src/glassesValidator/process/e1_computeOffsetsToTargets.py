@@ -6,6 +6,9 @@ import math
 import numpy as np
 import pandas as pd
 
+from glassesTools import gaze_worldref, plane, transforms
+from glassesTools import utils as gt_utils
+
 from .. import config
 from .. import utils
 
@@ -29,10 +32,10 @@ def process(working_dir, config_dir=None):
         return
 
     # Read camera pose w.r.t. poster
-    poses = utils.PosterPose.readDataFromFile(working_dir / 'posterPose.tsv',analyzeFrames[0],analyzeFrames[-1],True)
+    poses = plane.Pose.readFromFile(working_dir / 'posterPose.tsv',analyzeFrames[0],analyzeFrames[-1])
 
     # Read gaze on poster data
-    gazesPoster = utils.GazePoster.readDataFromFile(working_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
+    gazesPoster = gaze_worldref.Gaze.readFromFile(working_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1])
 
     # get info about markers on our poster
     poster  = config.poster.Poster(config_dir, validationSetup)
@@ -48,20 +51,20 @@ def process(working_dir, config_dir=None):
         if not gazesPosterToAnal:
             raise RuntimeError(f'There is no gaze data on the poster for validation interval {ival+1} (frames {analyzeFrames[ival*2]} to {analyzeFrames[ival*2+1]}), cannot proceed. This may be because there was no gaze during this interval or because the poster was not detected.')
 
-        frameIdxs        =           [k                for k,v in gazesPosterToAnal.items()  for s in v]
-        ts               = np.vstack([s.ts               for v in gazesPosterToAnal.values() for s in v])
-        oriLeft          = np.vstack([s.lGazeOrigin      for v in gazesPosterToAnal.values() for s in v])
-        oriRight         = np.vstack([s.rGazeOrigin      for v in gazesPosterToAnal.values() for s in v])
-        gaze3DLeft       = np.vstack([s.lGaze3D          for v in gazesPosterToAnal.values() for s in v])
-        gaze3DRight      = np.vstack([s.rGaze3D          for v in gazesPosterToAnal.values() for s in v])
-        gaze2DLeft       = np.vstack([s.lGaze2D          for v in gazesPosterToAnal.values() for s in v])
-        gaze2DRight      = np.vstack([s.rGaze2D          for v in gazesPosterToAnal.values() for s in v])
-        gaze3DWorld      = np.vstack([s.wGaze3D          for v in gazesPosterToAnal.values() for s in v])
-        gaze2DWorld      = np.vstack([s.wGaze2D          for v in gazesPosterToAnal.values() for s in v])
-        gaze3DRay        = np.vstack([s.gaze3DRay        for v in gazesPosterToAnal.values() for s in v])
-        gaze2DRay        = np.vstack([s.gaze2DRay        for v in gazesPosterToAnal.values() for s in v])
-        gaze3DHomography = np.vstack([s.gaze3DHomography for v in gazesPosterToAnal.values() for s in v])
-        gaze2DHomography = np.vstack([s.gaze2DHomography for v in gazesPosterToAnal.values() for s in v])
+        frameIdxs        =           [k                                     for k,v in gazesPosterToAnal.items()  for s in v]
+        ts               = np.vstack([s.timestamp                           for v in gazesPosterToAnal.values() for s in v])
+        oriLeft          = np.vstack([s.gazeOriCamLeft                      for v in gazesPosterToAnal.values() for s in v])
+        oriRight         = np.vstack([s.gazeOriCamRight                     for v in gazesPosterToAnal.values() for s in v])
+        gaze3DLeft       = np.vstack([s.gazePosCamLeft                      for v in gazesPosterToAnal.values() for s in v])
+        gaze3DRight      = np.vstack([s.gazePosCamRight                     for v in gazesPosterToAnal.values() for s in v])
+        gaze2DLeft       = np.vstack([s.gazePosPlane2DLeft                  for v in gazesPosterToAnal.values() for s in v])
+        gaze2DRight      = np.vstack([s.gazePosPlane2DRight                 for v in gazesPosterToAnal.values() for s in v])
+        gaze3DWorld      = np.vstack([s.gazePosCamWorld                     for v in gazesPosterToAnal.values() for s in v])
+        gaze2DWorld      = np.vstack([s.gazePosPlane2DWorld                 for v in gazesPosterToAnal.values() for s in v])
+        gaze3DRay        = np.vstack([s.gazePosCam_vidPos_ray               for v in gazesPosterToAnal.values() for s in v])
+        gaze2DRay        = np.vstack([s.gazePosPlane2D_vidPos_ray           for v in gazesPosterToAnal.values() for s in v])
+        gaze3DHomography = np.vstack([s.gazePosCam_vidPos_homography        for v in gazesPosterToAnal.values() for s in v])
+        gaze2DHomography = np.vstack([s.gazePosPlane2D_vidPos_homography    for v in gazesPosterToAnal.values() for s in v])
 
         offset = np.empty((oriLeft.shape[0],len(dq_types),len(targets),2))
         offset[:] = np.nan
@@ -115,7 +118,7 @@ def process(working_dir, config_dir=None):
                         vTarget = target-ori
 
                     # get offset
-                    ang2D           = utils.angle_between(vTarget,vGaze)
+                    ang2D           = transforms.angle_between(vTarget,vGaze)
                     # decompose in horizontal/vertical (in poster space)
                     onPosterAngle   = math.atan2(gazePoster[1]-targets[t][1], gazePoster[0]-targets[t][0])
                     offset[s,e,ti,:]= ang2D*np.array([math.cos(onPosterAngle), math.sin(onPosterAngle)])
@@ -123,7 +126,7 @@ def process(working_dir, config_dir=None):
         # organize for output and write to file
         # 1. create cartesian product of sample index, eye and target indices
         # order of inputs needed to get expected output is a mystery to me, but screw it, works
-        dat = utils.cartesian_product(np.arange(len(dq_types)),np.arange(offset.shape[0]),[t for t in targets])
+        dat = gt_utils.cartesian_product(np.arange(len(dq_types)),np.arange(offset.shape[0]),[t for t in targets])
         # 2. put into data frame
         df                      = pd.DataFrame()
         df['timestamp']         = ts[dat[:,1],0]

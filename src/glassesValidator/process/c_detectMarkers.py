@@ -5,6 +5,8 @@ import numpy as np
 import csv
 import threading
 
+from glassesTools import drawing, ocv, plane, timestamps, transforms
+
 from .. import config
 from .. import utils
 from ._image_gui import GUI, generic_tooltip, qns_tooltip
@@ -49,7 +51,7 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     inVideo = working_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
         inVideo = working_dir / 'worldCamera.avi'
-    cap     = utils.CV2VideoReader(inVideo, utils.get_timestamps_from_file(working_dir / 'frameTimestamps.tsv'))
+    cap     = ocv.CV2VideoReader(inVideo, timestamps.from_file(working_dir / 'frameTimestamps.tsv'))
     width   = cap.get_prop(cv2.CAP_PROP_FRAME_WIDTH)
     height  = cap.get_prop(cv2.CAP_PROP_FRAME_HEIGHT)
 
@@ -66,7 +68,7 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     aruco_detector  = cv2.aruco.ArucoDetector(poster.aruco_dict, parameters)
 
     # get camera calibration info
-    cameraMatrix,distCoeff = utils.readCameraCalibrationFile(working_dir / "calibration.xml")[0:2]
+    cameraMatrix,distCoeff = ocv.readCameraCalibrationFile(working_dir / "calibration.xml")[0:2]
     hasCameraMatrix = cameraMatrix is not None
     hasDistCoeff    = distCoeff is not None
 
@@ -74,16 +76,11 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     analyzeFrames   = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
     hasAnalyzeFrames= analyzeFrames is not None
 
-    # prep output file
-    csv_file = open(working_dir / 'posterPose.tsv', 'w', newline='')
-    csv_writer = csv.writer(csv_file, delimiter='\t')
-    header = utils.PosterPose.getWriteHeader()
-    csv_writer.writerow(header)
-
     stopAllProcessing = False
     armLength = poster.markerSize/2 # arms of axis are half a marker long
     subPixelFac = 8   # for sub-pixel positioning
     last_frame_idx = -1
+    poses = []
     while True:
         # process frame-by-frame
         done, frame, frame_idx, frame_ts = cap.read_frame()
@@ -129,54 +126,52 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
         corners, ids, rejectedImgPoints = aruco_detector.detectMarkers(frame)
         recoveredIds = None
 
+        pose = plane.Pose(frame_idx)
         if np.all(ids != None):
             if len(ids) >= validationSetup['minNumMarkers']:
-                pose = utils.PosterPose(frame_idx)
-
                 # get camera pose
                 if hasCameraMatrix and hasDistCoeff:
                     # Refine detected markers (eliminates markers not part of our poster, adds missing markers to the poster)
-                    corners, ids, rejectedImgPoints, recoveredIds = utils.arucoRefineDetectedMarkers(aruco_detector,
+                    corners, ids, rejectedImgPoints, recoveredIds = ocv.arucoRefineDetectedMarkers(aruco_detector,
                             image = frame, arucoBoard = arucoBoard,
                             detectedCorners = corners, detectedIds = ids, rejectedCorners = rejectedImgPoints,
                             cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
 
                     objP, imgP = arucoBoard.matchImagePoints(corners, ids)
-                    pose.nMarkers = 0 if objP is None else int(objP.shape[0]/4)
-                    if pose.nMarkers>0:
-                        pose.poseOk, pose.rVec, pose.tVec = cv2.solvePnP(objP, imgP, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
+                    pose.pose_N_markers = 0 if objP is None else int(objP.shape[0]/4)
+                    if pose.pose_N_markers>0:
+                        pose.pose_ok, pose.pose_R_vec, pose.pose_T_vec = cv2.solvePnP(objP, imgP, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
 
                     # draw pose if wanted
-                    if pose.poseOk and show_visualization:
+                    if pose.pose_ok and show_visualization:
                         # draw axis indicating poster pose (origin and orientation)
-                        utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, pose.rVec, pose.tVec, armLength, 3, subPixelFac)
+                        drawing.openCVFrameAxis(frame, cameraMatrix, distCoeff, pose.pose_R_vec, pose.pose_T_vec, armLength, 3, subPixelFac)
 
                 # also get homography (direct image plane to plane in world transform). Use undistorted marker corners
                 if hasCameraMatrix and hasDistCoeff:
                     cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
                 else:
                     cornersU = corners
-                H, status = utils.estimateHomography(poster.knownMarkers, cornersU, ids)
+                H, status = transforms.estimateHomography(poster.knownMarkers, cornersU, ids)
 
                 if status:
-                    pose.hMat = H
-                    pose.nMarkersH = len(cornersU)
+                    pose.homography_mat         = H
+                    pose.homography_N_markers   = len(cornersU)
                     if show_visualization:
                         # find where target is expected to be in the image
-                        iH = np.linalg.inv(pose.hMat)
-                        target = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
+                        iH = np.linalg.inv(pose.homography_mat)
+                        target = transforms.applyHomography(iH, centerTarget[0], centerTarget[1])
                         if hasCameraMatrix and hasDistCoeff:
-                            target = utils.distortPoint(*target, cameraMatrix, distCoeff)
+                            target = transforms.distortPoint(*target, cameraMatrix, distCoeff)
                         # draw target location on image
                         if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
-                            utils.drawOpenCVCircle(frame, target, 3, (0,0,0), -1, subPixelFac)
-
-                if pose.poseOk or status:
-                    csv_writer.writerow( pose.getWriteData() )
+                            drawing.openCVCircle(frame, target, 3, (0,0,0), -1, subPixelFac)
 
             # if any markers were detected, draw where on the frame
             if show_visualization:
-                utils.drawArucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac, specialHighlight=[recoveredIds,(255,255,0)])
+                drawing.arucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac, specialHighlight=[recoveredIds,(255,255,0)])
+
+        poses.append(pose)
 
         # for debug, can draw rejected markers on frame
         if show_visualization and show_rejected_markers:
@@ -193,7 +188,8 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
                 stopAllProcessing = True
                 break
 
-    csv_file.close()
+    plane.Pose.writeToFile(poses, working_dir / 'posterPose.tsv', skip_failed=True)
+
     if show_visualization:
         gui.stop()
 

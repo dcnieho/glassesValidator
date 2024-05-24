@@ -14,6 +14,8 @@ isMacOS = sys.platform.startswith("darwin")
 if isMacOS:
     import AppKit
 
+from glassesTools import drawing, gaze_headref, gaze_worldref, ocv, plane, timestamps
+
 from .. import config
 from .. import utils
 from ._image_gui import GUI, generic_tooltip
@@ -23,8 +25,8 @@ from ._image_gui import GUI, generic_tooltip
 # steps data quality computed. So this interval/these intervals would for
 # instance be the exact interval during which the subject performs the
 # validation task.
-# This script can be run directly on recordings converted to the common format
-# with the a_* scripts, but output from steps c_detectMarkers and d_gazeToPoster
+# This script can be run directly on recordings converted to the common format,
+# but output from steps c_detectMarkers and d_gazeToPoster
 # (which can be run before this script, they will just process the whole video)
 # will also be shown if available.
 
@@ -74,13 +76,13 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
     poster = config.poster.Poster(config_dir, validationSetup)
 
     # Read gaze data
-    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(working_dir / 'gazeData.tsv')
+    gazes,maxFrameIdx = gaze_headref.Gaze.readFromFile(working_dir / 'gazeData.tsv')
 
     # Read pose of poster, if available
     hasPosterPose = False
     if (working_dir / 'posterPose.tsv').is_file():
         try:
-            poses = utils.PosterPose.readDataFromFile(working_dir / 'posterPose.tsv')
+            poses = plane.Pose.readFromFile(working_dir / 'posterPose.tsv')
             hasPosterPose = True
         except:
             # ignore when file can't be read or is empty
@@ -90,14 +92,14 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
     hasPosterGaze = False
     if (working_dir / 'gazePosterPos.tsv').is_file():
         try:
-            gazesPoster = utils.GazePoster.readDataFromFile(working_dir / 'gazePosterPos.tsv')
+            gazesPoster = gaze_worldref.Gaze.readFromFile(working_dir / 'gazePosterPos.tsv')
             hasPosterGaze = True
         except:
             # ignore when file can't be read or is empty
             pass
 
     # get camera calibration info
-    cameraMatrix,distCoeff = utils.readCameraCalibrationFile(working_dir / "calibration.xml")[0:2]
+    cameraMatrix,distCoeff = ocv.readCameraCalibrationFile(working_dir / "calibration.xml")[0:2]
     hasCamCal = (cameraMatrix is not None) and (distCoeff is not None)
 
     # get interval coded to be analyzed, if available
@@ -112,8 +114,8 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
     if show_poster:
         poster_win_id = gui.add_window("poster")
     # 3. timestamp info for relating audio to video frames
-    t2i = utils.Timestamp2Index( working_dir / 'frameTimestamps.tsv' )
-    i2t = utils.Idx2Timestamp( working_dir / 'frameTimestamps.tsv' )
+    t2i = timestamps.Timestamp2Index( working_dir / 'frameTimestamps.tsv' )
+    i2t = timestamps.Idx2Timestamp( working_dir / 'frameTimestamps.tsv' )
     # 4. mediaplayer for the actual video playback, with sound if available
     inVideo = working_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
@@ -144,7 +146,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
 
             # if we have poster pose, draw poster origin on video
             if hasPosterPose and frame_idx in poses and hasCamCal:
-                utils.drawOpenCVFrameAxis(frame, cameraMatrix, distCoeff, poses[frame_idx].rVec, poses[frame_idx].tVec, armLength, 3, subPixelFac)
+                drawing.openCVFrameAxis(frame, cameraMatrix, distCoeff, poses[frame_idx].rVec, poses[frame_idx].tVec, armLength, 3, subPixelFac)
 
             # if have gaze for this frame, draw it
             # NB: usually have multiple gaze samples for a video frame, draw one

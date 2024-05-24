@@ -7,6 +7,8 @@ import numpy as np
 import csv
 import threading
 
+from glassesTools import drawing, gaze_headref, gaze_worldref, ocv, plane, timestamps, transforms
+
 from .. import config
 from .. import utils
 from ._image_gui import GUI, generic_tooltip, qns_tooltip
@@ -56,12 +58,12 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
         poster      = config.poster.Poster(config_dir, validationSetup)
         centerTarget= poster.targets[validationSetup['centerTarget']].center
 
-        cap         = utils.CV2VideoReader(working_dir / 'worldCamera.mp4', utils.get_timestamps_from_file(working_dir / 'frameTimestamps.tsv'))
+        cap         = ocv.CV2VideoReader(working_dir / 'worldCamera.mp4', timestamps.from_file(working_dir / 'frameTimestamps.tsv'))
         width       = cap.get_prop(cv2.CAP_PROP_FRAME_WIDTH)
         height      = cap.get_prop(cv2.CAP_PROP_FRAME_HEIGHT)
 
     # get camera calibration info
-    cameraMatrix,distCoeff,cameraRotation,cameraPosition = utils.readCameraCalibrationFile(working_dir / "calibration.xml")
+    cameraMatrix,distCoeff,cameraRotation,cameraPosition = ocv.readCameraCalibrationFile(working_dir / "calibration.xml")
     hasCameraMatrix = cameraMatrix is not None
     hasDistCoeff    = distCoeff is not None
 
@@ -71,20 +73,15 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
 
     # Read gaze data
     print('  gazeData')
-    gazes,maxFrameIdx = utils.Gaze.readDataFromFile(working_dir / 'gazeData.tsv')
+    gazes,maxFrameIdx = gaze_headref.Gaze.readFromFile(working_dir / 'gazeData.tsv')
 
     # Read camera pose w.r.t. poster
     print('  posterPose')
-    poses = utils.PosterPose.readDataFromFile(working_dir / 'posterPose.tsv')
-
-    csv_file = open(working_dir / 'gazePosterPos.tsv', 'w', newline='')
-    csv_writer = csv.writer(csv_file, delimiter='\t')
-    header = ['frame_idx']
-    header.extend(utils.GazePoster.getWriteHeader())
-    csv_writer.writerow(header)
+    poses = plane.Pose.readFromFile(working_dir / 'posterPose.tsv')
 
     subPixelFac = 8   # for sub-pixel positioning
     stopAllProcessing = False
+    planeGazes = []
     for frame_idx in range(maxFrameIdx+1):
         if show_visualization:
             done, frame, frame_idx, frame_ts = cap.read_frame()
@@ -120,7 +117,6 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
 
         if frame_idx in gazes:
             for gaze in gazes[frame_idx]:
-
                 # draw gaze point on scene video
                 if show_visualization:
                     gaze.draw(frame, subPixelFac=subPixelFac, camRot=cameraRotation, camPos=cameraPosition, cameraMatrix=cameraMatrix, distCoeff=distCoeff)
@@ -131,19 +127,15 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
                 # the eye tracker)
                 # store positions on poster plane in camera coordinate frame to
                 # file, along with gaze vector origins in same coordinate frame
-                writeData = [frame_idx]
                 if frame_idx in poses:
-                    gazePoster = utils.gazeToPlane(gaze,poses[frame_idx],cameraRotation,cameraPosition, cameraMatrix, distCoeff)
+                    gazePoster = transforms.gazeToPlane(gaze,poses[frame_idx],cameraRotation,cameraPosition, cameraMatrix, distCoeff)
+                    planeGazes.append(gazePoster)
 
                     # draw gazes on video and poster
                     if show_visualization:
                         gazePoster.drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
                         if show_poster:
                             gazePoster.drawOnPoster(refImg, poster, subPixelFac)
-
-                    # store gaze-on-poster to csv
-                    writeData.extend(gazePoster.getWriteData())
-                    csv_writer.writerow( writeData )
 
         if show_visualization:
             if show_poster:
@@ -155,12 +147,12 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
                     a = cv2.projectPoints(np.zeros((1,3)),poses[frame_idx].rVec,poses[frame_idx].tVec,cameraMatrix,distCoeff)[0].flatten()
                 else:
                     iH = np.linalg.inv(poses[frame_idx].hMat)
-                    a = utils.applyHomography(iH, centerTarget[0], centerTarget[1])
+                    a = transforms.applyHomography(iH, centerTarget[0], centerTarget[1])
                     if hasCameraMatrix and hasDistCoeff:
-                        a = utils.distortPoint(*a, cameraMatrix, distCoeff)
-                utils.drawOpenCVCircle(frame, a, 3, (0,255,0), -1, subPixelFac)
-                utils.drawOpenCVLine(frame, (a[0],0), (a[0],height), (0,255,0), 1, subPixelFac)
-                utils.drawOpenCVLine(frame, (0,a[1]), (width,a[1]) , (0,255,0), 1, subPixelFac)
+                        a = transforms.distortPoint(*a, cameraMatrix, distCoeff)
+                drawing.openCVCircle(frame, a, 3, (0,255,0), -1, subPixelFac)
+                drawing.openCVLine(frame, (a[0],0), (a[0],height), (0,255,0), 1, subPixelFac)
+                drawing.openCVLine(frame, (0,a[1]), (width,a[1]) , (0,255,0), 1, subPixelFac)
 
             # keys is populated above
             if 's' in keys:
@@ -176,7 +168,8 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
         if (frame_idx)%100==0:
             print('  frame {}'.format(frame_idx))
 
-    csv_file.close()
+    gaze_worldref.Gaze.writeToFile(planeGazes, working_dir / 'gazePosterPos.tsv', skip_missing=True)
+
     if show_visualization:
         gui.stop()
 

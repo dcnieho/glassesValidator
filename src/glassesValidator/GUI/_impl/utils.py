@@ -11,8 +11,6 @@ from . import globals, msgbox
 from .structs import Os
 
 
-
-
 def rand_num_str(len=8):
     return "".join((random.choice('0123456789') for _ in range(len)))
 

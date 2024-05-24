@@ -9,6 +9,9 @@ import pandas as pd
 import I2MC
 import matplotlib.pyplot as plt
 
+from glassesTools.eyetracker import EyeTracker
+from glassesTools import gaze_worldref, recording
+
 from .. import config
 from .. import utils
 
@@ -22,7 +25,7 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
     utils.update_recording_status(working_dir, utils.Task.Fixation_Intervals_Determined, utils.Status.Running)
 
     # get info about this recording
-    rec_info = utils.Recording.load_from_json(working_dir / utils.Recording.default_json_file_name)
+    rec_info = recording.Recording.load_from_json(working_dir / recording.Recording.default_json_file_name)
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
@@ -34,7 +37,7 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
         return
 
     # Read gaze on poster data
-    gazePoster = utils.GazePoster.readDataFromFile(working_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1],True)
+    gazePoster = gaze_worldref.Gaze.readFromFile(working_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1])
 
     # get info about markers on our poster
     poster    = config.poster.Poster(config_dir, validationSetup, imHeight=-1)
@@ -51,14 +54,14 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
     opt['maxMergeDist']     = 20        # mm
     opt['maxMergeTime']     = 81        # ms
     opt['minFixDur']        = 50        # ms
-    if rec_info.eye_tracker in [utils.EyeTracker.Tobii_Glasses_2, utils.EyeTracker.Tobii_Glasses_3]:
+    if rec_info.eye_tracker in [EyeTracker.Tobii_Glasses_2, EyeTracker.Tobii_Glasses_3]:
         opt['cutoffstd'] = 1.8
     # decide what sampling frequency to tell I2MC about. It doesn't work with varying sampling frequency, nor
     # any random sampling frequency. For our purposes, getting it right is not important (internally I2MC only
     # uses sampling frequency for converting some of the time units to samples, other things are taken directly
     # from the time signal. So, we have working I2MC settings for a few sampling frequencies, and just choose
     # the nearest based on empirically determined sampling frequency.
-    ts          = np.array([s.ts for v in gazePoster.values() for s in v])
+    ts          = np.array([s.timestamp for v in gazePoster.values() for s in v])
     recFreq     = np.round(np.mean(1000./np.diff(ts)))    # Hz
     knownFreqs  = [30., 50., 60., 90., 120.]
     opt['freq'] = knownFreqs[np.abs(knownFreqs - recFreq).argmin()]
@@ -74,32 +77,32 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
         opt['downsampFilter']   = False
 
     # collect data
-    qHasLeft        = np.any(np.logical_not(np.isnan([s.lGaze2D          for v in gazePoster.values() for s in v])))
-    qHasRight       = np.any(np.logical_not(np.isnan([s.rGaze2D          for v in gazePoster.values() for s in v])))
-    qHasWorld       = np.any(np.logical_not(np.isnan([s.wGaze2D          for v in gazePoster.values() for s in v])))
-    qHasRay         = np.any(np.logical_not(np.isnan([s.gaze2DRay        for v in gazePoster.values() for s in v])))
-    qHasHomography  = np.any(np.logical_not(np.isnan([s.gaze2DHomography for v in gazePoster.values() for s in v])))
+    qHasLeft        = np.any(np.logical_not(np.isnan([s.gazePosPlane2DLeft               for v in gazePoster.values() for s in v])))
+    qHasRight       = np.any(np.logical_not(np.isnan([s.gazePosPlane2DRight              for v in gazePoster.values() for s in v])))
+    qHasWorld       = np.any(np.logical_not(np.isnan([s.gazePosPlane2DWorld              for v in gazePoster.values() for s in v])))
+    qHasRay         = np.any(np.logical_not(np.isnan([s.gazePosPlane2D_vidPos_ray        for v in gazePoster.values() for s in v])))
+    qHasHomography  = np.any(np.logical_not(np.isnan([s.gazePosPlane2D_vidPos_homography for v in gazePoster.values() for s in v])))
     for ival in range(0,len(analyzeFrames)//2):
         gazePosterToAnal = {k:v for (k,v) in gazePoster.items() if k>=analyzeFrames[ival*2] and k<=analyzeFrames[ival*2+1]}
         data = {}
-        data['time'] = np.array([s.ts for v in gazePosterToAnal.values() for s in v])
+        data['time'] = np.array([s.timestamp for v in gazePosterToAnal.values() for s in v])
         if qHasLeft and qHasRight:
             # prefer using separate left and right eye signals, if available. Better I2MC robustness
-            data['L_X']  = np.array([s.lGaze2D[0] for v in gazePosterToAnal.values() for s in v])
-            data['L_Y']  = np.array([s.lGaze2D[1] for v in gazePosterToAnal.values() for s in v])
-            data['R_X']  = np.array([s.rGaze2D[0] for v in gazePosterToAnal.values() for s in v])
-            data['R_Y']  = np.array([s.rGaze2D[1] for v in gazePosterToAnal.values() for s in v])
+            data['L_X']  = np.array([s.gazePosPlane2DLeft[0]  for v in gazePosterToAnal.values() for s in v])
+            data['L_Y']  = np.array([s.gazePosPlane2DLeft[1]  for v in gazePosterToAnal.values() for s in v])
+            data['R_X']  = np.array([s.gazePosPlane2DRight[0] for v in gazePosterToAnal.values() for s in v])
+            data['R_Y']  = np.array([s.gazePosPlane2DRight[1] for v in gazePosterToAnal.values() for s in v])
         elif qHasWorld:
             # prefer over the below if provided, eye tracker may provide an 'improved' signal
             # here, e.g. AdHawk has an optional parallax correction
-            data['average_X']  = np.array([s.wGaze2D[0] for v in gazePosterToAnal.values() for s in v])
-            data['average_Y']  = np.array([s.wGaze2D[1] for v in gazePosterToAnal.values() for s in v])
+            data['average_X']  = np.array([s.gazePosPlane2DWorld[0] for v in gazePosterToAnal.values() for s in v])
+            data['average_Y']  = np.array([s.gazePosPlane2DWorld[1] for v in gazePosterToAnal.values() for s in v])
         elif qHasRay:
-            data['average_X']  = np.array([s.gaze2DRay[0] for v in gazePosterToAnal.values() for s in v])
-            data['average_Y']  = np.array([s.gaze2DRay[1] for v in gazePosterToAnal.values() for s in v])
+            data['average_X']  = np.array([s.gazePosPlane2D_vidPos_ray[0] for v in gazePosterToAnal.values() for s in v])
+            data['average_Y']  = np.array([s.gazePosPlane2D_vidPos_ray[1] for v in gazePosterToAnal.values() for s in v])
         elif qHasHomography:
-            data['average_X']  = np.array([s.gaze2DHomography[0] for v in gazePosterToAnal.values() for s in v])
-            data['average_Y']  = np.array([s.gaze2DHomography[1] for v in gazePosterToAnal.values() for s in v])
+            data['average_X']  = np.array([s.gazePosPlane2D_vidPos_homography[0] for v in gazePosterToAnal.values() for s in v])
+            data['average_Y']  = np.array([s.gazePosPlane2D_vidPos_homography[1] for v in gazePosterToAnal.values() for s in v])
         else:
             raise RuntimeError('No data available to process')
 

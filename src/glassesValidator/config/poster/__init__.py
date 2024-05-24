@@ -8,7 +8,7 @@ import math
 import tempfile
 from matplotlib import colors
 
-from ... import utils
+from glassesTools import drawing, marker, transforms
 
 def deploy_maker(output_dir):
     output_dir = pathlib.Path(output_dir)
@@ -101,11 +101,11 @@ class Poster:
 
     def draw(self, img, x, y, subPixelFac=1, color=None, size=6):
         if not math.isnan(x):
-            xy = utils.toImagePos(x,y,self.bbox,[self.width, self.height])
+            xy = transforms.toImagePos(x,y,self.bbox,[self.width, self.height])
             if color is None:
-                utils.drawOpenCVCircle(img, xy, 8, (0,255,0), -1, subPixelFac)
+                drawing.openCVCircle(img, xy, 8, (0,255,0), -1, subPixelFac)
                 color = (0,0,0)
-            utils.drawOpenCVCircle(img, xy, size, color, -1, subPixelFac)
+            drawing.openCVCircle(img, xy, size, color, -1, subPixelFac)
 
     def _getTargetsAndKnownMarkers(self, config_dir, validationSetup):
         """ poster space: (0,0) is at center target, (-,-) bottom left """
@@ -119,7 +119,7 @@ class Poster:
             targets.x = self.cellSizeMm * (targets.x.astype('float32') - center.x)
             targets.y = self.cellSizeMm * (targets.y.astype('float32') - center.y)
             for idx, row in targets.iterrows():
-                self.targets[idx] = utils.Marker(idx, row[['x','y']].values, color=row.color)
+                self.targets[idx] = marker.Marker(idx, row[['x','y']].values, color=row.color)
         else:
             center = pd.Series(data=[0.,0.],index=['x','y'])
 
@@ -146,7 +146,7 @@ class Poster:
                 br = c + np.matmul(R,np.array( [  markerHalfSizeMm ,  markerHalfSizeMm ] ))
                 bl = c + np.matmul(R,np.array( [ -markerHalfSizeMm ,  markerHalfSizeMm ] ))
 
-                self.knownMarkers[idx] = utils.Marker(idx, c, corners=[ tl, tr, br, bl ], rot=rot)
+                self.knownMarkers[idx] = marker.Marker(idx, c, corners=[ tl, tr, br, bl ], rot=rot)
 
             # determine bounding box of markers ([left, top, right, bottom])
             # NB: this assumes that poster has an outer edge of markers, i.e.,
@@ -164,7 +164,7 @@ class Poster:
             ids.append(key)
             cornerPoints = np.vstack(self.knownMarkers[key].corners).astype('float32')
             if unRotateMarkers:
-                cornerPoints = utils.getMarkerUnrotated(cornerPoints,self.knownMarkers[key].rot)
+                cornerPoints = marker.getUnrotated(cornerPoints,self.knownMarkers[key].rot)
 
             boardCornerPoints.append(cornerPoints)
 
@@ -200,7 +200,7 @@ class Poster:
         cornerPointsU = []
         for key in self.knownMarkers:
             cornerPoints = np.vstack(self.knownMarkers[key].corners).astype('float32')
-            cornerPointsU.append(utils.getMarkerUnrotated(cornerPoints, self.knownMarkers[key].rot))
+            cornerPointsU.append(marker.getUnrotated(cornerPoints, self.knownMarkers[key].rot))
             rots.append(self.knownMarkers[key].rot)
             minX = np.min(np.hstack((minX,cornerPoints[:,0])))
             maxX = np.max(np.hstack((maxX,cornerPoints[:,0])))
@@ -231,26 +231,26 @@ class Poster:
                     # get marker
                     cpu = np.floor(cpu)
                     idxs = np.floor([cpu[0,1], cpu[0,1]+sz, cpu[0,0], cpu[0,0]+sz]).astype('int')
-                    marker = refBoardImage[idxs[0]:idxs[1], idxs[2]:idxs[3]]
+                    mark = refBoardImage[idxs[0]:idxs[1], idxs[2]:idxs[3]]
                     # rotate (opposite because coordinate system) and put back
                     if r==-90:
-                        marker = cv2.rotate(marker, cv2.ROTATE_90_CLOCKWISE)
+                        mark = cv2.rotate(mark, cv2.ROTATE_90_CLOCKWISE)
                     elif r==90:
-                        marker = cv2.rotate(marker, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                        mark = cv2.rotate(mark, cv2.ROTATE_90_COUNTERCLOCKWISE)
                     elif r==180:
-                        marker = cv2.rotate(marker, cv2.ROTATE_180)
+                        mark = cv2.rotate(mark, cv2.ROTATE_180)
 
-                    refBoardImage[idxs[0]:idxs[1], idxs[2]:idxs[3]] = marker
+                    refBoardImage[idxs[0]:idxs[1], idxs[2]:idxs[3]] = mark
 
         # add targets
         subPixelFac = 8   # for sub-pixel positioning
         for key in self.targets:
             # 1. determine position on image
-            circlePos = utils.toImagePos(*self.targets[key].center, self.bbox,[refBoardWidth,refBoardHeight])
+            circlePos = transforms.toImagePos(*self.targets[key].center, self.bbox,[refBoardWidth,refBoardHeight])
 
             # 2. draw
             clr = tuple([int(i*255) for i in colors.to_rgb(self.targets[key].color)[::-1]])  # need BGR color ordering
-            utils.drawOpenCVCircle(refBoardImage, circlePos, 15, clr, -1, subPixelFac)
+            drawing.openCVCircle(refBoardImage, circlePos, 15, clr, -1, subPixelFac)
 
         cv2.imwrite(str(posterImage), refBoardImage)
 

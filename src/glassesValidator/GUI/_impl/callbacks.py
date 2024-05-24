@@ -5,11 +5,14 @@ import natsort
 import os
 import shutil
 import pandas as pd
+import dataclasses
 
+from glassesTools.eyetracker import EyeTracker, eye_tracker_names
 
-from .structs import JobDescription, MsgBox, Os
+from .structs import JobDescription, MsgBox, Os, Recording
 from . import globals, async_thread, db, gui, msgbox, process_pool, utils
-from ...utils import EyeTracker, Recording, Task, eye_tracker_names, get_next_task, make_fs_dirname
+from ...utils import Task, get_next_task
+from ...preprocess import make_fs_dirname
 from ... import config, preprocess, process, utils as gv_utils
 from ...process import DataQualityType, _collect_data_quality, _summarize_and_store_data_quality
 
@@ -60,14 +63,9 @@ async def deploy_config(project_path: str|pathlib.Path, config_dir: str):
 async def deploy_poster_pdf(dir: str|pathlib.Path):
     config.poster.deploy_default_pdf(dir)
 
-async def remove_recording_working_dir(rec: Recording, project_path: pathlib.Path = None):
-    if rec.proc_directory_name:
-        if project_path:
-            rec_path =         project_path / rec.proc_directory_name
-        else:
-            rec_path = globals.project_path / rec.proc_directory_name
-        if rec_path.is_dir():
-            shutil.rmtree(rec_path)
+async def remove_recording_working_dir(rec: Recording):
+    if rec.working_directory and rec.working_directory.is_dir():
+        shutil.rmtree(rec.working_directory)
 
         # also set recording state back to not imported
         # NB: this might get called from remove_recording.remove_callback() below
@@ -85,7 +83,7 @@ async def remove_recording(rec: Recording, bypass_confirm=False):
         del globals.selected_recordings[rec.id]
         async_thread.run(db.remove_recording(rec.id))
 
-        if rec.proc_directory_name:
+        if rec.working_directory:
             async_thread.run(remove_recording_working_dir(rec))
 
     if not bypass_confirm and globals.settings.confirm_on_remove:
@@ -102,7 +100,7 @@ async def _add_recordings(recordings: dict[int, Recording], selected: dict[int, 
     for id in recordings:
         if selected[id]:
             recordings[id].task = Task.Not_Imported
-            recordings[id].proc_directory_name = make_fs_dirname(recordings[id], globals.project_path)
+            recordings[id].working_directory = globals.project_path / make_fs_dirname(recordings[id], globals.project_path)
             rid = await db.add_recording(recordings[id])
             await db.load_recordings(rid)
 
@@ -124,7 +122,7 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
                 for rec in recs:
                     # skip duplicates
                     if rec.source_directory not in (r.source_directory for r in globals.recordings.values()):
-                        all_recs.append(rec)
+                        all_recs.append(Recording(**dataclasses.asdict(rec)))
                     else:
                         dup_recs.append(rec)
 
@@ -189,12 +187,11 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
         task = get_next_task(rec.task)
 
     # get function for task
-    working_dir = globals.project_path / rec.proc_directory_name
     kwargs = {}
     match task:
         case Task.Imported:
             fun = preprocess.do_import
-            args = (globals.project_path,)
+            args = tuple()
             kwargs['rec_info'] = rec
         case Task.Coded | Task.Markers_Detected | Task.Gaze_Tranformed_To_Poster | Task.Target_Offsets_Computed | Task.Fixation_Intervals_Determined | Task.Data_Quality_Calculated | Task.Make_Video:
             match task:
@@ -231,7 +228,7 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
                     kwargs['include_data_loss'] = globals.settings.dq_report_data_loss
                 case Task.Make_Video:
                     fun = gv_utils.make_video
-            args = (working_dir,)
+            args = (rec.working_directory,)
             if globals.settings.config_dir and (config_dir := globals.project_path / globals.settings.config_dir).is_dir() and task!=Task.Data_Quality_Calculated:
                 kwargs['config_dir'] = config_dir
 
@@ -247,7 +244,7 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
     # store this task in a separate task queue instead of launching it now
     should_launch_task = task!=Task.Coded or not any((globals.jobs[j].task==Task.Coded for j in globals.jobs))
 
-    job = JobDescription(None, rec, globals.project_path, task, chain)
+    job = JobDescription(None, rec, task, chain)
     if should_launch_task:
         # launch task
         job_id = process_pool.run(fun,*args,**kwargs)
@@ -271,7 +268,7 @@ async def cancel_processing_recordings(ids: list[int]):
 
 async def export_data_quality(ids: list[int]):
     # 1. collect all data quality from the selected recordings
-    rec_dirs = [globals.project_path / globals.recordings[id].proc_directory_name for id in ids]
+    rec_dirs = [globals.recordings[id].working_directory for id in ids]
     df, default_dq_type, targets = _collect_data_quality(rec_dirs)
     if df is None:
         utils.push_popup(msgbox.msgbox, "Export error", "There is no data quality for the selected recordings. Did you code any validation intervals (see manual)?", MsgBox.error)

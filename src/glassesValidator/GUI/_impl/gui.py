@@ -18,11 +18,13 @@ import io
 import fnmatch
 import importlib.resources
 
+from glassesTools.eyetracker import EyeTracker, eye_tracker_names
+from glassesTools.utils import hex_to_rgba_0_1
 
-from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, SortSpec, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
-from . import globals, async_thread, callbacks, db, filepicker, imagehelper, msgbox, process_pool, utils
+from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, Recording, SortSpec, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
+from . import globals, async_thread, callbacks, db, filepicker, msgbox, process_pool, utils
 from .. import _general_imgui
-from ...utils import EyeTracker, Recording, Task, Status, hex_to_rgba_0_1, eye_tracker_names, get_task_name_friendly, get_next_task, task_names, get_last_finished_step, get_recording_status, update_recording_status
+from ...utils import Task, Status, get_task_name_friendly, get_next_task, task_names, get_last_finished_step, get_recording_status, update_recording_status
 from ...process import DataQualityType, get_DataQualityType_explanation
 
 imgui.io = None
@@ -225,7 +227,7 @@ class RecordingTable():
                         imgui.push_style_var(imgui.StyleVar_.frame_padding    , (0.,imgui.style.frame_padding.y))
                         imgui.push_style_var(imgui.StyleVar_.item_spacing     , (0.,imgui.style.item_spacing.y))
                         imgui.push_style_color(imgui.Col_.button, (0.,0.,0.,0.))
-                        imgui.button(f"##{recording.id}_id", size=(imgui.FLT_MIN, 0))
+                        imgui.button(f"##{id}_id", size=(imgui.FLT_MIN, 0))
                         imgui.pop_style_color()
                         imgui.pop_style_var(3)
 
@@ -263,10 +265,10 @@ class RecordingTable():
                             imgui.text(recording.start_time.display or "Unknown")
                         case 8:
                             # Working Directory
-                            imgui.text(recording.proc_directory_name or "Unknown")
+                            imgui.text(recording.working_directory.name if recording.working_directory else "Unknown")
                             if imgui.is_item_hovered():
-                                if recording.proc_directory_name and (path:=globals.project_path / recording.proc_directory_name).is_dir():
-                                    text = str(path)
+                                if recording.working_directory and recording.working_directory.is_dir():
+                                    text = str(recording.working_directory)
                                 else:
                                     text = 'Working directory not created yet'
                                 draw_tooltip(text)
@@ -455,8 +457,8 @@ class RecordingTable():
             disable = False
         else:
             extra = ""
-            path = globals.project_path / recording.proc_directory_name
-            disable = not recording.proc_directory_name or not path.is_dir()
+            path = recording.working_directory
+            disable = not path or not path.is_dir()
 
         if disable:
             utils.push_disabled()
@@ -536,7 +538,7 @@ class RecordingTable():
 
             if len(ids)==1:
                 self.draw_recording_open_folder_button(ids, label="󰷏 Open Working Folder")
-            work_dir_ids = [id for id in ids if (pd:=self.recordings[id].proc_directory_name) and (globals.project_path / pd).is_dir()]
+            work_dir_ids = [id for id in ids if self.recordings[id].working_directory.is_dir()]
             if work_dir_ids:
                 self.draw_recording_remove_folder_button(work_dir_ids, label="󰮞 Remove Working Folder")
 
@@ -567,7 +569,7 @@ class RecordingTable():
                     case 7:     # Recording Start
                         key = lambda id: self.recordings[id].start_time.value
                     case 8:     # Directory
-                        key = lambda id: self.recordings[id].proc_directory_name.lower()
+                        key = lambda id: self.recordings[id].working_directory.name.lower()
                     case 9:     # Source Directory
                         key = lambda id: str(self.recordings[id].source_directory).lower()
                     case 10:    # Firmware Version
@@ -709,10 +711,10 @@ class MainGUI():
             if state in [ProcessState.Canceled, ProcessState.Failed]:
                 if job.task==Task.Imported:
                     # remove working directory if this was an import task
-                    async_thread.run(callbacks.remove_recording_working_dir(rec, job.project_path))
+                    async_thread.run(callbacks.remove_recording_working_dir(rec))
                 elif job.task!=Task.Make_Video:
                     # reset status of this aborted task (unless exporting video, that is optional not encoded in the task status file)
-                    update_recording_status(job.project_path/rec.proc_directory_name, job.task, Status.Not_Started)
+                    update_recording_status(rec.working_directory, job.task, Status.Not_Started)
 
             # special case: the ended task was a coding task, we have further coding tasks to enqueue, and there are none currently enqueued
             if job.task==Task.Coded and globals.coding_job_queue and not any((globals.jobs[j].task==Task.Coded for j in globals.jobs)):
@@ -1070,7 +1072,7 @@ class MainGUI():
     def update_recordings(self):
         for recid in globals.recordings:
             if globals.recordings[recid].task not in [Task.Not_Imported, Task.Unknown]:
-                last_task = get_last_finished_step(get_recording_status(globals.project_path / globals.recordings[recid].proc_directory_name))
+                last_task = get_last_finished_step(get_recording_status(globals.recordings[recid].working_directory))
                 globals.recordings[recid].task = last_task
                 async_thread.run(db.update_recording(globals.recordings[recid], "task"))
 
