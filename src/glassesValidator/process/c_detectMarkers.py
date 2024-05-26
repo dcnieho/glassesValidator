@@ -1,11 +1,7 @@
 import pathlib
-
-import cv2
-import numpy as np
-import csv
 import threading
 
-from glassesTools import drawing, ocv, plane, timestamps, transforms
+from glassesTools import aruco
 
 from .. import config
 from .. import utils
@@ -40,158 +36,31 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
 
 def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     global stopAllProcessing
-    show_visualization = gui is not None
 
     utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Running)
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
-
-    # open video file, query it for size
-    inVideo = working_dir / 'worldCamera.mp4'
-    if not inVideo.is_file():
-        inVideo = working_dir / 'worldCamera.avi'
-    cap     = ocv.CV2VideoReader(inVideo, timestamps.from_file(working_dir / 'frameTimestamps.tsv'))
-    width   = cap.get_prop(cv2.CAP_PROP_FRAME_WIDTH)
-    height  = cap.get_prop(cv2.CAP_PROP_FRAME_HEIGHT)
-
     # get info about markers on our poster
     poster          = config.poster.Poster(config_dir, validationSetup)
-    centerTarget    = poster.targets[validationSetup['centerTarget']].center
-    # turn into aruco board object to be used for pose estimation
-    arucoBoard      = poster.getArucoBoard()
 
-    # setup aruco marker detection
-    parameters      = cv2.aruco.DetectorParameters()
-    parameters.markerBorderBits       = validationSetup['markerBorderBits']
-    parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
-    aruco_detector  = cv2.aruco.ArucoDetector(poster.aruco_dict, parameters)
-
-    # get camera calibration info
-    cameraMatrix,distCoeff = ocv.readCameraCalibrationFile(working_dir / "calibration.xml")[0:2]
-    hasCameraMatrix = cameraMatrix is not None
-    hasDistCoeff    = distCoeff is not None
-
-    # get interval coded to be analyzed, if any
+    # get interval(s) coded to be analyzed, if any
     analyzeFrames   = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
-    hasAnalyzeFrames= analyzeFrames is not None
 
-    stopAllProcessing = False
-    armLength = poster.markerSize/2 # arms of axis are half a marker long
-    subPixelFac = 8   # for sub-pixel positioning
-    last_frame_idx = -1
-    poses = []
-    while True:
-        # process frame-by-frame
-        done, frame, frame_idx, frame_ts = cap.read_frame()
-        if frame_idx is not None and frame_idx-last_frame_idx>1:
-            print(f'Frame discontinuity detected (jumped from {last_frame_idx} to {frame_idx}), there are probably corrupt frames in your video')
-        last_frame_idx = frame_idx
+    # open video file, query it for size
+    in_video = working_dir / 'worldCamera.mp4'
+    if not in_video.is_file():
+        in_video = working_dir / 'worldCamera.avi'
 
-        # check if we're done
-        if done or (hasAnalyzeFrames and frame_idx > analyzeFrames[-1]):
-            # done
-            break
-        if frame_idx%100==0:
-            print('  frame {}'.format(frame_idx))
-        if frame is None:
-            # we don't have a valid frame, continue to next
-            continue
-
-        if show_visualization:
-            keys = gui.get_key_presses()
-            if 'q' in keys:
-                # quit fully
-                stopAllProcessing = True
-                break
-            if 'n' in keys:
-                # goto next
-                break
-
-        if hasAnalyzeFrames:
-            # check we're in a current interval, else skip processing
-            # NB: have to spool through like this, setting specific frame to read
-            # with cap.set(cv2.CAP_PROP_POS_FRAMES) doesn't seem to work reliably
-            # for VFR video files
-            inIval = False
-            for f in range(0,len(analyzeFrames),2):
-                if frame_idx>=analyzeFrames[f] and frame_idx<=analyzeFrames[f+1]:
-                    inIval = True
-                    break
-            if not inIval:
-                # no need to process this frame
-                continue
-
-        # detect markers, undistort
-        corners, ids, rejectedImgPoints = aruco_detector.detectMarkers(frame)
-        recoveredIds = None
-
-        pose = plane.Pose(frame_idx)
-        if np.all(ids != None):
-            if len(ids) >= validationSetup['minNumMarkers']:
-                # get camera pose
-                if hasCameraMatrix and hasDistCoeff:
-                    # Refine detected markers (eliminates markers not part of our poster, adds missing markers to the poster)
-                    corners, ids, rejectedImgPoints, recoveredIds = ocv.arucoRefineDetectedMarkers(aruco_detector,
-                            image = frame, arucoBoard = arucoBoard,
-                            detectedCorners = corners, detectedIds = ids, rejectedCorners = rejectedImgPoints,
-                            cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
-
-                    objP, imgP = arucoBoard.matchImagePoints(corners, ids)
-                    pose.pose_N_markers = 0 if objP is None else int(objP.shape[0]/4)
-                    if pose.pose_N_markers>0:
-                        pose.pose_ok, pose.pose_R_vec, pose.pose_T_vec = cv2.solvePnP(objP, imgP, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
-
-                    # draw pose if wanted
-                    if pose.pose_ok and show_visualization:
-                        # draw axis indicating poster pose (origin and orientation)
-                        drawing.openCVFrameAxis(frame, cameraMatrix, distCoeff, pose.pose_R_vec, pose.pose_T_vec, armLength, 3, subPixelFac)
-
-                # also get homography (direct image plane to plane in world transform). Use undistorted marker corners
-                if hasCameraMatrix and hasDistCoeff:
-                    cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
-                else:
-                    cornersU = corners
-                H, status = transforms.estimateHomography(poster.knownMarkers, cornersU, ids)
-
-                if status:
-                    pose.homography_mat         = H
-                    pose.homography_N_markers   = len(cornersU)
-                    if show_visualization:
-                        # find where target is expected to be in the image
-                        iH = np.linalg.inv(pose.homography_mat)
-                        target = transforms.applyHomography(iH, centerTarget[0], centerTarget[1])
-                        if hasCameraMatrix and hasDistCoeff:
-                            target = transforms.distortPoint(*target, cameraMatrix, distCoeff)
-                        # draw target location on image
-                        if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
-                            drawing.openCVCircle(frame, target, 3, (0,0,0), -1, subPixelFac)
-
-            # if any markers were detected, draw where on the frame
-            if show_visualization:
-                drawing.arucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac, specialHighlight=[recoveredIds,(255,255,0)])
-
-        poses.append(pose)
-
-        # for debug, can draw rejected markers on frame
-        if show_visualization and show_rejected_markers:
-            cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
-
-        if show_visualization:
-            # keys is populated above
-            if 's' in keys:
-                # screenshot
-                cv2.imwrite(str(working_dir / ('detect_frame_%d.png' % frame_idx)), frame)
-            gui.update_image(frame, frame_ts/1000., frame_idx)
-            closed, = gui.get_state()
-            if closed:
-                stopAllProcessing = True
-                break
-
-    plane.Pose.writeToFile(poses, working_dir / 'posterPose.tsv', skip_failed=True)
-
-    if show_visualization:
-        gui.stop()
+    stopAllProcessing = aruco.run_pose_estimation(in_video, working_dir / "frameTimestamps.tsv", working_dir / "calibration.xml",   # input video
+                                                  # output
+                                                  working_dir, 'posterPose.tsv',
+                                                  # intervals to process
+                                                  analyzeFrames,
+                                                  # detector and pose estimator setup
+                                                  poster.getArucoBoard(), {'markerBorderBits': validationSetup['markerBorderBits']}, validationSetup['minNumMarkers'],
+                                                  # visualization setup
+                                                  gui, poster.markerSize/2, 8, show_rejected_markers)
 
     utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Finished)
 

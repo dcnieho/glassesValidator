@@ -8,7 +8,7 @@ import math
 import tempfile
 from matplotlib import colors
 
-from glassesTools import drawing, marker, transforms
+from glassesTools import aruco, drawing, marker, transforms
 
 def deploy_maker(output_dir):
     output_dir = pathlib.Path(output_dir)
@@ -167,11 +167,7 @@ class Poster:
                 cornerPoints = marker.getUnrotated(cornerPoints,self.knownMarkers[key].rot)
 
             boardCornerPoints.append(cornerPoints)
-
-        boardCornerPoints = np.dstack(boardCornerPoints)        # list of 2D arrays -> 3D array
-        boardCornerPoints = np.rollaxis(boardCornerPoints,-1)   # 4x2xN -> Nx4x2
-        boardCornerPoints = np.pad(boardCornerPoints,((0,0),(0,0),(0,1)),'constant', constant_values=(0.,0.)) # Nx4x2 -> Nx4x3
-        return cv2.aruco.Board(boardCornerPoints, self.aruco_dict, np.array(ids))
+        return aruco.create_board(boardCornerPoints, ids, self.aruco_dict)
 
     def _storeReferencePoster(self, posterImage, validationSetup):
         referenceBoard = self.getArucoBoard(unRotateMarkers = True)

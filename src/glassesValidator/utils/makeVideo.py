@@ -15,7 +15,7 @@ isMacOS = sys.platform.startswith("darwin")
 if isMacOS:
     import AppKit
 
-from glassesTools import drawing, gaze_headref, ocv, plane, timestamps, transforms
+from glassesTools import aruco, gaze_headref, ocv, timestamps, transforms
 
 from .. import config
 from .. import utils
@@ -74,7 +74,6 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
 
     # get info about markers on our poster
     poster      = config.poster.Poster(config_dir, validationSetup)
-    centerTarget= poster.targets[validationSetup['centerTarget']].center
     # turn into aruco board object to be used for pose estimation
     arucoBoard  = poster.getArucoBoard()
 
@@ -90,19 +89,16 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(poster.width), 'height_in':int(poster.height),'frame_rate':fpsFrac}
     vidOutPoster = MediaWriter(str(working_dir / 'detectOutput_poster.mp4'), [out_opts], overwrite=True)
 
-    # setup aruco marker detection
-    parameters      = cv2.aruco.DetectorParameters()
-    parameters.markerBorderBits       = validationSetup['markerBorderBits']
-    parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
-    aruco_detector  = cv2.aruco.ArucoDetector(poster.aruco_dict, parameters)
-
     # get camera calibration info
-    cameraMatrix,distCoeff,cameraRotation,cameraPosition = ocv.readCameraCalibrationFile(working_dir / "calibration.xml")
-    hasCameraMatrix = cameraMatrix is not None
-    hasDistCoeff    = distCoeff is not None
+    cameraParams = ocv.CameraParams.readFromFile(working_dir / "calibration.xml")
+
+    # setup aruco marker detection
+    detector = aruco.ArUcoDetector(arucoBoard.getDictionary(), {'markerBorderBits': validationSetup['markerBorderBits']})
+    detector.set_board(arucoBoard)
+    detector.set_intrinsics(cameraParams)
 
     # Read gaze data
-    gazes,maxFrameIdx = gaze_headref.Gaze.readFromFile(working_dir / 'gazeData.tsv')
+    gazes = gaze_headref.Gaze.readFromFile(working_dir / 'gazeData.tsv')[0]
 
     # get interval coded to be analyzed, if available
     analyzeFrames = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
@@ -114,91 +110,41 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     subPixelFac = 8   # for sub-pixel positioning
     stopAllProcessing = False
     hasRequestedFocus = not isMacOS # False only if on Mac OS, else True since its a no-op
-    last_frame_idx = -1
     while True:
         # process frame-by-frame
-        done, frame, frame_idx, frame_ts = vidIn.read_frame()
-        if frame_idx is not None and frame_idx-last_frame_idx>1:
-            print(f'Frame discontinuity detected (jumped from {last_frame_idx} to {frame_idx}), there are probably corrupt frames in your video')
-            # TODO: fill in the missing frames so we stay in sync
-        last_frame_idx = frame_idx
-
+        done, frame, frame_idx, frame_ts = vidIn.read_frame(report_gap=True)
+        # TODO: if there is a discontinuity, fill in the missing frames so audio stays in sync
         # check if we're done
         if done:
             break
-        if not show_visualization and frame_idx%100==0:
-            print('  frame {}'.format(frame_idx))
+        vidIn.report_frame()
+
         if frame is None:
             # we don't have a valid frame, use a fully black frame
             frame = np.zeros((int(height),int(width),3), np.uint8)   # black image
         refImg = poster.getImgCopy()
 
-        # detect markers, undistort
-        corners, ids, rejectedImgPoints = aruco_detector.detectMarkers(frame)
-        recoveredIds = None
-
-        # get camera pose w.r.t. poster, draw marker and poster pose
-        pose = plane.Pose(frame_idx)
-        if np.all(ids != None):
-            if len(ids) >= validationSetup['minNumMarkers']:
-                # get camera pose
-                if hasCameraMatrix and hasDistCoeff:
-                    # Refine detected markers (eliminates markers not part of our poster, adds missing markers to the poster)
-                    corners, ids, rejectedImgPoints, recoveredIds = ocv.arucoRefineDetectedMarkers(aruco_detector,
-                            image = frame, arucoBoard = arucoBoard,
-                            detectedCorners = corners, detectedIds = ids, rejectedCorners = rejectedImgPoints,
-                            cameraMatrix = cameraMatrix, distCoeffs = distCoeff)
-
-                    objP, imgP = arucoBoard.matchImagePoints(corners, ids)
-                    pose.pose_N_markers = 0 if objP is None else int(objP.shape[0]/4)
-                    if pose.pose_N_markers>0:
-                        pose.pose_ok, pose.pose_R_vec, pose.pose_T_vec = cv2.solvePnP(objP, imgP, cameraMatrix, distCoeff, np.empty(1), np.empty(1))
-
-                    # draw axis indicating poster pose (origin and orientation)
-                    if pose.pose_ok:
-                        drawing.openCVFrameAxis(frame, cameraMatrix, distCoeff, pose.pose_R_vec, pose.pose_T_vec, armLength, 3, subPixelFac)
-
-                # also get homography (direct image plane to plane in world transform). Use undistorted marker corners
-                if hasCameraMatrix and hasDistCoeff:
-                    cornersU = [cv2.undistortPoints(x, cameraMatrix, distCoeff, P=cameraMatrix) for x in corners]
-                else:
-                    cornersU = corners
-                H, status = transforms.estimateHomography(poster.knownMarkers, cornersU, ids)
-
-                if status:
-                    pose.homography_mat = H
-                    # find where target is expected to be in the image
-                    iH = np.linalg.inv(pose.homography_mat)
-                    target = transforms.applyHomography(iH, centerTarget[0], centerTarget[1])
-                    if hasCameraMatrix and hasDistCoeff:
-                        target = transforms.distortPoint(*target, cameraMatrix, distCoeff)
-                    # draw target location on image
-                    if target[0] >= 0 and target[0] < width and target[1] >= 0 and target[1] < height:
-                        drawing.openCVCircle(frame, target, 3, (0,0,0), -1, subPixelFac)
-
-            # if any markers were detected, draw where on the frame
-            drawing.arucoDetectedMarkers(frame, corners, ids, subPixelFac=subPixelFac, specialHighlight=[recoveredIds,(255,255,0)])
-
-        # for debug, can draw rejected markers on frame
-        if show_rejected_markers:
-            cv2.aruco.drawDetectedMarkers(frame, rejectedImgPoints, None, borderColor=(211,0,148))
+        # detect markers
+        pose, detect_dict = detector.detect_and_estimate(frame, frame_idx, min_num_markers=validationSetup['minNumMarkers'])
+        # draw detection and pose
+        detector.visualize(frame, pose, detect_dict, armLength, subPixelFac, show_rejected_markers)
 
         # process gaze
         if frame_idx in gazes:
             for gaze in gazes[frame_idx]:
                 # draw gaze point on scene video
-                gaze.draw(frame, subPixelFac=subPixelFac, camRot=cameraRotation, camPos=cameraPosition, cameraMatrix=cameraMatrix, distCoeff=distCoeff)
+                gaze.draw(frame, cameraParams, subPixelFac)
 
                 # if we have pose information, figure out where gaze vectors
                 # intersect with poster. Do same for 3D gaze point
                 # (the projection of which coincides with 2D gaze provided by
                 # the eye tracker)
-                if pose.pose_ok:
-                    gazePoster = transforms.gazeToPlane(gaze,pose,cameraRotation,cameraPosition, cameraMatrix, distCoeff)
+                if pose.pose_N_markers>0 or pose.homography_N_markers>0:
+                    gazePoster = transforms.gazeToPlane(gaze, pose, cameraParams)
 
                     # draw gazes on video and poster
-                    gazePoster.drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
-                    gazePoster.drawOnPoster(refImg, poster, subPixelFac)
+                    gazePoster.drawOnWorldVideo(frame, cameraParams, subPixelFac)
+                    gazePoster.drawOnPlane(refImg, poster, subPixelFac)
 
         # annotate frame
         analysisIntervalIdx = None
@@ -260,6 +206,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
             cmd_str = ' '.join(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', '"'+str(tempName)+'"', '-i', '"'+str(inVideo)+'"', '-vcodec', 'copy', '-acodec', 'copy', '-map', '0:v:0', '-map', '1:a:0?', '"'+str(f)+'"'])
             os.system(cmd_str)
             # clean up
-            tempName.unlink(missing_ok=True)
+            if f.exists():
+                tempName.unlink(missing_ok=True)
 
     return stopAllProcessing

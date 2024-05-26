@@ -99,8 +99,8 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
             pass
 
     # get camera calibration info
-    cameraMatrix,distCoeff = ocv.readCameraCalibrationFile(working_dir / "calibration.xml")[0:2]
-    hasCamCal = (cameraMatrix is not None) and (distCoeff is not None)
+    cameraParams= ocv.CameraParams.readFromFile(working_dir / "calibration.xml")
+    hasCamCal   = cameraParams.has_intrinsics()
 
     # get interval coded to be analyzed, if available
     analyzeFrames = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
@@ -146,19 +146,19 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
 
             # if we have poster pose, draw poster origin on video
             if hasPosterPose and frame_idx in poses and hasCamCal:
-                drawing.openCVFrameAxis(frame, cameraMatrix, distCoeff, poses[frame_idx].rVec, poses[frame_idx].tVec, armLength, 3, subPixelFac)
+                drawing.openCVFrameAxis(frame, cameraParams.camera_mtx, cameraParams.distort_coeffs, poses[frame_idx].pose_R_vec, poses[frame_idx].pose_T_vec, armLength, 3, subPixelFac)
 
             # if have gaze for this frame, draw it
             # NB: usually have multiple gaze samples for a video frame, draw one
             if frame_idx in gazes:
-                gazes[frame_idx][0].draw(frame, subPixelFac)
+                gazes[frame_idx][0].draw(frame, cameraParams, subPixelFac)
 
             # if have gaze in world info, draw it too (also only first)
             if hasPosterGaze and frame_idx in gazesPoster:
                 if hasCamCal:
-                    gazesPoster[frame_idx][0].drawOnWorldVideo(frame, cameraMatrix, distCoeff, subPixelFac)
+                    gazesPoster[frame_idx][0].drawOnWorldVideo(frame, cameraParams, subPixelFac)
                 if show_poster:
-                    gazesPoster[frame_idx][0].drawOnPoster(refImg, poster, subPixelFac)
+                    gazesPoster[frame_idx][0].drawOnPlane(refImg, poster, subPixelFac)
 
             analysisIntervalIdx = None
             analysisLbl = ''
