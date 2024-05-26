@@ -8,6 +8,8 @@ import csv
 from .makeVideo import process as make_video
 
 from glassesTools import utils
+from glassesTools.recording import Recording
+from glassesTools.eyetracker import EyeTracker
 
 # this is a bit of a mix of a list of the various tasks, and a status-keeper so we know where we are in the process.
 # hence the Not_imported and Unknown states are mixed in, and all names are past tense verbs
@@ -144,4 +146,4 @@ def readMarkerIntervalsFile(fileName):
     return None if len(analyzeFrames)==0 else analyzeFrames
 
 
-__all__ = ['make_video']
+__all__ = ['make_video','Recording','EyeTracker']
