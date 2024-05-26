@@ -153,8 +153,8 @@ software before they can be imported into glassesValidator. These are:
   - Using Pupil Player (*Pupil Core* and *Pupil Invisible*): Each recording should 1) be opened in Pupil Player, and 2) an export of the
     recording (`e` hotkey) should be run from pupil player. Make sure to disable the `World Video Exporter` in the `Plugin Manager`
     before exporting, as the exported video is not used by glassesValidator and takes a long time to create. Note that importing a Pupil
-    Player export of a Pupil Invisible export requires an internet connection, which is used to retrieve the scene camera calibration
-    from Pupil Lab's servers.
+    Player export of a Pupil Invisible recording may require an internet connection. This is used to retrieve the scene camera calibration
+    from Pupil Lab's servers in case the recording does not have a `calibration.bin` file.
   - Using Pupil Cloud (*Pupil Invisible* and *Pupil Neon*): Export the recordings using the `Timeseries data + Scene video` action.
   - For the *Pupil Core*, for best results you may wish to do a scene camera calibration yourself, see https://docs.pupil-labs.com/core/software/pupil-capture/#camera-intrinsics-estimation.
     If you do not do so, a generic calibration will be used by Pupil Capture during data recording, by Pupil Player during data
