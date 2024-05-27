@@ -4,8 +4,7 @@ import pathvalidate
 
 from glassesTools.recording  import Recording
 from glassesTools.eyetracker import EyeTracker
-
-from glassesTools.importing import check_device, do_import as _do_impt, get_recording_info
+from glassesTools.importing  import check_device, do_import as _do_impt, get_recording_info
 
 from .. import utils
 
