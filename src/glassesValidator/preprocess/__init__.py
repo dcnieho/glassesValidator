@@ -55,5 +55,4 @@ def make_fs_dirname(rec_info: Recording, output_dir: pathlib.Path = None):
     return dirname
 
 
-__all__ = ['adhawk_mindlink','pupil_core','pupil_invisible','pupil_neon','SeeTrue_STONE','SMI_ETG','tobii_G2','tobii_G3',
-           'get_recording_info','do_import']
+__all__ = ['get_recording_info','do_import']
