@@ -104,6 +104,7 @@ async def connect():
         "config_dir":                  f'INTEGER DEFAULT "config"',
         "confirm_on_remove":           f'INTEGER DEFAULT {int(True)}',
         "continue_process_after_code": f'INTEGER DEFAULT {int(True)}',
+        "copy_scene_video":            f'INTEGER DEFAULT {int(True)}',
         "dq_use_viewpos_vidpos_homography": f'INTEGER DEFAULT {int(False)}',
         "dq_use_pose_vidpos_homography":    f'INTEGER DEFAULT {int(False)}',
         "dq_use_pose_vidpos_ray":      f'INTEGER DEFAULT {int(False)}',
@@ -152,6 +153,7 @@ async def connect():
             "recording_unit_serial":        f'TEXT    DEFAULT ""',
             "recording_software_version":   f'TEXT    DEFAULT ""',
             "scene_camera_serial":          f'TEXT    DEFAULT ""',
+            "scene_video_file":             f'TEXT    DEFAULT ""',
             "task":                         f'TEXT    DEFAULT "{Task.Unknown.value}"',
         })
 

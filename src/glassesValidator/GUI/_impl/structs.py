@@ -122,6 +122,7 @@ class Settings:
     config_dir                  : str
     confirm_on_remove           : bool
     continue_process_after_code : bool
+    copy_scene_video            : bool
     dq_use_viewpos_vidpos_homography : bool
     dq_use_pose_vidpos_homography : bool
     dq_use_pose_vidpos_ray      : bool

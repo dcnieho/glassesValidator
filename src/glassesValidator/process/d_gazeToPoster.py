@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import threading
 
-from glassesTools import drawing, gaze_headref, gaze_worldref, intervals, ocv, plane, timestamps, transforms
+from glassesTools import drawing, gaze_headref, gaze_worldref, intervals, ocv, plane, recording, timestamps
 
 from .. import config
 from .. import utils
@@ -71,11 +71,13 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
         return False
 
     # prep visualizations
+    # get info about recording
+    recInfo         = recording.Recording.load_from_json(working_dir)
     # open file with information about ArUco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
     poster          = config.poster.Poster(config_dir, validationSetup)
 
-    cap             = ocv.CV2VideoReader(working_dir / 'worldCamera.mp4', timestamps.from_file(working_dir / 'frameTimestamps.tsv'))
+    cap             = ocv.CV2VideoReader(recInfo.get_scene_video_path(), timestamps.from_file(working_dir / 'frameTimestamps.tsv'))
     width           = cap.get_prop(cv2.CAP_PROP_FRAME_WIDTH)
     height          = cap.get_prop(cv2.CAP_PROP_FRAME_HEIGHT)
 

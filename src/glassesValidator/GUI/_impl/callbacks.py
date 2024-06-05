@@ -193,6 +193,7 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
             fun = preprocess.do_import
             args = tuple()
             kwargs['rec_info'] = rec
+            kwargs['copy_scene_video'] = globals.settings.copy_scene_video
         case Task.Coded | Task.Markers_Detected | Task.Gaze_Tranformed_To_Poster | Task.Target_Offsets_Computed | Task.Fixation_Intervals_Determined | Task.Data_Quality_Calculated | Task.Make_Video:
             match task:
                 case Task.Coded:

@@ -1,7 +1,7 @@
 import pathlib
 import threading
 
-from glassesTools import aruco
+from glassesTools import aruco, recording
 
 from .. import config
 from .. import utils
@@ -39,6 +39,9 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
 
     utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Running)
 
+    # get info about recording
+    recInfo = recording.Recording.load_from_json(working_dir)
+
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
     # get info about markers on our poster
@@ -48,9 +51,7 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     analyzeFrames   = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
 
     # open video file, query it for size
-    in_video = working_dir / 'worldCamera.mp4'
-    if not in_video.is_file():
-        in_video = working_dir / 'worldCamera.avi'
+    in_video = recInfo.get_scene_video_path()
 
     stopAllProcessing = aruco.run_pose_estimation(in_video, working_dir / "frameTimestamps.tsv", working_dir / "calibration.xml",   # input video
                                                   # output

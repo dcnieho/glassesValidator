@@ -9,7 +9,7 @@ from glassesTools.importing  import check_device, do_import as _do_impt, get_rec
 from .. import utils
 
 # single front end to the various device import functions. Step 1 of our 3-step process
-def do_import(output_dir: str | pathlib.Path = None, source_dir: str | pathlib.Path = None, device: str | EyeTracker = None, rec_info: Recording = None) -> Recording:
+def do_import(output_dir: str | pathlib.Path = None, source_dir: str | pathlib.Path = None, device: str | EyeTracker = None, rec_info: Recording = None, copy_scene_video = True) -> Recording:
     # output_dir is the folder in which the working directory will be created
     if rec_info is not None:
         if isinstance(rec_info,list):
@@ -22,7 +22,7 @@ def do_import(output_dir: str | pathlib.Path = None, source_dir: str | pathlib.P
             rec_info.working_directory = output_dir / make_fs_dirname(rec_info, output_dir)
 
     # do the import
-    rec_info = _do_impt(None, source_dir, device, rec_info)
+    rec_info = _do_impt(None, source_dir, device, rec_info, copy_scene_video)
 
     # make sure there is a processing status file
     utils.get_recording_status(rec_info.working_directory, create_if_missing=True)

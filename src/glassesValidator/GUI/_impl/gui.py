@@ -1914,6 +1914,24 @@ class MainGUI():
                 imgui.table_next_row()
                 imgui.table_next_column()
                 imgui.align_text_to_frame_padding()
+                imgui.text("Copy scene video\non import:")
+                imgui.same_line()
+                draw_hover_text(
+                    "If not selected, scene video files are not copied into the recording's "
+                    "working directory when a recording is imported. Instead the video will "
+                    "be loaded from the recording's source directory during processing."
+                )
+                imgui.table_next_column()
+                imgui.dummy((1,imgui.calc_text_size('').y/2))
+                imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
+                changed, value = imgui.checkbox("##copy_scene_video", set.copy_scene_video)
+                if changed:
+                    set.copy_scene_video = value
+                    async_thread.run(db.update_settings("copy_scene_video"))
+
+                imgui.table_next_row()
+                imgui.table_next_column()
+                imgui.align_text_to_frame_padding()
                 imgui.text("Continue processing after\ninterval coding:")
                 imgui.table_next_column()
                 imgui.dummy((1,imgui.calc_text_size('').y/2))
@@ -1936,7 +1954,7 @@ class MainGUI():
                     "than one processor thread, set this value to signficantly less than the number "
                     "of threads available in your system. In most cases 2--3 workers should provide "
                     "a good experience. NB: If you currently have running or enqueued jobs, the "
-                    " number of workers will only be changed once all have completed or are cancelled."
+                    "number of workers will only be changed once all have completed or are cancelled."
                 )
                 imgui.table_next_column()
                 changed, value = imgui.drag_int("##process_workers", set.process_workers, v_speed=0.5, v_min=1, v_max=100)

@@ -14,7 +14,7 @@ isMacOS = sys.platform.startswith("darwin")
 if isMacOS:
     import AppKit
 
-from glassesTools import drawing, gaze_headref, gaze_worldref, ocv, plane, timestamps
+from glassesTools import drawing, gaze_headref, gaze_worldref, ocv, plane, recording, timestamps
 
 from .. import config
 from .. import utils
@@ -71,6 +71,9 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
 
     utils.update_recording_status(working_dir, utils.Task.Coded, utils.Status.Running)
 
+    # get info about recording
+    recInfo = recording.Recording.load_from_json(working_dir)
+
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
     poster = config.poster.Poster(config_dir, validationSetup)
@@ -117,9 +120,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
     t2i = timestamps.Timestamp2Index( working_dir / 'frameTimestamps.tsv' )
     i2t = timestamps.Idx2Timestamp( working_dir / 'frameTimestamps.tsv' )
     # 4. mediaplayer for the actual video playback, with sound if available
-    inVideo = working_dir / 'worldCamera.mp4'
-    if not inVideo.is_file():
-        inVideo = working_dir / 'worldCamera.avi'
+    inVideo = recInfo.get_scene_video_path()
     ff_opts = {'volume': 1., 'sync': 'audio', 'framedrop': True}
     player = MediaPlayer(str(inVideo), ff_opts=ff_opts)
 
