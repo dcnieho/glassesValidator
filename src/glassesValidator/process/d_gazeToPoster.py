@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 import pathlib
 
 import cv2

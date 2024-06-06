@@ -1,7 +1,3 @@
-#!/usr/bin/python3
-# NB: this is a combination of the c_ and d_ steps. Since it is maintained separately and honestly a bit of an
-# after-thought, it may not be in sync with the c_ and d_ steps.
-
 import shutil
 import os
 import pathlib
