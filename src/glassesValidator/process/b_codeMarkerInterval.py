@@ -13,7 +13,7 @@ if isMacOS:
     import AppKit
 
 from glassesTools import drawing, gaze_headref, gaze_worldref, ocv, plane, recording, timestamps
-from glassesTools.video_gui import GUI, generic_tooltip
+from glassesTools.video_gui import GUI, generic_tooltip_drawer
 
 from .. import config
 from .. import utils
@@ -54,7 +54,7 @@ def process(working_dir, config_dir=None, show_poster=False):
         'n': 'Next'
     }
     gui.set_interesting_keys(list(key_tooltip.keys()))
-    gui.register_draw_callback('status',lambda: generic_tooltip(key_tooltip))
+    gui.register_draw_callback('status',lambda: generic_tooltip_drawer(key_tooltip))
     main_win_id = gui.add_window(working_dir.name)
 
     proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, main_win_id, show_poster))

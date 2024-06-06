@@ -2,7 +2,7 @@ import pathlib
 import threading
 
 from glassesTools import aruco, recording
-from glassesTools.video_gui import GUI, generic_tooltip, qns_tooltip
+from glassesTools.video_gui import GUI, generic_tooltip_drawer, qns_tooltip
 
 from .. import config
 from .. import utils
@@ -22,7 +22,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
     if show_visualization:
         gui = GUI(use_thread = False)
         gui.set_interesting_keys('qns')
-        gui.register_draw_callback('status',lambda: generic_tooltip(qns_tooltip()))
+        gui.register_draw_callback('status',lambda: generic_tooltip_drawer(qns_tooltip()))
         gui.add_window(working_dir.name)
 
         proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, show_rejected_markers))

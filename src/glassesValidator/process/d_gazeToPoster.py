@@ -5,7 +5,7 @@ import numpy as np
 import threading
 
 from glassesTools import drawing, gaze_headref, gaze_worldref, intervals, ocv, plane, recording, timestamps
-from glassesTools.video_gui import GUI, generic_tooltip, qns_tooltip
+from glassesTools.video_gui import GUI, generic_tooltip_drawer, qns_tooltip
 
 from .. import config
 from .. import utils
@@ -26,7 +26,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
     if show_visualization:
         gui = GUI(use_thread = False)
         gui.set_interesting_keys('qns')
-        gui.register_draw_callback('status',lambda: generic_tooltip(qns_tooltip()))
+        gui.register_draw_callback('status',lambda: generic_tooltip_drawer(qns_tooltip()))
         frame_win_id = gui.add_window(working_dir.name)
         poster_win_id= None
         if show_poster:
