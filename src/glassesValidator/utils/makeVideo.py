@@ -16,10 +16,10 @@ if isMacOS:
     import AppKit
 
 from glassesTools import aruco, gaze_headref, ocv, timestamps, transforms
+from glassesTools.video_gui import GUI, generic_tooltip
 
 from .. import config
 from .. import utils
-from ..process._image_gui import GUI, generic_tooltip
 
 from ffpyplayer.writer import MediaWriter
 from ffpyplayer.pic import Image

@@ -2,10 +2,10 @@ import pathlib
 import threading
 
 from glassesTools import aruco, recording
+from glassesTools.video_gui import GUI, generic_tooltip, qns_tooltip
 
 from .. import config
 from .. import utils
-from ._image_gui import GUI, generic_tooltip, qns_tooltip
 
 
 stopAllProcessing = False

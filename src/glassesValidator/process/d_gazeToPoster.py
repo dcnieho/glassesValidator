@@ -7,10 +7,10 @@ import numpy as np
 import threading
 
 from glassesTools import drawing, gaze_headref, gaze_worldref, intervals, ocv, plane, recording, timestamps
+from glassesTools.video_gui import GUI, generic_tooltip, qns_tooltip
 
 from .. import config
 from .. import utils
-from ._image_gui import GUI, generic_tooltip, qns_tooltip
 
 
 stopAllProcessing = False
