@@ -2,7 +2,6 @@ import sys
 from PIL import Image
 from imgui_bundle import imgui
 import glfw
-import OpenGL.GL as gl
 import importlib.resources
 from ._impl import imagehelper
 

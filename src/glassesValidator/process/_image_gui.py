@@ -2,7 +2,6 @@ from imgui_bundle import imgui, immapp, hello_imgui, glfw_utils
 import glfw
 import time
 import threading
-import numpy as np
 import OpenGL.GL as gl
 
 # simple GUI provider for viewer and coder windows in glassesValidator.process
