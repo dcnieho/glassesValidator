@@ -71,7 +71,10 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     # get info about markers on our poster
     poster      = config.poster.Poster(config_dir, validationSetup)
     # turn into aruco board object to be used for pose estimation
-    arucoBoard  = poster.getArucoBoard()
+    arucoBoard  = poster.get_aruco_board()
+    # get poster image width, height
+    ref_img     = poster.get_ref_image(400)
+    ref_height, ref_width, _ = ref_img.shape
 
     # prep output video files
     # get which pixel format
@@ -79,10 +82,10 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     pix_fmt  = ffpyplayer.tools.get_best_pix_fmt('bgr24',ffpyplayer.tools.get_supported_pixfmts(codec))
     fpsFrac  = Fraction(fps).limit_denominator(10000).as_integer_ratio()
     # scene video
-    out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(    width   ), 'height_in':int(    height   ),'frame_rate':fpsFrac}
+    out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(  width  ), 'height_in':int(  height  ),'frame_rate':fpsFrac}
     vidOutScene  = MediaWriter(str(working_dir / 'detectOutput_scene.mp4') , [out_opts], overwrite=True)
     # poster video
-    out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(poster.width), 'height_in':int(poster.height),'frame_rate':fpsFrac}
+    out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(ref_width), 'height_in':int(ref_height),'frame_rate':fpsFrac}
     vidOutPoster = MediaWriter(str(working_dir / 'detectOutput_poster.mp4'), [out_opts], overwrite=True)
 
     # get camera calibration info
@@ -118,7 +121,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
         if frame is None:
             # we don't have a valid frame, use a fully black frame
             frame = np.zeros((int(height),int(width),3), np.uint8)   # black image
-        refImg = poster.getImgCopy()
+        refImg = poster.get_ref_image(ref_width)
 
         # detect markers
         pose, detect_dict = detector.detect_and_estimate(frame, frame_idx, min_num_markers=validationSetup['minNumMarkers'])
@@ -157,7 +160,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
         # store to file
         img = Image(plane_buffers=[frame.flatten().tobytes()], pix_fmt='bgr24', size=(int(width), int(height)))
         vidOutScene.write_frame(img=img, pts=frame_idx/fps)
-        img = Image(plane_buffers=[refImg.flatten().tobytes()], pix_fmt='bgr24', size=(poster.width, poster.height))
+        img = Image(plane_buffers=[refImg.flatten().tobytes()], pix_fmt='bgr24', size=(ref_width, ref_height))
         vidOutPoster.write_frame(img=img, pts=frame_idx/fps)
 
 

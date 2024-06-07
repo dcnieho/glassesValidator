@@ -38,9 +38,9 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
     gazePoster = gaze_worldref.Gaze.readFromFile(working_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1])
 
     # get info about markers on our poster
-    poster    = config.poster.Poster(config_dir, validationSetup, imHeight=-1)
+    poster    = config.poster.Poster(config_dir, validationSetup)
     targets   = {ID: poster.targets[ID].center for ID in poster.targets}   # get centers of targets
-    markerHalfSizeMm = poster.markerSize/2.
+    markerHalfSizeMm = poster.marker_size/2.
 
     # run I2MC on data in poster space
     # set I2MC options
@@ -154,7 +154,7 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
         # make plot of data overlaid on poster, and show for each target which fixation
         # was selected
         f       = plt.figure(dpi=300)
-        imgplot = plt.imshow(poster.getImgCopy(asRGB=True),extent=(np.array(poster.bbox)[[0,2,3,1]]),alpha=.5)
+        imgplot = plt.imshow(poster.get_ref_image(asRGB=True),extent=(np.array(poster.bbox)[[0,2,3,1]]),alpha=.5)
         plt.plot(fix['xpos'],fix['ypos'],'b-')
         plt.plot(fix['xpos'],fix['ypos'],'go')
         plt.xlim([poster.bbox[0]-markerHalfSizeMm, poster.bbox[2]+markerHalfSizeMm])

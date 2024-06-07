@@ -59,9 +59,9 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
                                                   # intervals to process
                                                   analyzeFrames,
                                                   # detector and pose estimator setup
-                                                  poster.getArucoBoard(), {'markerBorderBits': validationSetup['markerBorderBits']}, validationSetup['minNumMarkers'],
+                                                  poster.get_aruco_board(), {'markerBorderBits': validationSetup['markerBorderBits']}, validationSetup['minNumMarkers'],
                                                   # visualization setup
-                                                  gui, poster.markerSize/2, 8, show_rejected_markers)
+                                                  gui, poster.marker_size/2, 8, show_rejected_markers)
 
     utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Finished)
 

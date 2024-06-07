@@ -124,7 +124,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
 
     # show
     subPixelFac = 8   # for sub-pixel positioning
-    armLength = poster.markerSize/2 # arms of axis are half a marker long
+    armLength = poster.marker_size/2 # arms of axis are half a marker long
     stopAllProcessing = False
     hasRequestedFocus = not isMacOS # False only if on Mac OS, else True since its a no-op
     while True:
@@ -141,7 +141,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
             # the audio is my shepherd and nothing shall I lack :-)
             frame_idx = t2i.find(pts*1000)  # pts is in seconds, our frame timestamps are in ms
             if show_poster:
-                refImg = poster.getImgCopy()
+                refImg = poster.get_ref_image(400)
 
             # if we have poster pose, draw poster origin on video
             if hasPosterPose and frame_idx in poses and hasCamCal:

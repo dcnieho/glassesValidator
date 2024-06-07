@@ -107,7 +107,7 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
             continue
 
         if show_poster:
-            refImg = poster.getImgCopy()
+            refImg = poster.get_ref_image(400)
 
 
         if frame_idx in gazes:
