@@ -53,9 +53,9 @@ def deploy_default_pdf(output_file_or_dir):
 
 class Poster(plane.Plane):
     posterImageFilename = 'referencePoster.png'
-    aruco_dict          = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
+    default_aruco_dict  = cv2.aruco.DICT_4X4_250
 
-    def __init__(self, configDir, validationSetup):
+    def __init__(self, configDir, validationSetup, **kwarg):
         from .. import get_markers
 
         if configDir is not None:
@@ -74,9 +74,12 @@ class Poster(plane.Plane):
         # call base class
         markers = get_markers(configDir, validationSetup['markerPosFile'])
         ref_image_store_path = None
-        if configDir is not None:
+        if 'ref_image_store_path' in kwarg:
+            ref_image_store_path = kwarg.pop('ref_image_store_path')
+        elif configDir is not None:
             ref_image_store_path = configDir / self.posterImageFilename
-        super(Poster, self).__init__(markers, markerSize, Poster.aruco_dict, validationSetup['markerBorderBits'], self.cellSizeMm, plane_center=self.center, ref_image_store_path=ref_image_store_path, ref_image_width=validationSetup['referencePosterWidth'])
+        # TODO: make a move center function instead, taking current (not original) coordinates
+        super(Poster, self).__init__(markers, markerSize, Poster.default_aruco_dict, validationSetup['markerBorderBits'],self.cellSizeMm, plane_center=self.center, ref_image_store_path=ref_image_store_path, ref_image_width=validationSetup['referencePosterWidth'],**kwarg)
 
     def _get_targets(self, config_dir, validationSetup):
         """ poster space: (0,0) is at center target, (-,-) bottom left """
