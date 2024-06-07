@@ -1,12 +1,14 @@
 
 from shlex import shlex
 import shutil
-import pandas as pd
 import numpy as np
 import pathlib
 import importlib.resources
 
+from glassesTools import data_files
+
 from . import poster
+
 
 def _readValidationSetupFile(file):
     # read key=value pairs into dict
@@ -36,25 +38,18 @@ def get_validation_setup(config_dir=None, setup_file='validationSetup.txt'):
                 pass # just keep value as a string
     return validationSetup
 
-def _readCoordFile(file):
-    return pd.read_csv(str(file),index_col=0)
 
-def _getCoordFile(config_dir, file):
+def _read_coord_file(config_dir, file):
     if config_dir is not None:
-        if (config_dir / file).is_file():
-            return _readCoordFile(config_dir / file)
-        else:
-            return None
+        return data_files.read_coord_file(config_dir / file)
     else:
-        with importlib.resources.path(__package__, file) as p:
-            return _readCoordFile(p)
+        return data_files.read_coord_file(file, __package__)
 
 def get_targets(config_dir=None, file='targetPositions.csv'):
-    return _getCoordFile(config_dir, file)
+    return _read_coord_file(config_dir, file)
 
 def get_markers(config_dir=None, file='markerPositions.csv'):
-    return _getCoordFile(config_dir, file)
-
+    return _read_coord_file(config_dir, file)
 
 
 def deploy_validation_config(output_dir):
