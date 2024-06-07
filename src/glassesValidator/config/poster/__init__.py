@@ -79,7 +79,7 @@ class Poster(plane.Plane):
         elif configDir is not None:
             ref_image_store_path = configDir / self.posterImageFilename
         # TODO: make a move center function instead, taking current (not original) coordinates
-        super(Poster, self).__init__(markers, markerSize, Poster.default_aruco_dict, validationSetup['markerBorderBits'],self.cellSizeMm, plane_center=self.center, ref_image_store_path=ref_image_store_path, ref_image_width=validationSetup['referencePosterWidth'],**kwarg)
+        super(Poster, self).__init__(markers, markerSize, Poster.default_aruco_dict, validationSetup['markerBorderBits'],self.cellSizeMm, "mm", plane_center=self.center, ref_image_store_path=ref_image_store_path, ref_image_width=validationSetup['referencePosterWidth'],**kwarg)
 
     def _get_targets(self, config_dir, validationSetup):
         """ poster space: (0,0) is at center target, (-,-) bottom left """
