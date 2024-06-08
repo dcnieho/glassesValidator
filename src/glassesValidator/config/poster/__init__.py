@@ -40,7 +40,7 @@ def deploy_marker_images(output_dir):
         markerImage = np.zeros((sz, sz), dtype=np.uint8)
         markerImage = cv2.aruco.generateImageMarker(dictionary, i, sz, markerImage, validationSetup['markerBorderBits'])
 
-        cv2.imwrite(str(output_dir / "{}.png".format(i)), markerImage)
+        cv2.imwrite(output_dir / f"{i}.png", markerImage)
 
 def deploy_default_pdf(output_file_or_dir):
     output_file_or_dir = pathlib.Path(output_file_or_dir)
@@ -123,7 +123,7 @@ class Poster(plane.Plane):
             drawing.openCVCircle(img, circlePos, 15, clr, -1, subPixelFac)
 
         if path:
-            cv2.imwrite(str(path), img)
+            cv2.imwrite(path, img)
 
         return img
 

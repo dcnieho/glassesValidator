@@ -133,7 +133,7 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
         # keys is populated above
         if 's' in keys:
             # screenshot
-            cv2.imwrite(str(working_dir / ('calc_frame_%d.png' % frame_idx)), frame)
+            cv2.imwrite(working_dir / f'calc_frame_{frame_idx}.png', frame)
 
         gui.update_image(frame, frame_ts/1000., frame_idx, window_id = frame_win_id)
         closed, = gui.get_state()

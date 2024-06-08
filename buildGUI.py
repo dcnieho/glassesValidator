@@ -10,13 +10,6 @@ sys.path.append(str(path/'src'))
 def get_include_files():
     files = [path / "LICENSE"]
 
-    # scipy dlls
-    for d in site.getsitepackages():
-        d=pathlib.Path(d)/'scipy'/'.libs'
-        if d.is_dir():
-            for f in d.iterdir():
-                if f.is_file() and f.suffix=='' or f.suffix in ['.dll']:
-                    files.append((f,pathlib.Path('lib')/f.name))
     # opencv dll
     for d in site.getsitepackages():
         d=pathlib.Path(d)/'cv2'
@@ -66,7 +59,7 @@ build_options = {
     "build_exe": {
         "optimize": 1,
         "packages": [
-            'numpy','matplotlib','scipy','pandas','glassesValidator','OpenGL','cv2',
+            'numpy','matplotlib','pandas','glassesValidator','OpenGL','cv2',
             'ffpyplayer.player','ffpyplayer.threading',      # some specific subpackages that need to be mentioned to be picked up correctly
             'imgui_bundle._imgui_bundle'
         ],
