@@ -1,5 +1,6 @@
 glassesTools[GUI]==1.3.3    # pulls in various other dependencies such as opencv, imgui_bundle, numpy, pandas
 matplotlib
+scipy==1.13.1
 I2MC
 aiosqlite
 uvloop ; sys_platform != "win32"
