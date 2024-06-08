@@ -105,7 +105,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
         analyzeFrames = []
 
     frame_idx = -1
-    armLength = poster.markerSize/2 # arms of axis are half a marker long
+    armLength = poster.marker_size/2 # arms of axis are half a marker long
     subPixelFac = 8   # for sub-pixel positioning
     stopAllProcessing = False
     hasRequestedFocus = not isMacOS # False only if on Mac OS, else True since its a no-op
