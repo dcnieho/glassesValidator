@@ -8,7 +8,6 @@ import sys
 import os
 
 from . import globals, msgbox
-from .structs import Os
 
 
 def rand_num_str(len=8):

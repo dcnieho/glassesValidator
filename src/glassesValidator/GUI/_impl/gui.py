@@ -1,6 +1,5 @@
 import concurrent.futures
 from typing import Tuple
-from PIL import Image
 import configparser
 import platform
 import asyncio

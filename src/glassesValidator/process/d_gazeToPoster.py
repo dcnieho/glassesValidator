@@ -1,7 +1,6 @@
 import pathlib
 
 import cv2
-import numpy as np
 import threading
 
 from glassesTools import drawing, gaze_headref, gaze_worldref, intervals, ocv, plane, recording, timestamps
