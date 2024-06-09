@@ -44,7 +44,7 @@ jobs:
       - name: "Install requirements"  # N.B.: First install a pinned SciPy version that is known to package correctly with cx_Freeze
         run: |
           cd ./src/
-          python -m pip install -U scipy==1.13.1
+          python -m pip install -U scipy==1.11.3
           python -m pip install -U -r ./requirements.txt
 
       - name: "Build"
