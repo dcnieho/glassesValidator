@@ -132,14 +132,13 @@ def update_recording_status(path: str | pathlib.Path, task: Task, status: Status
     return rec_status
 
 
-def readMarkerIntervalsFile(fileName):
+def readMarkerIntervalsFile(fileName) -> list[list[int]]:
     analyzeFrames = []
     if pathlib.Path(fileName).is_file():
         with open(str(fileName), 'r' ) as f:
             reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
-                analyzeFrames.append(int(float(entry['start_frame'])))
-                analyzeFrames.append(int(float(entry['end_frame'])))
+                analyzeFrames.append([int(float(entry['start_frame'])), int(float(entry['end_frame']))])
 
     return None if len(analyzeFrames)==0 else analyzeFrames
 

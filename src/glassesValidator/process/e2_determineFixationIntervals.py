@@ -35,7 +35,7 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
         return
 
     # Read gaze on poster data
-    gazePoster = gaze_worldref.read_dict_from_file(working_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1])
+    gazePoster = gaze_worldref.read_dict_from_file(working_dir / 'gazePosterPos.tsv',analyzeFrames[0][0],analyzeFrames[-1][1])
 
     # get info about markers on our poster
     poster    = config.poster.Poster(config_dir, validationSetup)
@@ -81,7 +81,7 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
     qHasRay         = np.any(np.logical_not(np.isnan([s.gazePosPlane2D_vidPos_ray        for v in gazePoster.values() for s in v])))
     qHasHomography  = np.any(np.logical_not(np.isnan([s.gazePosPlane2D_vidPos_homography for v in gazePoster.values() for s in v])))
     for ival in range(0,len(analyzeFrames)//2):
-        gazePosterToAnal = {k:v for (k,v) in gazePoster.items() if k>=analyzeFrames[ival*2] and k<=analyzeFrames[ival*2+1]}
+        gazePosterToAnal = {k:v for (k,v) in gazePoster.items() if any([k>=iv[0] and k<=iv[1] for iv in analyzeFrames])}
         data = {}
         data['time'] = np.array([s.timestamp for v in gazePosterToAnal.values() for s in v])
         if qHasLeft and qHasRight:

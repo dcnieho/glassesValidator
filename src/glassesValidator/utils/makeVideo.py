@@ -103,6 +103,9 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     analyzeFrames = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
     if analyzeFrames is None:
         analyzeFrames = []
+    else:
+        # flatten
+        analyzeFrames = [i for iv in analyzeFrames for i in iv]
 
     frame_idx = -1
     armLength = poster.marker_size/2 # arms of axis are half a marker long

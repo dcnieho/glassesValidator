@@ -53,16 +53,18 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     # open video file, query it for size
     in_video = recInfo.get_scene_video_path()
 
-    stopAllProcessing, poses = \
+    plane_setup = {'default': {'plane': poster, 'aruco_params': {'markerBorderBits': validationSetup['markerBorderBits']}, 'min_num_markers': validationSetup['minNumMarkers']}}
+
+    stopAllProcessing, poses, _ = \
         aruco.run_pose_estimation(in_video, working_dir / "frameTimestamps.tsv", working_dir / "calibration.xml",   # input video
                                   # output
                                   working_dir,
                                   # intervals to process
-                                  analyzeFrames,
+                                  {'default': analyzeFrames},
                                   # detector and pose estimator setup
-                                  poster.get_aruco_board(), {'markerBorderBits': validationSetup['markerBorderBits']}, validationSetup['minNumMarkers'],
+                                  plane_setup, None,
                                   # visualization setup
-                                  gui, poster.marker_size/2, 8, show_rejected_markers)
+                                  gui, 8, show_rejected_markers)
 
     plane.write_list_to_file(poses, working_dir/'posterPose.tsv', skip_failed=True)
 

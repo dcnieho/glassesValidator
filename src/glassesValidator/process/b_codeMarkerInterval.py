@@ -107,6 +107,9 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
     analyzeFrames = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
     if analyzeFrames is None:
         analyzeFrames = []
+    else:
+        # flatten
+        analyzeFrames = [i for iv in analyzeFrames for i in iv]
 
     # set up video playback
     # 1. window for scene video is already set up

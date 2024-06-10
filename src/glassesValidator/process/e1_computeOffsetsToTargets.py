@@ -30,10 +30,10 @@ def process(working_dir, config_dir=None):
         return
 
     # Read camera pose w.r.t. poster
-    poses = plane.read_dict_from_file(working_dir / 'posterPose.tsv',analyzeFrames[0],analyzeFrames[-1])
+    poses = plane.read_dict_from_file(working_dir / 'posterPose.tsv',analyzeFrames[0][0],analyzeFrames[-1][1])
 
     # Read gaze on poster data
-    gazesPoster = gaze_worldref.read_dict_from_file(working_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1])
+    gazesPoster = gaze_worldref.read_dict_from_file(working_dir / 'gazePosterPos.tsv',analyzeFrames[0][0],analyzeFrames[-1][1])
 
     # get info about markers on our poster
     poster  = config.poster.Poster(config_dir, validationSetup)
@@ -45,7 +45,7 @@ def process(working_dir, config_dir=None):
     # for each frame during analysis interval, determine offset
     # (angle) of gaze (each eye) to each of the targets
     for ival in range(0,len(analyzeFrames)//2):
-        gazesPosterToAnal= {k:v for (k,v) in gazesPoster.items() if k>=analyzeFrames[ival*2] and k<=analyzeFrames[ival*2+1]}
+        gazesPosterToAnal= {k:v for (k,v) in gazesPoster.items() if any([k>=iv[0] and k<=iv[1] for iv in analyzeFrames])}
         if not gazesPosterToAnal:
             raise RuntimeError(f'There is no gaze data on the poster for validation interval {ival+1} (frames {analyzeFrames[ival*2]} to {analyzeFrames[ival*2+1]}), cannot proceed. This may be because there was no gaze during this interval or because the poster was not detected.')
 
