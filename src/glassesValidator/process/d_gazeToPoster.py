@@ -48,11 +48,14 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
     # get camera calibration info
     cameraParams      = ocv.CameraParams.readFromFile(working_dir / "calibration.xml")
 
+    # get interval coded to be analyzed, if any
+    analyzeFrames   = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
+
     # Read gaze data
-    gazes,maxFrameIdx = gaze_headref.read_dict_from_file(working_dir / 'gazeData.tsv')
+    gazes,maxFrameIdx = gaze_headref.read_dict_from_file(working_dir / 'gazeData.tsv', episodes=analyzeFrames if not gui or show_only_intervals else None)
 
     # Read camera pose w.r.t. poster
-    poses       = plane.read_dict_from_file(working_dir / 'posterPose.tsv')
+    poses       = plane.read_dict_from_file(working_dir / 'posterPose.tsv', episodes=analyzeFrames if not gui or show_only_intervals else None)
 
     # transform
     plane_gazes = gaze_worldref.gazes_head_to_world(poses, gazes, cameraParams)
@@ -77,9 +80,6 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
     cap             = ocv.CV2VideoReader(recInfo.get_scene_video_path(), timestamps.from_file(working_dir / 'frameTimestamps.tsv'))
     width           = cap.get_prop(cv2.CAP_PROP_FRAME_WIDTH)
     height          = cap.get_prop(cv2.CAP_PROP_FRAME_HEIGHT)
-
-    # get interval coded to be analyzed, if any
-    analyzeFrames   = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
 
     subPixelFac = 8   # for sub-pixel positioning
     stopAllProcessing = False
