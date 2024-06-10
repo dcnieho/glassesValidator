@@ -20,7 +20,8 @@ available for MacOS or Linux.
 
 For users on Windows, Mac or Linux who wish to use glassesValidator in their Python code, the easiest way to acquire
 glassesValidator is to install it directly into your Python distribution using the command
-`python -m pip install glassesValidator`. Should that fail, this repository is pip-installable as well:
+`python -m pip install glassesValidator`. If you run into problems on MacOS to install the `imgui_bundle` package, you can
+try to install it first with the command `SYSTEM_VERSION_COMPAT=0 pip install --only-binary=:all: imgui_bundle`. Note that this repository is pip-installable as well:
 `python -m pip install git+https://github.com/dcnieho/glassesValidator.git#egg=glassesValidator`. NB: on some platforms you may have
 to replace `python` with `python3` in the above command lines.
 
