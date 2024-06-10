@@ -35,7 +35,7 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
         return
 
     # Read gaze on poster data
-    gazePoster = gaze_worldref.Gaze.readFromFile(working_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1])
+    gazePoster = gaze_worldref.read_dict_from_file(working_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1])
 
     # get info about markers on our poster
     poster    = config.poster.Poster(config_dir, validationSetup)

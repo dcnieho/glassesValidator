@@ -77,13 +77,13 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
     poster = config.poster.Poster(config_dir, validationSetup)
 
     # Read gaze data
-    gazes,maxFrameIdx = gaze_headref.Gaze.readFromFile(working_dir / 'gazeData.tsv')
+    gazes = gaze_headref.read_dict_from_file(working_dir / 'gazeData.tsv')[0]
 
     # Read pose of poster, if available
     hasPosterPose = False
     if (working_dir / 'posterPose.tsv').is_file():
         try:
-            poses = plane.Pose.readFromFile(working_dir / 'posterPose.tsv')
+            poses = plane.read_dict_from_file(working_dir / 'posterPose.tsv')
             hasPosterPose = True
         except:
             # ignore when file can't be read or is empty
@@ -93,7 +93,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
     hasPosterGaze = False
     if (working_dir / 'gazePosterPos.tsv').is_file():
         try:
-            gazesPoster = gaze_worldref.Gaze.readFromFile(working_dir / 'gazePosterPos.tsv')
+            gazesPoster = gaze_worldref.read_dict_from_file(working_dir / 'gazePosterPos.tsv')
             hasPosterGaze = True
         except:
             # ignore when file can't be read or is empty

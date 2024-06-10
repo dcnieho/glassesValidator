@@ -1,7 +1,7 @@
 import pathlib
 import threading
 
-from glassesTools import aruco, recording
+from glassesTools import aruco, plane, recording
 from glassesTools.video_gui import GUI, generic_tooltip_drawer, qns_tooltip
 
 from .. import config
@@ -53,15 +53,18 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     # open video file, query it for size
     in_video = recInfo.get_scene_video_path()
 
-    stopAllProcessing = aruco.run_pose_estimation(in_video, working_dir / "frameTimestamps.tsv", working_dir / "calibration.xml",   # input video
-                                                  # output
-                                                  working_dir, 'posterPose.tsv',
-                                                  # intervals to process
-                                                  analyzeFrames,
-                                                  # detector and pose estimator setup
-                                                  poster.get_aruco_board(), {'markerBorderBits': validationSetup['markerBorderBits']}, validationSetup['minNumMarkers'],
-                                                  # visualization setup
-                                                  gui, poster.marker_size/2, 8, show_rejected_markers)
+    stopAllProcessing, poses = \
+        aruco.run_pose_estimation(in_video, working_dir / "frameTimestamps.tsv", working_dir / "calibration.xml",   # input video
+                                  # output
+                                  working_dir,
+                                  # intervals to process
+                                  analyzeFrames,
+                                  # detector and pose estimator setup
+                                  poster.get_aruco_board(), {'markerBorderBits': validationSetup['markerBorderBits']}, validationSetup['minNumMarkers'],
+                                  # visualization setup
+                                  gui, poster.marker_size/2, 8, show_rejected_markers)
+
+    plane.write_list_to_file(poses, working_dir/'posterPose.tsv', skip_failed=True)
 
     utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Finished)
 

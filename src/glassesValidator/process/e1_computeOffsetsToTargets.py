@@ -30,10 +30,10 @@ def process(working_dir, config_dir=None):
         return
 
     # Read camera pose w.r.t. poster
-    poses = plane.Pose.readFromFile(working_dir / 'posterPose.tsv',analyzeFrames[0],analyzeFrames[-1])
+    poses = plane.read_dict_from_file(working_dir / 'posterPose.tsv',analyzeFrames[0],analyzeFrames[-1])
 
     # Read gaze on poster data
-    gazesPoster = gaze_worldref.Gaze.readFromFile(working_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1])
+    gazesPoster = gaze_worldref.read_dict_from_file(working_dir / 'gazePosterPos.tsv',analyzeFrames[0],analyzeFrames[-1])
 
     # get info about markers on our poster
     poster  = config.poster.Poster(config_dir, validationSetup)

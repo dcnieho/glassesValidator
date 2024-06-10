@@ -49,16 +49,16 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
     cameraParams      = ocv.CameraParams.readFromFile(working_dir / "calibration.xml")
 
     # Read gaze data
-    gazes,maxFrameIdx = gaze_headref.Gaze.readFromFile(working_dir / 'gazeData.tsv')
+    gazes,maxFrameIdx = gaze_headref.read_dict_from_file(working_dir / 'gazeData.tsv')
 
     # Read camera pose w.r.t. poster
-    poses       = plane.Pose.readFromFile(working_dir / 'posterPose.tsv')
+    poses       = plane.read_dict_from_file(working_dir / 'posterPose.tsv')
 
     # transform
-    planeGazes  = gaze_worldref.gazes_head_to_world(poses, gazes, cameraParams)
+    plane_gazes = gaze_worldref.gazes_head_to_world(poses, gazes, cameraParams)
 
     # store to file
-    gaze_worldref.Gaze.writeToFile(planeGazes, working_dir / 'gazePosterPos.tsv', skip_missing=True)
+    gaze_worldref.write_dict_to_file(plane_gazes, working_dir / 'gazePosterPos.tsv', skip_missing=True)
 
     utils.update_recording_status(working_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Finished)
 
@@ -110,7 +110,7 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
 
 
         if frame_idx in gazes:
-            for gaze_head, gaze_world in zip(gazes[frame_idx],planeGazes[frame_idx]):
+            for gaze_head, gaze_world in zip(gazes[frame_idx],plane_gazes[frame_idx]):
                 # draw gaze point on scene video
                 gaze_head.draw(frame, cameraParams, subPixelFac)
 

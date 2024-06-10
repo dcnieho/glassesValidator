@@ -97,7 +97,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     detector.set_intrinsics(cameraParams)
 
     # Read gaze data
-    gazes = gaze_headref.Gaze.readFromFile(working_dir / 'gazeData.tsv')[0]
+    gazes = gaze_headref.read_dict_from_file(working_dir / 'gazeData.tsv')[0]
 
     # get interval coded to be analyzed, if available
     analyzeFrames = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
