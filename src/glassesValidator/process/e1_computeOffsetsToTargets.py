@@ -30,10 +30,10 @@ def process(working_dir, config_dir=None):
         return
 
     # Read camera pose w.r.t. poster
-    poses = plane.read_dict_from_file(working_dir / 'posterPose.tsv',analyzeFrames[0][0],analyzeFrames[-1][1])
+    poses = plane.read_dict_from_file(working_dir / 'posterPose.tsv', analyzeFrames)
 
     # Read gaze on poster data
-    gazesPoster = gaze_worldref.read_dict_from_file(working_dir / 'gazePosterPos.tsv',analyzeFrames[0][0],analyzeFrames[-1][1])
+    gazesPoster = gaze_worldref.read_dict_from_file(working_dir / 'gazePosterPos.tsv', analyzeFrames)
 
     # get info about markers on our poster
     poster  = config.poster.Poster(config_dir, validationSetup)
@@ -44,10 +44,10 @@ def process(working_dir, config_dir=None):
 
     # for each frame during analysis interval, determine offset
     # (angle) of gaze (each eye) to each of the targets
-    for ival in range(0,len(analyzeFrames)//2):
-        gazesPosterToAnal= {k:v for (k,v) in gazesPoster.items() if any([k>=iv[0] and k<=iv[1] for iv in analyzeFrames])}
+    for idx,iv in enumerate(analyzeFrames):
+        gazesPosterToAnal= {k:v for (k,v) in gazesPoster.items() if k>=iv[0] and k<=iv[1]}
         if not gazesPosterToAnal:
-            raise RuntimeError(f'There is no gaze data on the poster for validation interval {ival+1} (frames {analyzeFrames[ival*2]} to {analyzeFrames[ival*2+1]}), cannot proceed. This may be because there was no gaze during this interval or because the poster was not detected.')
+            raise RuntimeError(f'There is no gaze data on the poster for validation interval (frames {iv[0]} to {iv[1]}), cannot proceed. This may be because there was no gaze during this interval or because the poster was not detected.')
 
         frameIdxs        =           [k                                     for k,v in gazesPosterToAnal.items()  for s in v]
         ts               = np.vstack([s.timestamp                           for v in gazesPosterToAnal.values() for s in v])
@@ -128,12 +128,12 @@ def process(working_dir, config_dir=None):
         # 2. put into data frame
         df                      = pd.DataFrame()
         df['timestamp']         = ts[dat[:,1],0]
-        df['marker_interval']   = ival+1
+        df['marker_interval']   = idx+1
         df['type']              = [dq_types[e] for e in dat[:,0]]
         df['target']            = dat[:,2]
         df                      = pd.concat([df, pd.DataFrame(np.reshape(offset,(-1,2)),columns=['offset_x','offset_y'])],axis=1)
         df                      = df.dropna(axis=0, subset=['offset_x','offset_y'])  # drop any missing data
         # 3. write to file
-        df.to_csv(str(working_dir / 'gazeTargetOffset.tsv'), mode='w' if ival==0 else 'a', header=ival==0, index=False, sep='\t', na_rep='nan', float_format="%.3f")
+        df.to_csv(str(working_dir / 'gazeTargetOffset.tsv'), mode='w' if idx==0 else 'a', header=idx==0, index=False, sep='\t', na_rep='nan', float_format="%.3f")
 
     utils.update_recording_status(working_dir, utils.Task.Target_Offsets_Computed, utils.Status.Finished)
