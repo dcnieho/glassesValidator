@@ -77,7 +77,7 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
     validationSetup = config.get_validation_setup(config_dir)
     poster          = config.poster.Poster(config_dir, validationSetup)
 
-    cap             = ocv.CV2VideoReader(recInfo.get_scene_video_path(), timestamps.from_file(working_dir / 'frameTimestamps.tsv'))
+    cap             = ocv.CV2VideoReader(recInfo.get_scene_video_path(), timestamps.VideoTimestamps(working_dir / 'frameTimestamps.tsv').timestamps)
     width           = cap.get_prop(cv2.CAP_PROP_FRAME_WIDTH)
     height          = cap.get_prop(cv2.CAP_PROP_FRAME_HEIGHT)
 

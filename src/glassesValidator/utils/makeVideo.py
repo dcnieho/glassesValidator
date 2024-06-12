@@ -63,7 +63,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     inVideo = working_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
         inVideo = working_dir / 'worldCamera.avi'
-    vidIn   = ocv.CV2VideoReader(inVideo, timestamps.from_file(working_dir / 'frameTimestamps.tsv'))
+    vidIn   = ocv.CV2VideoReader(inVideo, timestamps.VideoTimestamps(working_dir / 'frameTimestamps.tsv').timestamps)
     width   = vidIn.get_prop(cv2.CAP_PROP_FRAME_WIDTH)
     height  = vidIn.get_prop(cv2.CAP_PROP_FRAME_HEIGHT)
     fps     = vidIn.get_prop(cv2.CAP_PROP_FPS)

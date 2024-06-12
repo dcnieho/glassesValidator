@@ -118,8 +118,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
     if show_poster:
         poster_win_id = gui.add_window("poster")
     # 3. timestamp info for relating audio to video frames
-    t2i = timestamps.Timestamp2Index( working_dir / 'frameTimestamps.tsv' )
-    i2t = timestamps.Idx2Timestamp( working_dir / 'frameTimestamps.tsv' )
+    video_ts = timestamps.VideoTimestamps( working_dir / 'frameTimestamps.tsv' )
     # 4. mediaplayer for the actual video playback, with sound if available
     inVideo = recInfo.get_scene_video_path()
     ff_opts = {'volume': 1., 'sync': 'audio', 'framedrop': True}
@@ -142,7 +141,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
 
         if frame is not None:
             # the audio is my shepherd and nothing shall I lack :-)
-            frame_idx = t2i.find(pts*1000)  # pts is in seconds, our frame timestamps are in ms
+            frame_idx = video_ts.find_frame(pts*1000)  # pts is in seconds, our frame timestamps are in ms
             if show_poster:
                 refImg = poster.get_ref_image(400)
 
@@ -197,12 +196,12 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
         # seek: don't ask me why, but relative seeking works best for backward,
         # and seeking to absolute pts best for forward seeking.
         if 'j' in keys:
-            step = (i2t.get(frame_idx)-i2t.get(max(0,frame_idx-1)))/1000
+            step = (video_ts.get_timestamp(frame_idx)-video_ts.get_timestamp(max(0,frame_idx-1)))/1000
             player.seek(-step)                              # back one frame
         if 'k' in keys:
-            nextTs = i2t.get(frame_idx+1)
+            nextTs = video_ts.get_timestamp(frame_idx+1)
             if nextTs != -1.:
-                step = (nextTs-i2t.get(max(0,frame_idx)))/1000
+                step = (nextTs-video_ts.get_timestamp(max(0,frame_idx)))/1000
                 player.seek(pts+step, relative=False)       # forward one frame
         if 'h' in keys or 'H' in keys:
             step = 1 if 'h' in keys else 10
@@ -231,7 +230,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
         if 's' in keys or 'S' in keys:
             if (analysisIntervalIdx is not None) and (frame_idx!=analyzeFrames[analysisIntervalIdx]):
                 # seek to start of current interval
-                ts = i2t.get(analyzeFrames[analysisIntervalIdx])
+                ts = video_ts.get_timestamp(analyzeFrames[analysisIntervalIdx])
                 player.seek(ts/1000, relative=False)
             else:
                 # seek to start of next or previous analysis interval, if any
@@ -241,12 +240,12 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
                 else:
                     idx = next((x for x in analyzeFrames[(len(analyzeFrames)//2)*2-2::-2] if x<frame_idx), None) # slice gets starts of all whole intervals in reverse order
                 if idx is not None:
-                    ts = i2t.get(idx)
+                    ts = video_ts.get_timestamp(idx)
                     player.seek(ts/1000, relative=False)
         if 'e' in keys or 'E' in keys:
             if (analysisIntervalIdx is not None) and (frame_idx!=analyzeFrames[analysisIntervalIdx+1]):
                 # seek to end of current interval
-                ts = i2t.get(analyzeFrames[analysisIntervalIdx+1])
+                ts = video_ts.get_timestamp(analyzeFrames[analysisIntervalIdx+1])
                 player.seek(ts/1000, relative=False)
             else:
                 # seek to end of next or previous analysis interval, if any
@@ -256,7 +255,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
                 else:
                     idx = next((x for x in analyzeFrames[(len(analyzeFrames)//2)*2::-2] if x<frame_idx), None) # slice gets ends of all whole intervals in reverse order
                 if idx is not None:
-                    ts = i2t.get(idx)
+                    ts = video_ts.get_timestamp(idx)
                     player.seek(ts/1000, relative=False)
 
         if 'q' in keys:
