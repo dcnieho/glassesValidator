@@ -1,4 +1,4 @@
-glassesTools[GUI]==1.5.0    # pulls in various other dependencies such as opencv, imgui_bundle, numpy, pandas
+glassesTools[GUI]==1.5.2    # pulls in various other dependencies such as opencv, imgui_bundle, numpy, pandas, polars
 matplotlib
 I2MC
 aiosqlite

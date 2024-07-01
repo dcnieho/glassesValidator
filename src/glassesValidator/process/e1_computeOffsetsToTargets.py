@@ -3,6 +3,7 @@ import math
 
 import numpy as np
 import pandas as pd
+import polars as pl
 
 from glassesTools import gaze_worldref, plane, transforms
 from glassesTools import utils as gt_utils
@@ -44,6 +45,7 @@ def process(working_dir, config_dir=None):
 
     # for each frame during analysis interval, determine offset
     # (angle) of gaze (each eye) to each of the targets
+    dfs = []
     for idx,iv in enumerate(analyzeFrames):
         gazesPosterToAnal= {k:v for (k,v) in gazesPoster.items() if k>=iv[0] and k<=iv[1]}
         if not gazesPosterToAnal:
@@ -133,7 +135,13 @@ def process(working_dir, config_dir=None):
         df['target']            = dat[:,2]
         df                      = pd.concat([df, pd.DataFrame(np.reshape(offset,(-1,2)),columns=['offset_x','offset_y'])],axis=1)
         df                      = df.dropna(axis=0, subset=['offset_x','offset_y'])  # drop any missing data
-        # 3. write to file
-        df.to_csv(str(working_dir / 'gazeTargetOffset.tsv'), mode='w' if idx==0 else 'a', header=idx==0, index=False, sep='\t', na_rep='nan', float_format="%.3f")
+        # 3. store for writing to file
+        dfs.append(df)
+
+    # all done, write to file (use polars as that library saves to file waaay faster)
+    df = pd.concat(dfs)
+    df['type'] = df['type'].apply(str)
+    df = pl.from_pandas(df)
+    df.write_csv(working_dir / 'gazeTargetOffset.tsv', separator='\t', null_value='nan', float_precision=3)
 
     utils.update_recording_status(working_dir, utils.Task.Target_Offsets_Computed, utils.Status.Finished)
