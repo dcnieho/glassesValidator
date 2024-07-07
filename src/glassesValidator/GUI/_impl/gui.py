@@ -398,8 +398,9 @@ class RecordingTable():
         if job_state:
             symbol_size = imgui.calc_text_size("󰲞")
             if job_state==ProcessState.Pending:
-                thickness = symbol_size.x / 3 / 2.5 # 3 is number of dots, 2.5 is nextItemKoeff in utils.bounce_dots()
-                imspinner.spinner_bounce_dots(f'waitBounceDots_{recording.id}', thickness, color=globals.settings.style_text)
+                radius    = symbol_size.x / 2
+                thickness = symbol_size.x / 3 / 2.5 # 3 is number of dots, 2.5 is nextItemKoeff in imspinner.spinner_bounce_dots()
+                imspinner.spinner_bounce_dots(f'waitBounceDots_{recording.id}', radius, thickness, color=globals.settings.style_text)
                 hover_text = f'Pending: {get_task_name_friendly(job.task)}'
             else:
                 spinner_radii = [x/22/2*symbol_size.x for x in [22, 16, 10]]
