@@ -67,7 +67,7 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, poster_
 
 
     # done if no visualization wanted
-    if not gui is not None:
+    if gui is None:
         return False
 
     # prep visualizations
