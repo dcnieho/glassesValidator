@@ -12,7 +12,6 @@ import datetime
 import re
 
 from . import globals, utils
-from .structs import SortSpec
 
 @dataclasses.dataclass
 class DirEntry:
@@ -205,7 +204,7 @@ class FilePicker:
                     imgui.TableFlags_.no_host_extend_y |
                     imgui.TableFlags_.no_borders_in_body_until_resize
                 )
-                if imgui.begin_table(f"##folder_list",column=5+self.allow_multiple,flags=table_flags):
+                if imgui.begin_table(f"##folder_list",columns=5+self.allow_multiple,flags=table_flags):
                     frame_height = imgui.get_frame_height()
 
                     # Setup
@@ -434,9 +433,7 @@ class FilePicker:
             ids = list(self.items)
             sort_specs = [sort_specs_in.get_specs(i) for i in range(sort_specs_in.specs_count)]
             for sort_spec in reversed(sort_specs):
-                pass
-                sort_spec = SortSpec(index=sort_spec.column_index, reverse=bool(sort_spec.get_sort_direction() - 1))
-                match sort_spec.index+int(not self.allow_multiple):
+                match sort_spec.column_index+int(not self.allow_multiple):
                     case 2:     # Date created
                         key = lambda id: self.items[id].ctime
                     case 3:     # Date modified
@@ -449,7 +446,7 @@ class FilePicker:
                     case _:     # Name and all others
                         key = natsort.os_sort_keygen(key=lambda id: self.items[id].full_path)
 
-                ids.sort(key=key, reverse=sort_spec.reverse)
+                ids.sort(key=key, reverse=sort_spec.get_sort_direction()==imgui.SortDirection.descending)
 
             # finally, always sort dirs first
             ids.sort(key=lambda id: self.items[id].is_dir, reverse=True)

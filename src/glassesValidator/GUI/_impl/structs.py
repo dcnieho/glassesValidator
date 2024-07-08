@@ -55,12 +55,6 @@ class DefaultStyleLight:
     text_dim      = "#999999"
 
 
-@dataclasses.dataclass
-class SortSpec:
-    index: int
-    reverse: bool
-
-
 class FilterMode(AutoName):
     Choose      = auto()
     Eye_Tracker = auto()

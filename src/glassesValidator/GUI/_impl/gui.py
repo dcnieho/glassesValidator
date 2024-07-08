@@ -20,7 +20,7 @@ import importlib.resources
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
 from glassesTools.utils import hex_to_rgba_0_1
 
-from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, Recording, SortSpec, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
+from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, Recording, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
 from . import globals, async_thread, callbacks, db, filepicker, msgbox, process_pool, utils
 from .. import _general_imgui
 from ...utils import Task, Status, get_task_name_friendly, get_next_task, task_names, get_last_finished_step, get_recording_status, update_recording_status
@@ -95,7 +95,7 @@ class RecordingTable():
         extra = "_adder" if self.in_adder_popup else ""
         if imgui.begin_table(
             f"##recording_list{extra}",
-            column=self._recording_list_column_count,
+            columns=self._recording_list_column_count,
             flags=self.table_flags,
         ):
             if (num_recordings := len(self.recordings)) != self._num_recordings:
@@ -554,8 +554,7 @@ class RecordingTable():
             ids = list(self.recordings)
             sort_specs = [sort_specs_in.get_specs(i) for i in range(sort_specs_in.specs_count)]
             for sort_spec in reversed(sort_specs):
-                sort_spec = SortSpec(index=sort_spec.column_index, reverse=bool(sort_spec.get_sort_direction() - 1))
-                match sort_spec.index:
+                match sort_spec.column_index:
                     case 1:     # Eye tracker
                         key = lambda id: self.recordings[id].eye_tracker.value
                     case 2:     # Status
@@ -584,7 +583,7 @@ class RecordingTable():
                         key = lambda id: self.recordings[id].scene_camera_serial.lower()
                     case _:     # Name and all others
                         key = lambda id: self.recordings[id].name.lower()
-                ids.sort(key=key, reverse=sort_spec.reverse)
+                ids.sort(key=key, reverse=sort_spec.get_sort_direction()==imgui.SortDirection.descending)
             self.sorted_recordings_ids = ids
             for flt in self.filters:
                 match flt.mode.value:
@@ -855,7 +854,7 @@ class MainGUI():
 
     def refresh_styles(self):
         imgui.style.set_color_(imgui.Col_.check_mark, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.tab_active, globals.settings.style_accent)
+        imgui.style.set_color_(imgui.Col_.tab_selected, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.slider_grab, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.tab_hovered, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.button_active, globals.settings.style_accent)
@@ -868,7 +867,7 @@ class MainGUI():
         imgui.style.set_color_(imgui.Col_.separator_hovered, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.resize_grip_active, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.resize_grip_hovered, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.tab_unfocused_active, globals.settings.style_accent)
+        imgui.style.set_color_(imgui.Col_.tab_dimmed_selected, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.scrollbar_grab_active, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.frame_bg_active, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.title_bg_active, globals.settings.style_accent)
@@ -877,7 +876,7 @@ class MainGUI():
         style_bg_dim = [*globals.settings.style_accent[0:3], 0.25]
         imgui.style.set_color_(imgui.Col_.tab, style_bg_dim)
         imgui.style.set_color_(imgui.Col_.resize_grip, style_bg_dim)
-        imgui.style.set_color_(imgui.Col_.tab_unfocused, style_bg_dim)
+        imgui.style.set_color_(imgui.Col_.tab_dimmed, style_bg_dim)
         imgui.style.set_color_(imgui.Col_.frame_bg_hovered, style_bg_dim)
 
         imgui.style.set_color_(imgui.Col_.table_header_bg, globals.settings.style_alt_bg)
@@ -1440,7 +1439,7 @@ class MainGUI():
             header = imgui.collapsing_header(name)
             if header:
                 imgui.text_unformatted("Indicates which type(s) of\ndata quality to export.")
-                if imgui.begin_table(f"##export_popup_{name}", column=2, flags=imgui.TableFlags_.no_clip):
+                if imgui.begin_table(f"##export_popup_{name}", columns=2, flags=imgui.TableFlags_.no_clip):
                     imgui.table_setup_column(f"##settings_{name}_left", imgui.TableColumnFlags_.width_stretch)
                     imgui.table_setup_column(f"##settings_{name}_right", imgui.TableColumnFlags_.width_fixed)
                     imgui.table_next_row()
@@ -1467,7 +1466,7 @@ class MainGUI():
         header = imgui.collapsing_header(name)
         if header:
             imgui.text_unformatted("Indicate for which target(s) you\nwant to export data quality metrics.")
-            if imgui.begin_table(f"##export_popup_{name}", column=2, flags=imgui.TableFlags_.no_clip):
+            if imgui.begin_table(f"##export_popup_{name}", columns=2, flags=imgui.TableFlags_.no_clip):
                 imgui.table_setup_column(f"##settings_{name}_left", imgui.TableColumnFlags_.width_stretch)
                 imgui.table_setup_column(f"##settings_{name}_right", imgui.TableColumnFlags_.width_fixed)
                 imgui.table_next_row()
@@ -1489,7 +1488,7 @@ class MainGUI():
                 imgui.spacing()
 
         name = 'targets_avg'
-        if imgui.begin_table(f"##export_popup_{name}", column=2, flags=imgui.TableFlags_.no_clip):
+        if imgui.begin_table(f"##export_popup_{name}", columns=2, flags=imgui.TableFlags_.no_clip):
             imgui.table_setup_column(f"##settings_{name}_left", imgui.TableColumnFlags_.width_stretch)
             imgui.table_setup_column(f"##settings_{name}_right", imgui.TableColumnFlags_.width_fixed)
             imgui.table_next_row()
@@ -1639,7 +1638,7 @@ class MainGUI():
             header = imgui.collapsing_header(name)
         else:
             header = True
-        opened = header and imgui.begin_table(f"##settings_{name}", column=2, flags=imgui.TableFlags_.no_clip)
+        opened = header and imgui.begin_table(f"##settings_{name}", columns=2, flags=imgui.TableFlags_.no_clip)
         if opened:
             imgui.table_setup_column(f"##settings_{name}_left", imgui.TableColumnFlags_.width_stretch)
             imgui.table_setup_column(f"##settings_{name}_right", imgui.TableColumnFlags_.width_fixed)
