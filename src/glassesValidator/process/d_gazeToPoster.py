@@ -1,9 +1,7 @@
 import pathlib
-
-import cv2
 import threading
 
-from glassesTools import drawing, gaze_headref, gaze_worldref, intervals, ocv, plane, recording, timestamps, worldgaze_gui
+from glassesTools import gaze_headref, gaze_worldref, ocv, plane, recording, worldgaze_gui
 from glassesTools.video_gui import GUI, generic_tooltip_drawer, qns_tooltip
 
 from .. import config
