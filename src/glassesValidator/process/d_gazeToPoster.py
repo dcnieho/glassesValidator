@@ -32,7 +32,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
         proc_thread.join()
         return stopAllProcessing
     else:
-        return do_the_work(working_dir, config_dir, None, None, False, None, False)
+        return do_the_work(working_dir, config_dir, None, None, False, False)
 
 
 def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, show_only_intervals):
