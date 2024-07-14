@@ -132,7 +132,7 @@ def update_recording_status(path: str | pathlib.Path, task: Task, status: Status
 
     file = path / _status_file
     with open(file, 'w') as f:
-        json.dump(rec_status, f, cls=utils.CustomTypeEncoder)
+        json.dump(rec_status, f, cls=utils.CustomTypeEncoder, indent=2)
 
     return rec_status
 
