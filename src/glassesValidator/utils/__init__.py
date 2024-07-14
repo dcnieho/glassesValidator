@@ -147,5 +147,16 @@ def readMarkerIntervalsFile(fileName) -> list[list[int]]:
 
     return None if len(analyzeFrames)==0 else analyzeFrames
 
+def writeMarkerIntervalsFile(fileName, intervals: list[int]|list[list[int]]):
+    if intervals and isinstance(intervals[0],list):
+        # flatten
+        intervals = [i for x in intervals for i in x]
+    with open(fileName, 'w', newline='') as file:
+        csv_writer = csv.writer(file, delimiter='\t')
+        csv_writer.writerow(['start_frame', 'end_frame'])
+        for f in range(0,len(intervals)-1,2):   # -1 to make sure we don't write out incomplete intervals
+            csv_writer.writerow(intervals[f:f+2])
+
+
 
 __all__ = ['make_video','Recording','EyeTracker']

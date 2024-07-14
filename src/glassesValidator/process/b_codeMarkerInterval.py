@@ -274,12 +274,8 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
     player.close_player()
     gui.stop()
 
-    # store coded interval to file, if available
-    with open(working_dir / 'markerInterval.tsv', 'w', newline='') as file:
-        csv_writer = csv.writer(file, delimiter='\t')
-        csv_writer.writerow(['start_frame', 'end_frame'])
-        for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't write out incomplete intervals
-            csv_writer.writerow(analyzeFrames[f:f+2])
+    # store coded intervals to file
+    utils.writeMarkerIntervalsFile(working_dir / 'markerInterval.tsv', analyzeFrames)
 
     utils.update_recording_status(working_dir, utils.Task.Coded, utils.Status.Finished)
 
