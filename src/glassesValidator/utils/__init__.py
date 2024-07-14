@@ -119,7 +119,7 @@ def get_last_finished_step(status: dict[str,Status]):
     return last
 
 def update_recording_status(path: str | pathlib.Path, task: Task, status: Status, skip_if_missing=False):
-    rec_status = get_recording_status(path, skip_if_missing)
+    rec_status = get_recording_status(path, skip_if_missing=skip_if_missing)
     if rec_status is None and skip_if_missing:
         return None
 
