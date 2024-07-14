@@ -156,7 +156,7 @@ def _summarize_and_store_data_quality(df: pd.DataFrame, output_file_or_dir: str 
     output_file_or_dir = pathlib.Path(output_file_or_dir)
     if output_file_or_dir.is_dir():
         output_file_or_dir = output_file_or_dir / 'dataQuality.tsv'
-    df.to_csv(str(output_file_or_dir), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.6f")
+    df.to_csv(output_file_or_dir, mode='w', header=True, sep='\t', na_rep='nan', float_format="%.6f")
 
 def export_data_quality(rec_dirs: list[str | pathlib.Path], output_file_or_dir: str | pathlib.Path, dq_types: list[DataQualityType] = None, targets: list[int] = None, average_over_targets = False, include_data_loss = False):
     df, default_dq_type, targets_have = _collect_data_quality(rec_dirs)
