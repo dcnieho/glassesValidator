@@ -12,7 +12,7 @@ def process(working_dir, dq_types=[], allow_dq_fallback=False, include_data_loss
     working_dir  = pathlib.Path(working_dir)
 
     print('processing: {}'.format(working_dir.name))
-    utils.update_recording_status(working_dir, utils.Task.Data_Quality_Calculated, utils.Status.Running)
+    utils.update_recording_status(working_dir, utils.Task.Data_Quality_Calculated, utils.Status.Running, skip_if_missing=True)
 
     # get time intervals to use for each target
     fileName = working_dir / "analysisInterval.tsv"
@@ -134,4 +134,4 @@ def process(working_dir, dq_types=[], allow_dq_fallback=False, include_data_loss
 
     df.to_csv(str(working_dir / 'dataQuality.tsv'), mode='w', header=True, sep='\t', na_rep='nan', float_format="%.3f")
 
-    utils.update_recording_status(working_dir, utils.Task.Data_Quality_Calculated, utils.Status.Finished)
+    utils.update_recording_status(working_dir, utils.Task.Data_Quality_Calculated, utils.Status.Finished, skip_if_missing=True)

@@ -20,7 +20,7 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
         config_dir = pathlib.Path(config_dir)
 
     print('processing: {}'.format(working_dir.name))
-    utils.update_recording_status(working_dir, utils.Task.Fixation_Intervals_Determined, utils.Status.Running)
+    utils.update_recording_status(working_dir, utils.Task.Fixation_Intervals_Determined, utils.Status.Running, skip_if_missing=True)
 
     # get info about this recording
     rec_info = recording.Recording.load_from_json(working_dir / recording.Recording.default_json_file_name)
@@ -189,4 +189,4 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
 
         df.to_csv(str(working_dir / 'analysisInterval.tsv'), mode='w' if idx==0 else 'a', header=idx==0, sep='\t', na_rep='nan', float_format="%.3f")
 
-    utils.update_recording_status(working_dir, utils.Task.Fixation_Intervals_Determined, utils.Status.Finished)
+    utils.update_recording_status(working_dir, utils.Task.Fixation_Intervals_Determined, utils.Status.Finished, skip_if_missing=True)

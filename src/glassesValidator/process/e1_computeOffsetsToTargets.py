@@ -19,7 +19,7 @@ def process(working_dir, config_dir=None):
         config_dir = pathlib.Path(config_dir)
 
     print('processing: {}'.format(working_dir.name))
-    utils.update_recording_status(working_dir, utils.Task.Target_Offsets_Computed, utils.Status.Running)
+    utils.update_recording_status(working_dir, utils.Task.Target_Offsets_Computed, utils.Status.Running, skip_if_missing=True)
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
@@ -144,4 +144,4 @@ def process(working_dir, config_dir=None):
     df = pl.from_pandas(df)
     df.write_csv(working_dir / 'gazeTargetOffset.tsv', separator='\t', null_value='nan', float_precision=3)
 
-    utils.update_recording_status(working_dir, utils.Task.Target_Offsets_Computed, utils.Status.Finished)
+    utils.update_recording_status(working_dir, utils.Task.Target_Offsets_Computed, utils.Status.Finished, skip_if_missing=True)
