@@ -96,12 +96,15 @@ def _create_recording_status_file(file: pathlib.Path):
         json.dump(task_status_dict, f, cls=utils.CustomTypeEncoder)
 
 
-def get_recording_status(path: str | pathlib.Path, create_if_missing = False):
+def get_recording_status(path: str | pathlib.Path, create_if_missing = False, skip_if_missing=False):
     path = pathlib.Path(path)
 
     file = path / _status_file
-    if not file.is_file() and create_if_missing:
-        _create_recording_status_file(file)
+    if not file.is_file():
+        if create_if_missing:
+            _create_recording_status_file(file)
+        elif skip_if_missing:
+            return None
 
     with open(file, 'r') as f:
         return json.load(f, object_hook=utils.json_reconstitute)
@@ -115,8 +118,10 @@ def get_last_finished_step(status: dict[str,Status]):
 
     return last
 
-def update_recording_status(path: str | pathlib.Path, task: Task, status: Status):
+def update_recording_status(path: str | pathlib.Path, task: Task, status: Status, skip_if_missing=False):
     rec_status = get_recording_status(path)
+    if rec_status is None and skip_if_missing:
+        return None
 
     # set status of indicated task
     rec_status[str(task)] = status
