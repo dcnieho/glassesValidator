@@ -14,7 +14,11 @@ from .. import config
 from .. import utils
 
 
-def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None):
+def process(working_dir, config_dir=None, do_global_shift=True, max_dist_fac=.5,
+            marker_interval_file_name: str='markerInterval.tsv',
+            world_gaze_file_name: str='gazePosterPos.tsv',
+            fixation_detection_file_name_prefix: str='targetSelection_I2MC_',
+            output_analysis_interval_file_name: str='analysisInterval.tsv'):
     working_dir  = pathlib.Path(working_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)
@@ -29,13 +33,13 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
     validationSetup = config.get_validation_setup(config_dir)
 
     # get interval coded to be analyzed
-    analyzeFrames = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
+    analyzeFrames = utils.readMarkerIntervalsFile(working_dir / marker_interval_file_name)
     if analyzeFrames is None:
         print('  no marker intervals defined for this recording, skipping')
         return
 
     # Read gaze on poster data
-    gazePoster = gaze_worldref.read_dict_from_file(working_dir / 'gazePosterPos.tsv',analyzeFrames)
+    gazePoster = gaze_worldref.read_dict_from_file(working_dir / world_gaze_file_name, analyzeFrames)
 
     # get info about markers on our poster
     poster    = config.poster.Poster(config_dir, validationSetup)
@@ -168,13 +172,13 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
         plt.xlabel('mm')
         plt.ylabel('mm')
 
-        f.savefig(str(working_dir / f'targetSelection_I2MC_interval_{idx}.png'))
+        f.savefig(str(working_dir / f'{fixation_detection_file_name_prefix}_interval_{idx}.png'))
         plt.close(f)
 
         # also make timseries plot of gaze data with fixations
         f = I2MC.plot.data_and_fixations(data, fix, fix_as_line=True, unit='mm', res=[[poster.bbox[0]-2*markerHalfSizeMm, poster.bbox[2]+2*markerHalfSizeMm], [poster.bbox[1]-2*markerHalfSizeMm, poster.bbox[3]+2*markerHalfSizeMm]])
         plt.gca().invert_yaxis()
-        f.savefig(str(working_dir / f'targetSelection_I2MC_interval_{idx}_fixations.png'))
+        f.savefig(str(working_dir / f'{fixation_detection_file_name_prefix}_interval_{idx}_fixations.png'))
         plt.close(f)
 
         # store selected intervals
@@ -187,6 +191,6 @@ def process(working_dir, do_global_shift=True, max_dist_fac=.5, config_dir=None)
             df.loc[t,'start_timestamp'] = fix['startT'][selected[i]]
             df.loc[t,  'end_timestamp'] = fix[  'endT'][selected[i]]
 
-        df.to_csv(str(working_dir / 'analysisInterval.tsv'), mode='w' if idx==0 else 'a', header=idx==0, sep='\t', na_rep='nan', float_format="%.3f")
+        df.to_csv(str(working_dir / output_analysis_interval_file_name), mode='w' if idx==0 else 'a', header=idx==0, sep='\t', na_rep='nan', float_format="%.3f")
 
     utils.update_recording_status(working_dir, utils.Task.Fixation_Intervals_Determined, utils.Status.Finished, skip_if_missing=True)

@@ -7,22 +7,27 @@ import warnings
 from .. import utils
 
 
-def process(working_dir, dq_types=[], allow_dq_fallback=False, include_data_loss=False):
+def process(working_dir, dq_types: list=None, allow_dq_fallback=False, include_data_loss=False,
+            analysis_interval_file_name: str='analysisInterval.tsv',
+            gaze_offset_file_name: str='gazeTargetOffset.tsv',
+            output_data_quality_file_name: str='dataQuality.tsv'):
     from . import DataQualityType
     working_dir  = pathlib.Path(working_dir)
+    if dq_types is None:
+        dq_types = []
 
     print('processing: {}'.format(working_dir.name))
     utils.update_recording_status(working_dir, utils.Task.Data_Quality_Calculated, utils.Status.Running, skip_if_missing=True)
 
     # get time intervals to use for each target
-    fileName = working_dir / "analysisInterval.tsv"
+    fileName = working_dir / analysis_interval_file_name
     if not fileName.is_file():
         print('  no analysis intervals defined for this recording, skipping')
         return
     analysisIntervals = pd.read_csv(fileName, delimiter='\t', dtype={'marker_interval':int},index_col=['marker_interval','target'])
 
     # get offsets
-    fileName = working_dir / "gazeTargetOffset.tsv"
+    fileName = working_dir / gaze_offset_file_name
     if not fileName.is_file():
         print('  no gaze offsets precomputed defined for this recording, skipping')
         return
@@ -132,6 +137,6 @@ def process(working_dir, dq_types=[], allow_dq_fallback=False, include_data_loss
                             df.loc[(i,e,t),'data_loss'] = np.sum(np.isnan(data['offset_x']))/len(data)
 
 
-    df.to_csv(working_dir / 'dataQuality.tsv', mode='w', header=True, sep='\t', na_rep='nan', float_format="%.3f")
+    df.to_csv(working_dir / output_data_quality_file_name, mode='w', header=True, sep='\t', na_rep='nan', float_format="%.6f")
 
     utils.update_recording_status(working_dir, utils.Task.Data_Quality_Calculated, utils.Status.Finished, skip_if_missing=True)

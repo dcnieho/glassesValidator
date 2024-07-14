@@ -12,7 +12,11 @@ from .. import config
 from .. import utils
 
 
-def process(working_dir, config_dir=None):
+def process(working_dir: str|pathlib.Path, config_dir: str|pathlib.Path=None,
+            marker_interval_file_name: str='markerInterval.tsv',
+            pose_file_name: str='posterPose.tsv',
+            world_gaze_file_name: str='gazePosterPos.tsv',
+            output_gaze_offset_file_name: str='gazeTargetOffset.tsv'):
     from . import DataQualityType
     working_dir  = pathlib.Path(working_dir)
     if config_dir is not None:
@@ -25,16 +29,16 @@ def process(working_dir, config_dir=None):
     validationSetup = config.get_validation_setup(config_dir)
 
     # get interval coded to be analyzed
-    analyzeFrames = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
+    analyzeFrames = utils.readMarkerIntervalsFile(working_dir / marker_interval_file_name)
     if analyzeFrames is None:
         print('  no marker intervals defined for this recording, skipping')
         return
 
     # Read camera pose w.r.t. poster
-    poses = plane.read_dict_from_file(working_dir / 'posterPose.tsv', analyzeFrames)
+    poses = plane.read_dict_from_file(working_dir / pose_file_name, analyzeFrames)
 
     # Read gaze on poster data
-    gazesPoster = gaze_worldref.read_dict_from_file(working_dir / 'gazePosterPos.tsv', analyzeFrames)
+    gazesPoster = gaze_worldref.read_dict_from_file(working_dir / world_gaze_file_name, analyzeFrames)
 
     # get info about markers on our poster
     poster  = config.poster.Poster(config_dir, validationSetup)
@@ -142,6 +146,6 @@ def process(working_dir, config_dir=None):
     df = pd.concat(dfs)
     df['type'] = df['type'].apply(str)
     df = pl.from_pandas(df)
-    df.write_csv(working_dir / 'gazeTargetOffset.tsv', separator='\t', null_value='nan', float_precision=3)
+    df.write_csv(working_dir / output_gaze_offset_file_name, separator='\t', null_value='nan', float_precision=3)
 
     utils.update_recording_status(working_dir, utils.Task.Target_Offsets_Computed, utils.Status.Finished, skip_if_missing=True)
