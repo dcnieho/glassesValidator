@@ -136,7 +136,7 @@ glassesValidator supports the following eye trackers:
 - Pupil Core
 - Pupil Invisible
 - Pupil Neon
-- SeeTrue
+- SeeTrue STONE
 - SMI ETG 1 and ETG 2
 - Tobii Pro Glasses 2
 - Tobii Pro Glasses 3
