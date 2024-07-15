@@ -1,12 +1,12 @@
 import subprocess
 import pathlib
 import asyncio
-import natsort
 import os
 import shutil
 import pandas as pd
 import dataclasses
 
+from glassesTools import recording
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
 
 from .structs import JobDescription, MsgBox, Os, Recording
@@ -111,23 +111,15 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
     utils.push_popup(lambda: utils.popup("Preparing import", prepping_recs_popup, buttons = None, closable=False, outside=False))
 
     # step 1, find what recordings of this type of eye tracker are in the path
+    recs = recording.find_recordings(paths, eye_tracker)
     all_recs = []
     dup_recs = []
-    for p in paths:
-        all_dirs = utils.fast_scandir(p)
-        all_dirs.append(p)
-        for d in all_dirs:
-            # check if dir is a valid recording
-            if (recs:=preprocess.get_recording_info(d, eye_tracker)) is not None:
-                for rec in recs:
-                    # skip duplicates
-                    if rec.source_directory not in (r.source_directory for r in globals.recordings.values()):
-                        all_recs.append(Recording(**dataclasses.asdict(rec)))
-                    else:
-                        dup_recs.append(rec)
-
-    # sort in order natural for OS
-    all_recs = natsort.os_sorted(all_recs, lambda rec: rec.source_directory)
+    for rec in recs:
+        # skip duplicates
+        if rec.source_directory not in (r.source_directory for r in globals.recordings.values()):
+            all_recs.append(Recording(**dataclasses.asdict(rec)))   # init structs.Recording with the glassesTools.recording.Recording instance
+        else:
+            dup_recs.append(rec)
 
     # get ready to show result
     # 1. remove progress popup
@@ -136,9 +128,8 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
     # 2. if nothing importable found, notify
     if not all_recs:
         if dup_recs:
-            dup_recs = natsort.os_sorted(dup_recs, lambda rec: rec.source_directory)
             msg = f"{eye_tracker.value} recordings were found in the specified import paths, but could not be imported as they are already part of this glassesValidator project."
-            more="Duplicates that were not imported:\n"+('\n'.join([str(r.source_directory) for r in dup_recs]))
+            more= "Duplicates that were not imported:\n"+('\n'.join([str(r.source_directory) for r in dup_recs]))
         else:
             msg = f"No {eye_tracker.value} recordings were found among the specified import paths."
             more = None

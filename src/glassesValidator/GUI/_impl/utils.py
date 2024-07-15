@@ -46,15 +46,6 @@ def init_project_folder(folder: str | pathlib.Path, imgui_ini_saver: typing.Call
     (folder/'glassesValidator.project').touch()
 
 
-def fast_scandir(dirname):
-    if not dirname.is_dir():
-        return []
-    subfolders= [pathlib.Path(f.path) for f in os.scandir(dirname) if f.is_dir()]
-    for dirname in list(subfolders):
-        subfolders.extend(fast_scandir(dirname))
-    return subfolders
-
-
 # https://gist.github.com/Willy-JL/f733c960c6b0d2284bcbee0316f88878
 def get_traceback(*exc_info: list):
     exc_info = exc_info or sys.exc_info()
