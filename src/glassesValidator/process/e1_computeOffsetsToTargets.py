@@ -42,7 +42,7 @@ def process(working_dir: str|pathlib.Path, config_dir: str|pathlib.Path=None,
 
     # get info about markers on our poster
     poster  = config.poster.Poster(config_dir, validationSetup)
-    targets = {ID: poster.targets[ID].center for ID in poster.targets}   # get centers of targets
+    targets = {ID: np.append(poster.targets[ID].center,0.) for ID in poster.targets}   # get centers of targets
 
     # get types of data quality to compute
     dq_types = [DataQualityType.viewpos_vidpos_homography,DataQualityType.pose_vidpos_homography,DataQualityType.pose_vidpos_ray,DataQualityType.pose_world_eye,DataQualityType.pose_left_eye,DataQualityType.pose_right_eye]
@@ -78,6 +78,7 @@ def process(working_dir: str|pathlib.Path, config_dir: str|pathlib.Path=None,
                 continue
 
             # all based on pose info
+            targets_cam: dict[int,np.ndarray] = {}
             for e in range(len(dq_types)):
                 match dq_types[e]:
                     case DataQualityType.viewpos_vidpos_homography | DataQualityType.pose_vidpos_homography:
@@ -106,6 +107,8 @@ def process(working_dir: str|pathlib.Path, config_dir: str|pathlib.Path=None,
                         gaze        = gaze3DRight[s,:]
                         gazePoster  = gaze2DRight[s,:]
 
+                if np.any([np.any(np.isnan(ori)), np.any(np.isnan(gaze)), np.any(np.isnan(gazePoster))]):
+                    continue
 
                 for ti,t in enumerate(targets):
                     if dq_types[e]==DataQualityType.viewpos_vidpos_homography:
@@ -115,7 +118,9 @@ def process(working_dir: str|pathlib.Path, config_dir: str|pathlib.Path=None,
                         vTarget = np.array([targets[t][0], targets[t][1], distMm])
                     else:
                         # use 3D vectors known given pose information
-                        target  = poses[frameIdxs[s]].worldToCam(np.array([targets[t][0], targets[t][1], 0.]))
+                        if t not in targets_cam:
+                            targets_cam[t] = poses[frameIdxs[s]].worldToCam(targets[t])
+                        target = targets_cam[t]
 
                         # get vectors from origin to target and to gaze point
                         vGaze   = gaze  -ori
@@ -135,7 +140,7 @@ def process(working_dir: str|pathlib.Path, config_dir: str|pathlib.Path=None,
         df                      = pd.DataFrame()
         df['timestamp']         = ts[dat[:,1],0]
         df['marker_interval']   = idx+1
-        df['type']              = [dq_types[e] for e in dat[:,0]]
+        df['type']              = [str(dq_types[e]) for e in dat[:,0]]
         df['target']            = dat[:,2]
         df                      = pd.concat([df, pd.DataFrame(np.reshape(offset,(-1,2)),columns=['offset_x','offset_y'])],axis=1)
         df                      = df.dropna(axis=0, subset=['offset_x','offset_y'])  # drop any missing data
@@ -144,7 +149,6 @@ def process(working_dir: str|pathlib.Path, config_dir: str|pathlib.Path=None,
 
     # all done, write to file (use polars as that library saves to file waaay faster)
     df = pd.concat(dfs)
-    df['type'] = df['type'].apply(str)
     df = pl.from_pandas(df)
     df.write_csv(working_dir / output_gaze_offset_file_name, separator='\t', null_value='nan', float_precision=3)
 
