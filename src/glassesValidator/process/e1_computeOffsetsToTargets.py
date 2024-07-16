@@ -41,8 +41,10 @@ def process(working_dir: str|pathlib.Path, config_dir: str|pathlib.Path=None,
     gazesPoster = gaze_worldref.read_dict_from_file(working_dir / world_gaze_file_name, analyzeFrames)
 
     # get info about markers on our poster
-    poster  = config.poster.Poster(config_dir, validationSetup)
-    targets = {ID: np.append(poster.targets[ID].center,0.) for ID in poster.targets}   # get centers of targets
+    poster          = config.poster.Poster(config_dir, validationSetup)
+    targets         = {ID: np.append(poster.targets[ID].center,  0.  ) for ID in poster.targets}   # get centers of targets
+    distMm          = validationSetup['distance']*10.
+    targets_for_homo= {ID: np.append(poster.targets[ID].center,distMm) for ID in poster.targets}   # get centers of targets
 
     # get types of data quality to compute
     dq_types = [DataQualityType.viewpos_vidpos_homography,DataQualityType.pose_vidpos_homography,DataQualityType.pose_vidpos_ray,DataQualityType.pose_world_eye,DataQualityType.pose_left_eye,DataQualityType.pose_right_eye]
@@ -113,9 +115,8 @@ def process(working_dir: str|pathlib.Path, config_dir: str|pathlib.Path=None,
                 for ti,t in enumerate(targets):
                     if dq_types[e]==DataQualityType.viewpos_vidpos_homography:
                         # get vectors based on assumed viewing distance (from config), without using pose info
-                        distMm  = validationSetup['distance']*10.
                         vGaze   = np.array([gazePoster[0], gazePoster[1], distMm])
-                        vTarget = np.array([targets[t][0], targets[t][1], distMm])
+                        vTarget = targets_for_homo[t]
                     else:
                         # use 3D vectors known given pose information
                         if t not in targets_cam:
