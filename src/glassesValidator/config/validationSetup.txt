@@ -21,4 +21,4 @@ showAnnotations = 0
 % options only used for Python code
 minNumMarkers = 3
 centerTarget = 5                % ID of target in targetPosFile that is origin of poster
-referencePosterWidth = 1920     % pixels
+referencePosterSize = 1920      % pixels, largest dimension

@@ -63,6 +63,8 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
                                   {'default': analyzeFrames},
                                   # detector and pose estimator setup
                                   plane_setup, None,
+                                  # other functions to run
+                                  None,
                                   # visualization setup
                                   gui, 8, show_rejected_markers)
 

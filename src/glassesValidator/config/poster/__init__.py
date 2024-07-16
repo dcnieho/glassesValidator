@@ -68,8 +68,11 @@ class Poster(plane.Plane):
             self.cellSizeMm = 10 # 1cm
         markerSize = self.cellSizeMm*validationSetup['markerSide']
 
+        # get board size
+        plane_size = (validationSetup['gridCols']*self.cellSizeMm, validationSetup['gridRows']*self.cellSizeMm)
+
         # get targets first, so that they can be drawn on the reference image
-        center = self._get_targets(configDir, validationSetup)
+        origin = self._get_targets(configDir, validationSetup)
 
         # call base class
         markers = get_markers(configDir, validationSetup['markerPosFile'])
@@ -78,20 +81,20 @@ class Poster(plane.Plane):
             ref_image_store_path = kwarg.pop('ref_image_store_path')
         elif configDir is not None:
             ref_image_store_path = configDir / self.posterImageFilename
-        super(Poster, self).__init__(markers, markerSize, Poster.default_aruco_dict, validationSetup['markerBorderBits'],self.cellSizeMm, "mm", ref_image_store_path=ref_image_store_path, ref_image_width=validationSetup['referencePosterWidth'],**kwarg)
+        super(Poster, self).__init__(markers, markerSize, plane_size, Poster.default_aruco_dict, validationSetup['markerBorderBits'],self.cellSizeMm, "mm", ref_image_store_path=ref_image_store_path, ref_image_size=validationSetup['referencePosterSize'],**kwarg)
 
         # set center
-        self.set_center(center)
+        self.set_origin(origin)
 
-    def set_center(self, center: np.ndarray):
-        # set center of plane. Center coordinate is on current (not original) plane
-        # so set_center([5., 0.]) three times in a row shift the center rightward by 15 units
+    def set_origin(self, origin: np.ndarray):
+        # set origin of plane. Origin location is on current (not original) plane
+        # so set_origin([5., 0.]) three times in a row shifts the origin rightward by 15 units
         for i in self.targets:
-            self.targets[i].shift(-center)
-        super(Poster, self).set_center(center)
+            self.targets[i].shift(-origin)
+        super(Poster, self).set_origin(origin)
 
     def _get_targets(self, config_dir, validationSetup):
-        """ poster space: (0,0) is at center target, (-,-) bottom left """
+        """ poster space: (0,0) is origin (might be center target), (-,-) bottom left """
         from .. import get_targets
 
         # read in target positions
@@ -102,10 +105,10 @@ class Poster(plane.Plane):
             targets.y = self.cellSizeMm * targets.y.astype('float32')
             for idx, row in targets.iterrows():
                 self.targets[idx] = marker.Marker(idx, row[['x','y']].values, color=row.color)
-            center = targets.loc[validationSetup['centerTarget'],['x','y']]     # NB: need center in scaled space
+            origin = targets.loc[validationSetup['centerTarget'],['x','y']]     # NB: need origin in scaled space
         else:
-            center = pd.Series(data=[0.,0.],index=['x','y'])
-        return center.to_numpy().astype('float').flatten()
+            origin = pd.Series(data=[0.,0.],index=['x','y'])
+        return origin.to_numpy().astype('float').flatten()
 
     def _store_reference_image(self, path: pathlib.Path, width: int) -> np.ndarray:
         # first call superclass method to generate image without targets
