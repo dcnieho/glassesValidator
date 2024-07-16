@@ -72,6 +72,7 @@ class Poster(plane.Plane):
         plane_size = (validationSetup['gridCols']*self.cellSizeMm, validationSetup['gridRows']*self.cellSizeMm)
 
         # get targets first, so that they can be drawn on the reference image
+        self.targets: dict[int,marker.Marker] = {}
         origin = self._get_targets(configDir, validationSetup)
 
         # call base class
@@ -98,17 +99,16 @@ class Poster(plane.Plane):
         from .. import get_targets
 
         # read in target positions
-        self.targets = {}
         targets = get_targets(config_dir, validationSetup['targetPosFile'])
         if targets is not None:
-            targets.x = self.cellSizeMm * targets.x.astype('float32')
-            targets.y = self.cellSizeMm * targets.y.astype('float32')
-            for idx, row in targets.iterrows():
-                self.targets[idx] = marker.Marker(idx, row[['x','y']].values, color=row.color)
-            origin = targets.loc[validationSetup['centerTarget'],['x','y']]     # NB: need origin in scaled space
+            targets['center'] = list(targets[['x','y']].values)
+            targets['center'] *= self.cellSizeMm
+            targets = targets.drop(['x','y'], axis=1)
+            self.targets = {idx:marker.Marker(idx,**kwargs) for idx,kwargs in zip(targets.index.values,targets.to_dict(orient='records'))}
+            origin = targets.loc[validationSetup['centerTarget']].center     # NB: need origin in scaled space
         else:
-            origin = pd.Series(data=[0.,0.],index=['x','y'])
-        return origin.to_numpy().astype('float').flatten()
+            origin = np.zeros((2,))
+        return origin
 
     def _store_reference_image(self, path: pathlib.Path, width: int) -> np.ndarray:
         # first call superclass method to generate image without targets
