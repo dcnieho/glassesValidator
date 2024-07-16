@@ -105,7 +105,7 @@ class Poster(plane.Plane):
             targets['center'] *= self.cellSizeMm
             targets = targets.drop(['x','y'], axis=1)
             self.targets = {idx:marker.Marker(idx,**kwargs) for idx,kwargs in zip(targets.index.values,targets.to_dict(orient='records'))}
-            origin = targets.loc[validationSetup['centerTarget']].center     # NB: need origin in scaled space
+            origin = targets.loc[validationSetup['centerTarget']].center.copy()     # NB: need origin in scaled space
         else:
             origin = np.zeros((2,))
         return origin
