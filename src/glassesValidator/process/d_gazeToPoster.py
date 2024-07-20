@@ -1,14 +1,13 @@
 import pathlib
 import threading
 
-from glassesTools import gaze_headref, gaze_worldref, ocv, plane, recording, worldgaze_gui
-from glassesTools.video_gui import GUI, generic_tooltip_drawer, qns_tooltip
+from glassesTools import annotation, gaze_headref, gaze_worldref, ocv, plane, recording, worldgaze_gui
+from glassesTools.video_gui import GUI
 
 from .. import config
 from .. import utils
 
 
-stopAllProcessing = False
 def process(working_dir, config_dir=None, show_visualization=False, show_poster=True, show_only_intervals=True):
     # if show_visualization, each frame is shown in a viewer, overlaid with info about detected planes and projected gaze
     # if show_poster, gaze in poster space is also drawn in a separate window
@@ -22,22 +21,19 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
     # if we need gui, we run processing in a separate thread (GUI needs to be on the main thread for OSX, see https://github.com/pthom/hello_imgui/issues/33)
     if show_visualization:
         gui = GUI(use_thread = False)
-        gui.set_interesting_keys('qns')
-        gui.register_draw_callback('status',lambda: generic_tooltip_drawer(qns_tooltip()))
         frame_win_id = gui.add_window(working_dir.name)
+        gui.set_show_controls(True)
+        gui.set_show_play_percentage(True)
 
         proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, frame_win_id, show_poster, show_only_intervals))
         proc_thread.start()
         gui.start()
         proc_thread.join()
-        return stopAllProcessing
     else:
-        return do_the_work(working_dir, config_dir, None, None, False, False)
+        do_the_work(working_dir, config_dir, None, None, False, False)
 
 
 def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, show_only_intervals):
-    global stopAllProcessing
-
     utils.update_recording_status(working_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Running)
 
     # get camera calibration info
@@ -63,14 +59,14 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, show_on
 
     # done if no visualization wanted
     if gui is None:
-        return False
+        return
 
     in_video = recording.Recording.load_from_json(working_dir).get_scene_video_path()
     validationSetup = config.get_validation_setup(config_dir)
     poster          = config.poster.Poster(config_dir, validationSetup)
-    return worldgaze_gui.show_visualization(
+    worldgaze_gui.show_visualization(
         working_dir,
         in_video, working_dir / 'frameTimestamps.tsv', working_dir / "calibration.xml",
-        {'poster': poster}, {'poster': poses}, head_gazes, {'poster': plane_gazes}, {'poster': analyzeFrames},
+        {'poster': poster}, {'poster': poses}, head_gazes, {'poster': plane_gazes}, {annotation.Event.Validate: analyzeFrames},
         gui, frame_win_id, show_poster, show_only_intervals, 8
     )

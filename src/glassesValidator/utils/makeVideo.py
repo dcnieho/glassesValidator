@@ -11,8 +11,8 @@ isMacOS = sys.platform.startswith("darwin")
 if isMacOS:
     import AppKit
 
-from glassesTools import aruco, gaze_headref, ocv, timestamps, transforms
-from glassesTools.video_gui import GUI, generic_tooltip_drawer
+from glassesTools import annotation, aruco, gaze_headref, ocv, timestamps, transforms
+from glassesTools.video_gui import GUI
 
 from .. import config
 from .. import utils
@@ -23,7 +23,6 @@ import ffpyplayer.tools
 from fractions import Fraction
 
 
-stopAllProcessing = False
 def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio_to_poster_video=False, show_visualization=False):
     # if show_rejected_markers, rejected ArUco marker candidates are also drawn on the video. Possibly useful for debug
     # if add_audio_to_poster_video, audio is added to poster video, not only to the scene video
@@ -37,24 +36,19 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
     if show_visualization:
         # We run processing in a separate thread (GUI needs to be on the main thread for OSX, see https://github.com/pthom/hello_imgui/issues/33)
         gui = GUI(use_thread = False)
-        key_tooltip = {
-            "q": "Quit",
-            'n': 'Next'
-        }
-        gui.set_interesting_keys(list(key_tooltip.keys()))
-        gui.register_draw_callback('status',lambda: generic_tooltip_drawer(key_tooltip))
         main_win_id = gui.add_window(working_dir.name)
+        gui.set_show_controls(True)
+        gui.set_show_play_percentage(True)
 
-        proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, main_win_id, show_rejected_markers, add_audio_to_poster_video, show_visualization))
+        proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, main_win_id, show_rejected_markers, add_audio_to_poster_video))
         proc_thread.start()
         gui.start()
         proc_thread.join()
     else:
-        do_the_work(working_dir, config_dir, None, None, show_rejected_markers, add_audio_to_poster_video, show_visualization)
-    return stopAllProcessing
+        do_the_work(working_dir, config_dir, None, None, show_rejected_markers, add_audio_to_poster_video)
 
-def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers, add_audio_to_poster_video, show_visualization):
-    global stopAllProcessing
+def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers, add_audio_to_poster_video):
+    show_visualization = gui is not None
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
@@ -63,7 +57,8 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     inVideo = working_dir / 'worldCamera.mp4'
     if not inVideo.is_file():
         inVideo = working_dir / 'worldCamera.avi'
-    vidIn   = ocv.CV2VideoReader(inVideo, timestamps.VideoTimestamps(working_dir / 'frameTimestamps.tsv').timestamps)
+    video_ts= timestamps.VideoTimestamps(working_dir / 'frameTimestamps.tsv')
+    vidIn   = ocv.CV2VideoReader(inVideo, video_ts.timestamps)
     width   = vidIn.get_prop(cv2.CAP_PROP_FRAME_WIDTH)
     height  = vidIn.get_prop(cv2.CAP_PROP_FRAME_HEIGHT)
     fps     = vidIn.get_prop(cv2.CAP_PROP_FPS)
@@ -106,12 +101,16 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
     else:
         # flatten
         analyzeFrames = [i for iv in analyzeFrames for i in iv]
+    episodes = {annotation.Event.Validate: analyzeFrames}
+
+    if show_visualization:
+        gui.set_show_timeline(True, video_ts, episodes, main_win_id)
 
     frame_idx = -1
     armLength = poster.marker_size/2 # arms of axis are half a marker long
     subPixelFac = 8   # for sub-pixel positioning
-    stopAllProcessing = False
     hasRequestedFocus = not isMacOS # False only if on Mac OS, else True since its a no-op
+    should_exit = False
     while True:
         # process frame-by-frame
         done, frame, frame_idx, frame_ts = vidIn.read_frame(report_gap=True)
@@ -174,18 +173,12 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
                 AppKit.NSApplication.sharedApplication().activateIgnoringOtherApps_(1)
                 hasRequestedFocus = True
 
-            keys = gui.get_key_presses()
-            if 'q' in keys:
-                # quit fully
-                stopAllProcessing = True
-                break
-            if 'n' in keys:
-                # goto next
-                break
-
-            closed, = gui.get_state()
-            if closed:
-                stopAllProcessing = True
+            requests = gui.get_requests()
+            for r,p in requests:
+                if r=='exit':   # only request we need to handle
+                    should_exit = True
+                    break
+            if should_exit:
                 break
 
     vidOutScene.close()
@@ -210,5 +203,5 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
             # clean up
             if f.exists():
                 tempName.unlink(missing_ok=True)
-
-    return stopAllProcessing
+            else:
+                shutil.move(str(tempName),str(f))

@@ -1,8 +1,8 @@
 import pathlib
 import numpy as np
+from imgui_bundle import imgui
 
 import cv2
-import csv
 import threading
 
 from ffpyplayer.player import MediaPlayer
@@ -12,8 +12,8 @@ isMacOS = sys.platform.startswith("darwin")
 if isMacOS:
     import AppKit
 
-from glassesTools import drawing, gaze_headref, gaze_worldref, ocv, plane, recording, timestamps
-from glassesTools.video_gui import GUI, generic_tooltip_drawer
+from glassesTools import annotation, drawing, gaze_headref, gaze_worldref, ocv, plane, recording, timestamps
+from glassesTools.video_gui import GUI
 
 from .. import config
 from .. import utils
@@ -29,7 +29,6 @@ from .. import utils
 # will also be shown if available.
 
 
-stopAllProcessing = False
 def process(working_dir, config_dir=None, show_poster=False):
     # if show_poster, also draw poster with gaze overlaid on it (if available)
     working_dir = pathlib.Path(working_dir)
@@ -40,33 +39,15 @@ def process(working_dir, config_dir=None, show_poster=False):
 
     # We run processing in a separate thread (GUI needs to be on the main thread for OSX, see https://github.com/pthom/hello_imgui/issues/33)
     gui = GUI(use_thread = False)
-    key_tooltip = {
-        "h": "Back 1 s, shift+H: back 10 s",
-        "l": "Forward 1 s, shift+L: forward 10 s",
-        "j": "Back 1 frame",
-        "k": "Forward 1 frame",
-        "p": "Pause or resume playback",
-        "f": "Mark frame",
-        "d": "Delete frame or current interval",
-        "s": "Seek to start of next interval, shift+S seek to start of previous interval",
-        "e": "Seek to end of next interval, shift+E seek to end of previous interval",
-        "q": "Quit",
-        'n': 'Next'
-    }
-    gui.set_interesting_keys(list(key_tooltip.keys()))
-    gui.register_draw_callback('status',lambda: generic_tooltip_drawer(key_tooltip))
     main_win_id = gui.add_window(working_dir.name)
 
     proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, main_win_id, show_poster))
     proc_thread.start()
     gui.start()
     proc_thread.join()
-    return stopAllProcessing
 
 
-def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
-    global stopAllProcessing
-
+def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_poster):
     utils.update_recording_status(working_dir, utils.Task.Coded, utils.Status.Running)
 
     # get info about recording
@@ -110,6 +91,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
     else:
         # flatten
         analyzeFrames = [i for iv in analyzeFrames for i in iv]
+    episodes = {annotation.Event.Validate: analyzeFrames}
 
     # set up video playback
     # 1. window for scene video is already set up
@@ -123,12 +105,22 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
     inVideo = recInfo.get_scene_video_path()
     ff_opts = {'volume': 1., 'sync': 'audio', 'framedrop': True}
     player = MediaPlayer(str(inVideo), ff_opts=ff_opts)
+    gui.set_playing(True)
+
+    # set up annotation GUI
+    gui.set_allow_pause(True)
+    gui.set_allow_seek(True)
+    gui.set_allow_timeline_zoom(True)
+    gui.set_show_controls(True)
+    gui.set_allow_annotate(True, {annotation.Event.Validate: imgui.Key.v})
+    gui.set_show_timeline(True, video_ts, episodes, main_win_id)
+    gui.set_show_annotation_label(True, main_win_id)
 
     # show
     subPixelFac = 8   # for sub-pixel positioning
     armLength = poster.marker_size/2 # arms of axis are half a marker long
-    stopAllProcessing = False
     hasRequestedFocus = not isMacOS # False only if on Mac OS, else True since its a no-op
+    should_exit = False
     while True:
         frame, val = player.get_frame(force_refresh=True)
         if val == 'eof':
@@ -161,27 +153,6 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
                 if show_poster:
                     gazesPoster[frame_idx][0].drawOnPlane(refImg, poster, subPixelFac)
 
-            analysisIntervalIdx = None
-            analysisLbl = ''
-            for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't try incomplete intervals
-                if frame_idx>=analyzeFrames[f] and frame_idx<=analyzeFrames[f+1]:
-                    analysisIntervalIdx = f
-                if len(analysisLbl)>0:
-                    analysisLbl += ', '
-                analysisLbl += '{} -- {}'.format(*analyzeFrames[f:f+2])
-            if len(analyzeFrames)%2:
-                if len(analyzeFrames)==1:
-                    analysisLbl +=   '{} -- xx'.format(analyzeFrames[-1])
-                else:
-                    analysisLbl += ', {} -- xx'.format(analyzeFrames[-1])
-
-            # annotate what frame we're on
-            frameClr = (0,0,255) if analysisIntervalIdx is not None else (0,0,0)
-            # annotate analysis intervals
-            textSize,baseline = cv2.getTextSize(analysisLbl,cv2.FONT_HERSHEY_PLAIN,2,2)
-            cv2.rectangle(frame,(0,textSize[1]+baseline+5),(textSize[0]+5,0), frameClr, -1)
-            cv2.putText(frame, (analysisLbl), (0, textSize[1]+baseline), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
-
             if frame is not None:
                 gui.update_image(frame, pts, frame_idx, window_id = main_win_id)
 
@@ -192,91 +163,42 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_poster):
             AppKit.NSApplication.sharedApplication().activateIgnoringOtherApps_(1)
             hasRequestedFocus = True
 
-        keys = gui.get_key_presses()
-        # seek: don't ask me why, but relative seeking works best for backward,
-        # and seeking to absolute pts best for forward seeking.
-        if 'j' in keys:
-            step = (video_ts.get_timestamp(frame_idx)-video_ts.get_timestamp(max(0,frame_idx-1)))/1000
-            player.seek(-step)                              # back one frame
-        if 'k' in keys:
-            nextTs = video_ts.get_timestamp(frame_idx+1)
-            if nextTs != -1.:
-                step = (nextTs-video_ts.get_timestamp(max(0,frame_idx)))/1000
-                player.seek(pts+step, relative=False)       # forward one frame
-        if 'h' in keys or 'H' in keys:
-            step = 1 if 'h' in keys else 10
-            player.seek(-step)                              # back one or ten seconds
-        if 'l' in keys or 'L' in keys:
-            step = 1 if 'l' in keys else 10
-            player.seek(pts+step, relative=False)           # forward one or ten seconds
-
-        if 'p' in keys:
-            player.toggle_pause()
-            if not player.get_pause():
-                player.seek(0)  # needed to get frames rolling in again, apparently, after seeking occurred while paused
-
-        if 'f' in keys:
-            if not frame_idx in analyzeFrames:
-                analyzeFrames.append(frame_idx)
-                analyzeFrames.sort()
-        if 'd' in keys:
-            if frame_idx in analyzeFrames:
-                # delete this one marker from analysis frames
-                analyzeFrames.remove(frame_idx)
-            elif analysisIntervalIdx is not None:
-                # delete current interval from analysis frames
-                del analyzeFrames[analysisIntervalIdx:analysisIntervalIdx+2]
-
-        if 's' in keys or 'S' in keys:
-            if (analysisIntervalIdx is not None) and (frame_idx!=analyzeFrames[analysisIntervalIdx]):
-                # seek to start of current interval
-                ts = video_ts.get_timestamp(analyzeFrames[analysisIntervalIdx])
-                player.seek(ts/1000, relative=False)
-            else:
-                # seek to start of next or previous analysis interval, if any
-                forward = 's' in keys
-                if forward:
-                    idx = next((x for x in analyzeFrames[ 0:(len(analyzeFrames)//2)*2:2 ] if x>frame_idx), None) # slice gets starts of all whole intervals
-                else:
-                    idx = next((x for x in analyzeFrames[(len(analyzeFrames)//2)*2-2::-2] if x<frame_idx), None) # slice gets starts of all whole intervals in reverse order
-                if idx is not None:
-                    ts = video_ts.get_timestamp(idx)
-                    player.seek(ts/1000, relative=False)
-        if 'e' in keys or 'E' in keys:
-            if (analysisIntervalIdx is not None) and (frame_idx!=analyzeFrames[analysisIntervalIdx+1]):
-                # seek to end of current interval
-                ts = video_ts.get_timestamp(analyzeFrames[analysisIntervalIdx+1])
-                player.seek(ts/1000, relative=False)
-            else:
-                # seek to end of next or previous analysis interval, if any
-                forward = 'e' in keys
-                if forward:
-                    idx = next((x for x in analyzeFrames[1:(len(analyzeFrames)//2)*2:2] if x>frame_idx), None) # slice gets ends of all whole intervals
-                else:
-                    idx = next((x for x in analyzeFrames[(len(analyzeFrames)//2)*2::-2] if x<frame_idx), None) # slice gets ends of all whole intervals in reverse order
-                if idx is not None:
-                    ts = video_ts.get_timestamp(idx)
-                    player.seek(ts/1000, relative=False)
-
-        if 'q' in keys:
-            # quit fully
-            stopAllProcessing = True
-            break
-        if 'n' in keys:
-            # goto next
-            break
-
-        closed, = gui.get_state()
-        if closed:
-            stopAllProcessing = True
+        requests = gui.get_requests()
+        for r,p in requests:
+            match r:
+                case 'toggle_pause':
+                    player.toggle_pause()
+                    if not player.get_pause():
+                        player.seek(0)  # needed to get frames rolling in again, apparently, after seeking occurred while paused
+                    gui.set_playing(not player.get_pause())
+                case 'seek':
+                    player.seek(p, relative=False)
+                case 'delta_frame':
+                    new_ts = video_ts.get_timestamp(frame_idx+p)
+                    if new_ts != -1.:
+                        step = (new_ts-video_ts.get_timestamp(max(0,frame_idx)))/1000
+                        player.seek(pts+step, relative=False)
+                case 'delta_time':
+                    player.seek(pts+p, relative=False)
+                case 'add_coding':
+                    event,frame_idxs = p
+                    episodes[event].extend(frame_idxs)
+                    episodes[event].sort()
+                    gui.notify_annotations_changed()
+                case 'delete_coding':
+                    event,frame_idxs = p
+                    episodes[event] = [i for i in episodes[event] if i not in frame_idxs]
+                    gui.notify_annotations_changed()
+                case 'exit':
+                    should_exit = True
+                    break
+        if should_exit:
             break
 
     player.close_player()
     gui.stop()
 
     # store coded intervals to file
-    utils.writeMarkerIntervalsFile(working_dir / 'markerInterval.tsv', analyzeFrames)
+    utils.writeMarkerIntervalsFile(working_dir / 'markerInterval.tsv', episodes[annotation.Event.Validate])
 
     utils.update_recording_status(working_dir, utils.Task.Coded, utils.Status.Finished)
-
-    return stopAllProcessing

@@ -1,5 +1,4 @@
-glassesTools[GUI]==1.5.9    # pulls in various other dependencies such as opencv, imgui_bundle, numpy, pandas, polars
-matplotlib
+glassesTools[GUI]==1.6.1    # pulls in various other dependencies such as imgui_bundle, matplotlib, numpy, opencv, pandas, polars
 I2MC
 aiosqlite
 uvloop ; sys_platform != "win32"
