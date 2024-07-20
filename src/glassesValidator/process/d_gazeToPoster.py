@@ -65,7 +65,6 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, show_on
     validationSetup = config.get_validation_setup(config_dir)
     poster          = config.poster.Poster(config_dir, validationSetup)
     worldgaze_gui.show_visualization(
-        working_dir,
         in_video, working_dir / 'frameTimestamps.tsv', working_dir / "calibration.xml",
         {'poster': poster}, {'poster': poses}, head_gazes, {'poster': plane_gazes}, {annotation.Event.Validate: analyzeFrames},
         gui, frame_win_id, show_poster, show_only_intervals, 8

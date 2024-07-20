@@ -53,8 +53,6 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
 
     poses, _, _ = \
         aruco.run_pose_estimation(in_video, working_dir / "frameTimestamps.tsv", working_dir / "calibration.xml",   # input video
-                                  # output
-                                  working_dir,
                                   # intervals to process
                                   {'default': analyzeFrames},
                                   # detector and pose estimator setup
