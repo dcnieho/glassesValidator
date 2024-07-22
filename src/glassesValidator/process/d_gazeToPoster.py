@@ -24,6 +24,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
         frame_win_id = gui.add_window(working_dir.name)
         gui.set_show_controls(True)
         gui.set_show_play_percentage(True)
+        gui.set_show_annotation_label(False)
 
         proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, frame_win_id, show_poster, show_only_intervals))
         proc_thread.start()

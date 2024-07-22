@@ -113,8 +113,8 @@ def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_poster):
     gui.set_allow_timeline_zoom(True)
     gui.set_show_controls(True)
     gui.set_allow_annotate(True, {annotation.Event.Validate: imgui.Key.v})
-    gui.set_show_timeline(True, video_ts, episodes, main_win_id)
-    gui.set_show_annotation_label(True, main_win_id)
+    gui.set_show_timeline(True, video_ts, episodes)
+    gui.set_show_annotation_label(False)
 
     # show
     subPixelFac = 8   # for sub-pixel positioning
