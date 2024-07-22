@@ -46,22 +46,17 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     # get interval(s) coded to be analyzed, if any
     analyzeFrames   = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
 
-    # open video file, query it for size
+    # get video file to process
     in_video = recInfo.get_scene_video_path()
 
-    plane_setup = {'default': {'plane': poster, 'aruco_params': {'markerBorderBits': validationSetup['markerBorderBits']}, 'min_num_markers': validationSetup['minNumMarkers']}}
+    # set up pose estimator and run it
+    estimator = aruco.PoseEstimator(in_video, working_dir / "frameTimestamps.tsv", working_dir / "calibration.xml")
+    estimator.add_plane('validate',
+                        {'plane': poster, 'aruco_params': {'markerBorderBits': validationSetup['markerBorderBits']}, 'min_num_markers': validationSetup['minNumMarkers']},
+                        analyzeFrames)
+    estimator.attach_gui(gui, 8, show_rejected_markers)
+    poses, _, _ = estimator.process_video()
 
-    poses, _, _ = \
-        aruco.run_pose_estimation(in_video, working_dir / "frameTimestamps.tsv", working_dir / "calibration.xml",   # input video
-                                  # intervals to process
-                                  {'default': analyzeFrames},
-                                  # detector and pose estimator setup
-                                  plane_setup, None,
-                                  # other functions to run
-                                  None,
-                                  # visualization setup
-                                  gui, 8, show_rejected_markers)
-
-    plane.write_list_to_file(poses, working_dir/'posterPose.tsv', skip_failed=True)
+    plane.write_list_to_file(poses['validate'], working_dir/'posterPose.tsv', skip_failed=True)
 
     utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Finished)
