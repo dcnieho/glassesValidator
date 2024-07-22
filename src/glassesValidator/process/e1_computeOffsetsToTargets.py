@@ -120,7 +120,7 @@ def process(working_dir: str|pathlib.Path, config_dir: str|pathlib.Path=None,
                     else:
                         # use 3D vectors known given pose information
                         if t not in targets_cam:
-                            targets_cam[t] = poses[frameIdxs[s]].worldToCam(targets[t])
+                            targets_cam[t] = poses[frameIdxs[s]].world_frame_to_cam(targets[t])
                         target = targets_cam[t]
 
                         # get vectors from origin to target and to gaze point

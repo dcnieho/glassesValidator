@@ -81,7 +81,7 @@ def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_poster):
             pass
 
     # get camera calibration info
-    cameraParams= ocv.CameraParams.readFromFile(working_dir / "calibration.xml")
+    cameraParams= ocv.CameraParams.read_from_file(working_dir / "calibration.xml")
     hasCamCal   = cameraParams.has_intrinsics()
 
     # get interval coded to be analyzed, if available
@@ -139,7 +139,7 @@ def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_poster):
 
             # if we have poster pose, draw poster origin on video
             if hasPosterPose and frame_idx in poses and hasCamCal:
-                drawing.openCVFrameAxis(frame, cameraParams.camera_mtx, cameraParams.distort_coeffs, poses[frame_idx].pose_R_vec, poses[frame_idx].pose_T_vec, armLength, 3, subPixelFac)
+                poses[frame_idx].draw_frame_axis(frame, cameraParams, armLength, 3, subPixelFac)
 
             # if have gaze for this frame, draw it
             # NB: usually have multiple gaze samples for a video frame, draw one
@@ -149,9 +149,9 @@ def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_poster):
             # if have gaze in world info, draw it too (also only first)
             if hasPosterGaze and frame_idx in gazesPoster:
                 if hasCamCal:
-                    gazesPoster[frame_idx][0].drawOnWorldVideo(frame, cameraParams, subPixelFac)
+                    gazesPoster[frame_idx][0].draw_on_world_video(frame, cameraParams, subPixelFac)
                 if show_poster:
-                    gazesPoster[frame_idx][0].drawOnPlane(refImg, poster, subPixelFac)
+                    gazesPoster[frame_idx][0].draw_on_plane(refImg, poster, subPixelFac)
 
             if frame is not None:
                 gui.update_image(frame, pts, frame_idx, window_id = main_win_id)

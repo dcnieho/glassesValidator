@@ -160,7 +160,7 @@ def process(working_dir, config_dir=None, do_global_shift=True, max_dist_fac=.5,
         # make plot of data overlaid on poster, and show for each target which fixation
         # was selected
         f       = plt.figure(dpi=300)
-        imgplot = plt.imshow(poster.get_ref_image(asRGB=True),extent=(np.array(poster.bbox)[[0,2,3,1]]),alpha=.5)
+        imgplot = plt.imshow(poster.get_ref_image(as_RGB=True),extent=(np.array(poster.bbox)[[0,2,3,1]]),alpha=.5)
         plt.plot(fix['xpos'],fix['ypos'],'b-')
         plt.plot(fix['xpos'],fix['ypos'],'go')
         plt.xlim([poster.bbox[0]-markerHalfSizeMm, poster.bbox[2]+markerHalfSizeMm])

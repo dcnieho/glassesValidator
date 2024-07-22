@@ -119,7 +119,7 @@ class Poster(plane.Plane):
         subPixelFac = 8   # for sub-pixel positioning
         for key in self.targets:
             # 1. determine position on image
-            circlePos = transforms.toImagePos(*self.targets[key].center, self.bbox,[width,height])
+            circlePos = transforms.to_image_pos(*self.targets[key].center, self.bbox,[width,height])
 
             # 2. draw
             clr = tuple([int(i*255) for i in colors.to_rgb(self.targets[key].color)[::-1]])  # need BGR color ordering

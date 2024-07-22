@@ -38,7 +38,7 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, show_on
     utils.update_recording_status(working_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Running)
 
     # get camera calibration info
-    cameraParams      = ocv.CameraParams.readFromFile(working_dir / "calibration.xml")
+    cameraParams      = ocv.CameraParams.read_from_file(working_dir / "calibration.xml")
 
     # get interval coded to be analyzed, if any
     analyzeFrames   = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
@@ -50,7 +50,7 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, show_on
     poses       = plane.read_dict_from_file(working_dir / 'posterPose.tsv', episodes=analyzeFrames if not gui or show_only_intervals else None)
 
     # transform
-    plane_gazes = gaze_worldref.gazes_head_to_world(poses, head_gazes, cameraParams)
+    plane_gazes = gaze_worldref.from_head(poses, head_gazes, cameraParams)
 
     # store to file
     gaze_worldref.write_dict_to_file(plane_gazes, working_dir / 'gazePosterPos.tsv', skip_missing=True)
