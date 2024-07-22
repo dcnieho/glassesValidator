@@ -65,9 +65,11 @@ def process(working_dir, config_dir=None, do_global_shift=True, max_dist_fac=.5,
     # the nearest based on empirically determined sampling frequency.
     ts          = np.array([s.timestamp for v in gazePoster.values() for s in v])
     recFreq     = np.round(np.mean(1000./np.diff(ts)))    # Hz
-    knownFreqs  = [30., 50., 60., 90., 120.]
+    knownFreqs  = [30., 50., 60., 90., 120., 200.]
     opt['freq'] = knownFreqs[np.abs(knownFreqs - recFreq).argmin()]
-    if opt['freq']==120.:
+    if opt['freq']==200.:
+        pass    # defaults are good
+    elif opt['freq']==120.:
         opt['downsamples']      = [2, 3, 5]
         opt['chebyOrder']       = 7
     elif opt['freq'] in [50., 60.]:
