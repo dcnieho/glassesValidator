@@ -137,9 +137,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
                 gaze.draw(frame, cameraParams, subPixelFac)
 
                 # if we have pose information, figure out where gaze vectors
-                # intersect with poster. Do same for 3D gaze point
-                # (the projection of which coincides with 2D gaze provided by
-                # the eye tracker)
+                # intersect with poster
                 if pose.pose_N_markers>0 or pose.homography_N_markers>0:
                     gazePoster = transforms.gazeToPlane(gaze, pose, cameraParams)
 
@@ -149,7 +147,7 @@ def do_the_work(working_dir, config_dir, gui, main_win_id, show_rejected_markers
 
         # annotate frame
         analysisIntervalIdx = None
-        for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't try incomplete intervals
+        for f in range(0,len(analyzeFrames)-1,2):   # -1 to make sure we don't announce incomplete intervals
             if frame_idx>=analyzeFrames[f] and frame_idx<=analyzeFrames[f+1]:
                 analysisIntervalIdx = f
         frameClr = (0,0,255) if analysisIntervalIdx is not None else (0,0,0)
