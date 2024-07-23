@@ -91,10 +91,10 @@ class Poster(plane.Plane):
         # set origin of plane. Origin location is on current (not original) plane
         # so set_origin([5., 0.]) three times in a row shifts the origin rightward by 15 units
         for i in self.targets:
-            self.targets[i].shift(-origin)
+            self.targets[i].shift(-np.array(origin))
         super(Poster, self).set_origin(origin)
 
-    def _get_targets(self, config_dir, validationSetup):
+    def _get_targets(self, config_dir, validationSetup) -> tuple[float, float]:
         """ poster space: (0,0) is origin (might be center target), (-,-) bottom left """
         from .. import get_targets
 
@@ -105,9 +105,9 @@ class Poster(plane.Plane):
             targets['center'] *= self.cellSizeMm
             targets = targets.drop(['x','y'], axis=1)
             self.targets = {idx:marker.Marker(idx,**kwargs) for idx,kwargs in zip(targets.index.values,targets.to_dict(orient='records'))}
-            origin = targets.loc[validationSetup['centerTarget']].center.copy()     # NB: need origin in scaled space
+            origin = (*targets.loc[validationSetup['centerTarget']].center.copy(),)     # NB: need origin in scaled space
         else:
-            origin = np.zeros((2,))
+            origin = (0.,0.)
         return origin
 
     def _store_reference_image(self, path: pathlib.Path, width: int) -> np.ndarray:
