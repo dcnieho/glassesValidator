@@ -67,7 +67,7 @@ def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_rejected_ma
     episodes = {annotation.Event.Validate: analyzeFrames}
 
     # Read gaze data
-    gazes = gaze_headref.read_dict_from_file(working_dir / 'gazeData.tsv')[0]
+    gazes_head  = gaze_headref.read_dict_from_file(working_dir / 'gazeData.tsv')[0]
 
     # get camera calibration info
     cameraParams = ocv.CameraParams.read_from_file(working_dir / "calibration.xml")
@@ -118,8 +118,8 @@ def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_rejected_ma
         refImg = poster.get_ref_image(ref_width)
 
         # process gaze
-        if frame_idx in gazes:
-            for gaze in gazes[frame_idx]:
+        if frame_idx in gazes_head:
+            for gaze in gazes_head[frame_idx]:
                 # draw gaze point on scene video
                 gaze.draw(frame, cameraParams, sub_pixel_fac)
 
