@@ -18,7 +18,7 @@ import ffpyplayer.tools
 from fractions import Fraction
 
 
-def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio_to_poster_video=False, show_visualization=True):
+def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio_to_poster_video=False, show_visualization=False):
     # if show_rejected_markers, rejected ArUco marker candidates are also drawn on the video. Possibly useful for debug
     # if add_audio_to_poster_video, audio is added to poster video, not only to the scene video
     # if show_visualization, the generated video is shown as it is created in a viewer
@@ -78,7 +78,8 @@ def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_rejected_ma
     pose_estimator = aruco.PoseEstimator(in_video, video_ts, cameraParams)
     pose_estimator.add_plane('validate',
                              {'plane': poster, 'aruco_params': {'markerBorderBits': validationSetup['markerBorderBits']}, 'min_num_markers': validationSetup['minNumMarkers']})
-    pose_estimator.set_visualize_on_frame(True, show_rejected_markers)
+    pose_estimator.set_visualize_on_frame(True)
+    pose_estimator.show_rejected_markers = show_rejected_markers
 
     # prep output video files
     width, height, fps = pose_estimator.get_video_info()
@@ -87,10 +88,10 @@ def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_rejected_ma
     pix_fmt  = ffpyplayer.tools.get_best_pix_fmt('bgr24',ffpyplayer.tools.get_supported_pixfmts(codec))
     fpsFrac  = Fraction(fps).limit_denominator(10000).as_integer_ratio()
     # scene video
-    out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(  width  ), 'height_in':int(  height  ),'frame_rate':fpsFrac}
+    out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':  width  , 'height_in':  height  ,'frame_rate':fpsFrac}
     vidOutScene  = MediaWriter(str(working_dir / 'detectOutput_scene.mp4') , [out_opts], overwrite=True)
     # poster video
-    out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':int(ref_width), 'height_in':int(ref_height),'frame_rate':fpsFrac}
+    out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':ref_width, 'height_in':ref_height,'frame_rate':fpsFrac}
     vidOutPoster = MediaWriter(str(working_dir / 'detectOutput_poster.mp4'), [out_opts], overwrite=True)
 
     # if we have a gui, set it up
@@ -98,6 +99,7 @@ def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_rejected_ma
         gui.set_show_annotation_label(False)
         gui.set_frame_size((width, height), main_win_id)
         gui.set_show_timeline(True, video_ts, episodes, main_win_id)
+        gui.set_timecode_position('r', main_win_id)
         # add window for poster
         poster_win_id = gui.add_window('poster')
         gui.set_frame_size((ref_width, ref_height), poster_win_id)
@@ -114,7 +116,7 @@ def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_rejected_ma
 
         if frame is None:
             # we don't have a valid frame, use a fully black frame
-            frame = np.zeros((int(height),int(width),3), np.uint8)   # black image
+            frame = np.zeros((height,width,3), np.uint8)   # black image
         refImg = poster.get_ref_image(ref_width)
 
         # process gaze
@@ -138,11 +140,11 @@ def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_rejected_ma
 
         text = '%6.3f [%6d] (%s markers)' % (frame_ts/1000.,frame_idx, pose.pose_N_markers)
         textSize,baseline = cv2.getTextSize(text,cv2.FONT_HERSHEY_PLAIN,2,2)
-        cv2.rectangle(frame,(0,int(height)),(textSize[0]+2,int(height)-textSize[1]-baseline-5), frameClr, -1)
-        cv2.putText(frame, (text), (2, int(height)-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
+        cv2.rectangle(frame,(0,height),(textSize[0]+2,height-textSize[1]-baseline-5), frameClr, -1)
+        cv2.putText(frame, (text), (2, height-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
 
         # store to file
-        img = Image(plane_buffers=[frame.flatten().tobytes()], pix_fmt='bgr24', size=(int(width), int(height)))
+        img = Image(plane_buffers=[frame.flatten().tobytes()], pix_fmt='bgr24', size=(width, height))
         vidOutScene.write_frame(img=img, pts=frame_idx/fps)
         img = Image(plane_buffers=[refImg.flatten().tobytes()], pix_fmt='bgr24', size=(ref_width, ref_height))
         vidOutPoster.write_frame(img=img, pts=frame_idx/fps)

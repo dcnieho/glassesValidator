@@ -54,7 +54,9 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     estimator.add_plane('validate',
                         {'plane': poster, 'aruco_params': {'markerBorderBits': validationSetup['markerBorderBits']}, 'min_num_markers': validationSetup['minNumMarkers']},
                         analyzeFrames)
-    estimator.attach_gui(gui, 8, show_rejected_markers)
+    estimator.attach_gui(gui)
+    if gui is not None:
+        estimator.show_rejected_markers = show_rejected_markers
     poses, _, _ = estimator.process_video()
 
     plane.write_list_to_file(poses['validate'], working_dir/'posterPose.tsv', skip_failed=True)
