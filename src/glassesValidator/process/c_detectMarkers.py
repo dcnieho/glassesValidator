@@ -1,7 +1,7 @@
 import pathlib
 import threading
 
-from glassesTools import aruco, plane, recording
+from glassesTools import annotation, aruco, plane, recording
 from glassesTools.video_gui import GUI
 
 from .. import config
@@ -23,6 +23,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
         gui.add_window(working_dir.name)
         gui.set_show_controls(True)
         gui.set_show_play_percentage(True)
+        gui.set_show_annotation_label(False)
 
         proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, show_rejected_markers))
         proc_thread.start()
@@ -54,7 +55,7 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     estimator.add_plane('validate',
                         {'plane': poster, 'aruco_params': {'markerBorderBits': validationSetup['markerBorderBits']}, 'min_num_markers': validationSetup['minNumMarkers']},
                         analyzeFrames)
-    estimator.attach_gui(gui)
+    estimator.attach_gui(gui, {annotation.Event.Validate: [i for iv in analyzeFrames for i in iv]})
     if gui is not None:
         estimator.show_rejected_markers = show_rejected_markers
     poses, _, _ = estimator.process_video()
