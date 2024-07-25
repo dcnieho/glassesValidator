@@ -173,7 +173,7 @@ def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_rejected_ma
         for f in todo:
             # move file to temp name
             tempName = f.parent / (f.stem + '_temp' + f.suffix)
-            shutil.move(str(f),str(tempName))
+            shutil.move(f, tempName)
 
             # add audio
             cmd_str = ' '.join(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', '"'+str(tempName)+'"', '-i', '"'+str(in_video)+'"', '-vcodec', 'copy', '-acodec', 'copy', '-map', '0:v:0', '-map', '1:a:0?', '"'+str(f)+'"'])
@@ -182,4 +182,4 @@ def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_rejected_ma
             if f.exists():
                 tempName.unlink(missing_ok=True)
             else:
-                shutil.move(str(tempName),str(f))
+                shutil.move(tempName, f)
