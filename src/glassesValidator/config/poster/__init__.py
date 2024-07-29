@@ -87,7 +87,7 @@ class Poster(plane.Plane):
         # set center
         self.set_origin(origin)
 
-    def set_origin(self, origin: np.ndarray):
+    def set_origin(self, origin: tuple[float, float]):
         # set origin of plane. Origin location is on current (not original) plane
         # so set_origin([5., 0.]) three times in a row shifts the origin rightward by 15 units
         for i in self.targets:
