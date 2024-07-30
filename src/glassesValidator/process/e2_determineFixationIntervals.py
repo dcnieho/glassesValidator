@@ -3,6 +3,7 @@ import math
 
 import numpy as np
 import pandas as pd
+from typing import Any
 
 import I2MC
 import matplotlib.pyplot as plt
@@ -15,6 +16,7 @@ from .. import utils
 
 
 def process(working_dir, config_dir=None, do_global_shift=True, max_dist_fac=.5,
+            I2MC_settings_override: dict[str,Any]=None,
             marker_interval_file_name: str='markerInterval.tsv',
             world_gaze_file_name: str='gazePosterPos.tsv',
             fixation_detection_file_name_prefix: str='targetSelection_I2MC_',
@@ -79,6 +81,10 @@ def process(working_dir, config_dir=None, do_global_shift=True, max_dist_fac=.5,
         # 90 Hz, 30 Hz
         opt['downsamples']      = [2, 3]
         opt['downsampFilter']   = False
+    # apply setting overrides from caller, if any
+    if I2MC_settings_override:
+        for k in I2MC_settings_override:
+            opt[k] = I2MC_settings_override[k]
 
     # collect data
     qHasLeft        = np.any(np.logical_not(np.isnan([s.gazePosPlane2DLeft               for v in gazePoster.values() for s in v])))
