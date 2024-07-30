@@ -767,9 +767,11 @@ class MainGUI():
             imgui.load_ini_settings_from_memory(ini)
             # subpart of ini file is valid input to config parser, parse that part of it
             start = ini.find("[Window][glassesValidator]")
-            assert start != -1
+            if start==-1:
+                raise RuntimeError('[Window][glassesValidator] section not found')
             end = ini.find("\n\n", start)
-            assert end != -1
+            if end==-1:
+                raise RuntimeError('end of [Window][glassesValidator] section not found')
             config = configparser.RawConfigParser()
             config.optionxform=str
             config.read_string(ini[start:end])
@@ -1269,9 +1271,11 @@ class MainGUI():
         try:
             # subpart of ini file is valid input to config parser, parse that part it
             start = ini.find("[Window][glassesValidator]")
-            assert start != -1
+            if start==-1:
+                raise RuntimeError('[Window][glassesValidator] section not found')
             end = ini.find("\n\n", start)
-            assert end != -1
+            if end==-1:
+                raise RuntimeError('end of [Window][glassesValidator] section not found')
             config = configparser.RawConfigParser()
             config.optionxform=str
             config.read_string(ini[start:end])
