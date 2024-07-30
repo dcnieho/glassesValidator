@@ -19,6 +19,7 @@ import importlib.resources
 
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
 from glassesTools.utils import hex_to_rgba_0_1
+from glassesTools import recording as gt_recording
 
 from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, Recording, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
 from . import globals, async_thread, callbacks, db, filepicker, msgbox, process_pool, utils
@@ -692,6 +693,8 @@ class MainGUI():
                     if job.task != Task.Make_Video:
                         rec.task = job.task
                         async_thread.run(db.update_recording(rec, "task"))
+                    if job.task == Task.Imported:
+                        globals.gui.update_recordings([rec_id])
                     # start next step, if wanted
                     if job.should_chain_next:
                         if (job.task==Task.Coded and globals.settings.continue_process_after_code) or job.task!=Task.Imported:
@@ -1069,8 +1072,14 @@ class MainGUI():
         if globals.project_path is not None:
             self.recording_list = RecordingTable(globals.recordings, globals.selected_recordings)
 
-    def update_recordings(self):
-        for recid in globals.recordings:
+    def update_recordings(self, subset=None):
+        if not subset:
+            subset = globals.recordings
+        for recid in subset:
+            rec_info = gt_recording.Recording.load_from_json(globals.recordings[recid].working_directory)
+            if rec_info.duration!=globals.recordings[recid].duration:
+                globals.recordings[recid].duration = rec_info.duration
+                async_thread.run(db.update_recording(globals.recordings[recid], "duration"))
             if globals.recordings[recid].task not in [Task.Not_Imported, Task.Unknown]:
                 last_task = get_last_finished_step(get_recording_status(globals.recordings[recid].working_directory))
                 globals.recordings[recid].task = last_task
