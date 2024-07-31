@@ -4,7 +4,7 @@
 [![image](https://img.shields.io/pypi/pyversions/glassesValidator.svg)](https://pypi.org/project/glassesValidator/)
 [![DOI](https://zenodo.org/badge/DOI/10.3758/s13428-023-02105-5.svg)](https://doi.org/10.3758/s13428-023-02105-5)
 
-# GlassesValidator v1.2.5
+# GlassesValidator v2.0.0
 Tool for automatic determination of data quality (accuracy and precision) of wearable eye tracker recordings.
 
 If you use this tool or any of the code in this repository, please cite:<br>
