@@ -20,6 +20,7 @@ import importlib.resources
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
 from glassesTools.utils import hex_to_rgba_0_1
 from glassesTools import recording as gt_recording
+import glassesTools
 
 from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, Recording, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
 from . import globals, async_thread, callbacks, db, filepicker, msgbox, process_pool, utils
@@ -1543,6 +1544,7 @@ class MainGUI():
             imgui.text(f"Version {globals.version}")
             imgui.text("Made by Diederick C. Niehorster")
             imgui.text("")
+            imgui.text(f"glassesTools {glassesTools.version.__version__}")
             imgui.text(f"󰌠 Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
             imgui.text(f"OpenGL {'.'.join(str(gl.glGetInteger(num)) for num in (gl.GL_MAJOR_VERSION, gl.GL_MINOR_VERSION))},  󰌠 {OpenGL.__version__}")
             imgui.text(f"GLFW {'.'.join(str(num) for num in glfw.get_version())},  󰌠 {glfw.__version__}")
