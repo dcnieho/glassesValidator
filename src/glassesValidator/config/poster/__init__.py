@@ -69,7 +69,7 @@ class Poster(plane.Plane):
         markerSize = self.cellSizeMm*validationSetup['markerSide']
 
         # get board size
-        plane_size = (validationSetup['gridCols']*self.cellSizeMm, validationSetup['gridRows']*self.cellSizeMm)
+        plane_size = plane.Coordinate(validationSetup['gridCols']*self.cellSizeMm, validationSetup['gridRows']*self.cellSizeMm)
 
         # get targets first, so that they can be drawn on the reference image
         self.targets: dict[int,marker.Marker] = {}
@@ -87,14 +87,14 @@ class Poster(plane.Plane):
         # set center
         self.set_origin(origin)
 
-    def set_origin(self, origin: tuple[float, float]):
+    def set_origin(self, origin: plane.Coordinate):
         # set origin of plane. Origin location is on current (not original) plane
         # so set_origin([5., 0.]) three times in a row shifts the origin rightward by 15 units
         for i in self.targets:
             self.targets[i].shift(-np.array(origin))
         super(Poster, self).set_origin(origin)
 
-    def _get_targets(self, config_dir, validationSetup) -> tuple[float, float]:
+    def _get_targets(self, config_dir, validationSetup) -> plane.Coordinate:
         """ poster space: (0,0) is origin (might be center target), (-,-) bottom left """
         from .. import get_targets
 
@@ -105,9 +105,9 @@ class Poster(plane.Plane):
             targets['center'] *= self.cellSizeMm
             targets = targets.drop(['x','y'], axis=1)
             self.targets = {idx:marker.Marker(idx,**kwargs) for idx,kwargs in zip(targets.index.values,targets.to_dict(orient='records'))}
-            origin = (*targets.loc[validationSetup['centerTarget']].center.copy(),)     # NB: need origin in scaled space
+            origin = plane.Coordinate(*targets.loc[validationSetup['centerTarget']].center.copy())  # NB: need origin in scaled space
         else:
-            origin = (0.,0.)
+            origin = plane.Coordinate(0.,0.)
         return origin
 
     def _store_reference_image(self, path: pathlib.Path, width: int) -> np.ndarray:
