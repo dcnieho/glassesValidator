@@ -2,7 +2,7 @@ import pathlib
 import threading
 
 from glassesTools import annotation, aruco, plane, recording
-from glassesTools.video_gui import GUI
+from glassesTools.gui import video_player
 
 from .. import config
 from .. import utils
@@ -19,7 +19,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
 
     # if we need gui, we run processing in a separate thread (GUI needs to be on the main thread for OSX, see https://github.com/pthom/hello_imgui/issues/33)
     if show_visualization:
-        gui = GUI(use_thread = False)
+        gui = video_player.GUI(use_thread = False)
         gui.add_window(working_dir.name)
         gui.set_show_controls(True)
         gui.set_show_play_percentage(True)

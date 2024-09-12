@@ -7,7 +7,7 @@ import numpy as np
 import threading
 
 from glassesTools import annotation, aruco, gaze_headref, gaze_worldref, ocv, recording, timestamps, transforms
-from glassesTools.video_gui import GUI
+from glassesTools.gui import video_player
 
 from .. import config
 from .. import utils
@@ -30,7 +30,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
 
     if show_visualization:
         # We run processing in a separate thread (GUI needs to be on the main thread for OSX, see https://github.com/pthom/hello_imgui/issues/33)
-        gui = GUI(use_thread = False)
+        gui = video_player.GUI(use_thread = False)
         main_win_id = gui.add_window(working_dir.name)
         gui.set_show_controls(True)
         gui.set_show_play_percentage(True)
@@ -42,7 +42,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
     else:
         do_the_work(working_dir, config_dir, None, None, show_rejected_markers, add_audio_to_poster_video)
 
-def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_rejected_markers, add_audio_to_poster_video):
+def do_the_work(working_dir, config_dir, gui: video_player.GUI, main_win_id, show_rejected_markers, add_audio_to_poster_video):
     has_gui = gui is not None
     sub_pixel_fac = 8   # for anti-aliased drawing
 

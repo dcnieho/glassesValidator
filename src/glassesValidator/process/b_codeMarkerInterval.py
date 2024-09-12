@@ -12,8 +12,8 @@ isMacOS = sys.platform.startswith("darwin")
 if isMacOS:
     import AppKit
 
-from glassesTools import annotation, drawing, gaze_headref, gaze_worldref, ocv, plane, recording, timestamps
-from glassesTools.video_gui import GUI
+from glassesTools import annotation, gaze_headref, gaze_worldref, ocv, plane, recording, timestamps
+from glassesTools.gui import video_player
 
 from .. import config
 from .. import utils
@@ -38,7 +38,7 @@ def process(working_dir, config_dir=None, show_poster=False):
     print('processing: {}'.format(working_dir.name))
 
     # We run processing in a separate thread (GUI needs to be on the main thread for OSX, see https://github.com/pthom/hello_imgui/issues/33)
-    gui = GUI(use_thread = False)
+    gui = video_player.GUI(use_thread = False)
     main_win_id = gui.add_window(working_dir.name)
 
     proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, main_win_id, show_poster))
@@ -47,7 +47,7 @@ def process(working_dir, config_dir=None, show_poster=False):
     proc_thread.join()
 
 
-def do_the_work(working_dir, config_dir, gui: GUI, main_win_id, show_poster):
+def do_the_work(working_dir, config_dir, gui: video_player.GUI, main_win_id, show_poster):
     utils.update_recording_status(working_dir, utils.Task.Coded, utils.Status.Running)
 
     # get info about recording

@@ -6,11 +6,12 @@ import shutil
 import pandas as pd
 import dataclasses
 
-from glassesTools import recording
+from glassesTools import async_thread, platform, recording
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
+from glassesTools.gui import msg_box, recording_table, utils as gui_utils
 
-from .structs import JobDescription, MsgBox, Os, Recording
-from . import globals, async_thread, db, gui, msgbox, process_pool, utils
+from .structs import JobDescription, Recording
+from . import globals, db, gui, process_pool
 from ...utils import Task, get_next_task
 from ...preprocess import make_fs_dirname
 from ... import config, preprocess, process, utils as gv_utils
@@ -20,12 +21,12 @@ from ...process import DataQualityType, _collect_data_quality, _summarize_and_st
 
 def open_url(path: str):
     # this works for files, folders and URLs
-    if globals.os is Os.Windows:
+    if platform.os is platform.Os.Windows:
         os.startfile(path)
     else:
-        if globals.os is Os.Linux:
+        if platform.os is platform.Os.Linux:
             open_util = "xdg-open"
-        elif globals.os is Os.MacOS:
+        elif platform.os is platform.Os.MacOS:
             open_util = "open"
         async_thread.run(asyncio.create_subprocess_exec(
             open_util, path,
@@ -36,7 +37,7 @@ def open_url(path: str):
 
 def open_folder(path: pathlib.Path):
     if not path.is_dir():
-        utils.push_popup(msgbox.msgbox, "Folder not found", f"The folder you're trying to open\n{path}\ncould not be found.", MsgBox.warn)
+        gui_utils.push_popup(globals, msg_box.msgbox, "Folder not found", f"The folder you're trying to open\n{path}\ncould not be found.", msg_box.MsgBox.warn)
         return
     open_url(str(path))
 
@@ -46,7 +47,7 @@ async def _deploy_config(conf_dir: pathlib.Path):
 
 async def deploy_config(project_path: str|pathlib.Path, config_dir: str):
     if not config_dir:
-        utils.push_popup(msgbox.msgbox, "Cannot deploy", "Configuration directory name cannot be an empty value", MsgBox.error)
+        gui_utils.push_popup(globals, msg_box.msgbox, "Cannot deploy", "Configuration directory name cannot be an empty value", msg_box.MsgBox.error)
         return
 
     conf_dir = pathlib.Path(project_path) / config_dir
@@ -58,7 +59,7 @@ async def deploy_config(project_path: str|pathlib.Path, config_dir: str):
             "󰄬 Yes": lambda: async_thread.run(_deploy_config(conf_dir)),
             "󰜺 No": None
         }
-        utils.push_popup(msgbox.msgbox, "Deploy configuration", f"The folder {conf_dir} already exist. Do you want to deploy a configuration to this folder,\npotentially overwriting any configuration that is already there?", MsgBox.warn, buttons)
+        gui_utils.push_popup(globals, msg_box.msgbox, "Deploy configuration", f"The folder {conf_dir} already exist. Do you want to deploy a configuration to this folder,\npotentially overwriting any configuration that is already there?", msg_box.MsgBox.warn, buttons)
 
 async def deploy_poster_pdf(dir: str|pathlib.Path):
     config.poster.deploy_default_pdf(dir)
@@ -91,7 +92,7 @@ async def remove_recording(rec: Recording, bypass_confirm=False):
             "󰄬 Yes": remove_callback,
             "󰜺 No": None
         }
-        utils.push_popup(msgbox.msgbox, "Remove recording", f"Are you sure you want to remove {rec.name} from your list?", MsgBox.warn, buttons)
+        gui_utils.push_popup(globals, msg_box.msgbox, "Remove recording", f"Are you sure you want to remove {rec.name} from your list?", msg_box.MsgBox.warn, buttons)
     else:
         remove_callback()
 
@@ -108,7 +109,7 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
     # notify we're preparing the recordings to be opened
     def prepping_recs_popup():
         globals.gui.draw_preparing_recordings_for_import_popup(eye_tracker)
-    utils.push_popup(lambda: utils.popup("Preparing import", prepping_recs_popup, buttons = None, closable=False, outside=False))
+    gui_utils.push_popup(globals, lambda: gui_utils.popup("Preparing import", prepping_recs_popup, buttons = None, closable=False, outside=False))
 
     # step 1, find what recordings of this type of eye tracker are in the path
     recs = recording.find_recordings(paths, eye_tracker)
@@ -134,7 +135,7 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
             msg = f"No {eye_tracker.value} recordings were found among the specified import paths."
             more = None
 
-        utils.push_popup(msgbox.msgbox, "Nothing to import", msg, MsgBox.warn, more=more)
+        gui_utils.push_popup(globals, msg_box.msgbox, "Nothing to import", msg, msg_box.MsgBox.warn, more=more)
         return
 
     # 3. if something importable found, show to user so they can select the ones they want
@@ -145,7 +146,9 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
         recordings_to_add[id] = rec
         recordings_selected_to_add[id] = True
 
-    recording_list = gui.RecordingTable(recordings_to_add, recordings_selected_to_add, is_adder_popup=True)
+    item_context_menu = lambda iid: gui.draw_recording_open_folder_button(recordings_to_add[iid], label="󰷏 Open Folder", source_dir=True)
+    recording_list = recording_table.RecordingTable(recordings_to_add, recordings_selected_to_add, [], item_context_menu, use_icons_fontawesome_6=False)
+    recording_list.set_local_item_remover()
     def list_recs_popup():
         nonlocal recording_list
         globals.gui.draw_select_recordings_to_import(recording_list)
@@ -154,7 +157,7 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
         "󰄬 Continue": lambda: async_thread.run(_add_recordings(recordings_to_add, recordings_selected_to_add)),
         "󰜺 Cancel": None
     }
-    utils.push_popup(lambda: utils.popup("Select recordings", list_recs_popup, buttons = buttons, closable=True, outside=False))
+    gui_utils.push_popup(globals, lambda: gui_utils.popup("Select recordings", list_recs_popup, buttons = buttons, closable=True, outside=False))
 
 def add_recordings(paths: list[pathlib.Path]):
     combo_value = 0
@@ -170,7 +173,7 @@ def add_recordings(paths: list[pathlib.Path]):
     }
 
     # ask what type of eye tracker we should be looking for
-    utils.push_popup(lambda: utils.popup("Select eye tracker", add_recs_popup, buttons = buttons, closable=True, outside=True))
+    gui_utils.push_popup(globals, lambda: gui_utils.popup("Select eye tracker", add_recs_popup, buttons = buttons, closable=True, outside=True))
 
 async def process_recording(rec: Recording, task: Task=None, chain=True):
     # find what is the next task to do for this recording
@@ -263,7 +266,7 @@ async def export_data_quality(ids: list[int]):
     rec_dirs = [globals.recordings[id].working_directory for id in ids]
     df, default_dq_type, targets = _collect_data_quality(rec_dirs)
     if df is None:
-        utils.push_popup(msgbox.msgbox, "Export error", "There is no data quality for the selected recordings. Did you code any validation intervals (see manual)?", MsgBox.error)
+        gui_utils.push_popup(globals, msg_box.msgbox, "Export error", "There is no data quality for the selected recordings. Did you code any validation intervals (see manual)?", msg_box.MsgBox.error)
         return
 
     # 2. prep popup
@@ -306,7 +309,7 @@ async def export_data_quality(ids: list[int]):
         "󰄬 Continue": lambda: async_thread.run(_export_data_quality(df,pop_data)),
         "󰜺 Cancel": None
     }
-    utils.push_popup(lambda: utils.popup("Data Quality Export", show_config_popup, buttons = buttons, closable=True, outside=False))
+    gui_utils.push_popup(globals, lambda: gui_utils.popup("Data Quality Export", show_config_popup, buttons = buttons, closable=True, outside=False))
 
 async def _export_data_quality(df: pd.DataFrame, pop_data: dict):
     dq_types = [dq for i,dq in enumerate(pop_data['dq_types']) if pop_data['dq_types_sel'][i]]

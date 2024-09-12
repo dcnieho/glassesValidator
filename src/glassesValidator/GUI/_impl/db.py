@@ -11,9 +11,10 @@ from concurrent.futures import Future
 from glassesTools.eyetracker import EyeTracker
 from glassesTools.recording import Recording as base_rec
 from glassesTools.utils import hex_to_rgba_0_1, rgba_0_1_to_hex
+from glassesTools import async_thread
 
 from .structs import DefaultStyleDark, Recording, Settings
-from . import globals, utils, async_thread
+from . import globals, utils
 from ...utils import Task
 
 connection: aiosqlite.Connection = None

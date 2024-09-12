@@ -159,7 +159,9 @@ def _do_work(id,seconds):   # this needs to be at module level so it can be run 
 
 if __name__ == "__main__":
     import asyncio
-    from glassesValidator.GUI._impl import async_thread, process_pool, utils
+    from glassesValidator.GUI._impl import process_pool
+    from glassesTools import async_thread
+    from glassesTools.gui import utils
 
     async_thread.setup()
 

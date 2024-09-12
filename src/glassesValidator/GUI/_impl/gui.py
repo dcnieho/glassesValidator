@@ -8,22 +8,22 @@ import pathlib
 import OpenGL
 import OpenGL.GL as gl
 import imgui_bundle
-from imgui_bundle import imgui, imspinner
+from imgui_bundle import imgui, imspinner, hello_imgui, icons_fontawesome_6 as ifa6
 import glfw
 import time
 import sys
-import datetime
 import io
 import fnmatch
 import importlib.resources
 
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
+from glassesTools.gui import file_picker, msg_box, recording_table, utils as gui_utils
 from glassesTools.utils import hex_to_rgba_0_1
-from glassesTools import recording as gt_recording
+from glassesTools import async_thread, platform as pltfrm, recording as gt_recording
 import glassesTools
 
-from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, MsgBox, Os, ProcessState, Recording, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
-from . import globals, async_thread, callbacks, db, filepicker, msgbox, process_pool, utils
+from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, ProcessState, Recording, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
+from . import globals, callbacks, db, process_pool, utils
 from .. import _general_imgui
 from ...utils import Task, Status, get_task_name_friendly, get_next_task, task_names, get_last_finished_step, get_recording_status, update_recording_status
 from ...process import DataQualityType, get_DataQualityType_explanation
@@ -31,585 +31,166 @@ from ...process import DataQualityType, get_DataQualityType_explanation
 imgui.io = None
 imgui.style = None
 
-def draw_tooltip(hover_text):
-    imgui.begin_tooltip()
-    imgui.push_text_wrap_pos(min(imgui.get_font_size() * 35, imgui.io.display_size.x))
-    imgui.text_unformatted(hover_text)
-    imgui.pop_text_wrap_pos()
-    imgui.end_tooltip()
-
-def draw_hover_text(hover_text: str, text="(?)", force=False, *args, **kwargs):
-    if text:
-        imgui.text_disabled(text, *args, **kwargs)
-    if force or imgui.is_item_hovered():
-        draw_tooltip(hover_text)
-        return True
-    return False
 
 
-class RecordingTable():
-    def __init__(self,
-                 recordings: dict[int, Recording],
-        selected_recordings: dict[int, bool],
-        is_adder_popup: bool = False):
+def draw_recording_status_widget(rec: Recording):
+    job_state = None
+    if rec.id in globals.jobs:
+        job = globals.jobs[rec.id]
+        job_state = process_pool.get_job_state(job.id)
+        if job_state not in [ProcessState.Pending, ProcessState.Running]:
+            job_state = None
+    if rec.id in globals.coding_job_queue:
+        job = globals.coding_job_queue[rec.id]
+        job_state = ProcessState.Pending
 
-        self.recordings = recordings
-        self.selected_recordings = selected_recordings
-        self.in_adder_popup = is_adder_popup
-
-        self.sorted_recordings_ids: list[int] = []
-        self.last_clicked_id: int = None
-        self.require_sort: bool = True
-        self.filters: list[Filter] = []
-        self.filter_box_text: str = ""
-
-        self._recording_list_column_count = 15
-        self._num_recordings = len(self.recordings)
-        self._eye_tracker_label_width: float = None
-        self.table_flags: int = (
-            imgui.TableFlags_.scroll_x |
-            imgui.TableFlags_.scroll_y |
-            imgui.TableFlags_.hideable |
-            imgui.TableFlags_.sortable |
-            imgui.TableFlags_.resizable |
-            imgui.TableFlags_.sort_multi |
-            imgui.TableFlags_.reorderable |
-            imgui.TableFlags_.row_bg |
-            imgui.TableFlags_.sizing_fixed_fit |
-            imgui.TableFlags_.no_host_extend_y |
-            imgui.TableFlags_.no_borders_in_body_until_resize
-        )
-
-    def add_filter(self, filter):
-        self.filters.append(filter)
-        self.require_sort = True
-
-    def remove_filter(self, id):
-        for i, search in enumerate(self.filters):
-            if search.id == id:
-                self.filters.pop(i)
-        self.require_sort = True
-
-    def font_changed(self):
-        self._eye_tracker_label_width = None
-
-    def draw(self):
-        extra = "_adder" if self.in_adder_popup else ""
-        if imgui.begin_table(
-            f"##recording_list{extra}",
-            columns=self._recording_list_column_count,
-            flags=self.table_flags,
-        ):
-            if (num_recordings := len(self.recordings)) != self._num_recordings:
-                self._num_recordings = num_recordings
-                self.require_sort = True
-            frame_height = imgui.get_frame_height()
-
-            # Setup
-            checkbox_width = frame_height
-            imgui.table_setup_column("󰄵 Selector", imgui.TableColumnFlags_.no_hide | imgui.TableColumnFlags_.no_sort | imgui.TableColumnFlags_.no_resize | imgui.TableColumnFlags_.no_reorder, init_width_or_weight=checkbox_width)  # 0
-            imgui.table_setup_column("󰖠 Eye Tracker", imgui.TableColumnFlags_.no_resize)  # 1
-            imgui.table_setup_column("󱀩 Status", imgui.TableColumnFlags_.no_resize | (imgui.TableColumnFlags_.default_hide if self.in_adder_popup else 0))  # 2
-            imgui.table_setup_column("󰌖 Name", imgui.TableColumnFlags_.default_sort | imgui.TableColumnFlags_.no_hide | imgui.TableColumnFlags_.no_resize)  # 3
-            imgui.table_setup_column("󰀓 Participant", imgui.TableColumnFlags_.no_resize)  # 4
-            imgui.table_setup_column("󰨸 Project", imgui.TableColumnFlags_.default_hide | imgui.TableColumnFlags_.no_resize)  # 5
-            imgui.table_setup_column("󰁫 Duration", imgui.TableColumnFlags_.no_resize)  # 6
-            imgui.table_setup_column("󱛡 Recording Start", imgui.TableColumnFlags_.default_hide | imgui.TableColumnFlags_.no_resize)  # 7
-            imgui.table_setup_column("󰷎 Working Directory", imgui.TableColumnFlags_.default_hide | imgui.TableColumnFlags_.no_resize)  # 8
-            imgui.table_setup_column("󰮟 Source Directory", imgui.TableColumnFlags_.default_hide | imgui.TableColumnFlags_.no_resize)  # 9
-            imgui.table_setup_column("󰆙 Firmware Version", imgui.TableColumnFlags_.default_hide | imgui.TableColumnFlags_.no_resize)  # 10
-            imgui.table_setup_column("󰁱 Glasses Serial", imgui.TableColumnFlags_.default_hide | imgui.TableColumnFlags_.no_resize)  # 11
-            imgui.table_setup_column("󰁱 Recording Unit Serial", imgui.TableColumnFlags_.default_hide | imgui.TableColumnFlags_.no_resize)  # 12
-            imgui.table_setup_column("󰆙 Recording Software Version", imgui.TableColumnFlags_.default_hide | imgui.TableColumnFlags_.no_resize)  # 13
-            imgui.table_setup_column("󰁱 Scene Camera Serial", imgui.TableColumnFlags_.default_hide | imgui.TableColumnFlags_.no_resize)  # 14
-
-            # Enabled columns
-            if imgui.table_get_column_flags(0) & imgui.TableColumnFlags_.is_enabled:
-                imgui.table_setup_scroll_freeze(1, 1)  # Sticky column headers and selector row
-            else:
-                imgui.table_setup_scroll_freeze(0, 1)  # Sticky column headers
-
-            # Sorting
-            sort_specs = imgui.table_get_sort_specs()
-            sorted_recordings_ids_len = len(self.sorted_recordings_ids)
-            self.sort_and_filter_recordings(sort_specs)
-            if len(self.sorted_recordings_ids) < sorted_recordings_ids_len:
-                # we've just filtered out some recordings from view. Deselect those
-                # NB: will also be triggered when removing an item, doesn't matter
-                for id in self.recordings:
-                    if id not in self.sorted_recordings_ids:
-                        self.selected_recordings[id] = False
-
-            # Headers
-            imgui.table_next_row(imgui.TableRowFlags_.headers)
-            for i in range(self._recording_list_column_count):
-                imgui.table_set_column_index(i)
-                column_name = imgui.table_get_column_name(i)
-                if i==0:  # checkbox column: reflects whether all, some or none of visible recordings are selected, and allows selecting all or none
-                    # get state
-                    num_selected = sum([self.selected_recordings[id] for id in self.sorted_recordings_ids])
-                    if num_selected==0:
-                        # none selected
-                        multi_selected_state = -1
-                    elif num_selected==len(self.sorted_recordings_ids):
-                        # all selected
-                        multi_selected_state = 1
-                    else:
-                        # some selected
-                        multi_selected_state = 0
-
-                    if multi_selected_state==0:
-                        imgui.internal.push_item_flag(imgui.internal.ItemFlags_.mixed_value, True)
-                    clicked, new_state = imgui.checkbox(f"##header_checkbox{extra}", multi_selected_state==1, frame_size=(0,0), do_vertical_align=False)
-                    if multi_selected_state==0:
-                        imgui.internal.pop_item_flag()
-
-                    if clicked:
-                        utils.set_all(self.selected_recordings, new_state, subset = self.sorted_recordings_ids)
-                elif i in (2,):  # Hide name for small columns, just use icon
-                    imgui.table_header(column_name[:1] + "##" + column_name[2:])
-                else:
-                    imgui.table_header(column_name[2:])
-
-            # Loop rows
-            a=.4
-            style_selected_row = (*tuple(a*x+(1-a)*y for x,y in zip(globals.settings.style_accent[:3],globals.settings.style_bg[:3])), 1.)
-            a=.2
-            style_hovered_row  = (*tuple(a*x+(1-a)*y for x,y in zip(globals.settings.style_accent[:3],globals.settings.style_bg[:3])), 1.)
-            any_selectable_clicked = False
-            if self.sorted_recordings_ids and self.last_clicked_id not in self.sorted_recordings_ids:
-                # default to topmost if last_clicked unknown, or no longer on screen due to filter
-                self.last_clicked_id = self.sorted_recordings_ids[0]
-            for id in self.sorted_recordings_ids:
-                imgui.table_next_row()
-
-                recording = self.recordings[id]
-                num_columns_drawn = 0
-                selectable_clicked = False
-                checkbox_clicked, checkbox_hovered = False, False
-                remove_button_hovered = False
-                has_drawn_hitbox = False
-                for ri in range(self._recording_list_column_count+1):
-                    if not (imgui.table_get_column_flags(ri) & imgui.TableColumnFlags_.is_enabled):
-                        continue
-                    imgui.table_set_column_index(ri)
-
-                    # Row hitbox
-                    if not has_drawn_hitbox:
-                        # hitbox needs to be drawn before anything else on the row so that, together with imgui.set_item_allow_overlap(), hovering button
-                        # or checkbox on the row will still be correctly detected.
-                        # this is super finicky, but works. The below together with using a height of frame_height+cell_padding_y
-                        # makes the table row only cell_padding_y/2 longer. The whole row is highlighted correctly
-                        cell_padding_y = imgui.style.cell_padding.y
-                        cur_pos_y = imgui.get_cursor_pos_y()
-                        imgui.set_cursor_pos_y(cur_pos_y - cell_padding_y/2)
-                        imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0.)
-                        imgui.push_style_var(imgui.StyleVar_.frame_padding    , (0.,0.))
-                        imgui.push_style_var(imgui.StyleVar_.item_spacing     , (0.,cell_padding_y))
-                        # make selectable completely transparent
-                        imgui.push_style_color(imgui.Col_.header_active , (0., 0., 0., 0.))
-                        imgui.push_style_color(imgui.Col_.header        , (0., 0., 0., 0.))
-                        imgui.push_style_color(imgui.Col_.header_hovered, (0., 0., 0., 0.))
-                        selectable_clicked, selectable_out = imgui.selectable(f"##{id}_hitbox{extra}", self.selected_recordings[id], flags=imgui.SelectableFlags_.span_all_columns|imgui.SelectableFlags_.allow_overlap|imgui.internal.SelectableFlagsPrivate_.select_on_click, size=(0,frame_height+cell_padding_y))
-                        # instead override table row background color
-                        if selectable_out:
-                            imgui.table_set_bg_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(style_selected_row))
-                        elif imgui.is_item_hovered():
-                            imgui.table_set_bg_color(imgui.TableBgTarget_.row_bg0, imgui.color_convert_float4_to_u32(style_hovered_row))
-                        imgui.set_cursor_pos_y(cur_pos_y)   # instead of imgui.same_line(), we just need this part of its effect
-                        imgui.pop_style_color(3)
-                        imgui.pop_style_var(3)
-                        selectable_right_clicked = self.handle_recording_hitbox_events(id)
-                        has_drawn_hitbox = True
-
-                    if num_columns_drawn==1:
-                        # (Invisible) button because it aligns the following draw calls to center vertically
-                        imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0.)
-                        imgui.push_style_var(imgui.StyleVar_.frame_padding    , (0.,imgui.style.frame_padding.y))
-                        imgui.push_style_var(imgui.StyleVar_.item_spacing     , (0.,imgui.style.item_spacing.y))
-                        imgui.push_style_color(imgui.Col_.button, (0.,0.,0.,0.))
-                        imgui.button(f"##{id}_id", size=(imgui.FLT_MIN, 0))
-                        imgui.pop_style_color()
-                        imgui.pop_style_var(3)
-
-                        imgui.same_line()
-
-                    match ri:
-                        case 0:
-                            # Selector
-                            checkbox_clicked, checkbox_out = imgui.checkbox(f"##{id}_selected{extra}", self.selected_recordings[id], frame_size=(0,0))
-                            checkbox_hovered = imgui.is_item_hovered()
-                        case 1:
-                            # Eye Tracker
-                            self.draw_eye_tracker_widget(recording, align=True)
-                        case 2:
-                            # Status
-                            self.draw_recording_status_widget(recording)
-                        case 3:
-                            # Name
-                            if globals.settings.show_remove_btn:
-                                self.draw_recording_remove_button([id], label="󰩺")
-                                remove_button_hovered = imgui.is_item_hovered()
-                                imgui.same_line()
-                            self.draw_recording_name_text(recording)
-                        case 4:
-                            # Participant
-                            imgui.text(recording.participant or "Unknown")
-                        case 5:
-                            # Project
-                            imgui.text(recording.project or "Unknown")
-                        case 6:
-                            # Duration
-                            imgui.text("Unknown" if (d:=recording.duration) is None else str(datetime.timedelta(seconds=d//1000)))
-                        case 7:
-                            # Recording Start
-                            imgui.text(recording.start_time.display or "Unknown")
-                        case 8:
-                            # Working Directory
-                            imgui.text(recording.working_directory.name if recording.working_directory else "Unknown")
-                            if imgui.is_item_hovered():
-                                if recording.working_directory and recording.working_directory.is_dir():
-                                    text = str(recording.working_directory)
-                                else:
-                                    text = 'Working directory not created yet'
-                                draw_tooltip(text)
-                        case 9:
-                            # Source Directory
-                            imgui.text(recording.source_directory.stem or "Unknown")
-                            if recording.source_directory and imgui.is_item_hovered():
-                                draw_tooltip(str(recording.source_directory))
-                        case 10:
-                            # Firmware Version
-                            imgui.text(recording.firmware_version or "Unknown")
-                        case 11:
-                            # Glasses Serial
-                            imgui.text(recording.glasses_serial or "Unknown")
-                        case 12:
-                            # Recording Unit Serial
-                            imgui.text(recording.recording_unit_serial or "Unknown")
-                        case 13:
-                            # Recording Software Version
-                            imgui.text(recording.recording_software_version or "Unknown")
-                        case 14:
-                            # Scene Camera Serial
-                            imgui.text(recording.scene_camera_serial or "Unknown")
-                    num_columns_drawn+=1
-
-                # handle selection logic
-                # NB: the part of this logic that has to do with right-clicks is in handle_recording_hitbox_events()
-                # NB: any_selectable_clicked is just for handling clicks not on any recording
-                any_selectable_clicked = any_selectable_clicked or selectable_clicked or selectable_right_clicked
-
-                self.last_clicked_id = utils.selectable_item_logic(
-                    id, self.selected_recordings, self.last_clicked_id, self.sorted_recordings_ids,
-                    selectable_clicked, selectable_out, overlayed_hovered=checkbox_hovered or remove_button_hovered,
-                    overlayed_clicked=checkbox_clicked, new_overlayed_state=checkbox_out
-                    )
-
-            last_y = imgui.get_cursor_screen_pos().y
-            imgui.end_table()
-
-            # handle click in table area outside header+contents:
-            # deselect all, and if right click, show popup
-            # check mouse is below bottom of last drawn row so that clicking on the one pixel empty space between selectables
-            # does not cause everything to unselect or popup to open
-            if imgui.is_item_clicked(imgui.MouseButton_.left) and not any_selectable_clicked and imgui.io.mouse_pos.y>last_y:  # NB: table header is not signalled by is_item_clicked(), so this works correctly
-                utils.set_all(self.selected_recordings, False)
-
-            # show menu when right-clicking the empty space
-            if not self.in_adder_popup and imgui.io.mouse_pos.y>last_y and imgui.begin_popup_context_item("##recording_list_context",popup_flags=imgui.PopupFlags_.mouse_button_right | imgui.PopupFlags_.no_open_over_existing_popup):
-                utils.set_all(self.selected_recordings, False)  # deselect on right mouse click as well
-                if imgui.selectable("󱃩 Add recordings##context_menu", False)[0]:
-                    utils.push_popup(globals.gui.get_folder_picker(reason='add_recordings'))
-                imgui.end_popup()
-
-    def handle_recording_hitbox_events(self, id: int):
-        extra = "_adder" if self.in_adder_popup else ""
-        right_clicked = False
-        # Right click = context menu
-        if imgui.begin_popup_context_item(f"##{id}_context{extra}"):
-            # update selected recordings. same logic as windows explorer:
-            # 1. if right-clicked on one of the selected recordings, regardless of what modifier is pressed, keep selection as is
-            # 2. if right-clicked elsewhere than on one of the selected recordings:
-            # 2a. if control is down pop up right-click menu for the selected recordings.
-            # 2b. if control not down, deselect everything except clicked item (if any)
-            # NB: popup not shown when shift or control are down, do not know why...
-            if not self.selected_recordings[id] and not imgui.io.key_ctrl:
-                utils.set_all(self.selected_recordings, False)
-                self.selected_recordings[id] = True
-
-            right_clicked = True
-            self.draw_recordings_context_menu()
-            imgui.end_popup()
-        return right_clicked
-
-    def remove_recording(self, rec_id: int):
-        if self.in_adder_popup:
-            del self.recordings[rec_id]
-            del self.selected_recordings[rec_id]
+    if job_state:
+        symbol_size = imgui.calc_text_size("󰲞")
+        if job_state==ProcessState.Pending:
+            radius    = symbol_size.x / 2
+            thickness = symbol_size.x / 3 / 2.5 # 3 is number of dots, 2.5 is nextItemKoeff in imspinner.spinner_bounce_dots()
+            imspinner.spinner_bounce_dots(f'waitBounceDots_{rec.id}', radius, thickness, color=globals.settings.style_text)
+            hover_text = f'Pending: {get_task_name_friendly(job.task)}'
         else:
-            async_thread.run(callbacks.remove_recording(self.recordings[rec_id]))
+            spinner_radii = [x/22/2*symbol_size.x for x in [22, 16, 10]]
+            lw = 3.5/22/2*symbol_size.x
+            imspinner.spinner_ang_triple(f'runSpinner_{rec.id}', *spinner_radii, lw, c1=globals.settings.style_text, c2=globals.settings.style_accent, c3=globals.settings.style_text)
+            hover_text = f'Running: {get_task_name_friendly(job.task)}'
+    else:
+        match get_simplified_task_state(rec.task):
+            # before stage 1
+            case TaskSimplified.Not_Imported:
+                imgui.text_colored((0.5000, 0.5000, 0.5000, 1.), "󰲞")
+            # after stage 1
+            case TaskSimplified.Imported:
+                imgui.text_colored((0.3333, 0.6167, 0.3333, 1.), "󰲠")
+            # after stage 2 / during stage 3
+            case TaskSimplified.Coded:
+                imgui.text_colored((0.1667, 0.7333, 0.1667, 1.), "󰲢")
+            # after stage 3:
+            case TaskSimplified.Processed:
+                imgui.text_colored((0.0000, 0.8500, 0.0000, 1.), "󰲤")
+            # other
+            case TaskSimplified.Unknown:
+                imgui.text_colored((0.8700, 0.2000, 0.2000, 1.), "󰀨")
+            case _:
+                imgui.text("")
+        hover_text = rec.task.value
 
-    def draw_eye_tracker_widget(self, recording: Recording, align=False):
-        imgui.push_style_var(imgui.StyleVar_.frame_border_size, 0)
-        x_padding = 4
-        if self._eye_tracker_label_width is None:
-            self._eye_tracker_label_width = 0
-            for eye_tracker in list(EyeTracker):
-                self._eye_tracker_label_width = max(self._eye_tracker_label_width, imgui.calc_text_size(eye_tracker.value).x)
-            self._eye_tracker_label_width += 2 * x_padding
-        if align:
-            imgui.begin_group()
-            imgui.set_cursor_pos_y(imgui.get_cursor_pos_y() + imgui.style.frame_padding.y)
+    gui_utils.draw_hover_text(hover_text, text='')
 
-        # prep for drawing widget: determine its size and position and see if visible
-        id          = imgui.get_id(f"{recording.eye_tracker.value}##{recording.id}_type")
-        label_size  = imgui.calc_text_size(recording.eye_tracker.value)
-        size        = imgui.ImVec2(self._eye_tracker_label_width, label_size.y)
-        pos         = imgui.get_cursor_screen_pos()
-        bb          = imgui.internal.ImRect(pos, (pos.x+size.x, pos.y+size.y))
-        imgui.internal.item_size(size, 0)
-        # if visible
-        if imgui.internal.item_add(bb, id):
-            # draw frame
-            imgui.internal.render_frame(bb.min, bb.max, imgui.color_convert_float4_to_u32(recording.eye_tracker.color), True, imgui.style.frame_rounding)
-            # draw text on top
-            imgui.internal.render_text_clipped((bb.min.x+x_padding, bb.min.y), (bb.max.x-x_padding, bb.max.y), recording.eye_tracker.value, None, label_size, imgui.style.button_text_align, bb)
+def draw_recording_remove_button(ids: list[int], label):
+    if not ids:
+        return False
 
-        if align:
-            imgui.end_group()
-        imgui.pop_style_var()
+    if (clicked := imgui.selectable(f"{label}##{ids[0]}_remove", False)[0]):
+        for rid in ids:
+            remove_recording(rid)
+    return clicked
 
-    def draw_recording_name_text(self, recording: Recording):
-        if globals.settings.style_color_recording_name:
-            imgui.text_colored(globals.settings.style_accent, recording.name)
-        else:
-            imgui.text(recording.name)
+def remove_recording(iid: int):
+    async_thread.run(callbacks.remove_recording(globals.recordings[iid]))
 
-    def draw_recording_status_widget(self, recording: Recording):
-        job_state = None
-        if recording.id in globals.jobs:
-            job = globals.jobs[recording.id]
-            job_state = process_pool.get_job_state(job.id)
-            if job_state not in [ProcessState.Pending, ProcessState.Running]:
-                job_state = None
-        if recording.id in globals.coding_job_queue:
-            job = globals.coding_job_queue[recording.id]
-            job_state = ProcessState.Pending
+def draw_recording_open_folder_button(rec: Recording, label, source_dir=False):
+    if source_dir:
+        extra = "src_"
+        path = rec.source_directory
+        disable = False
+    else:
+        extra = ""
+        path = rec.working_directory
+        disable = not path or not path.is_dir()
 
-        if job_state:
-            symbol_size = imgui.calc_text_size("󰲞")
-            if job_state==ProcessState.Pending:
-                radius    = symbol_size.x / 2
-                thickness = symbol_size.x / 3 / 2.5 # 3 is number of dots, 2.5 is nextItemKoeff in imspinner.spinner_bounce_dots()
-                imspinner.spinner_bounce_dots(f'waitBounceDots_{recording.id}', radius, thickness, color=globals.settings.style_text)
-                hover_text = f'Pending: {get_task_name_friendly(job.task)}'
-            else:
-                spinner_radii = [x/22/2*symbol_size.x for x in [22, 16, 10]]
-                lw = 3.5/22/2*symbol_size.x
-                imspinner.spinner_ang_triple(f'runSpinner_{recording.id}', *spinner_radii, lw, c1=globals.settings.style_text, c2=globals.settings.style_accent, c3=globals.settings.style_text)
-                hover_text = f'Running: {get_task_name_friendly(job.task)}'
-        else:
-            match get_simplified_task_state(recording.task):
-                # before stage 1
-                case TaskSimplified.Not_Imported:
-                    imgui.text_colored((0.5000, 0.5000, 0.5000, 1.), "󰲞")
-                # after stage 1
-                case TaskSimplified.Imported:
-                    imgui.text_colored((0.3333, 0.6167, 0.3333, 1.), "󰲠")
-                # after stage 2 / during stage 3
-                case TaskSimplified.Coded:
-                    imgui.text_colored((0.1667, 0.7333, 0.1667, 1.), "󰲢")
-                # after stage 3:
-                case TaskSimplified.Processed:
-                    imgui.text_colored((0.0000, 0.8500, 0.0000, 1.), "󰲤")
-                # other
-                case TaskSimplified.Unknown:
-                    imgui.text_colored((0.8700, 0.2000, 0.2000, 1.), "󰀨")
-                case _:
-                    imgui.text("")
-            hover_text = recording.task.value
+    if disable:
+        imgui.begin_disabled()
+    if (clicked := imgui.selectable(f"{label}##{rec.id}_open_{extra}folder", False)[0]):
+        callbacks.open_folder(path)
+    if disable:
+        imgui.end_disabled()
+    return clicked
 
-        draw_hover_text(hover_text, text='')
+def draw_recording_remove_folder_button(ids: list[int], label):
+    if not ids:
+        return False
 
-    def draw_recording_remove_button(self, ids: list[int], label, selectable=False):
-        if not ids:
-            return False
+    if (clicked := imgui.selectable(f"{label}##{ids[0]}_remove_folder", False)[0]):
+        for id in ids:
+            async_thread.run(callbacks.remove_recording_working_dir(globals.recordings[id]))
+    return clicked
 
-        extra = "_adder" if self.in_adder_popup else ""
-        id = f"{label}##{ids[0]}_remove{extra}"
-        if selectable:
-            clicked = imgui.selectable(id, False)[0]
-        else:
-            clicked = imgui.button(id)
-        if clicked:
-            for rid in ids:
-                self.remove_recording(rid)
-            self.require_sort = True
-        return clicked
+def draw_recording_process_button(ids: list[int], label, action=None, should_chain_next=False):
+    if not ids:
+        return False
 
-    def draw_recording_open_folder_button(self, ids: list[int], label, source_dir=False):
-        if len(ids)!=1:
-            return False
-        recording = self.recordings[ids[0]]
+    if (clicked := imgui.selectable(f"{label}##{ids[0]}_process_button", False)[0]):
+        async_thread.run(callbacks.process_recordings(ids, task=action, chain=should_chain_next))
+    return clicked
 
-        if source_dir:
-            extra = "src_"
-            path = recording.source_directory
-            disable = False
-        else:
-            extra = ""
-            path = recording.working_directory
-            disable = not path or not path.is_dir()
+def draw_recording_export_button(ids: list[int], label):
+    if not ids:
+        return False
 
-        if disable:
-            utils.push_disabled()
-        if (clicked := imgui.selectable(f"{label}##{recording.id}_open_{extra}folder", False)[0]):
-            callbacks.open_folder(path)
-        if disable:
-            utils.pop_disabled()
-        return clicked
+    if (clicked := imgui.selectable(f"{label}##{ids[0]}_export_button", False)[0]):
+        async_thread.run(callbacks.export_data_quality(ids))
+    return clicked
 
-    def draw_recording_remove_folder_button(self, ids: list[int], label):
-        if not ids:
-            return False
+def draw_recording_process_cancel_button(ids: list[int], label):
+    if not ids:
+        return False
 
-        if (clicked := imgui.selectable(f"{label}##{ids[0]}_remove_folder", False)[0]):
-            for id in ids:
-                async_thread.run(callbacks.remove_recording_working_dir(self.recordings[id]))
-        return clicked
+    if (clicked := imgui.selectable(f"{label}##{ids[0]}_cancel_button", False)[0]):
+        async_thread.run(callbacks.cancel_processing_recordings(ids))
+    return clicked
 
-    def draw_recording_process_button(self, ids: list[int], label, action=None, should_chain_next=False):
-        if not ids:
-            return False
+def draw_recordings_context_menu(_: int) -> bool:
+    require_sort = False
+    ids = [rid for rid in globals.selected_recordings if globals.selected_recordings[rid]]
+    if not ids:
+        return require_sort
 
-        if (clicked := imgui.selectable(f"{label}##{ids[0]}_process_button", False)[0]):
-            async_thread.run(callbacks.process_recordings(ids, task=action, chain=should_chain_next))
-        return clicked
+    has_job = [(id in globals.jobs or id in globals.coding_job_queue) for id in ids]
+    has_no_job = [not x for x in has_job]
+    if any(has_no_job):
+        # before stage 1
+        not_imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Not_Imported]
+        draw_recording_process_button(not_imported_ids, label="󰼛 Import", action=Task.Imported)
+        # after stage 1
+        imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Imported]
+        draw_recording_process_button(imported_ids, label="󰼛 Code validation interval(s)", action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
+        # already coded, recode
+        recoded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task) in [TaskSimplified.Coded, TaskSimplified.Processed]]
+        draw_recording_process_button(recoded_ids, label="󰑐 Edit validation interval(s)", action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
+        # after stage 2 / during stage 3
+        coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Coded]
+        # NB: don't send action, so that callback code figures out where we we left off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
+        draw_recording_process_button(coded_ids, label="󰼛 Calculate data quality", should_chain_next=True)
+        # already fully done, recompute
+        processed_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
+        draw_recording_process_button(processed_ids, label="󰑐 Recalculate data quality", action=Task.Markers_Detected, should_chain_next=True)
+        # make video, always possible
+        video_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)!=TaskSimplified.Not_Imported]
+        draw_recording_process_button(video_ids, label="󰯜 Export scene video", action=Task.Make_Video)
+    if any(has_job):
+        draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label="󱠮 Cancel job")
 
-    def draw_recording_export_button(self, ids: list[int], label):
-        if not ids:
-            return False
+    # if any fully done, offer export
+    processed_ids = [id for id in ids if get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
+    draw_recording_export_button(processed_ids, label="󱎻 Export data quality")
 
-        if (clicked := imgui.selectable(f"{label}##{ids[0]}_export_button", False)[0]):
-            async_thread.run(callbacks.export_data_quality(ids))
-        return clicked
+    if len(ids)==1:
+        draw_recording_open_folder_button(globals.recordings[ids[0]], label="󰷏 Open Working Folder")
+    work_dir_ids = [id for id in ids if globals.recordings[id].working_directory.is_dir()]
+    if work_dir_ids:
+        draw_recording_remove_folder_button(work_dir_ids, label="󰮞 Remove Working Folder")
+    if len(ids)==1:
+        draw_recording_open_folder_button(globals.recordings[ids[0]], label="󰷏 Open Source Folder", source_dir=True)
 
-    def draw_recording_process_cancel_button(self, ids: list[int], label):
-        if not ids:
-            return False
+    require_sort = draw_recording_remove_button(ids, label="󰩺 Remove")
+    return require_sort
 
-        if (clicked := imgui.selectable(f"{label}##{ids[0]}_cancel_button", False)[0]):
-            async_thread.run(callbacks.cancel_processing_recordings(ids))
-        return clicked
-
-    def draw_recordings_context_menu(self):
-        ids = [rid for rid in self.selected_recordings if self.selected_recordings[rid]]
-        if not ids:
-            return
-
-        if not self.in_adder_popup:
-            has_job = [(id in globals.jobs or id in globals.coding_job_queue) for id in ids]
-            has_no_job = [not x for x in has_job]
-            if any(has_no_job):
-                # before stage 1
-                not_imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Not_Imported]
-                self.draw_recording_process_button(not_imported_ids, label="󰼛 Import", action=Task.Imported)
-                # after stage 1
-                imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Imported]
-                self.draw_recording_process_button(imported_ids, label="󰼛 Code validation interval(s)", action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
-                # already coded, recode
-                recoded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task) in [TaskSimplified.Coded, TaskSimplified.Processed]]
-                self.draw_recording_process_button(recoded_ids, label="󰑐 Edit validation interval(s)", action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
-                # after stage 2 / during stage 3
-                coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Coded]
-                # NB: don't send action, so that callback code figures out where we we left off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
-                self.draw_recording_process_button(coded_ids, label="󰼛 Calculate data quality", should_chain_next=True)
-                # already fully done, recompute
-                processed_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Processed]
-                self.draw_recording_process_button(processed_ids, label="󰑐 Recalculate data quality", action=Task.Markers_Detected, should_chain_next=True)
-                # make video, always possible
-                video_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)!=TaskSimplified.Not_Imported]
-                self.draw_recording_process_button(video_ids, label="󰯜 Export scene video", action=Task.Make_Video)
-            if any(has_job):
-                self.draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label="󱠮 Cancel job")
-
-            # if any fully done, offer export
-            processed_ids = [id for id in ids if get_simplified_task_state(self.recordings[id].task)==TaskSimplified.Processed]
-            self.draw_recording_export_button(processed_ids, label="󱎻 Export data quality")
-
-            if len(ids)==1:
-                self.draw_recording_open_folder_button(ids, label="󰷏 Open Working Folder")
-            work_dir_ids = [id for id in ids if self.recordings[id].working_directory.is_dir()]
-            if work_dir_ids:
-                self.draw_recording_remove_folder_button(work_dir_ids, label="󰮞 Remove Working Folder")
-
-            if len(ids)==1:
-                self.draw_recording_open_folder_button(ids, label="󰷏 Open Source Folder", source_dir=True)
-        elif len(ids)==1:
-            # in this context, the source folder is just the folder
-            self.draw_recording_open_folder_button(ids, label="󰷏 Open Folder", source_dir=True)
-        self.draw_recording_remove_button(ids, label="󰩺 Remove", selectable=True)
-
-    def sort_and_filter_recordings(self, sort_specs_in: imgui.TableSortSpecs):
-        if sort_specs_in.specs_dirty or self.require_sort:
-            ids = list(self.recordings)
-            sort_specs = [sort_specs_in.get_specs(i) for i in range(sort_specs_in.specs_count)]
-            for sort_spec in reversed(sort_specs):
-                match sort_spec.column_index:
-                    case 1:     # Eye tracker
-                        key = lambda id: self.recordings[id].eye_tracker.value
-                    case 2:     # Status
-                        key = lambda id: task_names.index(self.recordings[id].task.value)
-                    case 4:     # Participant
-                        key = lambda id: self.recordings[id].participant.lower()
-                    case 5:     # Project
-                        key = lambda id: self.recordings[id].project.lower()
-                    case 6:     # Duration
-                        key = lambda id: 0 if (d:=self.recordings[id].duration) is None else d
-                    case 7:     # Recording Start
-                        key = lambda id: self.recordings[id].start_time.value
-                    case 8:     # Directory
-                        key = lambda id: self.recordings[id].working_directory.name.lower()
-                    case 9:     # Source Directory
-                        key = lambda id: str(self.recordings[id].source_directory).lower()
-                    case 10:    # Firmware Version
-                        key = lambda id: self.recordings[id].firmware_version.lower()
-                    case 11:    # Glasses Serial
-                        key = lambda id: self.recordings[id].glasses_serial.lower()
-                    case 12:    # Recording Unit Serial
-                        key = lambda id: self.recordings[id].recording_unit_serial.lower()
-                    case 13:    # Recording Software Version
-                        key = lambda id: self.recordings[id].recording_software_version.lower()
-                    case 14:    # Scene Camera Serial
-                        key = lambda id: self.recordings[id].scene_camera_serial.lower()
-                    case _:     # Name and all others
-                        key = lambda id: self.recordings[id].name.lower()
-                ids.sort(key=key, reverse=sort_spec.get_sort_direction()==imgui.SortDirection.descending)
-            self.sorted_recordings_ids = ids
-            for flt in self.filters:
-                match flt.mode.value:
-                    case FilterMode.Eye_Tracker.value:
-                        key = lambda id: flt.invert != (self.recordings[id].eye_tracker is flt.match)
-                    case FilterMode.Task_State.value:
-                        key = lambda id: flt.invert != (get_simplified_task_state(self.recordings[id].task) is flt.match)
-                    case _:
-                        key = None
-                if key is not None:
-                    self.sorted_recordings_ids = list(filter(key, self.sorted_recordings_ids))
-            if self.filter_box_text:
-                search = self.filter_box_text.lower()
-                def key(id):
-                    recording = self.recordings[id]
-                    return \
-                        search in recording.eye_tracker.value.lower() or \
-                        search in recording.name.lower() or \
-                        search in recording.participant.lower() or \
-                        search in recording.project.lower()
-                self.sorted_recordings_ids = list(filter(key, self.sorted_recordings_ids))
-            sort_specs_in.specs_dirty = False
-            self.require_sort = False
-
+def empty_space_context_menu():
+    if imgui.selectable("󱃩 Add recordings##context_menu", False)[0]:
+        gui_utils.push_popup(globals, globals.gui.get_folder_picker(reason='add_recordings'))
 
 class MainGUI():
     def __init__(self):
@@ -636,7 +217,7 @@ class MainGUI():
         self.size_mult = 0.0
         self.last_size_mult = 1.0
         self.prev_cursor = -1
-        self.recording_list: RecordingTable = None
+        self.recording_list: recording_table.RecordingTable = None
         self.screen_pos = (0, 0)
         self.screen_size = (0, 0)
         self.new_screen_size = (0, 0)
@@ -655,13 +236,13 @@ class MainGUI():
                 exc = future.exception()
             except concurrent.futures.CancelledError:
                 return
-            if not exc or type(exc) is msgbox.Exc:
+            if not exc:
                 return
-            tb = utils.get_traceback(type(exc), exc, exc.__traceback__)
+            tb = gui_utils.get_traceback(type(exc), exc, exc.__traceback__)
             if isinstance(exc, asyncio.TimeoutError):
-                utils.push_popup(msgbox.msgbox, "Processing error", f"A background process has failed:\n{type(exc).__name__}: {str(exc) or 'No further details'}", MsgBox.warn, more=tb)
+                gui_utils.push_popup(globals, msg_box.msgbox, "Processing error", f"A background process has failed:\n{type(exc).__name__}: {str(exc) or 'No further details'}", msg_box.MsgBox.warn, more=tb)
                 return
-            utils.push_popup(msgbox.msgbox, "Processing error", f"Something went wrong in an asynchronous task of a separate thread:\n\n{tb}", MsgBox.error)
+            gui_utils.push_popup(globals, msg_box.msgbox, "Processing error", f"Something went wrong in an asynchronous task of a separate thread:\n\n{tb}", msg_box.MsgBox.error)
         async_thread.done_callback = asyncexcepthook
 
         # Process state changes in worker processes. NB: not fired on items enqueued in globals.coding_job_queue
@@ -704,11 +285,11 @@ class MainGUI():
                             async_thread.run(callbacks.process_recordings([rec_id], task=task, chain=True))
                 case ProcessState.Failed:
                     exc = future.exception()    # should not throw exception since CancelledError is already encoded in state and future is done
-                    tb = utils.get_traceback(type(exc), exc, exc.__traceback__)
+                    tb = gui_utils.get_traceback(type(exc), exc, exc.__traceback__)
                     if isinstance(exc, concurrent.futures.TimeoutError):
-                        utils.push_popup(msgbox.msgbox, "Processing error", f"A worker process has failed for recording '{rec.name}' (work item {job_id}):\n{type(exc).__name__}: {str(exc) or 'No further details'}\n\nPossible causes include:\n - You are running with too many workers, try lowering them in settings", MsgBox.warn, more=tb)
+                        gui_utils.push_popup(globals, msg_box.msgbox, "Processing error", f"A worker process has failed for recording '{rec.name}' (work item {job_id}):\n{type(exc).__name__}: {str(exc) or 'No further details'}\n\nPossible causes include:\n - You are running with too many workers, try lowering them in settings", msg_box.MsgBox.warn, more=tb)
                         return
-                    utils.push_popup(msgbox.msgbox, "Processing error", f"Something went wrong in a worker process for recording '{rec.name}' (work item {job_id}, task {get_task_name_friendly(job.task)}):\n\n{tb}", MsgBox.error)
+                    gui_utils.push_popup(globals, msg_box.msgbox, "Processing error", f"Something went wrong in a worker process for recording '{rec.name}' (work item {job_id}, task {get_task_name_friendly(job.task)}):\n\n{tb}", msg_box.MsgBox.error)
 
             # clean up when a task failed or was canceled
             if state in [ProcessState.Canceled, ProcessState.Failed]:
@@ -928,15 +509,23 @@ class MainGUI():
         karla_font = importlib.resources.files('glassesValidator.resources.fonts') / 'Karla-Regular.ttf'
         noto_font = importlib.resources.files('glassesValidator.resources.fonts') / 'NotoSans-Regular.ttf'
         mdi_font = [f for f in importlib.resources.files('glassesValidator.resources.fonts').iterdir() if fnmatch.fnmatch(str(f),"*materialdesignicons-webfont*.ttf")][0]
+        fa6_font = hello_imgui.asset_file_full_path("fonts/Font_Awesome_6_Free-Solid-900.otf")
         noto_config = imgui.ImFontConfig()
         noto_config.merge_mode=True
+        fa6_config = imgui.ImFontConfig()
+        fa6_config.merge_mode=True
         mdi_config = imgui.ImFontConfig()
         mdi_config.merge_mode=True
         mdi_config.glyph_offset.y=1*self.size_mult
         karla_range = [0x1, 0x131, 0]
         noto_range = [0x1, 0x10663, 0]
         mdi_range = [0xf0000, 0xf2000, 0]
-        msgbox_range = [0xf02d7, 0xf02d7, 0xf02fc, 0xf02fc, 0xf11ce, 0xf11ce, 0xf0029, 0xf0029, 0]
+        fa6_range = [ifa6.ICON_MIN_FA, ifa6.ICON_MAX_FA, 0]
+        msgbox_range = []
+        for x in [ifa6.ICON_FA_CIRCLE_QUESTION, ifa6.ICON_FA_CIRCLE_INFO, ifa6.ICON_FA_TRIANGLE_EXCLAMATION]:
+            msgbox_range.append(ord(x))
+            msgbox_range.append(ord(x))
+        msgbox_range.append(0)
         size_18 = 18 * font_scaling_factor * self.size_mult
         size_28 = 28 * font_scaling_factor * self.size_mult
         size_69 = 69 * font_scaling_factor * self.size_mult
@@ -949,14 +538,16 @@ class MainGUI():
             imgui.io.fonts.add_font_from_file_ttf(str(karla_path), size_18,                       glyph_ranges_as_int_list=karla_range)
             imgui.io.fonts.add_font_from_file_ttf(str(noto_path),  size_18, font_cfg=noto_config, glyph_ranges_as_int_list=noto_range)
             imgui.io.fonts.add_font_from_file_ttf(str(mdi_path),   size_18, font_cfg=mdi_config,  glyph_ranges_as_int_list=mdi_range)
+            imgui.io.fonts.add_font_from_file_ttf(str(fa6_font),   size_18, font_cfg=fa6_config,  glyph_ranges_as_int_list=fa6_range)
             # Big font + more glyphs
             self.big_font = \
             imgui.io.fonts.add_font_from_file_ttf(str(karla_path), size_28,                       glyph_ranges_as_int_list=karla_range)
             imgui.io.fonts.add_font_from_file_ttf(str(noto_path),  size_28, font_cfg=noto_config, glyph_ranges_as_int_list=noto_range)
             imgui.io.fonts.add_font_from_file_ttf(str(mdi_path),   size_28, font_cfg=mdi_config,  glyph_ranges_as_int_list=mdi_range)
+            imgui.io.fonts.add_font_from_file_ttf(str(fa6_font),   size_28, font_cfg=fa6_config,  glyph_ranges_as_int_list=fa6_range)
             # MsgBox type icons
-            self.icon_font = msgbox.icon_font = \
-            imgui.io.fonts.add_font_from_file_ttf(str(mdi_path),   size_69,                       glyph_ranges_as_int_list=msgbox_range)
+            self.icon_font = msg_box.icon_font = \
+            imgui.io.fonts.add_font_from_file_ttf(str(fa6_font),   size_69,                       glyph_ranges_as_int_list=msgbox_range)
         try:
             pixels = imgui.io.fonts.get_tex_data_as_rgba32()
             tex_height,tex_width = pixels.shape[0:2]
@@ -997,10 +588,10 @@ class MainGUI():
     def try_load_project(self, path: str | pathlib.Path, action = 'loading'):
         if isinstance(path,list):
             if not path:
-                utils.push_popup(msgbox.msgbox, "Project opening error", "A single project directory should be provided. None provided so cannot open.", MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in path])))
+                gui_utils.push_popup(globals, msg_box.msgbox, "Project opening error", "A single project directory should be provided. None provided so cannot open.", msg_box.MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in path])))
                 return
             elif len(path)>1:
-                utils.push_popup(msgbox.msgbox, "Project opening error", f"Only a single project directory should be provided, but {len(path)} were provided. Cannot open multiple projects.", MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in path])))
+                gui_utils.push_popup(globals, msg_box.msgbox, "Project opening error", f"Only a single project directory should be provided, but {len(path)} were provided. Cannot open multiple projects.", msg_box.MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in path])))
                 return
             else:
                 path = path[0]
@@ -1012,14 +603,14 @@ class MainGUI():
                     "󰄬 Yes": lambda: self.load_project(path),
                     "󰜺 No": None
                 }
-                utils.push_popup(msgbox.msgbox, "Create new project", "The selected folder is already a project folder.\nDo you want to open it?", MsgBox.question, buttons)
+                gui_utils.push_popup(globals, msg_box.msgbox, "Create new project", "The selected folder is already a project folder.\nDo you want to open it?", msg_box.MsgBox.question, buttons)
             else:
                 self.load_project(path)
         elif any(path.iterdir()):
             if action=='creating':
-                utils.push_popup(msgbox.msgbox, "Project creation error", "The selected folder is not empty. Cannot be used to create a project folder.", MsgBox.error)
+                gui_utils.push_popup(globals, msg_box.msgbox, "Project creation error", "The selected folder is not empty. Cannot be used to create a project folder.", msg_box.MsgBox.error)
             else:
-                utils.push_popup(msgbox.msgbox, "Project opening error", "The selected folder is not a project folder. Cannot open.", MsgBox.error)
+                gui_utils.push_popup(globals, msg_box.msgbox, "Project opening error", "The selected folder is not a project folder. Cannot open.", msg_box.MsgBox.error)
         else:
             def init_project_and_ask():
                 utils.init_project_folder(path, self.save_imgui_ini)
@@ -1027,7 +618,7 @@ class MainGUI():
                     "󰄬 Yes": lambda: self.load_project(path),
                     "󰜺 No": None
                 }
-                utils.push_popup(msgbox.msgbox, "Open new project", "Do you want to open the new project folder?", MsgBox.question, buttons)
+                gui_utils.push_popup(globals, msg_box.msgbox, "Open new project", "Do you want to open the new project folder?", msg_box.MsgBox.question, buttons)
             if action=='creating':
                 init_project_and_ask()
             else:
@@ -1035,18 +626,18 @@ class MainGUI():
                     "󰄬 Yes": lambda: init_project_and_ask(),
                     "󰜺 No": None
                 }
-                utils.push_popup(msgbox.msgbox, "Create new project", "The selected folder is empty. Do you want to use it as a new project folder?", MsgBox.warn, buttons)
+                gui_utils.push_popup(globals, msg_box.msgbox, "Create new project", "The selected folder is empty. Do you want to use it as a new project folder?", msg_box.MsgBox.warn, buttons)
 
     def drop_callback(self, window: glfw._GLFWwindow, items: list[str]):
         paths = [pathlib.Path(item) for item in items]
-        if globals.popup_stack and isinstance(picker := globals.popup_stack[-1], filepicker.FilePicker):
+        if globals.popup_stack and isinstance(picker := globals.popup_stack[-1], file_picker.FilePicker):
             picker.set_dir(paths)
         else:
             if globals.project_path is not None:
                 callbacks.add_recordings(paths)
             else:
                 if len(paths)!=1 or not (path := paths[0]).is_dir():
-                    utils.push_popup(msgbox.msgbox, "Project opening error", "Only a single project directory should be drag-dropped on the glassesValidator GUI.", MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in paths])))
+                    gui_utils.push_popup(globals, msg_box.msgbox, "Project opening error", "Only a single project directory should be drag-dropped on the glassesValidator GUI.", msg_box.MsgBox.error, more="Dropped paths:\n"+('\n'.join([str(p) for p in paths])))
                 else:
                     # load project
                     self.try_load_project(path)
@@ -1056,7 +647,7 @@ class MainGUI():
 
     def load_project(self, folder: pathlib.Path):
         if globals.project_path==folder:
-            utils.push_popup(msgbox.msgbox, "Project opening error", "The selected folder is the currently opened project folder. Not re-opened.", MsgBox.error)
+            gui_utils.push_popup(globals, msg_box.msgbox, "Project opening error", "The selected folder is the currently opened project folder. Not re-opened.", msg_box.MsgBox.error)
         else:
             self.project_to_load = folder
 
@@ -1071,7 +662,10 @@ class MainGUI():
         self.update_recordings()
         self.init_imgui_glfw(is_reload=is_reload)
         if globals.project_path is not None:
-            self.recording_list = RecordingTable(globals.recordings, globals.selected_recordings)
+            task_column = recording_table.ColumnSpec(2,"󱀩 Status",imgui.TableColumnFlags_.no_resize,draw_recording_status_widget,lambda iid: task_names.index(self.recordings[iid].task.value),"󱀩")
+            self.recording_list = recording_table.RecordingTable(globals.recordings, globals.selected_recordings, [task_column], draw_recordings_context_menu, empty_space_context_menu, remove_recording, False)
+            # add filters
+
 
     def update_recordings(self, subset=None):
         if not subset:
@@ -1174,7 +768,7 @@ class MainGUI():
             any_deleted = False
             for rid in globals.selected_recordings:
                 if globals.selected_recordings[rid]:
-                    async_thread.run(callbacks.remove_recording(globals.recordings[rid]))
+                    remove_recording(rid)
                     any_deleted = True
             if any_deleted:
                 self.recording_list.require_sort = True
@@ -1201,7 +795,7 @@ class MainGUI():
 
             imgui.begin_child("##main_frame", size=(-(sidebar_size+self.scaled(4)),0))
             imgui.begin_child("##recording_list_frame", size=(0,-imgui.get_frame_height_with_spacing()), window_flags=imgui.WindowFlags_.horizontal_scrollbar)
-            self.recording_list.draw()
+            self.recording_list.draw(globals.settings.style_accent, globals.settings.style_bg, globals.settings.style_color_recording_name)
             imgui.end_child()
             imgui.begin_child("##bottombar_frame")
             self.recording_list.filter_box_text, self.recording_list.require_sort = \
@@ -1218,10 +812,10 @@ class MainGUI():
 
         imgui.set_cursor_pos((text_x - _3, text_y))
         if imgui.invisible_button("##watermark_btn", size=(text_size.x+_6, text_size.y+_3)):
-            utils.push_popup(self.draw_about_popup)
+            gui_utils.push_popup(globals, self.draw_about_popup)
         imgui.set_cursor_pos((text_x, text_y))
         imgui.text(text)
-        draw_hover_text(self.watermark_popup_text, text='')
+        gui_utils.draw_hover_text(self.watermark_popup_text, text='')
 
         open_popup_count = 0
         for popup in globals.popup_stack:
@@ -1326,7 +920,7 @@ class MainGUI():
             case 'deploy_pdf':
                 header = "Select folder to put poster pdf in"
                 allow_multiple = False
-        picker = filepicker.DirPicker(header, start_dir=globals.project_path, callback=select_callback, allow_multiple=allow_multiple)
+        picker = file_picker.DirPicker(header, start_dir=globals.project_path, callback=select_callback, allow_multiple=allow_multiple)
         return picker
 
     def draw_unopened_interface(self):
@@ -1349,10 +943,10 @@ class MainGUI():
         imgui.set_cursor_pos_y(but_y)
 
         if imgui.button("󰮝 New project", size=(but_width, but_height)):
-            utils.push_popup(self.get_folder_picker(reason='creating'))
+            gui_utils.push_popup(globals, self.get_folder_picker(reason='creating'))
         imgui.same_line(spacing=10*imgui.style.item_spacing.x)
         if imgui.button("󰷏 Open project", size=(but_width, but_height)):
-            utils.push_popup(self.get_folder_picker())
+            gui_utils.push_popup(globals, self.get_folder_picker())
 
         but_width  = self.scaled(150)
         but_height = self.scaled(50)
@@ -1361,7 +955,7 @@ class MainGUI():
         imgui.set_cursor_pos_x(but_x)
         imgui.set_cursor_pos_y(but_y)
         if imgui.button("󰈦 Get poster pdf", size=(but_width, but_height)):
-            utils.push_popup(self.get_folder_picker(reason='deploy_pdf'))
+            gui_utils.push_popup(globals, self.get_folder_picker(reason='deploy_pdf'))
 
     def draw_select_eye_tracker_popup(self, combo_value, eye_tracker):
         spacing = 2 * imgui.style.item_spacing.x
@@ -1416,7 +1010,7 @@ class MainGUI():
         imgui.same_line(spacing=spacing)
         imgui.dummy((0, 0))
 
-    def draw_select_recordings_to_import(self, recording_list: RecordingTable):
+    def draw_select_recordings_to_import(self, recording_list: recording_table.RecordingTable):
         spacing = 2 * imgui.style.item_spacing.x
         imgui.same_line(spacing=spacing)
 
@@ -1467,7 +1061,7 @@ class MainGUI():
                         imgui.align_text_to_frame_padding()
                         t,ht = get_DataQualityType_explanation(dq)
                         imgui.text(t)
-                        draw_hover_text(ht, text="")
+                        gui_utils.draw_hover_text(ht, text="")
                         imgui.table_next_column()
                         imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
                         _, pop_data['dq_types_sel'][i] = imgui.checkbox(f"##{dq.name}", pop_data['dq_types_sel'][i])
@@ -1549,11 +1143,11 @@ class MainGUI():
             imgui.text(f"OpenGL {'.'.join(str(gl.glGetInteger(num)) for num in (gl.GL_MAJOR_VERSION, gl.GL_MINOR_VERSION))},  󰌠 {OpenGL.__version__}")
             imgui.text(f"GLFW {'.'.join(str(num) for num in glfw.get_version())},  󰌠 {glfw.__version__}")
             imgui.text(f"ImGui {imgui.get_version()},  󰌠 imgui_bundle {imgui_bundle.__version__}")
-            if globals.os is Os.Linux:
+            if pltfrm.os is pltfrm.Os.Linux:
                 imgui.text(f"{platform.system()} {platform.release()}")
-            elif globals.os is Os.Windows:
+            elif pltfrm.os is pltfrm.Os.Windows:
                 imgui.text(f"{platform.system()} {platform.release()} {platform.version()}")
-            elif globals.os is Os.MacOS:
+            elif pltfrm.os is pltfrm.Os.MacOS:
                 imgui.text(f"{platform.system()} {platform.release()}")
             imgui.end_group()
             imgui.same_line()
@@ -1602,10 +1196,10 @@ class MainGUI():
                 if imgui.selectable("󰟀 BibTeX", False)[0]:
                     imgui.set_clipboard_text(globals.reference_bibtex)
                 imgui.end_popup()
-            draw_hover_text(text='', hover_text="Right-click to copy citation to clipboard")
+            gui_utils.draw_hover_text(text='', hover_text="Right-click to copy citation to clipboard")
 
             imgui.pop_text_wrap_pos()
-        return utils.popup("About glassesValidator", popup_content, closable=True, outside=True)
+        return gui_utils.popup("About glassesValidator", popup_content, closable=True, outside=True)
 
     def draw_bottombar(self, filter_box_text: str, require_sort: bool, in_adder_popup: bool = False):
         extra = "_adder" if in_adder_popup else ""
@@ -1636,10 +1230,10 @@ class MainGUI():
                 value += imgui.get_clipboard_text() or ""
             imgui.separator()
             if imgui.selectable("󰋽 More info", False)[0]:
-                utils.push_popup(
-                    msgbox.msgbox, "About the bottom bar",
+                gui_utils.push_popup(globals,
+                    msg_box.msgbox, "About the bottom bar",
                     "This is the filter bar. By typing inside it you can search your recording list inside the eye tracker, name, participant and project properties.",
-                    MsgBox.info
+                    msg_box.MsgBox.info
                 )
             imgui.end_popup()
         if changed or value != filter_box_text:
@@ -1675,7 +1269,7 @@ class MainGUI():
         # 1. see what actions are available
         # 1a. we always have the add recordings option
         text = ["󱃩 Add recordings"]
-        action = [lambda: utils.push_popup(self.get_folder_picker(reason='add_recordings'))]
+        action = [lambda: gui_utils.push_popup(globals, self.get_folder_picker(reason='add_recordings'))]
         hover_text = ["Press the \"󱃩 Add recordings\" button to select a folder or folders\n" \
                       "that will be searched for importable recordings. You will then be able\n"\
                       "to select which of the found recordings you wish to import. You can\n"\
@@ -1756,14 +1350,14 @@ class MainGUI():
             ht = hover_text[-1]
             if len(text)>1:
                 ht += ("\n\n" if hover_text[-1] else "") + "Right click for more options"
-            draw_hover_text(ht,text='')
+            gui_utils.draw_hover_text(ht,text='')
         if len(text)>1 and imgui.begin_popup_context_item(f"##big_button_context"):
             # Right click = more options context menu
             for i in reversed(range(len(text)-1)):
                 if imgui.selectable(text[i], False)[0]:
                     action[i]()
                 if hover_text[i]:
-                    draw_hover_text(hover_text[i],text='')
+                    gui_utils.draw_hover_text(hover_text[i],text='')
             imgui.end_popup()
 
         # the whole settings section
@@ -1853,20 +1447,20 @@ class MainGUI():
             btn_width = right_width*1.5
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󰮝 New project", size=(btn_width, 0)):
-                utils.push_popup(self.get_folder_picker(reason='creating'))
+                gui_utils.push_popup(globals, self.get_folder_picker(reason='creating'))
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󰷏 Open project", size=(btn_width, 0)):
-                utils.push_popup(self.get_folder_picker())
+                gui_utils.push_popup(globals, self.get_folder_picker())
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󱂀 Deploy config", size=(btn_width, 0)):
                 async_thread.run(callbacks.deploy_config(globals.project_path, globals.settings.config_dir))
-            draw_hover_text(f"Deploys a default glassesValidator to the '{globals.settings.config_dir}' folder in the open project. You can edit this configuration, which you may need to do, e.g., in case you used a different viewing distance, or different marker or gaze target layout.", text="")
+            gui_utils.draw_hover_text(f"Deploys a default glassesValidator to the '{globals.settings.config_dir}' folder in the open project. You can edit this configuration, which you may need to do, e.g., in case you used a different viewing distance, or different marker or gaze target layout.", text="")
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󰮞 Close project", size=(btn_width, 0)):
                 self.unload_project()
             imgui.set_cursor_pos_x((width-btn_width)/2)
             if imgui.button("󰈦 Get poster pdf", size=(btn_width, 0)):
-                utils.push_popup(self.get_folder_picker(reason='deploy_pdf'))
+                gui_utils.push_popup(globals, self.get_folder_picker(reason='deploy_pdf'))
 
             # continue table
             self.start_settings_section("Project", right_width, collapsible = False)
@@ -1900,7 +1494,7 @@ class MainGUI():
                             text = 'Configuration not deployed yet'
                     else:
                         text = 'Configuration directory cannot be an empty value'
-                    draw_tooltip(text)
+                    gui_utils.draw_tooltip(text)
 
                 imgui.table_next_row()
                 imgui.table_next_column()
@@ -1929,7 +1523,7 @@ class MainGUI():
                 imgui.align_text_to_frame_padding()
                 imgui.text("Copy scene video\non import:")
                 imgui.same_line()
-                draw_hover_text(
+                gui_utils.draw_hover_text(
                     "If not selected, scene video files are not copied into the recording's "
                     "working directory when a recording is imported. Instead the video will "
                     "be loaded from the recording's source directory during processing."
@@ -1959,7 +1553,7 @@ class MainGUI():
                 imgui.align_text_to_frame_padding()
                 imgui.text("Workers:")
                 imgui.same_line()
-                draw_hover_text(
+                gui_utils.draw_hover_text(
                     "Each recording is processed by a worker and each worker can handle 1 "
                     "recording at a time. Having more workers means more recordings are processed "
                     "simultaneously, but having too many will not provide any gain and might freeze "
@@ -1982,7 +1576,7 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            draw_hover_text(
+            gui_utils.draw_hover_text(
                     "Select here the types of data quality you would like to calculate "
                     "for each of the recordings. When none selected, a good default is "
                     "used for each recording. When none of the selected types is available, "
@@ -1997,7 +1591,7 @@ class MainGUI():
             imgui.align_text_to_frame_padding()
             t,ht = get_DataQualityType_explanation(DataQualityType.viewpos_vidpos_homography)
             imgui.text(t+':')
-            draw_hover_text(ht, text="")
+            gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             changed, value = imgui.checkbox("##dq_use_viewpos_vidpos_homography", set.dq_use_viewpos_vidpos_homography)
@@ -2010,7 +1604,7 @@ class MainGUI():
             imgui.align_text_to_frame_padding()
             t,ht = get_DataQualityType_explanation(DataQualityType.pose_vidpos_homography)
             imgui.text(t+':')
-            draw_hover_text(ht, text="")
+            gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             changed, value = imgui.checkbox("##dq_use_pose_vidpos_homography", set.dq_use_pose_vidpos_homography)
@@ -2023,7 +1617,7 @@ class MainGUI():
             imgui.align_text_to_frame_padding()
             t,ht = get_DataQualityType_explanation(DataQualityType.pose_vidpos_ray)
             imgui.text(t+':')
-            draw_hover_text(ht, text="")
+            gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             changed, value = imgui.checkbox("##dq_use_pose_vidpos_ray", set.dq_use_pose_vidpos_ray)
@@ -2036,7 +1630,7 @@ class MainGUI():
             imgui.align_text_to_frame_padding()
             t,ht = get_DataQualityType_explanation(DataQualityType.pose_world_eye)
             imgui.text(t+':')
-            draw_hover_text(ht, text="")
+            gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             changed, value = imgui.checkbox("##dq_use_pose_world_eye", set.dq_use_pose_world_eye)
@@ -2049,7 +1643,7 @@ class MainGUI():
             imgui.align_text_to_frame_padding()
             t,ht = get_DataQualityType_explanation(DataQualityType.pose_left_eye)
             imgui.text(t+':')
-            draw_hover_text(ht, text="")
+            gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             changed, value = imgui.checkbox("##dq_use_pose_left_eye", set.dq_use_pose_left_eye)
@@ -2066,7 +1660,7 @@ class MainGUI():
             imgui.align_text_to_frame_padding()
             t,ht = get_DataQualityType_explanation(DataQualityType.pose_right_eye)
             imgui.text(t+':')
-            draw_hover_text(ht, text="")
+            gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             changed, value = imgui.checkbox("##dq_use_pose_right_eye", set.dq_use_pose_right_eye)
@@ -2083,7 +1677,7 @@ class MainGUI():
             imgui.align_text_to_frame_padding()
             t,ht = get_DataQualityType_explanation(DataQualityType.pose_left_right_avg)
             imgui.text(t+':')
-            draw_hover_text(ht, text="")
+            gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             changed, value = imgui.checkbox("##dq_use_pose_left_right_avg", set.dq_use_pose_left_right_avg)
@@ -2101,10 +1695,11 @@ class MainGUI():
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
             imgui.text("Report data loss on\nvalidation poster:")
-            draw_hover_text("If selected, the data quality report will include data loss during "
-                            "the episode selected for each target on the validation poster. This is "
-                            "NOT the data loss of the whole recording and thus not what you want "
-                            "to report in your paper.", text="")
+            gui_utils.draw_hover_text(
+                "If selected, the data quality report will include data loss during "
+                "the episode selected for each target on the validation poster. This is "
+                "NOT the data loss of the whole recording and thus not what you want "
+                "to report in your paper.", text="")
             imgui.table_next_column()
             imgui.dummy((1,imgui.calc_text_size('').y/2))
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
@@ -2123,7 +1718,7 @@ class MainGUI():
             imgui.align_text_to_frame_padding()
             imgui.text("Use global shift:")
             imgui.same_line()
-            draw_hover_text(
+            gui_utils.draw_hover_text(
                 "If selected, for each validation interval the mean position will be removed from the gaze data and the targets, removing any overall shift of the data. This improves the matching of fixations to targets when there is a significant overall offset in the data. It may fail (backfire) if there are data samples far outside the range of the validation targets, or if there is no data for some targets."
             )
             imgui.table_next_column()
@@ -2138,7 +1733,7 @@ class MainGUI():
             imgui.align_text_to_frame_padding()
             imgui.text("Matching distance factor:")
             imgui.same_line()
-            draw_hover_text(
+            gui_utils.draw_hover_text(
                 "Factor for determining distance limit when assigning fixation points to validation targets. If for a given target the closest fixation point is further away than <factor>*[minimum intertarget distance], then no fixation point will be assigned to this target, i.e., it will not be matched to any fixation point. Set to a large value to essentially disable."
             )
             imgui.table_next_column()
@@ -2170,7 +1765,7 @@ class MainGUI():
             imgui.align_text_to_frame_padding()
             imgui.text("Vsync ratio:")
             imgui.same_line()
-            draw_hover_text(
+            gui_utils.draw_hover_text(
                 "Vsync means that the framerate should be synced to the one your monitor uses. The ratio modifies this behavior. "
                 "A ratio of 1:0 means uncapped framerate, while all other numbers indicate the ratio between screen and app FPS. "
                 "For example a ratio of 1:2 means the app refreshes every 2nd monitor frame, resulting in half the framerate."
@@ -2187,7 +1782,7 @@ class MainGUI():
             imgui.align_text_to_frame_padding()
             imgui.text("Render if unfocused:")
             imgui.same_line()
-            draw_hover_text(
+            gui_utils.draw_hover_text(
                 "glassesValidator renders its interface using ImGui and OpenGL and this means it has to render the whole interface up "
                 "to hundreds of times per second (look at the framerate below). This process is as optimized as possible but it "
                 "will inevitably consume some CPU and GPU resources. If you absolutely need the performance you can disable this "
@@ -2241,7 +1836,7 @@ class MainGUI():
                 imgui.align_text_to_frame_padding()
                 imgui.text("Color recording name:")
                 imgui.same_line()
-                draw_hover_text(
+                gui_utils.draw_hover_text(
                     "If selected, recording name will be drawn in the accent color instead of the text color."
                 )
                 imgui.table_next_column()

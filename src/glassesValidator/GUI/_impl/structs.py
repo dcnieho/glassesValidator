@@ -1,7 +1,9 @@
 import dataclasses
+import typing
 from enum import Enum, auto
 
 from glassesTools.utils import AutoName
+from glassesTools.gui.recording_table import Filter as BaseFilter
 from glassesTools.recording import Recording as gt_rec
 
 from ...utils import Task
@@ -12,6 +14,7 @@ class Recording(gt_rec):
     # two more members needed for just the GUI
     id  : int           = None
     task: Task          = Task.Unknown
+
 
 class CounterContext:
     _count = -1     # so that first number is 0
@@ -55,12 +58,6 @@ class DefaultStyleLight:
     text_dim      = "#999999"
 
 
-class FilterMode(AutoName):
-    Choose      = auto()
-    Eye_Tracker = auto()
-    Task_State  = auto()
-filter_mode_names = [x.value for x in FilterMode]
-
 # summary version of task state, for client presentation
 class TaskSimplified(AutoName):
     Not_Imported    = auto()
@@ -88,27 +85,29 @@ def get_simplified_task_state(task: Task):
         case _: # includes Task.Unknown, Task.Make_Video
             return TaskSimplified.Unknown
 
+
+class FilterMode(AutoName):
+    Choose      = auto()
+    Eye_Tracker = auto()
+    Task_State  = auto()
+filter_mode_names = [x.value for x in FilterMode]
+
 @dataclasses.dataclass
-class Filter:
+class Filter(BaseFilter):
+    fun: typing.Callable[[gt_rec], bool] = dataclasses.field(init=False)
     mode: FilterMode
-    invert = False
     match = None
 
     def __post_init__(self):
-        self.id = id(self)
-
-
-class Os(Enum):
-    Windows = auto()
-    MacOS   = auto()
-    Linux   = auto()
-
-
-class MsgBox(Enum):
-    question= auto()
-    info    = auto()
-    warn    = auto()
-    error   = auto()
+        super().__post_init__()
+        # set fun
+        match self.mode:
+            case FilterMode.Eye_Tracker:
+                self.fun = lambda rec: rec.eye_tracker == self.match
+            case FilterMode.Task_State:
+                self.fun = lambda rec: get_simplified_task_state(rec.task) == self.match
+            case _:
+                raise NotImplementedError()
 
 
 @dataclasses.dataclass

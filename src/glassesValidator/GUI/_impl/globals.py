@@ -1,6 +1,8 @@
 ﻿import pathlib
 import sys
 
+from glassesTools import platform
+
 from ... import __version__
 version           = __version__
 pypi_page         = "https://pypi.org/project/glassesValidator/"
@@ -20,23 +22,17 @@ reference_bibtex  = r"""@article{niehorster2023glassesValidator,
 """
 
 
-from .structs import CounterContext, JobDescription, Os, Recording, Settings
+from .structs import CounterContext, JobDescription, Recording, Settings
 from .gui import MainGUI
 
 frozen = getattr(sys, "frozen", False)
-if sys.platform.startswith("win"):
-    os = Os.Windows
-    data_path = "AppData/Roaming/glassesValidator"
-elif sys.platform.startswith("linux"):
-    os = Os.Linux
-    data_path = ".config/glassesValidator"
-elif sys.platform.startswith("darwin"):
-    os = Os.MacOS
-    data_path = "Library/Application Support/glassesValidator"
-else:
-    print("Your system is not officially supported at the moment!\n"
-          "You can let me know on GitHub, or you can try porting yourself ;)")
-    sys.exit(1)
+match platform.os:
+    case platform.Os.Windows:
+        data_path = "AppData/Roaming/glassesValidator"
+    case platform.Os.Linux:
+        data_path = ".config/glassesValidator"
+    case platform.Os.MacOS:
+        data_path = "Library/Application Support/glassesValidator"
 
 home = pathlib.Path.home()
 data_path = home / data_path

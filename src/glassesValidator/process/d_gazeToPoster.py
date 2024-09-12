@@ -1,8 +1,8 @@
 import pathlib
 import threading
 
-from glassesTools import annotation, gaze_headref, gaze_worldref, ocv, plane, recording, worldgaze_gui
-from glassesTools.video_gui import GUI
+from glassesTools import annotation, gaze_headref, gaze_worldref, ocv, plane, recording
+from glassesTools.gui import video_player, worldgaze
 
 from .. import config
 from .. import utils
@@ -20,7 +20,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
 
     # if we need gui, we run processing in a separate thread (GUI needs to be on the main thread for OSX, see https://github.com/pthom/hello_imgui/issues/33)
     if show_visualization:
-        gui = GUI(use_thread = False)
+        gui = video_player.GUI(use_thread = False)
         frame_win_id = gui.add_window(working_dir.name)
         gui.set_show_controls(True)
         gui.set_show_play_percentage(True)
@@ -65,7 +65,7 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, show_on
     in_video = recording.Recording.load_from_json(working_dir).get_scene_video_path()
     validationSetup = config.get_validation_setup(config_dir)
     poster          = config.poster.Poster(config_dir, validationSetup)
-    worldgaze_gui.show_visualization(
+    worldgaze.show_visualization(
         in_video, working_dir / 'frameTimestamps.tsv', working_dir / "calibration.xml",
         {'poster': poster}, {'poster': poses}, head_gazes, {'poster': plane_gazes}, {annotation.Event.Validate: analyzeFrames},
         gui, frame_win_id, show_poster, show_only_intervals, 8
