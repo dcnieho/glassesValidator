@@ -43,8 +43,8 @@ def draw_recording_status_widget(rec: Recording):
         job = globals.coding_job_queue[rec.id]
         job_state = ProcessState.Pending
 
+    symbol_size = imgui.calc_text_size(ifa6.ICON_FA_CIRCLE)
     if job_state:
-        symbol_size = imgui.calc_text_size("󰲞")
         if job_state==ProcessState.Pending:
             radius    = symbol_size.x / 2
             thickness = symbol_size.x / 3 / 2.5 # 3 is number of dots, 2.5 is nextItemKoeff in imspinner.spinner_bounce_dots()
@@ -59,21 +59,31 @@ def draw_recording_status_widget(rec: Recording):
         match get_simplified_task_state(rec.task):
             # before stage 1
             case TaskSimplified.Not_Imported:
-                imgui.text_colored((0.5000, 0.5000, 0.5000, 1.), "󰲞")
+                color = (0.5000, 0.5000, 0.5000, 1.)
+                symb = '0'
             # after stage 1
             case TaskSimplified.Imported:
-                imgui.text_colored((0.3333, 0.6167, 0.3333, 1.), "󰲠")
+                color = (0.3333, 0.6167, 0.3333, 1.)
+                symb = '1'
             # after stage 2 / during stage 3
             case TaskSimplified.Coded:
-                imgui.text_colored((0.1667, 0.7333, 0.1667, 1.), "󰲢")
+                color = (0.1667, 0.7333, 0.1667, 1.)
+                symb = '2'
             # after stage 3:
             case TaskSimplified.Processed:
-                imgui.text_colored((0.0000, 0.8500, 0.0000, 1.), "󰲤")
+                color = (0.0000, 0.8500, 0.0000, 1.)
+                symb = '3'
             # other
-            case TaskSimplified.Unknown:
-                imgui.text_colored((0.8700, 0.2000, 0.2000, 1.), "󰀨")
-            case _:
-                imgui.text("")
+            case _: # includes TaskSimplified.Unknown
+                color = (0.8700, 0.2000, 0.2000, 1.)
+                symb = '!'
+        cur_pos = imgui.get_cursor_pos()
+        imgui.text_colored(color, ifa6.ICON_FA_CIRCLE)
+        back_size = imgui.calc_text_size(ifa6.ICON_FA_CIRCLE)
+        symb_size = imgui.calc_text_size(symb)
+        sz_diff   = back_size-symb_size
+        imgui.set_cursor_pos((cur_pos.x+sz_diff.x/2, cur_pos.y+sz_diff.y/2))
+        imgui.text_colored(globals.settings.style_bg, symb)
         hover_text = rec.task.value
 
     gui_utils.draw_hover_text(hover_text, text='')
@@ -152,39 +162,39 @@ def draw_recordings_context_menu(_: int) -> bool:
     if any(has_no_job):
         # before stage 1
         not_imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Not_Imported]
-        draw_recording_process_button(not_imported_ids, label="󰼛 Import", action=Task.Imported)
+        draw_recording_process_button(not_imported_ids, label=ifa6.ICON_FA_FILE_IMPORT+" Import", action=Task.Imported)
         # after stage 1
         imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Imported]
-        draw_recording_process_button(imported_ids, label="󰼛 Code validation interval(s)", action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
+        draw_recording_process_button(imported_ids, label=ifa6.ICON_FA_PEN_TO_SQUARE+" Code validation interval(s)", action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
         # already coded, recode
         recoded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task) in [TaskSimplified.Coded, TaskSimplified.Processed]]
-        draw_recording_process_button(recoded_ids, label="󰑐 Edit validation interval(s)", action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
+        draw_recording_process_button(recoded_ids, label=ifa6.ICON_FA_PEN_TO_SQUARE+" Edit validation interval(s)", action=Task.Coded, should_chain_next=globals.settings.continue_process_after_code)
         # after stage 2 / during stage 3
         coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Coded]
         # NB: don't send action, so that callback code figures out where we we left off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
-        draw_recording_process_button(coded_ids, label="󰼛 Calculate data quality", should_chain_next=True)
+        draw_recording_process_button(coded_ids, label=ifa6.ICON_FA_PLAY+" Calculate data quality", should_chain_next=True)
         # already fully done, recompute
         processed_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
-        draw_recording_process_button(processed_ids, label="󰑐 Recalculate data quality", action=Task.Markers_Detected, should_chain_next=True)
+        draw_recording_process_button(processed_ids, label=ifa6.ICON_FA_ROTATE_RIGHT+" Recalculate data quality", action=Task.Markers_Detected, should_chain_next=True)
         # make video, always possible
         video_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)!=TaskSimplified.Not_Imported]
-        draw_recording_process_button(video_ids, label="󰯜 Export scene video", action=Task.Make_Video)
+        draw_recording_process_button(video_ids, label=ifa6.ICON_FA_VIDEO+" Export scene video", action=Task.Make_Video)
     if any(has_job):
-        draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label="󱠮 Cancel job")
+        draw_recording_process_cancel_button([id for id,q in zip(ids,has_job) if q], label=ifa6.ICON_FA_CIRCLE_XMARK+" Cancel job")
 
     # if any fully done, offer export
     processed_ids = [id for id in ids if get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
-    draw_recording_export_button(processed_ids, label="󱎻 Export data quality")
+    draw_recording_export_button(processed_ids, label=ifa6.ICON_FA_FILE_EXPORT+" Export data quality")
 
     if len(ids)==1:
-        draw_recording_open_folder_button(globals.recordings[ids[0]], label="󰷏 Open Working Folder")
+        draw_recording_open_folder_button(globals.recordings[ids[0]], label=ifa6.ICON_FA_FOLDER_OPEN+" Open Working Folder")
     work_dir_ids = [id for id in ids if globals.recordings[id].working_directory.is_dir()]
     if work_dir_ids:
-        draw_recording_remove_folder_button(work_dir_ids, label="󰮞 Remove Working Folder")
+        draw_recording_remove_folder_button(work_dir_ids, label=ifa6.ICON_FA_FOLDER_MINUS+" Remove Working Folder")
     if len(ids)==1:
-        draw_recording_open_folder_button(globals.recordings[ids[0]], label="󰷏 Open Source Folder", source_dir=True)
+        draw_recording_open_folder_button(globals.recordings[ids[0]], label=ifa6.ICON_FA_FOLDER_OPEN+" Open Source Folder", source_dir=True)
 
-    require_sort = draw_recording_remove_button(ids, label="󰩺 Remove")
+    require_sort = draw_recording_remove_button(ids, label=ifa6.ICON_FA_TRASH_CAN+" Remove")
     return require_sort
 
 def empty_space_context_menu():
@@ -505,20 +515,10 @@ class MainGUI():
         fb_w, fb_h = glfw.get_framebuffer_size(self.window)
         font_scaling_factor = max(fb_w / win_w, fb_h / win_h)
         imgui.io.font_global_scale = 1 / font_scaling_factor
-        karla_font = importlib.resources.files('glassesValidator.resources.fonts') / 'Karla-Regular.ttf'
-        noto_font = importlib.resources.files('glassesValidator.resources.fonts') / 'NotoSans-Regular.ttf'
-        mdi_font = [f for f in importlib.resources.files('glassesValidator.resources.fonts').iterdir() if fnmatch.fnmatch(str(f),"*materialdesignicons-webfont*.ttf")][0]
+        base_font = hello_imgui.asset_file_full_path("fonts/Roboto/Roboto-Regular.ttf")
         fa6_font = hello_imgui.asset_file_full_path("fonts/Font_Awesome_6_Free-Solid-900.otf")
-        noto_config = imgui.ImFontConfig()
-        noto_config.merge_mode=True
         fa6_config = imgui.ImFontConfig()
         fa6_config.merge_mode=True
-        mdi_config = imgui.ImFontConfig()
-        mdi_config.merge_mode=True
-        mdi_config.glyph_offset.y=1*self.size_mult
-        karla_range = [0x1, 0x131, 0]
-        noto_range = [0x1, 0x10663, 0]
-        mdi_range = [0xf0000, 0xf2000, 0]
         fa6_range = [ifa6.ICON_MIN_FA, ifa6.ICON_MAX_FA, 0]
         msgbox_range = []
         for x in [ifa6.ICON_FA_CIRCLE_QUESTION, ifa6.ICON_FA_CIRCLE_INFO, ifa6.ICON_FA_TRIANGLE_EXCLAMATION]:
@@ -528,25 +528,16 @@ class MainGUI():
         size_18 = 18 * font_scaling_factor * self.size_mult
         size_28 = 28 * font_scaling_factor * self.size_mult
         size_69 = 69 * font_scaling_factor * self.size_mult
-        # Default font + more glyphs + icons
-        with (
-            importlib.resources.as_file(karla_font) as karla_path,
-            importlib.resources.as_file(noto_font) as noto_path,
-            importlib.resources.as_file(mdi_font) as mdi_path
-        ):
-            imgui.io.fonts.add_font_from_file_ttf(str(karla_path), size_18,                       glyph_ranges_as_int_list=karla_range)
-            imgui.io.fonts.add_font_from_file_ttf(str(noto_path),  size_18, font_cfg=noto_config, glyph_ranges_as_int_list=noto_range)
-            imgui.io.fonts.add_font_from_file_ttf(str(mdi_path),   size_18, font_cfg=mdi_config,  glyph_ranges_as_int_list=mdi_range)
-            imgui.io.fonts.add_font_from_file_ttf(str(fa6_font),   size_18, font_cfg=fa6_config,  glyph_ranges_as_int_list=fa6_range)
-            # Big font + more glyphs
-            self.big_font = \
-            imgui.io.fonts.add_font_from_file_ttf(str(karla_path), size_28,                       glyph_ranges_as_int_list=karla_range)
-            imgui.io.fonts.add_font_from_file_ttf(str(noto_path),  size_28, font_cfg=noto_config, glyph_ranges_as_int_list=noto_range)
-            imgui.io.fonts.add_font_from_file_ttf(str(mdi_path),   size_28, font_cfg=mdi_config,  glyph_ranges_as_int_list=mdi_range)
-            imgui.io.fonts.add_font_from_file_ttf(str(fa6_font),   size_28, font_cfg=fa6_config,  glyph_ranges_as_int_list=fa6_range)
-            # MsgBox type icons
-            self.icon_font = msg_box.icon_font = \
-            imgui.io.fonts.add_font_from_file_ttf(str(fa6_font),   size_69,                       glyph_ranges_as_int_list=msgbox_range)
+        # Default font + icons
+        imgui.io.fonts.add_font_from_file_ttf(str(base_font), size_18)
+        imgui.io.fonts.add_font_from_file_ttf(str(fa6_font),  size_18, font_cfg=fa6_config,  glyph_ranges_as_int_list=fa6_range)
+        # Big font + more glyphs
+        self.big_font = \
+        imgui.io.fonts.add_font_from_file_ttf(str(base_font), size_28)
+        imgui.io.fonts.add_font_from_file_ttf(str(fa6_font),  size_28, font_cfg=fa6_config,  glyph_ranges_as_int_list=fa6_range)
+        # MsgBox type icons
+        self.icon_font = msg_box.icon_font = \
+        imgui.io.fonts.add_font_from_file_ttf(str(fa6_font),  size_69,                       glyph_ranges_as_int_list=msgbox_range)
         try:
             pixels = imgui.io.fonts.get_tex_data_as_rgba32()
             tex_height,tex_width = pixels.shape[0:2]
@@ -599,8 +590,8 @@ class MainGUI():
         if utils.is_project_folder(path):
             if action=='creating':
                 buttons = {
-                    "󰄬 Yes": lambda: self.load_project(path),
-                    "󰜺 No": None
+                    ifa6.ICON_FA_CHECK+" Yes": lambda: self.load_project(path),
+                    ifa6.ICON_FA_CIRCLE_XMARK+" No": None
                 }
                 gui_utils.push_popup(globals, msg_box.msgbox, "Create new project", "The selected folder is already a project folder.\nDo you want to open it?", msg_box.MsgBox.question, buttons)
             else:
@@ -614,16 +605,16 @@ class MainGUI():
             def init_project_and_ask():
                 utils.init_project_folder(path, self.save_imgui_ini)
                 buttons = {
-                    "󰄬 Yes": lambda: self.load_project(path),
-                    "󰜺 No": None
+                    ifa6.ICON_FA_CHECK+" Yes": lambda: self.load_project(path),
+                    ifa6.ICON_FA_CIRCLE_XMARK+" No": None
                 }
                 gui_utils.push_popup(globals, msg_box.msgbox, "Open new project", "Do you want to open the new project folder?", msg_box.MsgBox.question, buttons)
             if action=='creating':
                 init_project_and_ask()
             else:
                 buttons = {
-                    "󰄬 Yes": lambda: init_project_and_ask(),
-                    "󰜺 No": None
+                    ifa6.ICON_FA_CHECK+" Yes": lambda: init_project_and_ask(),
+                    ifa6.ICON_FA_CIRCLE_XMARK+" No": None
                 }
                 gui_utils.push_popup(globals, msg_box.msgbox, "Create new project", "The selected folder is empty. Do you want to use it as a new project folder?", msg_box.MsgBox.warn, buttons)
 
@@ -661,10 +652,8 @@ class MainGUI():
         self.update_recordings()
         self.init_imgui_glfw(is_reload=is_reload)
         if globals.project_path is not None:
-            task_column = recording_table.ColumnSpec(2,"󱀩 Status",imgui.TableColumnFlags_.no_resize,draw_recording_status_widget,lambda iid: task_names.index(self.recordings[iid].task.value),"󱀩")
-            self.recording_list = recording_table.RecordingTable(globals.recordings, globals.selected_recordings, [task_column], draw_recordings_context_menu, empty_space_context_menu, remove_recording, False)
-            # add filters
-
+            task_column = recording_table.ColumnSpec(2,ifa6.ICON_FA_SQUARE_POLL_VERTICAL+" Status",imgui.TableColumnFlags_.no_resize,draw_recording_status_widget,lambda iid: task_names.index(self.recordings[iid].task.value),"󱀩")
+            self.recording_list = recording_table.RecordingTable(globals.recordings, globals.selected_recordings, [task_column], draw_recordings_context_menu, empty_space_context_menu, remove_recording)
 
     def update_recordings(self, subset=None):
         if not subset:
@@ -920,6 +909,7 @@ class MainGUI():
                 header = "Select folder to put poster pdf in"
                 allow_multiple = False
         picker = file_picker.DirPicker(header, start_dir=globals.project_path, callback=select_callback, allow_multiple=allow_multiple)
+        picker.set_draw_parameters(globals.settings.style_accent, globals.settings.style_bg)
         return picker
 
     def draw_unopened_interface(self):
@@ -941,10 +931,10 @@ class MainGUI():
         imgui.set_cursor_pos_x(but_x)
         imgui.set_cursor_pos_y(but_y)
 
-        if imgui.button("󰮝 New project", size=(but_width, but_height)):
+        if imgui.button(ifa6.ICON_FA_FOLDER_PLUS+" New project", size=(but_width, but_height)):
             gui_utils.push_popup(globals, self.get_folder_picker(reason='creating'))
         imgui.same_line(spacing=10*imgui.style.item_spacing.x)
-        if imgui.button("󰷏 Open project", size=(but_width, but_height)):
+        if imgui.button(ifa6.ICON_FA_FOLDER_OPEN+" Open project", size=(but_width, but_height)):
             gui_utils.push_popup(globals, self.get_folder_picker())
 
         but_width  = self.scaled(150)
@@ -953,15 +943,14 @@ class MainGUI():
         but_y = avail.y/4*3 - but_height / 2
         imgui.set_cursor_pos_x(but_x)
         imgui.set_cursor_pos_y(but_y)
-        if imgui.button("󰈦 Get poster pdf", size=(but_width, but_height)):
+        if imgui.button(ifa6.ICON_FA_FILE_PDF+" Get poster pdf", size=(but_width, but_height)):
             gui_utils.push_popup(globals, self.get_folder_picker(reason='deploy_pdf'))
 
     def draw_select_eye_tracker_popup(self, combo_value, eye_tracker):
         spacing = 2 * imgui.style.item_spacing.x
-        icon = "󰋗"
         color = (0.45, 0.09, 1.00, 1.00)
         imgui.push_font(self.icon_font)
-        imgui.text_colored(color, icon)
+        imgui.text_colored(color, ifa6.ICON_FA_CIRCLE_INFO)
         imgui.pop_font()
         imgui.same_line(spacing=spacing)
 
@@ -987,10 +976,9 @@ class MainGUI():
 
     def draw_preparing_recordings_for_import_popup(self, eye_tracker):
         spacing = 2 * imgui.style.item_spacing.x
-        icon = "󰋗"
         color = (0.45, 0.09, 1.00, 1.00)
         imgui.push_font(self.icon_font)
-        imgui.text_colored(color, icon)
+        imgui.text_colored(color, ifa6.ICON_FA_CIRCLE_INFO)
         imgui.pop_font()
         imgui.same_line(spacing=spacing)
 
@@ -1018,7 +1006,7 @@ class MainGUI():
 
         imgui.begin_child("##main_frame_adder", size=(self.scaled(800),min(self.scaled(300),(len(recording_list.recordings)+2)*imgui.get_frame_height_with_spacing())))
         imgui.begin_child("##recording_list_frame_adder", size=(0,-imgui.get_frame_height_with_spacing()), window_flags=imgui.WindowFlags_.horizontal_scrollbar)
-        recording_list.draw()
+        recording_list.draw(globals.settings.style_accent, globals.settings.style_bg, globals.settings.style_color_recording_name)
         imgui.end_child()
         imgui.begin_child("##bottombar_frame_adder")
         recording_list.filter_box_text, recording_list.require_sort = \
@@ -1124,11 +1112,12 @@ class MainGUI():
     def draw_about_popup(self):
         def popup_content():
             _60 = self.scaled(60)
-            _230 = self.scaled(230)
+            _200 = self.scaled(200)
+            width = self.scaled(530)
             imgui.begin_group()
-            imgui.dummy((_60, _230))
+            imgui.dummy((_60, _200))
             imgui.same_line()
-            _general_imgui.icon_texture.render(_230, _230, rounding=globals.settings.style_corner_radius)
+            _general_imgui.icon_texture.render(_200, _200, rounding=globals.settings.style_corner_radius)
             imgui.same_line()
             imgui.begin_group()
             imgui.push_font(self.big_font)
@@ -1138,33 +1127,33 @@ class MainGUI():
             imgui.text("Made by Diederick C. Niehorster")
             imgui.text("")
             imgui.text(f"glassesTools {glassesTools.version.__version__}")
-            imgui.text(f"󰌠 Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
-            imgui.text(f"OpenGL {'.'.join(str(gl.glGetInteger(num)) for num in (gl.GL_MAJOR_VERSION, gl.GL_MINOR_VERSION))},  󰌠 {OpenGL.__version__}")
-            imgui.text(f"GLFW {'.'.join(str(num) for num in glfw.get_version())},  󰌠 {glfw.__version__}")
-            imgui.text(f"ImGui {imgui.get_version()},  󰌠 imgui_bundle {imgui_bundle.__version__}")
+            imgui.text(f"Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+            imgui.text(f"OpenGL {'.'.join(str(gl.glGetInteger(num)) for num in (gl.GL_MAJOR_VERSION, gl.GL_MINOR_VERSION))}, PyOpenGL {OpenGL.__version__}")
+            imgui.text(f"GLFW {'.'.join(str(num) for num in glfw.get_version())}, pyGLFW {glfw.__version__}")
+            imgui.text(f"ImGui {imgui.get_version()}, imgui_bundle {imgui_bundle.__version__}")
             if pltfrm.os is pltfrm.Os.Linux:
                 imgui.text(f"{platform.system()} {platform.release()}")
             elif pltfrm.os is pltfrm.Os.Windows:
-                imgui.text(f"{platform.system()} {platform.release()} {platform.version()}")
+                rel = 11 if sys.getwindowsversion().build>22000 else platform.release()
+                imgui.text(f"{platform.system()} {rel} {platform.win32_edition()} ({platform.version()})")
             elif pltfrm.os is pltfrm.Os.MacOS:
                 imgui.text(f"{platform.system()} {platform.release()}")
             imgui.end_group()
             imgui.same_line()
-            imgui.dummy((_60, _230))
+            imgui.dummy((width-imgui.get_cursor_pos_x(), _200))
             imgui.end_group()
             imgui.spacing()
-            width = imgui.get_content_region_avail().x
             btn_tot_width = (width - 2 * imgui.style.item_spacing.x)
-            if imgui.button("󰌠 PyPI", size=(btn_tot_width/6, 0)):
+            if imgui.button("PyPI", size=(btn_tot_width/6, 0)):
                 callbacks.open_url(globals.pypi_page)
             imgui.same_line()
-            if imgui.button("󱓷 Paper", size=(btn_tot_width/6, 0)):
+            if imgui.button("Paper", size=(btn_tot_width/6, 0)):
                 callbacks.open_url(globals.paper_page)
             imgui.same_line()
-            if imgui.button("󰊤 GitHub repo", size=(btn_tot_width/3, 0)):
+            if imgui.button("GitHub repo", size=(btn_tot_width/3, 0)):
                 callbacks.open_url(globals.github_page)
             imgui.same_line()
-            if imgui.button("󰖟 Researcher homepage", size=(btn_tot_width/3, 0)):
+            if imgui.button("Researcher homepage", size=(btn_tot_width/3, 0)):
                 callbacks.open_url(globals.developer_page)
 
             imgui.spacing()
@@ -1190,9 +1179,9 @@ class MainGUI():
             imgui.text(globals.reference)
             if imgui.begin_popup_context_item(f"##refresh_context"):
                 # Right click = more options context menu
-                if imgui.selectable("󱓷 APA", False)[0]:
+                if imgui.selectable(ifa6.ICON_FA_BOOK_OPEN+" APA", False)[0]:
                     imgui.set_clipboard_text(globals.reference)
-                if imgui.selectable("󰟀 BibTeX", False)[0]:
+                if imgui.selectable(ifa6.ICON_FA_COMPUTER+" BibTeX", False)[0]:
                     imgui.set_clipboard_text(globals.reference_bibtex)
                 imgui.end_popup()
             gui_utils.draw_hover_text(text='', hover_text="Right-click to copy citation to clipboard")
@@ -1225,10 +1214,10 @@ class MainGUI():
         _, value = imgui.input_text_with_hint(f"##bottombar{extra}", "Start typing to filter the list", filter_box_text, flags=imgui.InputTextFlags_.enter_returns_true)
         if imgui.begin_popup_context_item(f"##bottombar_context{extra}"):
             # Right click = more options context menu
-            if imgui.selectable("󰆒 Paste", False)[0]:
+            if imgui.selectable(ifa6.ICON_FA_CLIPBOARD+" Paste", False)[0]:
                 value += imgui.get_clipboard_text() or ""
             imgui.separator()
-            if imgui.selectable("󰋽 More info", False)[0]:
+            if imgui.selectable(ifa6.ICON_FA_CIRCLE_INFO+" More info", False)[0]:
                 gui_utils.push_popup(globals,
                     msg_box.msgbox, "About the bottom bar",
                     "This is the filter bar. By typing inside it you can search your recording list inside the eye tracker, name, participant and project properties.",
@@ -1267,9 +1256,9 @@ class MainGUI():
         height = self.scaled(100)
         # 1. see what actions are available
         # 1a. we always have the add recordings option
-        text = ["󱃩 Add recordings"]
+        text = [ifa6.ICON_FA_FOLDER_PLUS+" Add recordings"]
         action = [lambda: gui_utils.push_popup(globals, self.get_folder_picker(reason='add_recordings'))]
-        hover_text = ["Press the \"󱃩 Add recordings\" button to select a folder or folders\n" \
+        hover_text = ["Press the \""+ifa6.ICON_FA_FOLDER_PLUS+" Add recordings\" button to select a folder or folders\n" \
                       "that will be searched for importable recordings. You will then be able\n"\
                       "to select which of the found recordings you wish to import. You can\n"\
                       "also start importing recordings by drag-dropping one or multiple\n"\
@@ -1277,12 +1266,12 @@ class MainGUI():
         # 1b. if any fully done, offer export
         processed_ids_all = [id for id in globals.recordings if get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
         if processed_ids_all:
-            text.append("󱎻 Export all data quality")
+            text.append(ifa6.ICON_FA_FILE_EXPORT+" Export all data quality")
             action.append(lambda: async_thread.run(callbacks.export_data_quality(processed_ids_all)))
             hover_text.append("Export data quality values of the all processed recordings into a single excel file.")
         # 1c. if any jobs running, we have the cancel all action regardless of selection
         if globals.jobs or globals.coding_job_queue:
-            text.append("󱠮 Cancel all jobs")
+            text.append(ifa6.ICON_FA_BAN+" Cancel all jobs")
             action.append(lambda: async_thread.run(callbacks.cancel_processing_recordings(list(globals.jobs.keys())+list(globals.coding_job_queue.keys()))))
             hover_text.append("Stop processing all pending and running jobs.")
         # 1d. if there is a selection, we have some actions for the selection. In order of priority (highest priority last)
@@ -1294,37 +1283,37 @@ class MainGUI():
                 # make video, always possible (if imported)
                 video_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)!=TaskSimplified.Not_Imported]
                 if video_ids:
-                    text.append("󰯜 Export scene video")
+                    text.append(ifa6.ICON_FA_VIDEO+" Export scene video")
                     action.append(lambda: async_thread.run(callbacks.process_recordings(video_ids, task=Task.Make_Video)))
                     hover_text.append("Export scene video with gaze overlay and showing detected fiducial markers.")
                 # already coded, recode
                 recoded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task) in [TaskSimplified.Coded, TaskSimplified.Processed]]
                 if recoded_ids:
-                    text.append("󰑐 Edit validation interval(s)")
+                    text.append(ifa6.ICON_FA_PEN_TO_SQUARE+" Edit validation interval(s)")
                     action.append(lambda: async_thread.run(callbacks.process_recordings(recoded_ids, task=Task.Coded, chain=set.continue_process_after_code)))
                     hover_text.append("Edit validation interval coding for the selected recordings.")
                 # already fully done, recompute or export results
                 processed_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
                 if processed_ids:
-                    text.append("󰑐 Recalculate data quality")
+                    text.append(ifa6.ICON_FA_ROTATE_RIGHT+" Recalculate data quality")
                     action.append(lambda: async_thread.run(callbacks.process_recordings(processed_ids, task=Task.Markers_Detected)))
                     hover_text.append("Re-run processing to determine data quality for the selected recordings. Use e.g. if you selected another type of data quality to be computed in the advanced settings.")
                 # before stage 1
                 not_imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Not_Imported]
                 if not_imported_ids:
-                    text.append("󰼛 Import")
+                    text.append(ifa6.ICON_FA_FILE_IMPORT+" Import")
                     action.append(lambda: async_thread.run(callbacks.process_recordings(not_imported_ids, task=Task.Imported, chain=False)))
                     hover_text.append("Run import job for the selected recordings.")
                 # after stage 1
                 imported_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Imported]
                 if imported_ids:
-                    text.append("󰼛 Code validation interval(s)")
+                    text.append(ifa6.ICON_FA_PEN_TO_SQUARE+" Code validation interval(s)")
                     action.append(lambda: async_thread.run(callbacks.process_recordings(imported_ids, task=Task.Coded, chain=set.continue_process_after_code)))
                     hover_text.append("Code validation intervals for the selected recordings.")
                 # after stage 2 / during stage 3
                 coded_ids = [id for id,q in zip(ids,has_no_job) if q and get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Coded]
                 if coded_ids:
-                    text.append("󰼛 Calculate data quality")
+                    text.append(ifa6.ICON_FA_PLAY+" Calculate data quality")
                     # NB: don't send action, so that callback code figures out where we we left off and continues there, instead of rerunning all steps of this stage (e.g. if error occurred in last step because file was opened and couldn't be written), then we only rerun the failed task and anything after it
                     action.append(lambda: async_thread.run(callbacks.process_recordings(coded_ids, chain=True)))
                     hover_text.append("Run processing to determine data quality for the selected recordings.")
@@ -1332,12 +1321,12 @@ class MainGUI():
             # if any fully done, offer export
             processed_ids_sel = [id for id in ids if get_simplified_task_state(globals.recordings[id].task)==TaskSimplified.Processed]
             if processed_ids_sel:
-                text.append("󱎻 Export data quality")
+                text.append(ifa6.ICON_FA_FILE_EXPORT+" Export data quality")
                 action.append(lambda: async_thread.run(callbacks.export_data_quality(processed_ids_sel)))
                 hover_text.append("Export data quality values of the selected recordings into a single excel file.")
 
             if any(has_job):
-                text.append("󱠮 Cancel selected jobs")
+                text.append(ifa6.ICON_FA_BAN+" Cancel selected jobs")
                 action.append(lambda: async_thread.run(callbacks.cancel_processing_recordings([id for id,q in zip(ids,has_job) if q])))
                 hover_text.append("Stop processing selected pending and running jobs.")
 
@@ -1445,20 +1434,20 @@ class MainGUI():
 
             btn_width = right_width*1.5
             imgui.set_cursor_pos_x((width-btn_width)/2)
-            if imgui.button("󰮝 New project", size=(btn_width, 0)):
+            if imgui.button(ifa6.ICON_FA_FOLDER_PLUS+" New project", size=(btn_width, 0)):
                 gui_utils.push_popup(globals, self.get_folder_picker(reason='creating'))
             imgui.set_cursor_pos_x((width-btn_width)/2)
-            if imgui.button("󰷏 Open project", size=(btn_width, 0)):
+            if imgui.button(ifa6.ICON_FA_FOLDER_OPEN+" Open project", size=(btn_width, 0)):
                 gui_utils.push_popup(globals, self.get_folder_picker())
             imgui.set_cursor_pos_x((width-btn_width)/2)
-            if imgui.button("󱂀 Deploy config", size=(btn_width, 0)):
+            if imgui.button(ifa6.ICON_FA_GEAR+" Deploy config", size=(btn_width, 0)):
                 async_thread.run(callbacks.deploy_config(globals.project_path, globals.settings.config_dir))
             gui_utils.draw_hover_text(f"Deploys a default glassesValidator to the '{globals.settings.config_dir}' folder in the open project. You can edit this configuration, which you may need to do, e.g., in case you used a different viewing distance, or different marker or gaze target layout.", text="")
             imgui.set_cursor_pos_x((width-btn_width)/2)
-            if imgui.button("󰮞 Close project", size=(btn_width, 0)):
+            if imgui.button(ifa6.ICON_FA_CIRCLE_XMARK+" Close project", size=(btn_width, 0)):
                 self.unload_project()
             imgui.set_cursor_pos_x((width-btn_width)/2)
-            if imgui.button("󰈦 Get poster pdf", size=(btn_width, 0)):
+            if imgui.button(ifa6.ICON_FA_FILE_PDF+" Get poster pdf", size=(btn_width, 0)):
                 gui_utils.push_popup(globals, self.get_folder_picker(reason='deploy_pdf'))
 
             # continue table

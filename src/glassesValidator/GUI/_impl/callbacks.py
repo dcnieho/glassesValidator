@@ -5,6 +5,7 @@ import os
 import shutil
 import pandas as pd
 import dataclasses
+from imgui_bundle import icons_fontawesome_6 as ifa6
 
 from glassesTools import async_thread, platform, recording
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
@@ -56,8 +57,8 @@ async def deploy_config(project_path: str|pathlib.Path, config_dir: str):
         await _deploy_config(conf_dir)
     else:
         buttons = {
-            "󰄬 Yes": lambda: async_thread.run(_deploy_config(conf_dir)),
-            "󰜺 No": None
+            ifa6.ICON_FA_CHECK+" Yes": lambda: async_thread.run(_deploy_config(conf_dir)),
+            ifa6.ICON_FA_CIRCLE_XMARK+" No": None
         }
         gui_utils.push_popup(globals, msg_box.msgbox, "Deploy configuration", f"The folder {conf_dir} already exist. Do you want to deploy a configuration to this folder,\npotentially overwriting any configuration that is already there?", msg_box.MsgBox.warn, buttons)
 
@@ -89,8 +90,8 @@ async def remove_recording(rec: Recording, bypass_confirm=False):
 
     if not bypass_confirm and globals.settings.confirm_on_remove:
         buttons = {
-            "󰄬 Yes": remove_callback,
-            "󰜺 No": None
+            ifa6.ICON_FA_CHECK+" Yes": remove_callback,
+            ifa6.ICON_FA_CIRCLE_XMARK+" No": None
         }
         gui_utils.push_popup(globals, msg_box.msgbox, "Remove recording", f"Are you sure you want to remove {rec.name} from your list?", msg_box.MsgBox.warn, buttons)
     else:
@@ -154,8 +155,8 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
         globals.gui.draw_select_recordings_to_import(recording_list)
 
     buttons = {
-        "󰄬 Continue": lambda: async_thread.run(_add_recordings(recordings_to_add, recordings_selected_to_add)),
-        "󰜺 Cancel": None
+        ifa6.ICON_FA_CHECK+" Continue": lambda: async_thread.run(_add_recordings(recordings_to_add, recordings_selected_to_add)),
+        ifa6.ICON_FA_CIRCLE_XMARK+" Cancel": None
     }
     gui_utils.push_popup(globals, lambda: gui_utils.popup("Select recordings", list_recs_popup, buttons = buttons, closable=True, outside=False))
 
@@ -168,8 +169,8 @@ def add_recordings(paths: list[pathlib.Path]):
         combo_value, eye_tracker = globals.gui.draw_select_eye_tracker_popup(combo_value, eye_tracker)
 
     buttons = {
-        "󰄬 Continue": lambda: async_thread.run(_show_addable_recordings(paths, eye_tracker)),
-        "󰜺 Cancel": None
+        ifa6.ICON_FA_CHECK+" Continue": lambda: async_thread.run(_show_addable_recordings(paths, eye_tracker)),
+        ifa6.ICON_FA_CIRCLE_XMARK+" Cancel": None
     }
 
     # ask what type of eye tracker we should be looking for
@@ -306,8 +307,8 @@ async def export_data_quality(ids: list[int]):
         globals.gui.draw_dq_export_config_popup(pop_data)
 
     buttons = {
-        "󰄬 Continue": lambda: async_thread.run(_export_data_quality(df,pop_data)),
-        "󰜺 Cancel": None
+        ifa6.ICON_FA_CHECK+" Continue": lambda: async_thread.run(_export_data_quality(df,pop_data)),
+        ifa6.ICON_FA_CIRCLE_XMARK+" Cancel": None
     }
     gui_utils.push_popup(globals, lambda: gui_utils.popup("Data Quality Export", show_config_popup, buttons = buttons, closable=True, outside=False))
 
