@@ -13,7 +13,6 @@ import glfw
 import time
 import sys
 import io
-import fnmatch
 import importlib.resources
 
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
