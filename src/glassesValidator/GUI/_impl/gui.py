@@ -16,6 +16,7 @@ import io
 
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
 from glassesTools.gui import file_picker, msg_box, recording_table, utils as gui_utils
+from glassesTools.gui.utils import my_checkbox, my_combo
 from glassesTools.utils import hex_to_rgba_0_1
 from glassesTools import async_thread, platform as pltfrm, recording as gt_recording
 import glassesTools
@@ -343,10 +344,6 @@ class MainGUI():
         self.setup_imgui_impl()
         self.setup_imgui_style()
 
-        if not is_reload:
-            # this should be done only once
-            self.style_imgui_functions()
-
     def get_imgui_config(self):
         imgui.io.set_ini_filename(str(utils.get_data_path() / "imgui.ini"))
 
@@ -410,42 +407,6 @@ class MainGUI():
         imgui.style.set_color_(imgui.Col_.modal_window_dim_bg, (0, 0, 0, 0.5))
         imgui.style.set_color_(imgui.Col_.table_border_strong, (0, 0, 0, 0))
         self.refresh_styles()
-
-    def style_imgui_functions(self):
-        # Custom checkbox style
-        def checkbox(label: str, state: bool, frame_size: Tuple=None, do_vertical_align=True):
-            if state:
-                imgui.push_style_color(imgui.Col_.frame_bg_hovered, imgui.style.color_(imgui.Col_.button_hovered))
-                imgui.push_style_color(imgui.Col_.frame_bg, imgui.style.color_(imgui.Col_.button_hovered))
-                imgui.push_style_color(imgui.Col_.check_mark, imgui.style.color_(imgui.Col_.text))
-            if frame_size is not None:
-                frame_padding = [imgui.style.frame_padding.x, imgui.style.frame_padding.y]
-                imgui.push_style_var(imgui.StyleVar_.frame_padding, frame_size)
-                imgui.push_style_var(imgui.StyleVar_.item_spacing, (0.,0.))
-                imgui.begin_group()
-                if do_vertical_align:
-                    imgui.dummy((0,frame_padding[1]))
-                imgui.dummy((frame_padding[0],0))
-                imgui.same_line()
-            result = imgui._checkbox(label, state)
-            if frame_size is not None:
-                imgui.end_group()
-                imgui.pop_style_var(2)
-            if state:
-                imgui.pop_style_color(3)
-            return result
-        if not hasattr(imgui,'_checkbox'):
-            imgui._checkbox = imgui.checkbox
-        imgui.checkbox = checkbox
-        # Custom combo style
-        def combo(*args, **kwargs):
-            imgui.push_style_color(imgui.Col_.button, imgui.style.color_(imgui.Col_.button_hovered))
-            result = imgui._combo(*args, **kwargs)
-            imgui.pop_style_color()
-            return result
-        if not hasattr(imgui,'_combo'):
-            imgui._combo = imgui.combo
-        imgui.combo = combo
 
     def refresh_styles(self):
         imgui.style.set_color_(imgui.Col_.check_mark, globals.settings.style_accent)
@@ -960,7 +921,7 @@ class MainGUI():
         full_width = imgui.get_content_region_avail().x
         imgui.push_item_width(full_width*.4)
         imgui.set_cursor_pos_x(full_width*.3)
-        changed, combo_value = imgui.combo("##select_eye_tracker", combo_value, eye_tracker_names)
+        changed, combo_value = my_combo("##select_eye_tracker", combo_value, eye_tracker_names)
         imgui.pop_item_width()
         imgui.dummy((0,2*imgui.style.item_spacing.y))
 
@@ -1050,7 +1011,7 @@ class MainGUI():
                         gui_utils.draw_hover_text(ht, text="")
                         imgui.table_next_column()
                         imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                        _, pop_data['dq_types_sel'][i] = imgui.checkbox(f"##{dq.name}", pop_data['dq_types_sel'][i])
+                        _, pop_data['dq_types_sel'][i] = my_checkbox(f"##{dq.name}", pop_data['dq_types_sel'][i])
 
                     imgui.end_table()
                     imgui.spacing()
@@ -1075,7 +1036,7 @@ class MainGUI():
                     imgui.text(f"target {t}:")
                     imgui.table_next_column()
                     imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                    _, pop_data['targets_sel'][i] = imgui.checkbox(f"##target_{t}", pop_data['targets_sel'][i])
+                    _, pop_data['targets_sel'][i] = my_checkbox(f"##target_{t}", pop_data['targets_sel'][i])
 
 
                 imgui.end_table()
@@ -1096,7 +1057,7 @@ class MainGUI():
             imgui.text("Average over selected targets:")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            _, pop_data['targets_avg'] = imgui.checkbox("##average_over_targets", pop_data['targets_avg'])
+            _, pop_data['targets_avg'] = my_checkbox("##average_over_targets", pop_data['targets_avg'])
 
 
             imgui.end_table()
@@ -1366,7 +1327,7 @@ class MainGUI():
             imgui.align_text_to_frame_padding()
             imgui.text("Add filter:")
             imgui.table_next_column()
-            changed, value = imgui.combo("##add_filter", 0, filter_mode_names)
+            changed, value = my_combo("##add_filter", 0, filter_mode_names)
             if changed and value > 0:
                 flt = Filter(FilterMode(filter_mode_names[value]))
                 match flt.mode.value:
@@ -1394,7 +1355,7 @@ class MainGUI():
                     imgui.align_text_to_frame_padding()
                     imgui.text("  Task state:")
                     imgui.table_next_column()
-                    changed, value = imgui.combo(f"##filter_{flt.id}_value", simplified_task_names.index(flt.match.value), simplified_task_names)
+                    changed, value = my_combo(f"##filter_{flt.id}_value", simplified_task_names.index(flt.match.value), simplified_task_names)
                     if changed:
                         flt.match = TaskSimplified(simplified_task_names[value])
                         self.recording_list.require_sort = True
@@ -1405,7 +1366,7 @@ class MainGUI():
                     imgui.align_text_to_frame_padding()
                     imgui.text("  Eye Tracker:")
                     imgui.table_next_column()
-                    changed, value = imgui.combo(f"##filter_{flt.id}_value", eye_tracker_names.index(flt.match.value), eye_tracker_names)
+                    changed, value = my_combo(f"##filter_{flt.id}_value", eye_tracker_names.index(flt.match.value), eye_tracker_names)
                     if changed:
                         flt.match = EyeTracker(eye_tracker_names[value])
                         self.recording_list.require_sort = True
@@ -1416,7 +1377,7 @@ class MainGUI():
                 imgui.text("  Invert filter:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.checkbox(f"##filter_{flt.id}_invert", flt.invert)
+                changed, value = my_checkbox(f"##filter_{flt.id}_invert", flt.invert)
                 if changed:
                     flt.invert = value
                     self.recording_list.require_sort = True
@@ -1458,7 +1419,7 @@ class MainGUI():
                 imgui.text("Show advanced options:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.checkbox("##show_advanced_options", set.show_advanced_options)
+                changed, value = my_checkbox("##show_advanced_options", set.show_advanced_options)
                 if changed:
                     set.show_advanced_options = value
                     async_thread.run(db.update_settings("show_advanced_options"))
@@ -1489,7 +1450,7 @@ class MainGUI():
                 imgui.text("Show remove button:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.checkbox("##show_remove_btn", set.show_remove_btn)
+                changed, value = my_checkbox("##show_remove_btn", set.show_remove_btn)
                 if changed:
                     set.show_remove_btn = value
                     async_thread.run(db.update_settings("show_remove_btn"))
@@ -1500,7 +1461,7 @@ class MainGUI():
                 imgui.text("Confirm when removing:")
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.checkbox("##confirm_on_remove", set.confirm_on_remove)
+                changed, value = my_checkbox("##confirm_on_remove", set.confirm_on_remove)
                 if changed:
                     set.confirm_on_remove = value
                     async_thread.run(db.update_settings("confirm_on_remove"))
@@ -1518,7 +1479,7 @@ class MainGUI():
                 imgui.table_next_column()
                 imgui.dummy((1,imgui.calc_text_size('').y/2))
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.checkbox("##copy_scene_video", set.copy_scene_video)
+                changed, value = my_checkbox("##copy_scene_video", set.copy_scene_video)
                 if changed:
                     set.copy_scene_video = value
                     async_thread.run(db.update_settings("copy_scene_video"))
@@ -1530,7 +1491,7 @@ class MainGUI():
                 imgui.table_next_column()
                 imgui.dummy((1,imgui.calc_text_size('').y/2))
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.checkbox("##continue_process_after_code", set.continue_process_after_code)
+                changed, value = my_checkbox("##continue_process_after_code", set.continue_process_after_code)
                 if changed:
                     set.continue_process_after_code = value
                     async_thread.run(db.update_settings("continue_process_after_code"))
@@ -1581,7 +1542,7 @@ class MainGUI():
             gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("##dq_use_viewpos_vidpos_homography", set.dq_use_viewpos_vidpos_homography)
+            changed, value = my_checkbox("##dq_use_viewpos_vidpos_homography", set.dq_use_viewpos_vidpos_homography)
             if changed:
                 set.dq_use_viewpos_vidpos_homography = value
                 async_thread.run(db.update_settings("dq_use_viewpos_vidpos_homography"))
@@ -1594,7 +1555,7 @@ class MainGUI():
             gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("##dq_use_pose_vidpos_homography", set.dq_use_pose_vidpos_homography)
+            changed, value = my_checkbox("##dq_use_pose_vidpos_homography", set.dq_use_pose_vidpos_homography)
             if changed:
                 set.dq_use_pose_vidpos_homography = value
                 async_thread.run(db.update_settings("dq_use_pose_vidpos_homography"))
@@ -1607,7 +1568,7 @@ class MainGUI():
             gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("##dq_use_pose_vidpos_ray", set.dq_use_pose_vidpos_ray)
+            changed, value = my_checkbox("##dq_use_pose_vidpos_ray", set.dq_use_pose_vidpos_ray)
             if changed:
                 set.dq_use_pose_vidpos_ray = value
                 async_thread.run(db.update_settings("dq_use_pose_vidpos_ray"))
@@ -1620,7 +1581,7 @@ class MainGUI():
             gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("##dq_use_pose_world_eye", set.dq_use_pose_world_eye)
+            changed, value = my_checkbox("##dq_use_pose_world_eye", set.dq_use_pose_world_eye)
             if changed:
                 set.dq_use_pose_world_eye = value
                 async_thread.run(db.update_settings("dq_use_pose_world_eye"))
@@ -1633,7 +1594,7 @@ class MainGUI():
             gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("##dq_use_pose_left_eye", set.dq_use_pose_left_eye)
+            changed, value = my_checkbox("##dq_use_pose_left_eye", set.dq_use_pose_left_eye)
             if changed:
                 set.dq_use_pose_left_eye = value
                 async_thread.run(db.update_settings("dq_use_pose_left_eye"))
@@ -1650,7 +1611,7 @@ class MainGUI():
             gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("##dq_use_pose_right_eye", set.dq_use_pose_right_eye)
+            changed, value = my_checkbox("##dq_use_pose_right_eye", set.dq_use_pose_right_eye)
             if changed:
                 set.dq_use_pose_right_eye = value
                 async_thread.run(db.update_settings("dq_use_pose_right_eye"))
@@ -1667,7 +1628,7 @@ class MainGUI():
             gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("##dq_use_pose_left_right_avg", set.dq_use_pose_left_right_avg)
+            changed, value = my_checkbox("##dq_use_pose_left_right_avg", set.dq_use_pose_left_right_avg)
             if changed:
                 set.dq_use_pose_left_right_avg = value
                 async_thread.run(db.update_settings("dq_use_pose_left_right_avg"))
@@ -1690,7 +1651,7 @@ class MainGUI():
             imgui.table_next_column()
             imgui.dummy((1,imgui.calc_text_size('').y/2))
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("##dq_report_data_loss", set.dq_report_data_loss)
+            changed, value = my_checkbox("##dq_report_data_loss", set.dq_report_data_loss)
             if changed:
                 set.dq_report_data_loss = value
                 async_thread.run(db.update_settings("dq_report_data_loss"))
@@ -1698,7 +1659,6 @@ class MainGUI():
             imgui.end_table()
             imgui.spacing()
 
-        
         if set.show_advanced_options and self.start_settings_section("Fixation matching", right_width):
             imgui.table_next_row()
             imgui.table_next_column()
@@ -1710,7 +1670,7 @@ class MainGUI():
             )
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("##use_global_shift", set.fix_assign_do_global_shift)
+            changed, value = my_checkbox("##use_global_shift", set.fix_assign_do_global_shift)
             if changed:
                 set.fix_assign_do_global_shift = value
                 async_thread.run(db.update_settings("fix_assign_do_global_shift"))
@@ -1742,7 +1702,7 @@ class MainGUI():
             imgui.text("Show advanced options:")
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("##show_advanced_options", set.show_advanced_options)
+            changed, value = my_checkbox("##show_advanced_options", set.show_advanced_options)
             if changed:
                 set.show_advanced_options = value
                 async_thread.run(db.update_settings("show_advanced_options"))
@@ -1778,7 +1738,7 @@ class MainGUI():
             )
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-            changed, value = imgui.checkbox("##render_when_unfocused", set.render_when_unfocused)
+            changed, value = my_checkbox("##render_when_unfocused", set.render_when_unfocused)
             if changed:
                 set.render_when_unfocused = value
                 async_thread.run(db.update_settings("render_when_unfocused"))
@@ -1828,7 +1788,7 @@ class MainGUI():
                 )
                 imgui.table_next_column()
                 imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
-                changed, value = imgui.checkbox("##style_color_recording_name", set.style_color_recording_name)
+                changed, value = my_checkbox("##style_color_recording_name", set.style_color_recording_name)
                 if changed:
                     set.style_color_recording_name = value
                     async_thread.run(db.update_settings("style_color_recording_name"))
