@@ -148,7 +148,7 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
         recordings_selected_to_add[id] = True
 
     item_context_menu = lambda iid: gui.draw_recording_open_folder_button(recordings_to_add[iid], label="󰷏 Open Folder", source_dir=True)
-    recording_list = recording_table.RecordingTable(recordings_to_add, recordings_selected_to_add, [], item_context_menu, use_icons_fontawesome_6=False)
+    recording_list = recording_table.RecordingTable(recordings_to_add, recordings_selected_to_add, [], item_context_menu)
     recording_list.set_local_item_remover()
     def list_recs_popup():
         nonlocal recording_list
