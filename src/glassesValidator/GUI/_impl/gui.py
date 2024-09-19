@@ -13,7 +13,6 @@ import glfw
 import time
 import sys
 import io
-import importlib.resources
 
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
 from glassesTools.gui import file_picker, msg_box, recording_table, utils as gui_utils
