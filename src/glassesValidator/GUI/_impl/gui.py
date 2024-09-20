@@ -613,7 +613,7 @@ class MainGUI():
         self.init_imgui_glfw(is_reload=is_reload)
         if globals.project_path is not None:
             task_column = recording_table.ColumnSpec(2,ifa6.ICON_FA_SQUARE_POLL_VERTICAL+" Status",imgui.TableColumnFlags_.no_resize,draw_recording_status_widget,lambda iid: task_names.index(globals.recordings[iid].task.value),ifa6.ICON_FA_SQUARE_POLL_VERTICAL)
-            self.recording_list = recording_table.RecordingTable(globals.recordings, globals.selected_recordings, [task_column], draw_recordings_context_menu, empty_space_context_menu, remove_recording)
+            self.recording_list = recording_table.RecordingTable(globals.recordings, globals.selected_recordings, [task_column], None, draw_recordings_context_menu, empty_space_context_menu, remove_recording)
 
     def update_recordings(self, subset=None):
         if not subset:
