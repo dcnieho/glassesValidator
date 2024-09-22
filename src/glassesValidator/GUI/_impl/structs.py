@@ -94,7 +94,7 @@ filter_mode_names = [x.value for x in FilterMode]
 
 @dataclasses.dataclass
 class Filter(BaseFilter):
-    fun: typing.Callable[[gt_rec], bool] = dataclasses.field(init=False)
+    fun: typing.Callable[[int|str, gt_rec], bool] = dataclasses.field(init=False)
     mode: FilterMode
     match = None
 
@@ -103,9 +103,9 @@ class Filter(BaseFilter):
         # set fun
         match self.mode:
             case FilterMode.Eye_Tracker:
-                self.fun = lambda rec: rec.eye_tracker == self.match
+                self.fun = lambda _, rec: rec.eye_tracker == self.match
             case FilterMode.Task_State:
-                self.fun = lambda rec: get_simplified_task_state(rec.task) == self.match
+                self.fun = lambda _, rec: get_simplified_task_state(rec.task) == self.match
             case _:
                 raise NotImplementedError()
 
