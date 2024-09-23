@@ -84,7 +84,8 @@ def process(working_dir, config_dir=None, do_global_shift=True, max_dist_fac=.5,
     # apply setting overrides from caller, if any
     if I2MC_settings_override:
         for k in I2MC_settings_override:
-            opt[k] = I2MC_settings_override[k]
+            if I2MC_settings_override[k] is not None:
+                opt[k] = I2MC_settings_override[k]
 
     # collect data
     qHasLeft        = np.any(np.logical_not(np.isnan([s.gazePosPlane2DLeft               for v in gazePoster.values() for s in v])))
