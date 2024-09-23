@@ -269,10 +269,10 @@ class MainGUI():
             if not found:
                 # nothing to do because no job with this id (shouldn't occur)
                 return
-            if rec_id not in globals.recordings:
+            rec = globals.recordings.get(rec_id, None)
+            if rec is None:
                 # might happen if recording already removed
                 return
-            rec = globals.recordings[rec_id]
 
             del globals.jobs[rec_id]
             match state:
@@ -285,7 +285,8 @@ class MainGUI():
                         rec.task = job.task
                         async_thread.run(db.update_recording(rec, "task"))
                     if job.task == Task.Imported:
-                        globals.gui.update_recordings([rec_id])
+                        with globals.recording_lock:
+                            globals.gui.update_recordings([rec_id])
                     # start next step, if wanted
                     if job.should_chain_next:
                         if (job.task==Task.Coded and globals.settings.continue_process_after_code) or job.task!=Task.Imported:
@@ -613,7 +614,7 @@ class MainGUI():
         self.init_imgui_glfw(is_reload=is_reload)
         if globals.project_path is not None:
             task_column = recording_table.ColumnSpec(2,ifa6.ICON_FA_SQUARE_POLL_VERTICAL+" Status",imgui.TableColumnFlags_.no_resize,draw_recording_status_widget,lambda iid: task_names.index(globals.recordings[iid].task.value),ifa6.ICON_FA_SQUARE_POLL_VERTICAL)
-            self.recording_list = recording_table.RecordingTable(globals.recordings, globals.selected_recordings, [task_column], None, draw_recordings_context_menu, empty_space_context_menu, remove_recording)
+            self.recording_list = recording_table.RecordingTable(globals.recordings, globals.recording_lock, globals.selected_recordings, [task_column], None, draw_recordings_context_menu, empty_space_context_menu, remove_recording)
 
     def update_recordings(self, subset=None):
         if not subset:

@@ -1,5 +1,6 @@
 ﻿import pathlib
 import sys
+import threading
 
 from glassesTools import platform
 
@@ -45,6 +46,7 @@ gui: MainGUI = None
 settings: Settings = None
 rec_id: CounterContext = CounterContext()
 recordings: dict[int, Recording] = None
+recording_lock = threading.Lock()
 selected_recordings: dict[int, bool] = None
 jobs: dict[int, JobDescription] = None
 coding_job_queue: dict[int, JobDescription] = None
