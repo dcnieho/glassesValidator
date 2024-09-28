@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import threading
 
-from glassesTools import annotation, aruco, gaze_headref, gaze_worldref, ocv, recording, timestamps, transforms
+from glassesTools import annotation, aruco, gaze_headref, gaze_worldref, naming, ocv, recording, timestamps, transforms
 from glassesTools.gui import video_player
 
 from .. import config
@@ -67,14 +67,14 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, main_win_id, sho
     episodes = {annotation.Event.Validate: analyzeFrames}
 
     # Read gaze data
-    gazes_head  = gaze_headref.read_dict_from_file(working_dir / 'gazeData.tsv')[0]
+    gazes_head  = gaze_headref.read_dict_from_file(working_dir / naming.gaze_data_fname)[0]
 
     # get camera calibration info
     cameraParams = ocv.CameraParams.read_from_file(working_dir / "calibration.xml")
 
     # build pose estimator
     in_video = recInfo.get_scene_video_path()   # get video file to process
-    video_ts = timestamps.VideoTimestamps(working_dir / "frameTimestamps.tsv")
+    video_ts = timestamps.VideoTimestamps(working_dir / naming.frame_timestamps_fname)
     pose_estimator = aruco.PoseEstimator(in_video, video_ts, cameraParams)
     pose_estimator.add_plane('validate',
                              {'plane': poster, 'aruco_params': {'markerBorderBits': validationSetup['markerBorderBits']}, 'min_num_markers': validationSetup['minNumMarkers']})

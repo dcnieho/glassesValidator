@@ -1,7 +1,7 @@
 import pathlib
 import threading
 
-from glassesTools import annotation, aruco, plane, recording
+from glassesTools import annotation, aruco, naming, plane, recording
 from glassesTools.gui import video_player
 
 from .. import config
@@ -51,7 +51,7 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     in_video = recInfo.get_scene_video_path()
 
     # set up pose estimator and run it
-    estimator = aruco.PoseEstimator(in_video, working_dir / "frameTimestamps.tsv", working_dir / "calibration.xml")
+    estimator = aruco.PoseEstimator(in_video, working_dir / naming.frame_timestamps_fname, working_dir / naming.scene_camera_calibration_fname)
     estimator.add_plane('validate',
                         {'plane': poster, 'aruco_params': {'markerBorderBits': validationSetup['markerBorderBits']}, 'min_num_markers': validationSetup['minNumMarkers']},
                         analyzeFrames)

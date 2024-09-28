@@ -12,7 +12,7 @@ isMacOS = sys.platform.startswith("darwin")
 if isMacOS:
     import AppKit
 
-from glassesTools import annotation, gaze_headref, gaze_worldref, ocv, plane, recording, timestamps
+from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, plane, recording, timestamps
 from glassesTools.gui import video_player
 
 from .. import config
@@ -58,7 +58,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, main_win_id, sho
     poster = config.poster.Poster(config_dir, validationSetup)
 
     # Read gaze data
-    gazes = gaze_headref.read_dict_from_file(working_dir / 'gazeData.tsv')[0]
+    gazes = gaze_headref.read_dict_from_file(working_dir / naming.gaze_data_fname)[0]
 
     # Read pose of poster, if available
     hasPosterPose = False
@@ -81,7 +81,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, main_win_id, sho
             pass
 
     # get camera calibration info
-    cameraParams= ocv.CameraParams.read_from_file(working_dir / "calibration.xml")
+    cameraParams= ocv.CameraParams.read_from_file(working_dir / naming.scene_camera_calibration_fname)
     hasCamCal   = cameraParams.has_intrinsics()
 
     # get interval coded to be analyzed, if available
@@ -100,7 +100,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, main_win_id, sho
     if show_poster:
         poster_win_id = gui.add_window("poster")
     # 3. timestamp info for relating audio to video frames
-    video_ts = timestamps.VideoTimestamps( working_dir / 'frameTimestamps.tsv' )
+    video_ts = timestamps.VideoTimestamps( working_dir / naming.frame_timestamps_fname )
     # 4. mediaplayer for the actual video playback, with sound if available
     inVideo = recInfo.get_scene_video_path()
     ff_opts = {'volume': 1., 'sync': 'audio', 'framedrop': True}

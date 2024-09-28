@@ -1,7 +1,7 @@
 import pathlib
 import threading
 
-from glassesTools import annotation, gaze_headref, gaze_worldref, ocv, plane, recording
+from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, plane, recording
 from glassesTools.gui import video_player, worldgaze
 
 from .. import config
@@ -38,13 +38,13 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, show_on
     utils.update_recording_status(working_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Running)
 
     # get camera calibration info
-    cameraParams      = ocv.CameraParams.read_from_file(working_dir / "calibration.xml")
+    cameraParams      = ocv.CameraParams.read_from_file(working_dir / naming.scene_camera_calibration_fname)
 
     # get interval coded to be analyzed, if any
     analyzeFrames   = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
 
     # Read gaze data
-    head_gazes  = gaze_headref.read_dict_from_file(working_dir / 'gazeData.tsv', episodes=analyzeFrames if not gui or show_only_intervals else None)[0]
+    head_gazes  = gaze_headref.read_dict_from_file(working_dir / naming.gaze_data_fname, episodes=analyzeFrames if not gui or show_only_intervals else None)[0]
 
     # Read camera pose w.r.t. poster
     poses       = plane.read_dict_from_file(working_dir / 'posterPose.tsv', episodes=analyzeFrames if not gui or show_only_intervals else None)
@@ -66,7 +66,7 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, show_on
     validationSetup = config.get_validation_setup(config_dir)
     poster          = config.poster.Poster(config_dir, validationSetup)
     worldgaze.show_visualization(
-        in_video, working_dir / 'frameTimestamps.tsv', working_dir / "calibration.xml",
+        in_video, working_dir / naming.frame_timestamps_fname, working_dir / naming.scene_camera_calibration_fname,
         {'poster': poster}, {'poster': poses}, head_gazes, {'poster': plane_gazes}, {annotation.Event.Validate: analyzeFrames},
         gui, frame_win_id, show_poster, show_only_intervals, 8
     )
