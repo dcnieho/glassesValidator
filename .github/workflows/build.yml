@@ -18,7 +18,7 @@ jobs:
         python:
           - "3.10.x"
         cx-freeze:
-          - "v7.1.0-post0"
+          - "v7.2.2"
     name: "Build exe for ${{ matrix.os }}"
     runs-on: "${{ matrix.os }}"
     steps:
@@ -41,10 +41,9 @@ jobs:
         with:
           path: "./src/"
 
-      - name: "Install requirements"  # N.B.: First install a pinned SciPy version that is known to package correctly with cx_Freeze
+      - name: "Install requirements"
         run: |
           cd ./src/
-          python -m pip install -U scipy==1.11.3
           python -m pip install -U -r ./requirements.txt
 
       - name: "Build"
