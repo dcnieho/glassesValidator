@@ -66,7 +66,7 @@ build_options = {
     "build_exe": {
         "optimize": 1,
         "packages": [
-            'numpy','matplotlib','scipy','pandas','pyarrow','polars','glassesValidator','OpenGL','cv2',
+            'numpy','matplotlib','scipy','pandas','pyarrow','polars','glassesValidator','glassesTools','OpenGL','cv2',
             'ffpyplayer.player','ffpyplayer.threading',      # some specific subpackages that need to be mentioned to be picked up correctly
             'imgui_bundle._imgui_bundle'
         ],
