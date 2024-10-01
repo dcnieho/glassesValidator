@@ -77,7 +77,8 @@ build_options = {
             "OpenGL_accelerate",
             "glfw",
             "cv2",
-            "imgui_bundle"
+            "imgui_bundle",
+            "scipy"
         ],
         "silent_level": 1,
         "include_msvcr": True
