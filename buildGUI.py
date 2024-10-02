@@ -10,20 +10,6 @@ sys.path.append(str(path/'src'))
 def get_include_files():
     files = [path / "LICENSE"]
 
-    # scipy dlls
-    for d in site.getsitepackages():
-        d=pathlib.Path(d)/'scipy'/'.libs'
-        if d.is_dir():
-            for f in d.iterdir():
-                if f.is_file() and f.suffix=='' or f.suffix in ['.dll']:
-                    files.append((f,pathlib.Path('lib')/f.name))
-    # opencv dll
-    for d in site.getsitepackages():
-        d=pathlib.Path(d)/'cv2'
-        if d.is_dir():
-            for f in d.iterdir():
-                if f.is_file() and f.suffix=='' or f.suffix in ['.dll']:
-                    files.append((f,pathlib.Path('lib')/f.name))
     # ffpyplayer bin deps
     for d in site.getsitepackages():
         d=pathlib.Path(d)/'share'/'ffpyplayer'
@@ -65,8 +51,7 @@ else:
 build_options = {
     "build_exe": {
         "optimize": 1,
-        "packages": [
-            'numpy','matplotlib','scipy','pandas','pyarrow','polars','glassesValidator','glassesTools','OpenGL','cv2',
+        "packages": ['OpenGL','glassesValidator',
             'ffpyplayer.player','ffpyplayer.threading',      # some specific subpackages that need to be mentioned to be picked up correctly
             'imgui_bundle._imgui_bundle'
         ],
@@ -76,9 +61,7 @@ build_options = {
         "zip_exclude_packages": [
             "OpenGL_accelerate",
             "glfw",
-            "cv2",
             "imgui_bundle",
-            "scipy"
         ],
         "silent_level": 1,
         "include_msvcr": True
