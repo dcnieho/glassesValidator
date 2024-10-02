@@ -3,6 +3,8 @@ import pathlib
 from enum import Enum, auto
 import pandas as pd
 
+from glassesTools import utils
+
 from .b_codeMarkerInterval import process as code_marker_interval
 from .c_detectMarkers import process as detect_markers
 from .d_gazeToPoster import process as gaze_to_poster
@@ -38,6 +40,7 @@ class DataQualityType(Enum):
     # so this get serialized in a user-friendly way by pandas..
     def __str__(self):
         return self.name
+utils.register_type(utils.CustomTypeEntry(DataQualityType,'glassesValidator.DataQualityType',str,lambda x: DataQualityType(x)))
 
 def get_DataQualityType_explanation(dq: DataQualityType):
     ler_name =  "Left eye ray + pose"
