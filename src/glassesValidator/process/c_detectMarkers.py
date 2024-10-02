@@ -46,6 +46,8 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
 
     # get interval(s) coded to be analyzed, if any
     analyzeFrames   = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
+    if analyzeFrames is None:
+        raise RuntimeError(f'No validation intervals available for {working_dir.name}')
 
     # get video file to process
     in_video = recInfo.get_scene_video_path()
