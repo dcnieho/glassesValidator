@@ -16,7 +16,7 @@ import io
 
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
 from glassesTools.gui import file_picker, msg_box, recording_table, utils as gui_utils
-from glassesTools.gui.utils import my_checkbox, my_combo
+from glassesTools.gui.utils import my_checkbox, my_combo, handle_popup_stack
 from glassesTools.utils import hex_to_rgba_0_1
 from glassesTools import async_thread, platform as pltfrm, recording as gt_recording
 import glassesTools
@@ -766,20 +766,7 @@ class MainGUI():
         imgui.text(text)
         gui_utils.draw_hover_text(self.watermark_popup_text, text='')
 
-        open_popup_count = 0
-        for popup in globals.popup_stack:
-            if hasattr(popup, "tick"):
-                popup_func = popup.tick
-            else:
-                popup_func = popup
-            opened, closed = popup_func()
-            if closed:
-                globals.popup_stack.remove(popup)
-            open_popup_count += opened
-        # Popups are closed all at the end to allow stacking
-        for _ in range(open_popup_count):
-            imgui.end_popup()
-
+        handle_popup_stack(globals.popup_stack)
         imgui.end()
 
 
