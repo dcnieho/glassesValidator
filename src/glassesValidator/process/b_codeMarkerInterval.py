@@ -1,9 +1,7 @@
 import pathlib
 import numpy as np
 from imgui_bundle import imgui
-
 import cv2
-import threading
 
 from ffpyplayer.player import MediaPlayer
 
@@ -12,7 +10,7 @@ isMacOS = sys.platform.startswith("darwin")
 if isMacOS:
     import AppKit
 
-from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, plane, recording, timestamps
+from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, plane, propagating_thread, recording, timestamps
 from glassesTools.gui import video_player
 
 from .. import config
@@ -41,7 +39,7 @@ def process(working_dir, config_dir=None, show_poster=False):
     gui = video_player.GUI(use_thread = False)
     main_win_id = gui.add_window(working_dir.name)
 
-    proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, main_win_id, show_poster))
+    proc_thread = propagating_thread.PropagatingThread(target=do_the_work, args=(working_dir, config_dir, gui, main_win_id, show_poster), cleanup_fun=gui.stop)
     proc_thread.start()
     gui.start()
     proc_thread.join()

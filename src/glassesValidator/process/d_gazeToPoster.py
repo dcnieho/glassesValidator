@@ -1,7 +1,6 @@
 import pathlib
-import threading
 
-from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, plane, recording
+from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, plane, propagating_thread, recording
 from glassesTools.gui import video_player, worldgaze
 
 from .. import config
@@ -26,7 +25,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
         gui.set_show_play_percentage(True)
         gui.set_show_annotation_label(False)
 
-        proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, frame_win_id, show_poster, show_only_intervals))
+        proc_thread = propagating_thread.PropagatingThrea(target=do_the_work, args=(working_dir, config_dir, gui, frame_win_id, show_poster, show_only_intervals), cleanup_fun=gui.stop)
         proc_thread.start()
         gui.start()
         proc_thread.join()
