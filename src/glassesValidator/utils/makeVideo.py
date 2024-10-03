@@ -4,9 +4,8 @@ import pathlib
 
 import cv2
 import numpy as np
-import threading
 
-from glassesTools import annotation, aruco, gaze_headref, gaze_worldref, naming, ocv, recording, timestamps, transforms
+from glassesTools import annotation, aruco, gaze_headref, gaze_worldref, naming, ocv, propagating_thread, recording, timestamps, transforms
 from glassesTools.gui import video_player
 
 from .. import config
@@ -36,7 +35,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
         gui.set_show_play_percentage(True)
         gui.set_show_action_tooltip(True)
 
-        proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, main_win_id, show_rejected_markers, add_audio_to_poster_video))
+        proc_thread = propagating_thread.PropagatingThread(target=do_the_work, args=(working_dir, config_dir, gui, main_win_id, show_rejected_markers, add_audio_to_poster_video), cleanup_fun=gui.stop)
         proc_thread.start()
         gui.start()
         proc_thread.join()
