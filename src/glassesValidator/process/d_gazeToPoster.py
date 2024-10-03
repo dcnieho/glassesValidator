@@ -20,21 +20,21 @@ def process(working_dir, config_dir=None, show_visualization=False, show_poster=
     # if we need gui, we run processing in a separate thread (GUI needs to be on the main thread for OSX, see https://github.com/pthom/hello_imgui/issues/33)
     if show_visualization:
         gui = video_player.GUI(use_thread = False)
-        frame_win_id = gui.add_window(working_dir.name)
+        gui.add_window(working_dir.name)
         gui.set_show_controls(True)
         gui.set_show_play_percentage(True)
         gui.set_show_annotation_label(False)
         gui.set_show_action_tooltip(True)
 
-        proc_thread = propagating_thread.PropagatingThread(target=do_the_work, args=(working_dir, config_dir, gui, frame_win_id, show_poster, show_only_intervals), cleanup_fun=gui.stop)
+        proc_thread = propagating_thread.PropagatingThread(target=do_the_work, args=(working_dir, config_dir, gui, show_poster, show_only_intervals), cleanup_fun=gui.stop)
         proc_thread.start()
         gui.start()
         proc_thread.join()
     else:
-        do_the_work(working_dir, config_dir, None, None, False, False)
+        do_the_work(working_dir, config_dir, None, False, False)
 
 
-def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, show_only_intervals):
+def do_the_work(working_dir, config_dir, gui, show_poster, show_only_intervals):
     utils.update_recording_status(working_dir, utils.Task.Gaze_Tranformed_To_Poster, utils.Status.Running)
 
     # get camera calibration info
@@ -68,5 +68,5 @@ def do_the_work(working_dir, config_dir, gui, frame_win_id, show_poster, show_on
     worldgaze.show_visualization(
         in_video, working_dir / naming.frame_timestamps_fname, working_dir / naming.scene_camera_calibration_fname,
         {'poster': poster}, {'poster': poses}, head_gazes, {'poster': plane_gazes}, {annotation.Event.Validate: analyzeFrames},
-        gui, frame_win_id, show_poster, show_only_intervals, 8
+        gui, show_poster, show_only_intervals, 8
     )

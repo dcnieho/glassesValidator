@@ -37,15 +37,15 @@ def process(working_dir, config_dir=None, show_poster=False):
 
     # We run processing in a separate thread (GUI needs to be on the main thread for OSX, see https://github.com/pthom/hello_imgui/issues/33)
     gui = video_player.GUI(use_thread = False)
-    main_win_id = gui.add_window(working_dir.name)
+    gui.add_window(working_dir.name)
 
-    proc_thread = propagating_thread.PropagatingThread(target=do_the_work, args=(working_dir, config_dir, gui, main_win_id, show_poster), cleanup_fun=gui.stop)
+    proc_thread = propagating_thread.PropagatingThread(target=do_the_work, args=(working_dir, config_dir, gui, show_poster), cleanup_fun=gui.stop)
     proc_thread.start()
     gui.start()
     proc_thread.join()
 
 
-def do_the_work(working_dir, config_dir, gui: video_player.GUI, main_win_id, show_poster):
+def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_poster):
     utils.update_recording_status(working_dir, utils.Task.Coded, utils.Status.Running)
 
     # get info about recording
@@ -109,11 +109,11 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, main_win_id, sho
     gui.set_allow_pause(True)
     gui.set_allow_seek(True)
     gui.set_allow_timeline_zoom(True)
-    gui.set_show_controls(True)
+    gui.set_show_controls(True, gui.main_window_id)
     gui.set_allow_annotate(True, {annotation.Event.Validate: imgui.Key.v})
-    gui.set_show_timeline(True, video_ts, episodes)
-    gui.set_show_annotation_label(False)
-    gui.set_show_action_tooltip(True)
+    gui.set_show_timeline(True, video_ts, episodes, gui.main_window_id)
+    gui.set_show_annotation_label(False, gui.main_window_id)
+    gui.set_show_action_tooltip(True, gui.main_window_id)
 
     # show
     subPixelFac = 8   # for sub-pixel positioning
@@ -153,10 +153,10 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, main_win_id, sho
                     gazesPoster[frame_idx][0].draw_on_plane(refImg, poster, subPixelFac)
 
             if frame is not None:
-                gui.update_image(frame, pts, frame_idx, window_id = main_win_id)
+                gui.update_image(frame, pts, frame_idx, window_id=gui.main_window_id)
 
             if show_poster:
-                gui.update_image(refImg, pts, frame_idx, window_id = poster_win_id)
+                gui.update_image(refImg, pts, frame_idx, window_id=poster_win_id)
 
         if not hasRequestedFocus:
             AppKit.NSApplication.sharedApplication().activateIgnoringOtherApps_(1)

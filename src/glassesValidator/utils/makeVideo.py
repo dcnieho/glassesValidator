@@ -30,19 +30,19 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
     if show_visualization:
         # We run processing in a separate thread (GUI needs to be on the main thread for OSX, see https://github.com/pthom/hello_imgui/issues/33)
         gui = video_player.GUI(use_thread = False)
-        main_win_id = gui.add_window(working_dir.name)
+        gui.add_window(working_dir.name)
         gui.set_show_controls(True)
         gui.set_show_play_percentage(True)
         gui.set_show_action_tooltip(True)
 
-        proc_thread = propagating_thread.PropagatingThread(target=do_the_work, args=(working_dir, config_dir, gui, main_win_id, show_rejected_markers, add_audio_to_poster_video), cleanup_fun=gui.stop)
+        proc_thread = propagating_thread.PropagatingThread(target=do_the_work, args=(working_dir, config_dir, gui, show_rejected_markers, add_audio_to_poster_video), cleanup_fun=gui.stop)
         proc_thread.start()
         gui.start()
         proc_thread.join()
     else:
-        do_the_work(working_dir, config_dir, None, None, show_rejected_markers, add_audio_to_poster_video)
+        do_the_work(working_dir, config_dir, None, show_rejected_markers, add_audio_to_poster_video)
 
-def do_the_work(working_dir, config_dir, gui: video_player.GUI, main_win_id, show_rejected_markers, add_audio_to_poster_video):
+def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_rejected_markers, add_audio_to_poster_video):
     has_gui = gui is not None
     sub_pixel_fac = 8   # for anti-aliased drawing
 
@@ -96,11 +96,11 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, main_win_id, sho
 
     # if we have a gui, set it up
     if has_gui:
-        gui.set_show_annotation_label(False)
-        gui.set_frame_size((width, height), main_win_id)
-        gui.set_show_timeline(True, video_ts, episodes, main_win_id)
-        gui.set_timecode_position('r', main_win_id)
-        gui.set_show_action_tooltip(True)
+        gui.set_frame_size((width, height), gui.main_window_id)
+        gui.set_show_timeline(True, video_ts, episodes, gui.main_window_id)
+        gui.set_show_annotation_label(False, gui.main_window_id)
+        gui.set_timecode_position('r', gui.main_window_id)
+        gui.set_show_action_tooltip(True, gui.main_window_id)
         # add window for poster
         poster_win_id = gui.add_window('poster')
         gui.set_frame_size((ref_width, ref_height), poster_win_id)
@@ -151,8 +151,8 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, main_win_id, sho
         vidOutPoster.write_frame(img=img, pts=frame_idx/fps)
 
         if has_gui:
-            gui.update_image(frame , frame_ts/1000., frame_idx, window_id = main_win_id)
-            gui.update_image(refImg, frame_ts/1000., frame_idx, window_id = poster_win_id)
+            gui.update_image(frame , frame_ts/1000., frame_idx, window_id=gui.main_window_id)
+            gui.update_image(refImg, frame_ts/1000., frame_idx, window_id=poster_win_id)
 
             requests = gui.get_requests()
             for r,_ in requests:
