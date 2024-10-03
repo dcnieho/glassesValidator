@@ -181,13 +181,13 @@ def process(working_dir, config_dir=None, do_global_shift=True, max_dist_fac=.5,
         plt.xlabel('mm')
         plt.ylabel('mm')
 
-        f.savefig(str(working_dir / f'{fixation_detection_file_name_prefix}_interval_{idx}.png'))
+        f.savefig(str(working_dir / f'{fixation_detection_file_name_prefix}interval_{idx}.png'))
         plt.close(f)
 
         # also make timseries plot of gaze data with fixations
         f = I2MC.plot.data_and_fixations(data, fix, fix_as_line=True, unit='mm', res=[[poster.bbox[0]-2*markerHalfSizeMm, poster.bbox[2]+2*markerHalfSizeMm], [poster.bbox[1]-2*markerHalfSizeMm, poster.bbox[3]+2*markerHalfSizeMm]])
         plt.gca().invert_yaxis()
-        f.savefig(str(working_dir / f'{fixation_detection_file_name_prefix}_interval_{idx}_fixations.png'))
+        f.savefig(str(working_dir / f'{fixation_detection_file_name_prefix}interval_{idx}_fixations.png'))
         plt.close(f)
 
         # store selected intervals
