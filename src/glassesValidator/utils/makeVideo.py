@@ -18,7 +18,7 @@ import ffpyplayer.tools
 from fractions import Fraction
 
 
-def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio_to_poster_video=False, show_visualization=False):
+def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio_to_poster_video=False, show_visualization=True):
     # if show_rejected_markers, rejected ArUco marker candidates are also drawn on the video. Possibly useful for debug
     # if add_audio_to_poster_video, audio is added to poster video, not only to the scene video
     # if show_visualization, the generated video is shown as it is created in a viewer
@@ -34,6 +34,7 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
         main_win_id = gui.add_window(working_dir.name)
         gui.set_show_controls(True)
         gui.set_show_play_percentage(True)
+        gui.set_show_action_tooltip(True)
 
         proc_thread = threading.Thread(target=do_the_work, args=(working_dir, config_dir, gui, main_win_id, show_rejected_markers, add_audio_to_poster_video))
         proc_thread.start()
@@ -100,6 +101,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, main_win_id, sho
         gui.set_frame_size((width, height), main_win_id)
         gui.set_show_timeline(True, video_ts, episodes, main_win_id)
         gui.set_timecode_position('r', main_win_id)
+        gui.set_show_action_tooltip(True)
         # add window for poster
         poster_win_id = gui.add_window('poster')
         gui.set_frame_size((ref_width, ref_height), poster_win_id)

@@ -113,6 +113,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, main_win_id, sho
     gui.set_allow_annotate(True, {annotation.Event.Validate: imgui.Key.v})
     gui.set_show_timeline(True, video_ts, episodes)
     gui.set_show_annotation_label(False)
+    gui.set_show_action_tooltip(True)
 
     # show
     subPixelFac = 8   # for sub-pixel positioning

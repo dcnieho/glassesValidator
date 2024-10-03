@@ -23,8 +23,9 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
         gui.set_show_controls(True)
         gui.set_show_play_percentage(True)
         gui.set_show_annotation_label(False)
+        gui.set_show_action_tooltip(True)
 
-        proc_thread = propagating_thread.PropagatingThrea(target=do_the_work, args=(working_dir, config_dir, gui, show_rejected_markers), cleanup_fun=gui.stop)
+        proc_thread = propagating_thread.PropagatingThread(target=do_the_work, args=(working_dir, config_dir, gui, show_rejected_markers), cleanup_fun=gui.stop)
         proc_thread.start()
         gui.start()
         proc_thread.join()
