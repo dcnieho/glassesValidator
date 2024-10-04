@@ -95,30 +95,49 @@ def process(working_dir, config_dir=None, do_global_shift=True, max_dist_fac=.5,
     qHasHomography  = np.any(np.logical_not(np.isnan([s.gazePosPlane2D_vidPos_homography for v in gazePoster.values() for s in v])))
     for idx,iv in enumerate(analyzeFrames):
         gazePosterToAnal = {k:v for (k,v) in gazePoster.items() if k>=iv[0] and k<=iv[1]}
+        # need these for the plots. Doing detection on the world data if available is good, but we should
+        # plot using the ray (if available) or homography data, as that corresponds to the gaze visualization
+        # provided in the software, and for some recordings/devices the world-based coordinates can be far off.
+        if qHasRay:
+            ray_x  = np.array([s.gazePosPlane2D_vidPos_ray[0] for v in gazePosterToAnal.values() for s in v])
+            ray_y  = np.array([s.gazePosPlane2D_vidPos_ray[1] for v in gazePosterToAnal.values() for s in v])
+        elif qHasHomography:
+            homography_x  = np.array([s.gazePosPlane2D_vidPos_homography[0] for v in gazePosterToAnal.values() for s in v])
+            homography_y  = np.array([s.gazePosPlane2D_vidPos_homography[1] for v in gazePosterToAnal.values() for s in v])
         data = {}
         data['time'] = np.array([s.timestamp for v in gazePosterToAnal.values() for s in v])
+        qNeedRecalcFix = False
         if qHasLeft and qHasRight:
             # prefer using separate left and right eye signals, if available. Better I2MC robustness
             data['L_X']  = np.array([s.gazePosPlane2DLeft[0]  for v in gazePosterToAnal.values() for s in v])
             data['L_Y']  = np.array([s.gazePosPlane2DLeft[1]  for v in gazePosterToAnal.values() for s in v])
             data['R_X']  = np.array([s.gazePosPlane2DRight[0] for v in gazePosterToAnal.values() for s in v])
             data['R_Y']  = np.array([s.gazePosPlane2DRight[1] for v in gazePosterToAnal.values() for s in v])
+            qNeedRecalcFix = True
         elif qHasWorld:
             # prefer over the below if provided, eye tracker may provide an 'improved' signal
             # here, e.g. AdHawk has an optional parallax correction
             data['average_X']  = np.array([s.gazePosPlane2DWorld[0] for v in gazePosterToAnal.values() for s in v])
             data['average_Y']  = np.array([s.gazePosPlane2DWorld[1] for v in gazePosterToAnal.values() for s in v])
+            qNeedRecalcFix = True
         elif qHasRay:
-            data['average_X']  = np.array([s.gazePosPlane2D_vidPos_ray[0] for v in gazePosterToAnal.values() for s in v])
-            data['average_Y']  = np.array([s.gazePosPlane2D_vidPos_ray[1] for v in gazePosterToAnal.values() for s in v])
+            data['average_X']  = ray_x
+            data['average_Y']  = ray_y
         elif qHasHomography:
-            data['average_X']  = np.array([s.gazePosPlane2D_vidPos_homography[0] for v in gazePosterToAnal.values() for s in v])
-            data['average_Y']  = np.array([s.gazePosPlane2D_vidPos_homography[1] for v in gazePosterToAnal.values() for s in v])
+            data['average_X']  = homography_x
+            data['average_Y']  = homography_y
         else:
             raise RuntimeError('No data available to process')
 
         # run event classification to find fixations
-        fix,data_I2MC,_ = I2MC.I2MC(data,opt,False)
+        fix,data_I2MC,par_I2MC = I2MC.I2MC(data,opt,False)
+        if qNeedRecalcFix:
+            # replace data with gaze position on video data
+            data_I2MC = data_I2MC.drop(columns=['L_X','L_Y','R_X','R_Y'],errors='ignore')
+            data_I2MC['average_X'] = ray_x if qHasRay else homography_x
+            data_I2MC['average_Y'] = ray_y if qHasRay else homography_y
+            # recalculate fixation positions based on gaze position on video data
+            fix = I2MC.get_fixations(data_I2MC['finalweights'].array, data_I2MC['time'].array, data_I2MC['average_X'], data_I2MC['average_Y'], data_I2MC['average_missing'], par_I2MC)
 
         # for each target, find closest fixation
         minDur      = 100       # ms
@@ -185,7 +204,7 @@ def process(working_dir, config_dir=None, do_global_shift=True, max_dist_fac=.5,
         plt.close(f)
 
         # also make timseries plot of gaze data with fixations
-        f = I2MC.plot.data_and_fixations(data, fix, fix_as_line=True, unit='mm', res=[[poster.bbox[0]-2*markerHalfSizeMm, poster.bbox[2]+2*markerHalfSizeMm], [poster.bbox[1]-2*markerHalfSizeMm, poster.bbox[3]+2*markerHalfSizeMm]])
+        f = I2MC.plot.data_and_fixations(data_I2MC, fix, fix_as_line=True, unit='mm', res=[[poster.bbox[0]-2*markerHalfSizeMm, poster.bbox[2]+2*markerHalfSizeMm], [poster.bbox[1]-2*markerHalfSizeMm, poster.bbox[3]+2*markerHalfSizeMm]])
         plt.gca().invert_yaxis()
         f.savefig(str(working_dir / f'{fixation_detection_file_name_prefix}interval_{idx}_fixations.png'))
         plt.close(f)
