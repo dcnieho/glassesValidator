@@ -315,7 +315,7 @@ section, but another configuration might be more suited for some advanced use ca
 
 1. Determining location of the participant:
 
-   1. The researcher can assume a fixed viewing distance and provide this to glassesValidator in the project configuration. In 
+   1. The researcher can assume a fixed viewing distance and provide this to glassesValidator in the project configuration. In
       this mode, it is assumed that the eye is located exactly in front of the center of the poster and that the poster is
       oriented perpendicularly to the line of sight from this assumed viewing position.
    2. If the scene camera is calibrated (i.e. its properties such as focal length and distortion parameters have been estimated
@@ -343,13 +343,13 @@ section, but another configuration might be more suited for some advanced use ca
    2. The gaze position in the world (often binocular gaze point).
    3. Gaze direction vectors in a head reference frame.
 
-   When operating in mode i, the eye tracker's estimate of the (binocular) gaze point in the scene camera image is used. This is
+   When operating in mode 1., the eye tracker's estimate of the (binocular) gaze point in the scene camera image is used. This is
    the appropriate choice for most wearable eye tracking research, as it is this gaze point that is normally used for further
    analysis. However, in some settings and when the eye tracker provides a (3D) gaze position in the world and/or gaze direction
    vectors for the individual eyes along with their origin, a different mode of operation may be more appropriate. Specifically,
    when using the wearable eye tracker's world gaze point or gaze vectors instead of the gaze point in the scene video in their
    analysis, the researcher should compute the accuracy and precision of this world gaze point/gaze vectors. NB: for most of the
-   currently supported eye trackers, modes i and ii are equivalent (i.e., the gaze position in the camera image is simply the
+   currently supported eye trackers, modes 1. and 2. are equivalent (i.e., the gaze position in the camera image is simply the
    gaze position in the world projected to the camera image). This is however not always the case. The AdHawk MindLink for instance
    has an operating mode that corrects for parallax error in the projected gaze point using the vergence signal, which leads to
    the eye tracker reporting a different gaze position in the scene video than a direct projection of gaze position in the world
@@ -376,9 +376,10 @@ for which no camera calibration is available, a homography transformation is use
 and precision are computed using an assumed viewing distance configured in the glassesValidator project's configuration file, along
 with the assumptions that the eye is located exactly in front of the center of the poster and that the poster is oriented perpendicularly
 to the line of sight (`glassesValidator.process.DataQualityType.viewpos_vidpos_homography`). As discussed in the "Assuming a fixed
-viewing distance" section of the glassesValidator paper (Niehorster et al., 2023), differences in computed values between these two
-modes are generally small. Nonetheless, it is up to the researcher to decide whether the level of error introduced when operating
-without a camera calibration is acceptable and whether they should perform their own camera calibration.
+viewing distance" section of the glassesValidator paper ([Niehorster et al., 2023](https://doi.org/10.3758/s13428-023-02105-5)),
+differences in computed values between these two modes are generally small. Nonetheless, it is up to the researcher to decide whether
+the level of error introduced when operating without a camera calibration is acceptable and whether they should perform their own
+camera calibration.
 
 ### Matching gaze data to fixation targets
 This section discusses how to decide which part of the gaze data constitutes a fixation on each of the fixation targets.
@@ -431,8 +432,9 @@ overview below.
 ### glassesValidator.preprocess
 |function|inputs|description|
 | --- | --- | --- |
-|`get_recording_info()`|<ol><li>[`source_dir`](#common-input-arguments)</li><li>`device`: `glassesValidator.utils.EyeTracker`</li></ol>|Determine if provided path contains a recording/recordings made with the specified eye tracker (`device`) and if so, get info about these recordings.|
 |`do_import()`|<ol><li>[`output_dir`](#common-input-arguments)</li><li>[`source_dir`](#common-input-arguments)</li><li>`device`: `glassesValidator.utils.EyeTracker`</li><li>[`rec_info`](#common-input-arguments)</li></ol>|Import the specified recording to a subdirectory of `output_dir`. Either `device` or `rec_info` must be specified. Does nothing if directory does not contain a recording made with the specified eye tracker.|
+
+The functions in `glassesValidator.preprocess` are thin wrappers around the functionality in `glassesTools.importing`. See the [glassesTools](https://github.com/dcnieho/glassesTools) documentation for more information.
 
 ### glassesValidator.process
 |function|inputs/members|description|
@@ -465,4 +467,4 @@ overview below.
 |`source_dir`|`glassesValidator.preprocess`|Path to directory containing one (or for some eye trackers potentially multiple) eye tracker recording(s) as stored by the eye tracker's recording hardware or software.|
 |`output_dir`|`glassesValidator.preprocess`|Path to the directory to which recordings will be imported. Each recording will be placed in a subdirectory of the specified path.|
 |`working_dir`|`glassesValidator.process`<br>`glassesValidator.utils`|Path to a glassesValidator recording directory.|
-|`rec_info`|`glassesValidator.preprocess`|Recording info (`glassesValidator.utils.Recording`) or list of recording info specifying what is expected to be found in the specified `source_dir`, so that this does not have to be rediscovered and changes can be made e.g. to the recording name that is used for auto-generating the recording's `working_dir`, or even directly specifying the `working_dir` by filling the `proc_directory_name` field before import.|
+|`rec_info`|`glassesValidator.preprocess`|Recording info ([`glassesTools.recording.Recording`](https://github.com/dcnieho/glassesTools/blob/master/README.md#recording-info)) or list of recording info specifying what is expected to be found in the specified `source_dir`, so that this does not have to be rediscovered and changes can be made e.g. to the recording name that is used for auto-generating the recording's `working_dir`, or even directly specifying the `working_dir` by filling the `proc_directory_name` field before import.|
