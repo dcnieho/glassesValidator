@@ -410,6 +410,7 @@ fixation target.
 All of glassesValidator's functionality is exposed through its API. Below are all functions that are part of the
 public API. Many functions share common input arguments. These are documented [here](#common-input-arguments) and linked to in the API
 overview below.
+glassesValidator makes extensive use of the functionality of [glassesTools](https://github.com/dcnieho/glassesTools). See the [glassesTools documentation](https://github.com/dcnieho/glassesTools/blob/master/README.md) for more information about these functions.
 
 ### glassesValidator.config
 |function|inputs|description|
