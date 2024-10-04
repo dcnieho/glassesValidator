@@ -62,17 +62,16 @@ below.
    (after any [preprocessing if required](#required-preprocessing-outside-glassesvalidator)), for instance by drag-dropping a folder with recordings onto the
    glassesValidator GUI window and selecting the import action.
 5. Once imported, the researcher indicates which episode(s) of each recording contain a validation using a graphical interface included with glassesValidator. As described in the step-by-step annotation instructions below, a validation interval is a single continuous timespan during which a participants looks at the validation poster, spanning from the start of the look at the first fixation target to the end of the look at the last target. Do not include multiple episodes where the participants looks at the targets on the poster in a single annotated interval (for instance when you do validation twice at different distances, annotate these two validations as two separate episodes) and do not make intervals for looks to each individual validation target (glassesValidator automatically parses the gaze data and assigns looks to individual validation targets). When performing this annotation step, a GUI appears for each recording, playing back the scene video with gaze overlaid. To code one or multiple validation intervals, do the following:
-    - The scene video will start playing automatically. You can perform actions in the GUI using keypresses (make sure scene video GUI has focus so that the keypresses are received). All actions you can perform are listed by hovering your mouse over the `(?)` icon in the bottom right of the GUI.
-    - Seek in the video to the start of the validation interval. To skip forward one second in the video, press `L`. For 10 seconds, press `shift+L`. To go one or ten seconds backward in the video, press `H` or `shift+H`.
-    - Pause playback, and use the `J` and `K` keys to go forward and backward by one frame to precisely locate where the observer starts fixating the first validation target.
-    - Press `F` to mark this frame as the start of a validation interval.
-    - Seek in the video to the end of the validation interval (where the observer stops looking at the last validation target). Pressing `P` restarts playback of the video. Once at the end of the validation interval, pause again and again use `J` and `K` to find the precise frame where the fixation on the last validation target ends.
-    - Press `F` to mark this frame as the end of a validation interval.
+    - The scene video will start playing automatically. You can perform actions in the GUI using keypresses or presses on the on-screen buttons (make sure scene video GUI has focus so that the keypresses are received). All actions you can perform are listed by hovering your mouse over the `(?)` icon in the bottom right of the GUI.
+    - Seek in the video to the start of the validation interval. To skip forward one second in the video, press the right arrow key. For 10 seconds, hold down shift while pressing the right arrow key. To go one second backward in the video, press the left arrow key (hold down shift for ten seconds). You can also drag the orange time indicator in the time line underneath the video, or pres on the timeline (a the height of the orange triangle) to jump to a specific timepoint in the recording.
+    - Pause playback by pressing the spacebar, and use the `J` and `K` keys to go forward and backward by one frame to precisely locate where the observer starts fixating the first validation target (which shift held down, you go forward or backward by ten frames).
+    - Press `V` to mark this frame as the start of a validation interval.
+    - Seek in the video to the end of the validation interval (where the observer stops looking at the last validation target). Pressing `space` restarts playback of the video. Once at the end of the validation interval, pause again and again use `J` and `K` to find the precise frame where the fixation on the last validation target ends.
+    - Press `V` to mark this frame as the end of a validation interval. An interval should now be highlighted on the timeline below the video.
     - If you have more validation intervals in the video, then seek further in the video to the next interval(s) and repeat the above actions to mark each.
-    - Once done, press `Q` to close the GUI.
+    - Once done, press `enter` to close the GUI and store the coded validation intervals to file (`analysisInterval.tsv`).
 6. The recordings are then further processed automatically, and data quality is determined for validation episodes in the recording.
-7. Finally, once all recordings have been processed, the researcher exports the data quality measures from the recordings in the project into a summary Excel file.
-   This summary function can optionally average the data quality values over the fixation targets for each recording.
+7. Finally, once all recordings have been processed, the researcher exports the data quality measures from the recordings in the project into a summary Excel file. This summary function can optionally average the data quality values over the fixation targets for each recording.
 
 Example recordings with which steps 4-7 can be practiced are included in the [example_data subfolder](/example_data). This folder contains example recordings of a
 participant executing the validation procedure with a Pupil Invisible and a Tobii Pro Glasses 2. You can import these recordings directly into glassesValidator.
@@ -280,7 +279,7 @@ Specifically, it supports:
 - Showing a listing of the recordings in the project and several properties about them, where available. these properties currently
   are:
   - Eye tracker type (e.g. Pupil Invisible or Tobii Glasses 2)
-  - Status, indicating whether a recording has been imported, coded, analyzed)
+  - Status, indicating whether a recording has been imported, coded, analyzed
   - Recording name
   - Participant name
   - Project name
@@ -293,6 +292,7 @@ Specifically, it supports:
   - Recording unit serial number
   - Recording software version
   - Scene camera serial number
+  - Scene video file name
 
   The GUI can be configured to show any combination of these columns in any order, and the listing can be sorted by any of these
   columns. The listing can furthermore be filtered to show only a subset of recordings by search string, eye tracker type and
