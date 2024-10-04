@@ -323,10 +323,12 @@ section, but another configuration might be more suited for some advanced use ca
       relative to the poster at each time point during a validation.
 
    When a scene camera calibration is available, glassesValidator will by default use mode ii, otherwise mode i will be used.
-   Five of the six wearable eye trackers supported by glassesValidator provide the calibration of their scene camera, and
-   glassesValidator will by default use this calibration for these eye trackers (mode ii). Currently, only the SeeTrue does not
-   provide a camera calibration, and glassesValidator therefore by default uses an assumed fixed viewing distance for this eye
-   tracker.
+   Six of the nine wearable eye trackers supported by glassesValidator provide the calibration of the scene camera of a specific
+   pair of glasses, and glassesValidator will by default use this calibration for these eye trackers (mode ii.). Currently, the
+   Adhawk, SeeTrue and Pupil Core do not provide a specific camera calibration. However, for each the manufacturer has provided a
+   default/generic scene camera calibration which enables glassesValidator to work without having to assume a viewing distance
+   (mode i.), but which may be somewhat different from the intrinsics of the specific scene camera, which may result in incorrect
+   accuracy values.
 
 2) Transforming gaze positions from the scene camera reference frame to positions on the validation poster:
 
@@ -343,13 +345,13 @@ section, but another configuration might be more suited for some advanced use ca
    2. The gaze position in the world (often binocular gaze point).
    3. Gaze direction vectors in a head reference frame.
 
-   When operating in mode 1., the eye tracker's estimate of the (binocular) gaze point in the scene camera image is used. This is
+   When operating in mode i., the eye tracker's estimate of the (binocular) gaze point in the scene camera image is used. This is
    the appropriate choice for most wearable eye tracking research, as it is this gaze point that is normally used for further
    analysis. However, in some settings and when the eye tracker provides a (3D) gaze position in the world and/or gaze direction
    vectors for the individual eyes along with their origin, a different mode of operation may be more appropriate. Specifically,
    when using the wearable eye tracker's world gaze point or gaze vectors instead of the gaze point in the scene video in their
    analysis, the researcher should compute the accuracy and precision of this world gaze point/gaze vectors. NB: for most of the
-   currently supported eye trackers, modes 1. and 2. are equivalent (i.e., the gaze position in the camera image is simply the
+   currently supported eye trackers, modes i. and ii. are equivalent (i.e., the gaze position in the camera image is simply the
    gaze position in the world projected to the camera image). This is however not always the case. The AdHawk MindLink for instance
    has an operating mode that corrects for parallax error in the projected gaze point using the vergence signal, which leads to
    the eye tracker reporting a different gaze position in the scene video than a direct projection of gaze position in the world
