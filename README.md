@@ -70,7 +70,7 @@ below.
     - Press `V` to mark this frame as the end of a validation interval. An interval should now be highlighted on the timeline below the video.
     - If you have more validation intervals in the video, then seek further in the video to the next interval(s) and repeat the above actions to mark each.
     - Once done, press `enter` to close the GUI and store the coded validation intervals to file (`markerInterval.tsv`). See the below screenshot for coding of one of the [included example recordings](/example_data):
-    ![Glasses viewer screenshot](/.github/images/screenshot_coder.png?raw=true)
+    ![glassesValidator coding interface screenshot](https://raw.githubusercontent.com/dcnieho/glassesValidator/master/.github/images/screenshot_coder.png?raw=true)
 6. The recordings are then further processed automatically, and data quality is determined for validation episodes in the recording.
 7. Finally, once all recordings have been processed, the researcher exports the data quality measures from the recordings in the project into a summary Excel file. This summary function can optionally average the data quality values over the fixation targets for each recording.
 
@@ -263,7 +263,7 @@ file](/src/glassesValidator/config/validationSetup.txt) that are only used by th
 4. Done, you should now have a pdf file with the poster as you defined.
 
 ## The GUI
-![Glasses viewer screenshot](/.github/images/screenshot.png?raw=true)
+![glassesValidator screenshot](https://raw.githubusercontent.com/dcnieho/glassesValidator/master/.github/images/screenshot.png?raw=true)
 Click the screenshot to see a full-size version.
 
 The simplest way to use glassesValidator is by means of its GUI, see above. The full workflow can be performed in the GUI.
