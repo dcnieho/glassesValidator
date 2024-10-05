@@ -142,24 +142,22 @@ glassesValidator supports the following eye trackers:
 - Tobii Pro Glasses 3
 
 Pull requests or partial help implementing support for further wearable eye trackers are gladly received. To support a new eye tracker,
-device support in [`glassesValidator.preprocess`](#glassesvalidatorpreprocess) should be implemented and the new eye tracker added to
-the [`glassesValidator.utils.EyeTracker` `Enum`](#glassesvalidatorutils).
+implement it in [glassesTools](https://github.com/dcnieho/glassesTools/blob/master/README.md#eye-tracker-support).
 
 ### Required preprocessing outside glassesValidator
 For some eye trackers, the recording delivered by the eye tracker's recording unit or software can be directly imported into
 glassesValidator. Recordings from some other eye trackers however require some steps to be performed in the manufacturer's
 software before they can be imported into glassesValidator. These are:
-- *Pupil Labs eye trackers*: Recordings should either be preprocessed using Pupil Player (*Pupil Core* and *Pupil Invisible*) or exported
-  from Pupil Cloud (*Pupil Invisible* and *Pupil Neon*).
-  - Using Pupil Player (*Pupil Core* and *Pupil Invisible*): Each recording should 1) be opened in Pupil Player, and 2) an export of the
-    recording (`e` hotkey) should be run from pupil player. Make sure to disable the `World Video Exporter` in the `Plugin Manager`
-    before exporting, as the exported video is not used by glassesValidator and takes a long time to create. Note that importing a Pupil
-    Player export of a Pupil Invisible recording may require an internet connection. This is used to retrieve the scene camera calibration
-    from Pupil Lab's servers in case the recording does not have a `calibration.bin` file.
+- *Pupil Labs eye trackers*: Recordings should either be preprocessed using Pupil Player (*Pupil Core* and *Pupil Invisible*),
+  Neon Player (*Pupil Neon*) or exported from Pupil Cloud (*Pupil Invisible* and *Pupil Neon*).
+  - Using Pupil Player (*Pupil Core* and *Pupil Invisible*) or Neon player (*Pupil Neon*): Each recording should 1) be opened
+    in Pupil/Neon Player, and 2) an export of the recording (`e` hotkey) should be run from Pupil/Neon Player. Make sure to disable the
+    `World Video Exporter` in the `Plugin Manager` before exporting, as the exported video is not used by glassesTools and takes a long time to create. Note that importing a Pupil/Neon Player export of a Pupil Invisibl/Neone recording may require an internet connection. This is used to retrieve the scene camera calibration from Pupil Lab's servers in case the recording does not have
+    a `calibration.bin` file.
   - Using Pupil Cloud (*Pupil Invisible* and *Pupil Neon*): Export the recordings using the `Timeseries data + Scene video` action.
   - For the *Pupil Core*, for best results you may wish to do a scene camera calibration yourself, see https://docs.pupil-labs.com/core/software/pupil-capture/#camera-intrinsics-estimation.
     If you do not do so, a generic calibration will be used by Pupil Capture during data recording, by Pupil Player during data
-    analysis and by glassesValidator, which may result in incorrect accuracy values.
+    analysis and by the glassesTools processing functions, which may result in incorrect accuracy values.
 - *SMI ETG*: For SMI ETG recordings, access to BeGaze is required and the following steps should be performed:
   - Export gaze data: `Export` -> `Legacy: Export Raw Data to File`.
     - In the `General` tab, make sure you select the following:
@@ -460,9 +458,6 @@ The functions in `glassesValidator.preprocess` are thin wrappers around the func
 |function|inputs/members|description|
 | --- | --- | --- |
 |`make_video()`|<ol><li>[`working_dir`](#common-input-arguments)</li><li>[`config_dir`](#common-input-arguments)</li><li>`show_rejected_markers`: if `True`, rejected ArUco marker candidates are also drawn on the video.</li><li>`add_audio_to_poster_video`: if `True`, audio is added to poster video, not only to the scene video.</li><li>`show_visualization`: if `True`, the generated video is shown as it is created in a viewer.</li></ol>|Export annotated scene video showing gaze, detected ArUco markers and detected poster. Also exports a video showing gaze on the poster.|
-|  |  |  |
-|`EyeTracker`|`enum.Enum`<ul><li>`EyeTracker.AdHawk_MindLink`</li><li>`EyeTracker.Pupil_Core`</li><li>`EyeTracker.Pupil_Invisible`</li><li>`EyeTracker.Pupil_Neon`</li><li>`EyeTracker.SMI_ETG`</li><li>`EyeTracker.SeeTrue_STONE`</li><li>`EyeTracker.Tobii_Glasses_2`</li><li>`EyeTracker.Tobii_Glasses_3`</li></ul>||
-|`Recording`|`dataclasses.dataclass`<ul><li>`Recording.name`</li><li>`Recording.source_directory`</li><li>`Recording.proc_directory_name`</li><li>`Recording.start_time`</li><li>`Recording.duration`</li><li>`Recording.eye_tracker`: `glassesValidator.utils.EyeTracker`</li><li>`Recording.project`</li><li>`Recording.participant`</li><li>`Recording.firmware_version`</li><li>`Recording.glasses_serial`</li><li>`Recording.recording_unit_serial`</li><li>`Recording.recording_software_version`</li><li>`Recording.scene_camera_serial`</li></ul>|Information about a recording|
 
 ### Common input arguments
 |argument|module(s)|description|
