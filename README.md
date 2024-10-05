@@ -69,7 +69,8 @@ below.
     - Seek in the video to the end of the validation interval (where the observer stops looking at the last validation target). Pressing `space` restarts playback of the video. Once at the end of the validation interval, pause again and again use `J` and `K` to find the precise frame where the fixation on the last validation target ends.
     - Press `V` to mark this frame as the end of a validation interval. An interval should now be highlighted on the timeline below the video.
     - If you have more validation intervals in the video, then seek further in the video to the next interval(s) and repeat the above actions to mark each.
-    - Once done, press `enter` to close the GUI and store the coded validation intervals to file (`markerInterval.tsv`).
+    - Once done, press `enter` to close the GUI and store the coded validation intervals to file (`markerInterval.tsv`). See the below screenshot for coding of one of the [included example recordings](/example_data):
+    ![Glasses viewer screenshot](/.github/images/screenshot_coder.png?raw=true)
 6. The recordings are then further processed automatically, and data quality is determined for validation episodes in the recording.
 7. Finally, once all recordings have been processed, the researcher exports the data quality measures from the recordings in the project into a summary Excel file. This summary function can optionally average the data quality values over the fixation targets for each recording.
 
@@ -77,7 +78,7 @@ Example recordings with which steps 4-7 can be practiced are included in the [ex
 participant executing the validation procedure with a Pupil Invisible and a Tobii Pro Glasses 2. You can import these recordings directly into glassesValidator.
 Also included in each recordings subfolder is an example `markerInterval.tsv` file for denoting where the validation interval is in the recording (step 5 above).
 To use these files, after importing a recording into your [glassesValidator project](#glassesvalidator-projects) (step 4 above), copy the corresponding
-`analysisInterval.tsv` to the recording's folder in the glassesValidator project before running the `Code validation intervals` action.
+`markerInterval.tsv` to the recording's folder in the glassesValidator project before running the `Code validation intervals` action.
 
 ## glassesValidator projects
 The glassesValidator GUI organizes recordings into a project folder. Each recording to be processed is imported into this project folder
