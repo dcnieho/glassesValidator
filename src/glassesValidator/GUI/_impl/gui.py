@@ -198,7 +198,7 @@ def draw_recordings_context_menu(_: int) -> bool:
     return require_sort
 
 def empty_space_context_menu():
-    if imgui.selectable("󱃩 Add recordings##context_menu", False)[0]:
+    if imgui.selectable(ifa6.ICON_FA_FOLDER_PLUS+" Add recordings##context_menu", False)[0]:
         gui_utils.push_popup(globals, globals.gui.get_folder_picker(reason='add_recordings'))
 
 class MainGUI():
