@@ -257,7 +257,7 @@ file](/src/glassesValidator/config/validationSetup.txt) that are only used by th
 2. Edit the `validationSetup.txt` configuration file and the `markerPositions.csv` and `targetPositions.csv` files in the
    configuration folder to design the layout and look of the poster that you want. NB: if you edit the `markerBorderBits` 
    variable, you have to run the `glassesValidator.config.poster.deploy_marker_images()` to regenerate the marker images
-   contained in the `all-markers` with the new border setting.
+   contained in the `all-markers` folder with the new border setting.
 3. Compile the `markerBoard/board.tex` LaTeX file with `pdfTex`, such as provided in the [TeX Live
    distribution](https://www.tug.org/texlive/).
 4. Done, you should now have a pdf file with the poster as you defined.
