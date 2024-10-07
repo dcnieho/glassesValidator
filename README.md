@@ -89,7 +89,7 @@ the default settings are automatically used), and can be deployed with the `Depl
 [`glassesValidator.config.deploy_validation_config()`](#glassesvalidatorconfig) call from Python.
 
 When not using the GUI and running glassesValidator using your own scripts, such a project folder organization is not required. Working folders
-for a recording can be placed anywhere, and a folder for a custom configuration, if used can also be placed anywhere. The
+for a recording can be placed anywhere, and a folder for a custom configuration, if used, can also be placed anywhere. The
 `glassesValidator.process`](#glassesvalidatorprocess) functions simply take the path to a working folder and, optionally, the path to a configuration
 folder.
 
@@ -466,4 +466,4 @@ The functions in `glassesValidator.preprocess` are thin wrappers around the func
 |`source_dir`|`glassesValidator.preprocess`|Path to directory containing one (or for some eye trackers potentially multiple) eye tracker recording(s) as stored by the eye tracker's recording hardware or software.|
 |`output_dir`|`glassesValidator.preprocess`|Path to the directory to which recordings will be imported. Each recording will be placed in a subdirectory of the specified path.|
 |`working_dir`|`glassesValidator.process`<br>`glassesValidator.utils`|Path to a glassesValidator recording directory.|
-|`rec_info`|`glassesValidator.preprocess`|Recording info ([`glassesTools.recording.Recording`](https://github.com/dcnieho/glassesTools/blob/master/README.md#recording-info)) or list of recording info specifying what is expected to be found in the specified `source_dir`, so that this does not have to be rediscovered and changes can be made e.g. to the recording name that is used for auto-generating the recording's `working_dir`, or even directly specifying the `working_dir` by filling the `proc_directory_name` field before import.|
+|`rec_info`|`glassesValidator.preprocess`|Recording info ([`glassesTools.recording.Recording`](https://github.com/dcnieho/glassesTools/blob/master/README.md#recording-info)) or list of recording info specifying what is expected to be found in the specified `source_dir`, so that this does not have to be rediscovered and changes can be made e.g. to the recording name that is used for auto-generating the recording's `working_dir`, or even directly specifying the `working_dir` by filling the `working_directory` field before import.|
