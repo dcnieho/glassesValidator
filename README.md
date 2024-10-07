@@ -9,7 +9,7 @@ Tool for automatic determination of data quality (accuracy and precision) of wea
 
 If you use this tool or any of the code in this repository, please cite:<br>
 [Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. and Hooge, I.T.C. (2023). GlassesValidator:
-A data quality tool for eye tracking glasses. Behavior Research Methods. doi: 10.3758/s13428-023-02105-5](https://doi.org/10.3758/s13428-023-02105-5)
+A data quality tool for eye tracking glasses. Behavior Research Methods. doi: 10.3758/s13428-023-02105-5](https://doi.org/10.3758/s13428-023-02105-5) ([BibTeX](#bibtex))
 
 # How to acquire
 GlassesValidator is available from `https://github.com/dcnieho/glassesValidator`, and supports Python 3.10 and 3.11 on Windows, MacOS and Linux.
@@ -467,3 +467,24 @@ The functions in `glassesValidator.preprocess` are thin wrappers around the func
 |`output_dir`|`glassesValidator.preprocess`|Path to the directory to which recordings will be imported. Each recording will be placed in a subdirectory of the specified path.|
 |`working_dir`|`glassesValidator.process`<br>`glassesValidator.utils`|Path to a glassesValidator recording directory.|
 |`rec_info`|`glassesValidator.preprocess`|Recording info ([`glassesTools.recording.Recording`](https://github.com/dcnieho/glassesTools/blob/master/README.md#recording-info)) or list of recording info specifying what is expected to be found in the specified `source_dir`, so that this does not have to be rediscovered and changes can be made e.g. to the recording name that is used for auto-generating the recording's `working_dir`, or even directly specifying the `working_dir` by filling the `working_directory` field before import.|
+
+# Citation
+If you use this tool or any of the code in this repository, please cite:<br>
+[Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. and Hooge, I.T.C. (2023). GlassesValidator:
+A data quality tool for eye tracking glasses. Behavior Research Methods. doi: 10.3758/s13428-023-02105-5](https://doi.org/10.3758/s13428-023-02105-5)
+
+## BibTeX
+```latex
+@article{niehorster2023glassesValidator,
+    Author = {Niehorster, Diederick C. and
+              Hessels, R. S. and
+              Benjamins, J. S. and
+              Nystr{\"o}m, Marcus and
+              Hooge, I. T. C.},
+    Journal = {Behavior Research Methods},
+    Number = {},
+    Title = {{GlassesValidator}: A data quality tool for eye tracking glasses},
+    Year = {2023},
+    doi = {10.3758/s13428-023-02105-5}
+}
+```
