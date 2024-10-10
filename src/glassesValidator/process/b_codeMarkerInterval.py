@@ -181,9 +181,10 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_poster):
                     player.seek(pts+p, relative=False)
                 case 'add_coding':
                     event,frame_idxs = p
-                    episodes[event].extend(frame_idxs)
-                    episodes[event].sort()
-                    gui.notify_annotations_changed()
+                    if frame_idxs not in episodes[event]:
+                        episodes[event].append(frame_idxs)
+                        episodes[event].sort()
+                        gui.notify_annotations_changed()
                 case 'delete_coding':
                     event,frame_idxs = p
                     episodes[event] = [i for i in episodes[event] if i not in frame_idxs]
