@@ -7,7 +7,7 @@ import shutil
 import math
 from matplotlib import colors
 
-from glassesTools import drawing, marker, plane, transforms
+from glassesTools import aruco, drawing, marker, plane, transforms
 
 def deploy_maker(output_dir):
     output_dir = pathlib.Path(output_dir)
@@ -31,16 +31,8 @@ def deploy_marker_images(output_dir):
     # get validation setup
     validationSetup = get_validation_setup()
 
-    # Load the predefined dictionary
-    dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250)
-
-    # Generate the markers
-    sz = 1000
-    for i in range(250):
-        markerImage = np.zeros((sz, sz), dtype=np.uint8)
-        markerImage = cv2.aruco.generateImageMarker(dictionary, i, sz, markerImage, validationSetup['markerBorderBits'])
-
-        cv2.imwrite(output_dir / f"{i}.png", markerImage)
+    # generate and store the markers
+    aruco.deploy_marker_images(output_dir, 1000, Poster.default_aruco_dict, validationSetup['markerBorderBits'])
 
 def deploy_default_pdf(output_file_or_dir):
     output_file_or_dir = pathlib.Path(output_file_or_dir)
