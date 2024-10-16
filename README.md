@@ -65,7 +65,9 @@ If you already have glassesValidator to the latest version, do the following:
 If you have followed the above instructions to install glassesValidator, do the following each time you want to run glassesValidator:
 1. Open the Terminal application.
 2. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment we created using the above instructions. If you use an environment with a different name, replace the name in the command.
-3. Type and run `glassesValidator`.
+3. Start the Python interpreter: type and run `python`.
+4. Type and run `import glassesValidator`.
+5. Type and run `glassesValidator.GUI.run()`.
 
 ## Complete install instructions for Linux
 Installing and running glassesValidator on Linux will involve some use of the terminal. In this section we will show you step by step how to install, and then what to do every time you want to run glassesValidator.
