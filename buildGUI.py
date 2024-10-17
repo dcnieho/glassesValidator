@@ -2,7 +2,7 @@ import cx_Freeze
 import pathlib
 import sys
 import site
-from distutils.util import convert_path
+import os
 
 path = pathlib.Path(__file__).absolute().parent
 sys.path.append(str(path/'src'))
@@ -12,35 +12,30 @@ def get_include_files():
 
     # ffpyplayer bin deps
     for d in site.getsitepackages():
-        d=pathlib.Path(d)/'share'/'ffpyplayer'
+        d = pathlib.Path(d) / 'share' / 'ffpyplayer'
         for lib in ('ffmpeg', 'sdl'):
-            d2 = d/lib/'bin'
-            if d2.is_dir():
-                for f in d2.iterdir():
-                    if f.is_file() and f.suffix=='' or f.suffix in ['.dll', '.exe']:
-                        files.append((f,pathlib.Path('lib')/f.name))
+            for f in (d/lib/'bin').glob('*'):
+                if f.is_file() and f.suffix=='' or f.suffix in ['.dll', '.exe']:
+                    files.append((f,pathlib.Path('lib')/f.name))
     return files
 
 def get_zip_include_files():
     files = []
-    todo = ['src/glassesValidator/config','src/glassesValidator/resources']
-    for d in todo:
-        d = pathlib.Path(convert_path(d))
-        for d2 in d.iterdir():
-            if d2.is_file() and d2.suffix not in ['.py','.pyc']:
-                files.append((d2, pathlib.Path(*pathlib.Path(d2).parts[-3:])))
-            elif not d2.name.startswith('__'):
-                for f in d2.iterdir():
-                    if f.is_file() and f.suffix not in ['.py','.pyc']:
-                        files.append((f, pathlib.Path(*pathlib.Path(f).parts[-4:])))
+    base = path / 'src'
+    for t in ['config','resources']:
+        p = base / 'glassesValidator' / t
+
+        for f in p.rglob('*'):
+            if f.is_file() and f.suffix not in ['.py','.pyc']:
+                files.append((f, pathlib.Path(os.path.relpath(f,base))))
     return files
 
 main_ns = {}
-ver_path = convert_path('src/glassesValidator/version.py')
+ver_path = pathlib.Path('src/glassesValidator/version.py')
 with open(ver_path) as ver_file:
     exec(ver_file.read(), main_ns)
 
-icon = convert_path('src/glassesValidator/resources/icons/icon')
+icon = str(pathlib.Path('src/glassesValidator/resources/icons/icon'))
 if sys.platform.startswith("win"):
     icon += ".ico"
 elif sys.platform.startswith("darwin"):
