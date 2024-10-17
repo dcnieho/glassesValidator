@@ -48,23 +48,23 @@ Installing and running glassesValidator on a Mac will involve some use of the te
    b. When clicking the installer link provided in these instructions, you may first be shown a user registration page. You can click "skip registration" there to directly go to the download files.
    c. Ensure that you choose the correct installer for your system (Intel or Apple Silicon). If you are not sure what kind of system you have, consult [this page](https://support.apple.com/en-us/116943) to learn how to find out.
 2. Once anaconda is installed, open the Terminal application.
-3. We now first need to make an environment with the correct Python version in which we can then install glassesValidator. To do so, type `conda create -n glassesValidator-env python=3.11 pip` and run the command. `glassesValidator-env` is the name of the environment you create with this comment.
+3. You now first need to make an environment with the correct Python version in which you can then install glassesValidator. To do so, type `conda create -n glassesValidator-env python=3.11 pip` and run the command. `glassesValidator-env` is the name of the environment you create with this comment.
 4. Activate the environment you have just created: `conda activate glassesValidator-env`.
-5. Now we need to install glassesValidator. Do the following in the below order:
+5. Now you need to install glassesValidator. Do the following in the below order:
    a. Type and run `SYSTEM_VERSION_COMPAT=0 pip install --only-binary=:all: imgui_bundle==1.5.2`
    b. Type and run `pip install glassesValidator`.
 
 ### Updating glassesValidator
-If you already have glassesValidator to the latest version, do the following:
+If you already have glassesValidator installed but want to update it to the latest version, do the following:
 1. Open the Terminal application.
-2. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment we created using the above instructions. If you use an environment with a different name, replace the name in the command.
+2. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment you created using the above instructions. If you use an environment with a different name, replace the name in the command.
 3. Type and run `SYSTEM_VERSION_COMPAT=0 pip install --only-binary=:all: imgui_bundle==1.5.2`
 4. Type and run `pip install glassesValidator --upgrade`.
 
 ### Running glassesValidator
 If you have followed the above instructions to install glassesValidator, do the following each time you want to run glassesValidator:
 1. Open the Terminal application.
-2. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment we created using the above instructions. If you use an environment with a different name, replace the name in the command.
+2. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment you created using the above instructions. If you use an environment with a different name, replace the name in the command.
 3. Start the Python interpreter: type and run `python`.
 4. Type and run `import glassesValidator`.
 5. Type and run `glassesValidator.GUI.run()`.
@@ -75,21 +75,21 @@ These instructions use Anaconda environments. But if you are comfortable using P
 ### Installing glassesValidator
 1. To acquire and manage Python, install Anaconda by following [these instructions](https://docs.anaconda.com/anaconda/install/linux/).
 2. Once anaconda is installed, open the Terminal application.
-3. We now first need to make an environment with the correct Python version in which we can then install glassesValidator. To do so, type `conda create -n glassesValidator-env python=3.11 pip` and run the command. `glassesValidator-env` is the name of the environment you create with this comment.
+3. You now first need to make an environment with the correct Python version in which you can then install glassesValidator. To do so, type `conda create -n glassesValidator-env python=3.11 pip` and run the command. `glassesValidator-env` is the name of the environment you create with this comment.
 4. Activate the environment you have just created: `conda activate glassesValidator-env`.
-5. Now we need to install glassesValidator. Do the following in the below order:
+5. Now you need to install glassesValidator. Do the following in the below order:
    b. Type and run `pip install glassesValidator`.
 
 ### Updating glassesValidator
-If you already have glassesValidator to the latest version, do the following:
+If you already have glassesValidator installed but want to update it to the latest version, do the following:
 1. Open the Terminal application.
-2. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment we created using the above instructions. If you use an environment with a different name, replace the name in the command.
+2. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment you created using the above instructions. If you use an environment with a different name, replace the name in the command.
 4. Type and run `pip install glassesValidator --upgrade`.
 
 ### Running glassesValidator
 If you have followed the above instructions to install glassesValidator, do the following each time you want to run glassesValidator:
 1. Open the Terminal application.
-2. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment we created using the above instructions. If you use an environment with a different name, replace the name in the command.
+2. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment you created using the above instructions. If you use an environment with a different name, replace the name in the command.
 3. Type and run `glassesValidator`.
 
 
