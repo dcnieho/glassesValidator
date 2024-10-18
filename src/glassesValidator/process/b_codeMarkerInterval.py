@@ -110,7 +110,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_poster):
     gui.set_allow_seek(True)
     gui.set_allow_timeline_zoom(True)
     gui.set_show_controls(True, gui.main_window_id)
-    gui.set_allow_annotate(True, {annotation.Event.Validate: imgui.Key.v})
+    gui.set_allow_annotate({annotation.Event.Validate}, {annotation.Event.Validate: imgui.Key.v})
     gui.set_show_timeline(True, video_ts, episodes, gui.main_window_id)
     gui.set_show_annotation_label(False, gui.main_window_id)
     gui.set_show_action_tooltip(True, gui.main_window_id)
