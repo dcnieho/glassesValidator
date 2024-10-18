@@ -180,9 +180,9 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_poster):
                 case 'delta_time':
                     player.seek(pts+p, relative=False)
                 case 'add_coding':
-                    event,frame_idxs = p
-                    if frame_idxs not in episodes[event]:
-                        episodes[event].append(frame_idxs)
+                    event,frame_idx = p
+                    if frame_idx not in episodes[event]:
+                        episodes[event].append(frame_idx)
                         episodes[event].sort()
                         gui.notify_annotations_changed()
                 case 'delete_coding':
