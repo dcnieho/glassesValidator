@@ -25,7 +25,7 @@ class Task(utils.AutoName):
     Make_Video                      = enum.auto()
     Unknown                         = enum.auto()
 task_names = [x.value for x in Task]
-utils.register_type(utils.CustomTypeEntry(Task,'__enum.Task__',str, lambda x: getattr(Task, x.split('.')[1])))
+utils.register_type(utils.CustomTypeEntry(Task,'__enum.Task__', utils.enum_val_2_str, lambda x: getattr(Task, x.split('.')[1])))
 
 def get_task_name_friendly(name: str | Task):
     if isinstance(name,Task):
@@ -85,12 +85,12 @@ class Status(utils.AutoName):
     Finished        = enum.auto()
     Errored         = enum.auto()
 status_names = [x.value for x in Status]
-utils.register_type(utils.CustomTypeEntry(Status,'__enum.Status__',str, lambda x: getattr(Status, x.split('.')[1])))
+utils.register_type(utils.CustomTypeEntry(Status,'__enum.Status__', utils.enum_val_2_str, lambda x: getattr(Status, x.split('.')[1])))
 
 
 _status_file = 'glassesValidator.recording'
 def _create_recording_status_file(file: pathlib.Path):
-    task_status_dict = {str(getattr(Task,x)): Status.Not_Started for x in Task.__members__ if x not in ['Not_Imported', 'Make_Video', 'Unknown']}
+    task_status_dict = {utils.enum_val_2_str(getattr(Task,x)): Status.Not_Started for x in Task.__members__ if x not in ['Not_Imported', 'Make_Video', 'Unknown']}
 
     with open(file, 'w') as f:
         json.dump(task_status_dict, f, cls=utils.CustomTypeEncoder)
@@ -112,7 +112,7 @@ def get_recording_status(path: str | pathlib.Path, create_if_missing = False, sk
 def get_last_finished_step(status: dict[str,Status]):
     last = Task.Not_Imported
     while (next_task:=get_next_task(last)) is not None:
-        if status[str(next_task)] != Status.Finished:
+        if status[utils.enum_val_2_str(next_task)] != Status.Finished:
             break
         last = next_task
 
@@ -124,11 +124,11 @@ def update_recording_status(path: str | pathlib.Path, task: Task, status: Status
         return None
 
     # set status of indicated task
-    rec_status[str(task)] = status
+    rec_status[utils.enum_val_2_str(task)] = status
     # set all later tasks to not started as they would have to be rerun when an earlier tasks is rerun
     next_task = task
     while (next_task:=get_next_task(next_task)) is not None:
-        rec_status[str(next_task)] = Status.Not_Started
+        rec_status[utils.enum_val_2_str(next_task)] = Status.Not_Started
 
     file = path / _status_file
     with open(file, 'w') as f:
@@ -140,7 +140,7 @@ def update_recording_status(path: str | pathlib.Path, task: Task, status: Status
 def readMarkerIntervalsFile(fileName) -> list[list[int]]:
     analyzeFrames = []
     if pathlib.Path(fileName).is_file():
-        with open(str(fileName), 'r' ) as f:
+        with open(fileName, 'r' ) as f:
             reader = csv.DictReader(f, delimiter='\t')
             for entry in reader:
                 analyzeFrames.append([int(float(entry['start_frame'])), int(float(entry['end_frame']))])

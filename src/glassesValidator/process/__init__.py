@@ -40,7 +40,7 @@ class DataQualityType(Enum):
     # so this get serialized in a user-friendly way by pandas..
     def __str__(self):
         return self.name
-utils.register_type(utils.CustomTypeEntry(DataQualityType,'glassesValidator.DataQualityType',str,lambda x: getattr(DataQualityType,x)))
+utils.register_type(utils.CustomTypeEntry(DataQualityType,'glassesValidator.DataQualityType',utils.enum_val_2_str,lambda x: getattr(DataQualityType,x)))
 
 def get_DataQualityType_explanation(dq: DataQualityType):
     ler_name =  "Left eye ray + pose"
