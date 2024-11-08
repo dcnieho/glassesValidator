@@ -42,6 +42,7 @@ Once pip-installed in your Python distribution, there are three ways to run the 
 
 ## Complete install instructions for MacOS
 Installing and running glassesValidator on a Mac will involve some use of the terminal. In this section we will show you step by step how to install, and then what to do every time you want to run glassesValidator.
+Note that it is critical on MacOS that glassesValidator is installed natively, and not under Rosetta or Parallels. That will lead to an error when importing the `polars` package, and other unfixable errors.
 ### Installing glassesValidator
 1. To acquire and manage Python, install Anaconda by following [these instructions](https://docs.anaconda.com/anaconda/install/mac-os/). Additional notes:
    a. Choose the graphical installer.
