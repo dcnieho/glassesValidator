@@ -112,11 +112,11 @@ def process(working_dir, dq_types: list=None, allow_dq_fallback=False, include_d
                     try:
                         if e==DataQualityType.pose_left_right_avg:
                             # binocular average
-                            data = offset.loc[idx[i,qData,[DataQualityType.pose_left_eye,DataQualityType.pose_right_eye],t],:].mean(level=['marker_interval','timestamp','target'],skipna=True)
+                            data = offset.loc[idx[i,qData,[DataQualityType.pose_left_eye,DataQualityType.pose_right_eye],t],:].groupby(level=['marker_interval','timestamp','target']).mean()
                         else:
                             data = offset.loc[idx[i,qData,                                e                             ,t],:]
                     except KeyError:
-                        # this happens when data for the given type is not available (e.g. no binocular data, only individual eye data)
+                        # this happens when data for the given type is not available
                         hasData = False
                         for k in ('acc_x','acc_y','acc','rms_x','rms_y','rms','std_x','std_y','std'):
                             df.loc[(i,e,t),k] = np.nan
