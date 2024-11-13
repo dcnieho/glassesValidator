@@ -102,17 +102,33 @@ def get_DataQualityType_explanation(dq: DataQualityType):
                    f"'{ler_name}' and '{rer_name}' to be enabled."
 
 
-def collect_data_quality(rec_dirs: list[str | pathlib.Path]):
-    # 1. collect all data quality from the selected
-    rec_files = [pathlib.Path(rec)/'dataQuality.tsv' for rec in rec_dirs]
-    rec_files = [f for f in rec_files if f.is_file()]
+def collect_data_quality(rec_dirs: list[str | pathlib.Path], file_name: str|dict[str,str]='dataQuality.tsv', col_for_parent=None):
+    # 1. collect all data quality metrics from the provided directories
+    rec_files: list = []
+    idx_vals = ['recording']
+    if isinstance(file_name,dict):
+        for f in file_name:
+            for d in rec_dirs:
+                f_path = pathlib.Path(d)/file_name[f]
+                if not f_path.is_file():
+                    continue
+                kwargs = {'recording': f_path.parent.name, 'plane': f}
+                if col_for_parent:
+                    kwargs[col_for_parent] = f_path.parent.parent.name
+                rec_files.append((f_path,kwargs))
+        idx_vals.append('plane')
+        if col_for_parent:
+            idx_vals.insert(0,col_for_parent)
+    else:
+        rec_files = [(pathlib.Path(rec)/file_name,{'recording': rec.name}) for rec in rec_dirs]
+        rec_files = [f for f in rec_files if f[0].is_file()]
     if not rec_files:
         return None, None, None
-    df = pd.concat((pd.read_csv(rec, delimiter='\t').assign(recording=rec.parent.name) for rec in rec_files), ignore_index=True)
+    df = pd.concat((pd.read_csv(rec[0], delimiter='\t').assign(**rec[1]) for rec in rec_files), ignore_index=True)
     if df.empty:
         return None, None, None
     # set indices
-    df = df.set_index(['recording','marker_interval','type','target'])
+    df = df.set_index(idx_vals+['marker_interval','type','target'])
     # change type index into enum
     typeIdx = df.index.names.index('type')
     df.index = df.index.set_levels(pd.CategoricalIndex([getattr(DataQualityType,x) for x in df.index.levels[typeIdx]]),level='type')
