@@ -102,7 +102,7 @@ def get_DataQualityType_explanation(dq: DataQualityType):
                    f"'{ler_name}' and '{rer_name}' to be enabled."
 
 
-def _collect_data_quality(rec_dirs: list[str | pathlib.Path]):
+def collect_data_quality(rec_dirs: list[str | pathlib.Path]):
     # 1. collect all data quality from the selected
     rec_files = [pathlib.Path(rec)/'dataQuality.tsv' for rec in rec_dirs]
     rec_files = [f for f in rec_files if f.is_file()]
@@ -132,7 +132,7 @@ def _collect_data_quality(rec_dirs: list[str | pathlib.Path]):
 
     return df, default_dq_type, targets
 
-def _summarize_and_store_data_quality(df: pd.DataFrame, output_file_or_dir: str | pathlib.Path, dq_types: list[DataQualityType], targets: list[int], average_over_targets = False, include_data_loss = False):
+def summarize_and_store_data_quality(df: pd.DataFrame, output_file_or_dir: str | pathlib.Path, dq_types: list[DataQualityType], targets: list[int], average_over_targets = False, include_data_loss = False):
     dq_types_have = sorted(list(df.index.levels[df.index.names.index('type')]), key=lambda dq: dq.value)
     targets_have  = list(df.index.levels[df.index.names.index('target')])
 
@@ -162,12 +162,12 @@ def _summarize_and_store_data_quality(df: pd.DataFrame, output_file_or_dir: str 
     df.to_csv(output_file_or_dir, mode='w', header=True, sep='\t', na_rep='nan', float_format="%.6f")
 
 def export_data_quality(rec_dirs: list[str | pathlib.Path], output_file_or_dir: str | pathlib.Path, dq_types: list[DataQualityType] = None, targets: list[int] = None, average_over_targets = False, include_data_loss = False):
-    df, default_dq_type, targets_have = _collect_data_quality(rec_dirs)
+    df, default_dq_type, targets_have = collect_data_quality(rec_dirs)
     if not dq_types:
         dq_types = [default_dq_type]
     if not targets:
         targets = targets_have
-    _summarize_and_store_data_quality(df, output_file_or_dir, dq_types, targets, average_over_targets, include_data_loss)
+    summarize_and_store_data_quality(df, output_file_or_dir, dq_types, targets, average_over_targets, include_data_loss)
 
 
 __all__ = ['code_marker_interval','detect_markers','gaze_to_poster',

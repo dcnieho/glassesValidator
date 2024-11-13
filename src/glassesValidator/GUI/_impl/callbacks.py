@@ -17,7 +17,7 @@ from . import globals, db, gui, process_pool
 from ...utils import Task, get_next_task
 from ...preprocess import make_fs_dirname
 from ... import config, preprocess, process, utils as gv_utils
-from ...process import DataQualityType, _collect_data_quality, _summarize_and_store_data_quality
+from ...process import DataQualityType, collect_data_quality, summarize_and_store_data_quality
 
 
 
@@ -267,7 +267,7 @@ async def cancel_processing_recordings(ids: list[int]):
 async def export_data_quality(ids: list[int]):
     # 1. collect all data quality from the selected recordings
     rec_dirs = [globals.recordings[id].working_directory for id in ids]
-    df, default_dq_type, targets = _collect_data_quality(rec_dirs)
+    df, default_dq_type, targets = collect_data_quality(rec_dirs)
     if df is None:
         gui_utils.push_popup(globals, msg_box.msgbox, "Export error", "There is no data quality for the selected recordings. Did you code any validation intervals (see manual)?", msg_box.MsgBox.error)
         return
@@ -317,4 +317,4 @@ async def export_data_quality(ids: list[int]):
 async def _export_data_quality(df: pd.DataFrame, pop_data: dict):
     dq_types = [dq for i,dq in enumerate(pop_data['dq_types']) if pop_data['dq_types_sel'][i]]
     targets  = [t for i,t in enumerate(pop_data['targets']) if pop_data['targets_sel'][i]]
-    _summarize_and_store_data_quality(df, globals.project_path, dq_types, targets, pop_data['targets_avg'], pop_data['include_data_loss'])
+    summarize_and_store_data_quality(df, globals.project_path, dq_types, targets, pop_data['targets_avg'], pop_data['include_data_loss'])
