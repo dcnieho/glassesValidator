@@ -37,10 +37,10 @@ class DataQualityType(Enum):
     pose_right_eye              = auto()    # use provided right eye gaze vector, and pose information w.r.t. poster to compute angular measures
     pose_left_right_avg         = auto()    # report average of left (pose_left_eye) and right (pose_right_eye) eye angular values
 
-    # so this get serialized in a user-friendly way by pandas..
+    # so this gets serialized in a user-friendly way by pandas..
     def __str__(self):
         return self.name
-utils.register_type(utils.CustomTypeEntry(DataQualityType,'glassesValidator.DataQualityType',utils.enum_val_2_str,lambda x: getattr(DataQualityType,x)))
+utils.register_type(utils.CustomTypeEntry(DataQualityType, 'glassesValidator.DataQualityType', utils.enum_val_2_str, lambda x: getattr(DataQualityType, x.split('.')[-1])))
 
 def get_DataQualityType_explanation(dq: DataQualityType):
     ler_name =  "Left eye ray + pose"
