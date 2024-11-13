@@ -41,8 +41,11 @@ def process(working_dir, dq_types: list=None, allow_dq_fallback=False, include_d
     if (DataQualityType.pose_left_eye in dq_have) and (DataQualityType.pose_right_eye in dq_have):
         dq_have.append(DataQualityType.pose_left_right_avg)
     if dq_types:
-        if not isinstance(dq_types,list):
+        if isinstance(dq_types,DataQualityType) or isinstance(dq_types, str):
             dq_types = [dq_types]
+        else:
+            # ensure list
+            dq_types = list(dq_types)
         # do some checks on user input
         for i,dq in reversed(list(enumerate(dq_types))):
             if not isinstance(dq, DataQualityType):
