@@ -149,7 +149,7 @@ def summarize_and_store_data_quality(df: pd.DataFrame, output_file_or_dir: str |
         df = df.drop(columns='data_loss')
     # average data if wanted
     if average_over_targets:
-        gb = df.drop(columns='order').groupby(['recording', 'marker_interval', 'type'],observed=True)
+        gb = df.drop(columns='order').groupby([n for n in df.index.names if n!='target'],observed=True)
         count = gb.count()
         df = gb.mean()
         # add number of targets count (there may be some missing data)
