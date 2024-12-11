@@ -109,7 +109,7 @@ def process(working_dir: str|pathlib.Path, config_dir: str|pathlib.Path=None,
                         gaze        = gaze3DRight[s,:]
                         gazePoster  = gaze2DRight[s,:]
 
-                if np.any([np.any(np.isnan(ori)), np.any(np.isnan(gaze)), np.any(np.isnan(gazePoster))]):
+                if np.any(np.isnan(ori)) or np.any(np.isnan(gazePoster)) or (dq_types[e]!=DataQualityType.viewpos_vidpos_homography and np.any(np.isnan(gaze))):
                     continue
 
                 for ti,t in enumerate(targets):
