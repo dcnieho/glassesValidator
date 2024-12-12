@@ -147,8 +147,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_poster):
 
             # if have gaze in world info, draw it too (also only first)
             if hasPosterGaze and frame_idx in gazesPoster:
-                if hasCamCal:
-                    gazesPoster[frame_idx][0].draw_on_world_video(frame, cameraParams, subPixelFac)
+                gazesPoster[frame_idx][0].draw_on_world_video(frame, cameraParams, subPixelFac, None if not frame_idx in poses else poses[frame_idx])
                 if show_poster:
                     gazesPoster[frame_idx][0].draw_on_plane(refImg, poster, subPixelFac)
 
