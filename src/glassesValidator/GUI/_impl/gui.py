@@ -416,7 +416,7 @@ class MainGUI():
         imgui.style.set_color_(imgui.Col_.tab_hovered, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.button_active, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.header_active, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.nav_highlight, globals.settings.style_accent)
+        imgui.style.set_color_(imgui.Col_.nav_cursor, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.plot_histogram, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.button_hovered, globals.settings.style_accent)
         imgui.style.set_color_(imgui.Col_.header_hovered, globals.settings.style_accent)
@@ -914,8 +914,6 @@ class MainGUI():
         imgui.dummy((0,2*imgui.style.item_spacing.y))
 
         imgui.end_group()
-        imgui.same_line(spacing=spacing)
-        imgui.dummy((0, 0))
 
         if changed:
             eye_tracker = EyeTracker(eye_tracker_names[combo_value])
@@ -942,9 +940,6 @@ class MainGUI():
         imgui.dummy((0,2*imgui.style.item_spacing.y))
         imgui.end_group()
 
-        imgui.same_line(spacing=spacing)
-        imgui.dummy((0, 0))
-
     def draw_select_recordings_to_import(self, recording_list: recording_table.RecordingTable):
         spacing = 2 * imgui.style.item_spacing.x
         imgui.same_line(spacing=spacing)
@@ -962,18 +957,12 @@ class MainGUI():
         imgui.end_child()
         imgui.end_child()
 
-        imgui.same_line(spacing=spacing)
-        imgui.dummy((0,6*imgui.style.item_spacing.y))
-
     def draw_dq_export_config_popup(self, pop_data):
         spacing = 2 * imgui.style.item_spacing.x
         right_width = self.scaled(90)
         frame_height = imgui.get_frame_height()
         checkbox_offset = right_width - frame_height
 
-        imgui.same_line(spacing=spacing)
-
-        imgui.begin_group()
         imgui.text_unformatted("Configure what you would like to export.")
         imgui.dummy((0,1*imgui.style.item_spacing.y))
 
@@ -988,7 +977,6 @@ class MainGUI():
                     imgui.table_next_row()
                     imgui.table_set_column_index(1)  # Right
                     imgui.dummy((right_width, 1))
-                    imgui.push_item_width(right_width)
 
                     for i,dq in enumerate(pop_data['dq_types']):
                         imgui.table_next_row()
@@ -1015,7 +1003,6 @@ class MainGUI():
                 imgui.table_next_row()
                 imgui.table_set_column_index(1)  # Right
                 imgui.dummy((right_width, 1))
-                imgui.push_item_width(right_width)
 
                 for i,t in enumerate(pop_data['targets']):
                     imgui.table_next_row()
@@ -1026,18 +1013,16 @@ class MainGUI():
                     imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
                     _, pop_data['targets_sel'][i] = my_checkbox(f"##target_{t}", pop_data['targets_sel'][i])
 
-
                 imgui.end_table()
                 imgui.spacing()
 
         name = 'targets_avg'
         if imgui.begin_table(f"##export_popup_{name}", columns=2, flags=imgui.TableFlags_.no_clip):
-            imgui.table_setup_column(f"##settings_{name}_left", imgui.TableColumnFlags_.width_stretch)
+            imgui.table_setup_column(f"##settings_{name}_left",  imgui.TableColumnFlags_.width_stretch)
             imgui.table_setup_column(f"##settings_{name}_right", imgui.TableColumnFlags_.width_fixed)
             imgui.table_next_row()
             imgui.table_set_column_index(1)  # Right
             imgui.dummy((right_width, 1))
-            imgui.push_item_width(right_width)
 
             imgui.table_next_row()
             imgui.table_next_column()
@@ -1047,14 +1032,7 @@ class MainGUI():
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)
             _, pop_data['targets_avg'] = my_checkbox("##average_over_targets", pop_data['targets_avg'])
 
-
             imgui.end_table()
-            imgui.spacing()
-
-        imgui.end_group()
-
-        imgui.same_line(spacing=spacing)
-        imgui.dummy((0,6*imgui.style.item_spacing.y))
 
 
     def draw_about_popup(self):
