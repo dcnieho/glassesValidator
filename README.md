@@ -195,6 +195,7 @@ glassesValidator supports the following eye trackers:
 - SMI ETG 1 and ETG 2
 - Tobii Pro Glasses 2
 - Tobii Pro Glasses 3
+- Viewpointsystem VPS 19
 
 * The generic eye tracker allows users to import recordings made with unsupported eye trackers into tools built upon glassesTools, if the user has already converted the recording to the [glassesTools format](https://github.com/dcnieho/glassesTools/blob/master/README.md#common-data-format) themselves. The name of the eye tracker can be set in the [recording info](https://github.com/dcnieho/glassesTools/blob/master/README.md#recording-info) file through the `eye_tracker_name` property, so that recordings from different devices imported as generic eye tracker recordings can be distinguished.
 
