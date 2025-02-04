@@ -1,5 +1,5 @@
 [tool.bumpversion]
-current_version = "2.2.0"
+current_version = "2.3.0"
 
 [[tool.bumpversion.files]]
 filename = "src/glassesValidator/version.py"
