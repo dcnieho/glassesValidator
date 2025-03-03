@@ -1,5 +1,4 @@
 import concurrent.futures
-from typing import Tuple
 import configparser
 import platform
 import asyncio
@@ -15,17 +14,18 @@ import sys
 import io
 
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
+eye_tracker_names = [e for e in eye_tracker_names if e!=EyeTracker.Generic.value]
 from glassesTools.gui import file_picker, msg_box, recording_table, utils as gui_utils
 from glassesTools.gui.utils import my_checkbox, my_combo, handle_popup_stack
 from glassesTools.utils import hex_to_rgba_0_1
 from glassesTools import async_thread, platform as pltfrm, recording as gt_recording
+from glassesTools.validation import DataQualityType, get_DataQualityType_explanation
 import glassesTools
 
 from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, ProcessState, Recording, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
 from . import globals, callbacks, db, process_pool, utils
 from .. import _general_imgui
 from ...utils import Task, Status, get_task_name_friendly, get_next_task, task_names, get_last_finished_step, get_recording_status, update_recording_status
-from ...process import DataQualityType, get_DataQualityType_explanation
 
 imgui.io = None
 imgui.style = None
@@ -620,11 +620,11 @@ class MainGUI():
         if not subset:
             subset = globals.recordings
         for recid in subset:
-            rec_info = gt_recording.Recording.load_from_json(globals.recordings[recid].working_directory)
-            if rec_info.duration!=globals.recordings[recid].duration:
-                globals.recordings[recid].duration = rec_info.duration
-                async_thread.run(db.update_recording(globals.recordings[recid], "duration"))
             if globals.recordings[recid].task not in [Task.Not_Imported, Task.Unknown]:
+                rec_info = gt_recording.Recording.load_from_json(globals.recordings[recid].working_directory)
+                if rec_info.duration!=globals.recordings[recid].duration:
+                    globals.recordings[recid].duration = rec_info.duration
+                    async_thread.run(db.update_recording(globals.recordings[recid], "duration"))
                 last_task = get_last_finished_step(get_recording_status(globals.recordings[recid].working_directory))
                 globals.recordings[recid].task = last_task
                 async_thread.run(db.update_recording(globals.recordings[recid], "task"))
@@ -1632,7 +1632,7 @@ class MainGUI():
             imgui.text("Use global shift:")
             imgui.same_line()
             gui_utils.draw_hover_text(
-                "If selected, for each validation interval the mean position will be removed from the gaze data and the targets, removing any overall shift of the data. This improves the matching of fixations to targets when there is a significant overall offset in the data. It may fail (backfire) if there are data samples far outside the range of the validation targets, or if there is no data for some targets."
+                "If selected, for each validation interval the median position will be removed from the gaze data and mean from the targets, removing any overall shift of the data. This improves the matching of fixations to targets when there is a significant overall offset in the data. It may fail (backfire) if there are data samples far outside the range of the validation targets, or if there is no data for some targets."
             )
             imgui.table_next_column()
             imgui.set_cursor_pos_x(imgui.get_cursor_pos_x() + checkbox_offset)

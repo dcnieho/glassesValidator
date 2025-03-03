@@ -147,6 +147,7 @@ async def connect():
             "start_time":                   f'INTEGER DEFAULT 0',
             "duration":                     f'INTEGER DEFAULT 0',
             "eye_tracker":                  f'TEXT    DEFAULT "{EyeTracker.Unknown.value}"',
+            "eye_tracker_name":             f'TEXT    DEFAULT ""',
             "project":                      f'TEXT    DEFAULT ""',
             "participant":                  f'TEXT    DEFAULT ""',
             "firmware_version":             f'TEXT    DEFAULT ""',

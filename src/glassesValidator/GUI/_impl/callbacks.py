@@ -10,14 +10,15 @@ from imgui_bundle import icons_fontawesome_6 as ifa6
 
 from glassesTools import async_thread, platform, recording
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
+eye_tracker_names = [e for e in eye_tracker_names if e!=EyeTracker.Generic.value]
 from glassesTools.gui import msg_box, recording_table, utils as gui_utils
+from glassesTools.validation import config, DataQualityType, export
 
 from .structs import JobDescription, Recording
 from . import globals, db, gui, process_pool
 from ...utils import Task, get_next_task
 from ...preprocess import make_fs_dirname
-from ... import config, preprocess, process, utils as gv_utils
-from ...process import DataQualityType, collect_data_quality, summarize_and_store_data_quality
+from ... import preprocess, process, utils as gv_utils
 
 
 
@@ -64,7 +65,7 @@ async def deploy_config(project_path: str|pathlib.Path, config_dir: str):
         gui_utils.push_popup(globals, msg_box.msgbox, "Deploy configuration", f"The folder {conf_dir} already exist. Do you want to deploy a configuration to this folder,\npotentially overwriting any configuration that is already there?", msg_box.MsgBox.warn, buttons)
 
 async def deploy_poster_pdf(dir: str|pathlib.Path):
-    config.poster.deploy_default_pdf(dir)
+    config.plane.deploy_default_pdf(dir)
 
 async def remove_recording_working_dir(rec: Recording):
     if rec.working_directory and rec.working_directory.is_dir():
@@ -191,18 +192,18 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
             args = tuple()
             kwargs['rec_info'] = rec
             kwargs['copy_scene_video'] = globals.settings.copy_scene_video
-        case Task.Coded | Task.Markers_Detected | Task.Gaze_Tranformed_To_Poster | Task.Target_Offsets_Computed | Task.Fixation_Intervals_Determined | Task.Data_Quality_Calculated | Task.Make_Video:
+        case Task.Coded | Task.Markers_Detected | Task.Gaze_Tranformed_To_Plane | Task.Fixations_Classified | Task.Fixation_Assigned | Task.Data_Quality_Calculated | Task.Make_Video:
             match task:
                 case Task.Coded:
                     fun = process.code_marker_interval
                 case Task.Markers_Detected:
                     fun = process.detect_markers
-                case Task.Gaze_Tranformed_To_Poster:
-                    fun = process.gaze_to_poster
-                case Task.Target_Offsets_Computed:
-                    fun = process.compute_offsets_to_targets
-                case Task.Fixation_Intervals_Determined:
-                    fun = process.determine_fixation_intervals
+                case Task.Gaze_Tranformed_To_Plane:
+                    fun = process.gaze_to_plane
+                case Task.Fixations_Classified:
+                    fun = process.classify_fixations
+                case Task.Fixation_Assigned:
+                    fun = process.assign_fixations
                     kwargs['do_global_shift'] = globals.settings.fix_assign_do_global_shift
                     kwargs['max_dist_fac']    = globals.settings.fix_assign_max_dist_fac
                 case Task.Data_Quality_Calculated:
@@ -267,7 +268,7 @@ async def cancel_processing_recordings(ids: list[int]):
 async def export_data_quality(ids: list[int]):
     # 1. collect all data quality from the selected recordings
     rec_dirs = [globals.recordings[id].working_directory for id in ids]
-    df, default_dq_type, targets = collect_data_quality(rec_dirs)
+    df, default_dq_type, targets = export.collect_data_quality(rec_dirs)
     if df is None:
         gui_utils.push_popup(globals, msg_box.msgbox, "Export error", "There is no data quality for the selected recordings. Did you code any validation intervals (see manual)?", msg_box.MsgBox.error)
         return
@@ -317,4 +318,4 @@ async def export_data_quality(ids: list[int]):
 async def _export_data_quality(df: pd.DataFrame, pop_data: dict):
     dq_types = [dq for i,dq in enumerate(pop_data['dq_types']) if pop_data['dq_types_sel'][i]]
     targets  = [t for i,t in enumerate(pop_data['targets']) if pop_data['targets_sel'][i]]
-    summarize_and_store_data_quality(df, globals.project_path, dq_types, targets, pop_data['targets_avg'], pop_data['include_data_loss'])
+    export.summarize_and_store_data_quality(df, globals.project_path, dq_types, targets, pop_data['targets_avg'], pop_data['include_data_loss'])

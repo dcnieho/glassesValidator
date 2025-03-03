@@ -76,7 +76,7 @@ def get_simplified_task_state(task: Task):
         case Task.Imported:
             return TaskSimplified.Imported
         # after stage 2 / during stage 3
-        case Task.Coded | Task.Markers_Detected | Task.Gaze_Tranformed_To_Poster | Task.Target_Offsets_Computed | Task.Fixation_Intervals_Determined:
+        case Task.Coded | Task.Markers_Detected | Task.Gaze_Tranformed_To_Plane | Task.Fixations_Classified | Task.Fixation_Assigned:
             return TaskSimplified.Coded
         # after stage 3:
         case Task.Data_Quality_Calculated:

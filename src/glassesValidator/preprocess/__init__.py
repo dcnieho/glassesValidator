@@ -15,7 +15,7 @@ def do_import(output_dir: str | pathlib.Path = None, source_dir: str | pathlib.P
         if isinstance(rec_info,list):
             raise ValueError('You should provide a single Recording to this function''s "rec_info" input argument, not a list of Recordings.')
 
-    device, rec_info = check_device(device, rec_info)
+    device, rec_info, _ = check_device(device, rec_info)
     # ensure there is an output directory
     if rec_info is not None:
         if not rec_info.working_directory:

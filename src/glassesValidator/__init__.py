@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from . import config
 from . import GUI
 from . import preprocess
 from . import process

@@ -5,10 +5,10 @@ import pathlib
 import cv2
 import numpy as np
 
-from glassesTools import annotation, aruco, gaze_headref, gaze_worldref, naming, ocv, propagating_thread, recording, timestamps, transforms
+from glassesTools import annotation, aruco, gaze_headref, gaze_worldref, naming, ocv, propagating_thread, recording, timestamps
 from glassesTools.gui import video_player
+from glassesTools.validation import config
 
-from .. import config
 from .. import utils
 
 from ffpyplayer.writer import MediaWriter
@@ -17,7 +17,7 @@ import ffpyplayer.tools
 from fractions import Fraction
 
 
-def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio_to_poster_video=False, show_visualization=False):
+def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio_to_plane_video=False, show_visualization=False):
     # if show_rejected_markers, rejected ArUco marker candidates are also drawn on the video. Possibly useful for debug
     # if add_audio_to_poster_video, audio is added to poster video, not only to the scene video
     # if show_visualization, the generated video is shown as it is created in a viewer
@@ -35,14 +35,14 @@ def process(working_dir, config_dir=None, show_rejected_markers=False, add_audio
         gui.set_show_play_percentage(True)
         gui.set_show_action_tooltip(True)
 
-        proc_thread = propagating_thread.PropagatingThread(target=do_the_work, args=(working_dir, config_dir, gui, show_rejected_markers, add_audio_to_poster_video), cleanup_fun=gui.stop)
+        proc_thread = propagating_thread.PropagatingThread(target=do_the_work, args=(working_dir, config_dir, gui, show_rejected_markers, add_audio_to_plane_video), cleanup_fun=gui.stop)
         proc_thread.start()
         gui.start()
         proc_thread.join()
     else:
-        do_the_work(working_dir, config_dir, None, show_rejected_markers, add_audio_to_poster_video)
+        do_the_work(working_dir, config_dir, None, show_rejected_markers, add_audio_to_plane_video)
 
-def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_rejected_markers, add_audio_to_poster_video):
+def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_rejected_markers, add_audio_to_plane_video):
     has_gui = gui is not None
     sub_pixel_fac = 8   # for anti-aliased drawing
 
@@ -52,7 +52,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_rejected_ma
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
     # get info about markers on our poster
-    poster          = config.poster.Poster(config_dir, validationSetup)
+    poster          = config.plane.ValidationPlane(config_dir, validationSetup)
     # get poster image width, height
     ref_img         = poster.get_ref_image(400)
     ref_height, ref_width, _ = ref_img.shape
@@ -170,7 +170,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_rejected_ma
     # if ffmpeg is on path, add audio to scene and optionally poster video
     if shutil.which('ffmpeg') is not None:
         todo = [working_dir / 'detectOutput_scene.mp4']
-        if add_audio_to_poster_video:
+        if add_audio_to_plane_video:
             todo.append(working_dir / 'detectOutput_poster.mp4')
 
         for f in todo:

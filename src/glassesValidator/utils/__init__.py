@@ -17,9 +17,9 @@ class Task(utils.AutoName):
     Imported                        = enum.auto()
     Coded                           = enum.auto()
     Markers_Detected                = enum.auto()
-    Gaze_Tranformed_To_Poster       = enum.auto()
-    Target_Offsets_Computed         = enum.auto()
-    Fixation_Intervals_Determined   = enum.auto()
+    Gaze_Tranformed_To_Plane        = enum.auto()
+    Fixations_Classified            = enum.auto()
+    Fixation_Assigned               = enum.auto()
     Data_Quality_Calculated         = enum.auto()
     # special task that is separate from status
     Make_Video                      = enum.auto()
@@ -38,12 +38,12 @@ def get_task_name_friendly(name: str | Task):
             return 'Code Intervals'
         case 'Markers_Detected':
             return 'Detect Markers'
-        case 'Gaze_Tranformed_To_Poster':
-            return 'Tranform Gaze To Poster'
-        case 'Target_Offsets_Computed':
-            return 'Compute Target Offsets'
-        case 'Fixation_Intervals_Determined':
-            return 'Determine Fixation Intervals'
+        case 'Gaze_Tranformed_To_Plane':
+            return 'Tranform Gaze To Plane'
+        case 'Fixations_Classified':
+            return 'Classify Fixations'
+        case 'Fixation_Assigned':
+            return 'Assign Fixations to Targets'
         case 'Data_Quality_Calculated':
             return 'Calculate Data Quality'
         case 'Make_Video':
@@ -66,12 +66,12 @@ def get_next_task(task: Task) -> Task:
         case Task.Coded:
             next_task = Task.Markers_Detected
         case Task.Markers_Detected:
-            next_task = Task.Gaze_Tranformed_To_Poster
-        case Task.Gaze_Tranformed_To_Poster:
-            next_task = Task.Target_Offsets_Computed
-        case Task.Target_Offsets_Computed:
-            next_task = Task.Fixation_Intervals_Determined
-        case Task.Fixation_Intervals_Determined:
+            next_task = Task.Gaze_Tranformed_To_Plane
+        case Task.Gaze_Tranformed_To_Plane:
+            next_task = Task.Fixations_Classified
+        case Task.Fixations_Classified:
+            next_task = Task.Fixation_Assigned
+        case Task.Fixation_Assigned:
             next_task = Task.Data_Quality_Calculated
 
         # other, includes Task.Data_Quality_Calculated (all already done), nothing to do if no specific task specified:

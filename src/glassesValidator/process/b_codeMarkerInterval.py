@@ -12,8 +12,8 @@ if isMacOS:
 
 from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, plane, propagating_thread, recording, timestamps
 from glassesTools.gui import video_player
+from glassesTools.validation import config
 
-from .. import config
 from .. import utils
 
 # This script shows a video player that is used to indicate the interval(s)
@@ -45,7 +45,7 @@ def process(working_dir, config_dir=None, show_poster=False):
     proc_thread.join()
 
 
-def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_poster):
+def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_plane):
     utils.update_recording_status(working_dir, utils.Task.Coded, utils.Status.Running)
 
     # get info about recording
@@ -53,27 +53,27 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_poster):
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
-    poster = config.poster.Poster(config_dir, validationSetup)
+    val_plane = config.plane.ValidationPlane(config_dir, validationSetup)
 
     # Read gaze data
     gazes = gaze_headref.read_dict_from_file(working_dir / naming.gaze_data_fname)[0]
 
     # Read pose of poster, if available
-    hasPosterPose = False
-    if (working_dir / 'posterPose.tsv').is_file():
+    hasPlanePose = False
+    if (working_dir / 'pose.tsv').is_file():
         try:
-            poses = plane.read_dict_from_file(working_dir / 'posterPose.tsv')
-            hasPosterPose = True
+            poses = plane.read_dict_from_file(working_dir / 'pose.tsv')
+            hasPlanePose = True
         except:
             # ignore when file can't be read or is empty
             pass
 
     # Read gaze on poster data, if available
-    hasPosterGaze = False
-    if (working_dir / 'gazePosterPos.tsv').is_file():
+    hasPlaneGaze = False
+    if (working_dir / 'gazePlane.tsv').is_file():
         try:
-            gazesPoster = gaze_worldref.read_dict_from_file(working_dir / 'gazePosterPos.tsv')
-            hasPosterGaze = True
+            gazesPlane = gaze_worldref.read_dict_from_file(working_dir / 'gazePlane.tsv')
+            hasPlaneGaze = True
         except:
             # ignore when file can't be read or is empty
             pass
@@ -93,10 +93,10 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_poster):
 
     # set up video playback
     # 1. window for scene video is already set up
-    # 2. if wanted and available, second OpenCV window for poster with gaze on that plane
-    show_poster &= hasPosterGaze  # no poster if we don't have poster gaze, it'd be empty and pointless
-    if show_poster:
-        poster_win_id = gui.add_window("poster")
+    # 2. if wanted and available, second OpenCV window gaze on the plane
+    show_plane &= hasPlaneGaze  # no plane if we don't have plane gaze, it'd be empty and pointless
+    if show_plane:
+        plane_win_id = gui.add_window("plane")
     # 3. timestamp info for relating audio to video frames
     video_ts = timestamps.VideoTimestamps( working_dir / naming.frame_timestamps_fname )
     # 4. mediaplayer for the actual video playback, with sound if available
@@ -117,7 +117,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_poster):
 
     # show
     subPixelFac = 8   # for sub-pixel positioning
-    armLength = poster.marker_size/2 # arms of axis are half a marker long
+    armLength = val_plane.marker_size/2 # arms of axis are half a marker long
     hasRequestedFocus = not isMacOS # False only if on Mac OS, else True since its a no-op
     should_exit = False
     while True:
@@ -133,11 +133,11 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_poster):
         if frame is not None:
             # the audio is my shepherd and nothing shall I lack :-)
             frame_idx = video_ts.find_frame(pts*1000)  # pts is in seconds, our frame timestamps are in ms
-            if show_poster:
-                refImg = poster.get_ref_image(400)
+            if show_plane:
+                refImg = val_plane.get_ref_image(400)
 
-            # if we have poster pose, draw poster origin on video
-            if hasPosterPose and frame_idx in poses and hasCamCal:
+            # if we have plane pose, draw plane origin on video
+            if hasPlanePose and frame_idx in poses and hasCamCal:
                 poses[frame_idx].draw_frame_axis(frame, cameraParams, armLength, 3, subPixelFac)
 
             # if have gaze for this frame, draw it
@@ -146,16 +146,16 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_poster):
                 gazes[frame_idx][0].draw(frame, cameraParams, subPixelFac)
 
             # if have gaze in world info, draw it too (also only first)
-            if hasPosterGaze and frame_idx in gazesPoster:
-                gazesPoster[frame_idx][0].draw_on_world_video(frame, cameraParams, subPixelFac, None if not frame_idx in poses else poses[frame_idx])
-                if show_poster:
-                    gazesPoster[frame_idx][0].draw_on_plane(refImg, poster, subPixelFac)
+            if hasPlaneGaze and frame_idx in gazesPlane:
+                gazesPlane[frame_idx][0].draw_on_world_video(frame, cameraParams, subPixelFac, None if not frame_idx in poses else poses[frame_idx])
+                if show_plane:
+                    gazesPlane[frame_idx][0].draw_on_plane(refImg, val_plane, subPixelFac)
 
             if frame is not None:
                 gui.update_image(frame, pts, frame_idx, window_id=gui.main_window_id)
 
-            if show_poster:
-                gui.update_image(refImg, pts, frame_idx, window_id=poster_win_id)
+            if show_plane:
+                gui.update_image(refImg, pts, frame_idx, window_id=plane_win_id)
 
         if not hasRequestedFocus:
             AppKit.NSApplication.sharedApplication().activateIgnoringOtherApps_(1)
