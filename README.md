@@ -140,7 +140,7 @@ The glassesValidator GUI organizes recordings into a project folder. Each record
 untouched when running glassesValidator. The glassesValidator project folder can furthermore contain a folder specifying the configuration
 of the project. Such a configuration should be made if you used a poster different from the default (if no configuration folder is present,
 the default settings are automatically used), and can be deployed with the `Deploy config` button in the GUI, or the
-[`glassesValidator.config.deploy_validation_config()`](#glassesvalidatorconfig) call from Python.
+[`glassesTools.validation.config.deploy_validation_config()`](#glassesvalidatorconfig) call from Python.
 
 When not using the GUI and running glassesValidator using your own scripts, such a project folder organization is not required. Working folders
 for a recording can be placed anywhere, and a folder for a custom configuration, if used, can also be placed anywhere. The
@@ -156,10 +156,10 @@ During the importing and processing of a recording, a series of files are create
 |`gazeData.tsv`|[`glassesValidator.preprocess`](#glassesvalidatorpreprocess) functions|[`glassesValidator.process.code_marker_interval`](#glassesvalidatorprocess), [`glassesValidator.process.gaze_to_plane`](#glassesvalidatorprocess)|Gaze data cast into the [glassesTools common format](https://github.com/dcnieho/glassesTools/blob/master/README.md#common-data-format) used by glassesValidator.|
 |`frameTimestamps.tsv`|[`glassesValidator.preprocess`](#glassesvalidatorpreprocess) functions|[`glassesValidator.process.code_marker_interval`](#glassesvalidatorprocess), [`glassesValidator.process.detect_markers`](#glassesvalidatorprocess)|Timestamps for each frame in the scene camera video.|
 |`calibration.xml`|[`glassesValidator.preprocess`](#glassesvalidatorpreprocess) functions|[`glassesValidator.process.detect_markers`](#glassesvalidatorprocess), [`glassesValidator.process.gaze_to_plane`](#glassesvalidatorprocess) (optional)|Camera calibration parameters for the scene camera.|
-|`markerInterval.tsv`|[`glassesValidator.process.code_marker_interval`](#glassesvalidatorprocess)|[`glassesValidator.process.detect_markers`](#glassesvalidatorprocess) (optional), [`glassesValidator.process.gaze_to_plane`](#glassesvalidatorprocess) (optional), [`glassesValidator.process.classify_fixations`](#glassesvalidatorprocess), [`glassesValidator.process.assign_fixations`](#glassesvalidatorprocess)|File denoting the validation intervals to be processed. This is produced with the coding interface included with glassesValidator. Can be manually created or edited to override the coded intervals.|
-|`pose.tsv`|[`glassesValidator.process.detect_markers`](#glassesvalidatorprocess)|[`glassesValidator.process.code_marker_interval`](#glassesvalidatorprocess) (optional), [`glassesValidator.process.gaze_to_plane`](#glassesvalidatorprocess), [`glassesValidator.process.classify_fixations`](#glassesvalidatorprocess)|File with information about poster pose w.r.t. the scene camera for each frame where the poster was detected.|
-|`gazePlane.tsv`|[`glassesValidator.process.gaze_to_plane`](#glassesvalidatorprocess)|[`glassesValidator.process.code_marker_interval`](#glassesvalidatorprocess) (optional), [`glassesValidator.process.classify_fixations`](#glassesvalidatorprocess), [`glassesValidator.process.assign_fixations`](#glassesvalidatorprocess)|File with gaze data projected to the poster surface.|
-|`fixations_interval_*.tsv`|[`glassesValidator.process.classify_fixations`](#glassesvalidatorprocess)|[`glassesValidator.process.calculate_data_quality`](#glassesvalidatorprocess)|Files containing the fixations classified for the gaze data projected to the validation plane, using [I2MC](https://link.springer.com/article/10.3758/s13428-016-0822-1).|
+|`markerInterval.tsv`|[`glassesValidator.process.code_marker_interval`](#glassesvalidatorprocess)|[`glassesValidator.process.detect_markers`](#glassesvalidatorprocess) (optional), [`glassesValidator.process.gaze_to_plane`](#glassesvalidatorprocess) (optional), [`glassesValidator.process.classify_fixations`](#glassesvalidatorprocess), [`glassesValidator.process.assign_fixations`](#glassesvalidatorprocess), [`glassesValidator.process.calculate_data_quality`](#glassesvalidatorprocess)|File denoting the validation intervals to be processed. This is produced with the coding interface included with glassesValidator. Can be manually created or edited to override the coded intervals.|
+|`pose.tsv`|[`glassesValidator.process.detect_markers`](#glassesvalidatorprocess)|[`glassesValidator.process.code_marker_interval`](#glassesvalidatorprocess) (optional), [`glassesValidator.process.gaze_to_plane`](#glassesvalidatorprocess)|File with information about poster pose w.r.t. the scene camera for each frame where the poster was detected.|
+|`gazePlane.tsv`|[`glassesValidator.process.gaze_to_plane`](#glassesvalidatorprocess)|[`glassesValidator.process.code_marker_interval`](#glassesvalidatorprocess) (optional), [`glassesValidator.process.classify_fixations`](#glassesvalidatorprocess)|File with gaze data projected to the poster surface.|
+|`fixations_interval_*.tsv`|[`glassesValidator.process.classify_fixations`](#glassesvalidatorprocess)|[`glassesValidator.process.assign_fixations`](#glassesvalidatorprocess), [`glassesValidator.process.calculate_data_quality`](#glassesvalidatorprocess)|Files containing the fixations classified for the gaze data projected to the validation plane, using [I2MC](https://link.springer.com/article/10.3758/s13428-016-0822-1).|
 |`fixationAssignment.tsv`|[`glassesValidator.process.assign_fixations`](#glassesvalidatorprocess)|[`glassesValidator.process.calculate_data_quality`](#glassesvalidatorprocess)|File containing the time interval in the recording for each validation target for which the data quality measures should be calculated. These are determined by a procedure to match fixations to validation targets. Can be manually created or edited to override the episode in the recording used for each validation target.|
 |`fixations_interval_*.png`|[`glassesValidator.process.classify_fixations`](#glassesvalidatorprocess)||Timeseries plot of the detected fixations on the validation plane.|
 |`fixationAssignment_interval_*.png`|[`glassesValidator.process.assign_fixations`](#glassesvalidatorprocess)||x-y plot of the detected fixations on the validation plane and matching of fixations to validation targets.|
@@ -254,7 +254,7 @@ software before they can be imported into glassesValidator. These are:
 ## The poster
 The default poster is available 1) [here](https://github.com/dcnieho/glassesValidator/blob/master/src/glassesValidator/config/poster/poster.pdf), 2) from the GUI with the `Get poster
 pdf` button, and 3) can also be acquired from a Python script by calling
-`glassesValidator.config.poster.deploy_default_pdf()`.
+`glassesTools.validation.config.plane.deploy_default_pdf()`.
 The default poster should be printed at A2 size, as defined
 in the pdf file, and is designed to cover a reasonable field of view when participants view it at arms length (i.e., 20 x 17.5 deg
 at 60 cm).
@@ -292,7 +292,7 @@ contains the following settings for the poster:
 |`gridCols`|35.6102|Number of grid columns to draw if `showGrid` is `1`.|
 |`gridRows`|30.3734|Number of grid rows to draw if `showGrid` is `1`.|
 |`showAnnotations`|0|`0` or `1`. If `1`, text annotations informing about the size of grid cells and markers is printed on the poster below the marker arrangement.|
-|`markerBorderBits`|1|Setting for border thickness of ArUco markers. Used by the glassesValidator tool when deploying a configuration and `glassesValidator.config.poster.deploy_marker_images()` function for generating the marker images that are placed on the poster by the [poster generation LaTeX file](https://github.com/dcnieho/glassesValidator/blob/master/src/glassesValidator/config/poster/poster.tex). Also used when detecting ArUco markers during recording processing.|
+|`markerBorderBits`|1|Setting for border thickness of ArUco markers. Used by the glassesValidator tool when deploying a configuration and `glassesTools.validation.config.plane.deploy_marker_images()` function for generating the marker images that are placed on the poster by the [poster generation LaTeX file](https://github.com/dcnieho/glassesValidator/blob/master/src/glassesValidator/config/poster/poster.tex). Also used when detecting ArUco markers during recording processing.|
 
 To check your custom configuration, you can generate a poster pdf using [the steps below](#steps-for-making-your-own-poster). Furthermore,
 a png image showing the poster will be generated in the configuration folder when any of glassesValidator's processing steps are run.
@@ -311,10 +311,10 @@ file](/src/glassesValidator/config/validationSetup.txt) that are only used by th
 
 ### Steps for making your own poster
 1. Deploy the default configuration using the `Deploy config` button in the GUI, or the
-   `glassesValidator.config.deploy_validation_config()` call from Python.
+   `glassesTools.validation.config.deploy_validation_config()` call from Python.
 2. Edit the `validationSetup.txt` configuration file and the `markerPositions.csv` and `targetPositions.csv` files in the
    configuration folder to design the layout and look of the poster that you want. NB: if you edit the `markerBorderBits`
-   variable, you have to run the `glassesValidator.config.poster.deploy_marker_images()` to regenerate the marker images
+   variable, you have to run the `glassesTools.validation.config.plane.deploy_marker_images()` to regenerate the marker images
    contained in the `all-markers` folder with the new border setting.
 3. Compile the `markerBoard/board.tex` LaTeX file with `pdfTex`, such as provided in the [TeX Live
    distribution](https://www.tug.org/texlive/).
