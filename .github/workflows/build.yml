@@ -18,7 +18,7 @@ jobs:
         python:
           - "3.11.x"
         cx-freeze:
-          - ">=7.2.3"
+          - ">=7.2.10"
     name: "Build exe for ${{ matrix.os }}"
     runs-on: "${{ matrix.os }}"
     steps:
@@ -44,6 +44,7 @@ jobs:
       - name: "Install requirements"
         run: |
           cd ./src/
+          python -m pip install -U numpy==2.2.2
           python -m pip install -U -r ./requirements.txt
 
       - name: "Build"

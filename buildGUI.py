@@ -15,15 +15,23 @@ def get_include_files():
         d = pathlib.Path(d) / 'share' / 'ffpyplayer'
         for lib in ('ffmpeg', 'sdl'):
             for f in (d/lib/'bin').glob('*'):
-                if f.is_file() and f.suffix=='' or f.suffix in ['.dll', '.exe']:
+                if f.is_file() and f.suffix=='' or f.suffix in ['.dll']:
                     files.append((f,pathlib.Path('lib')/f.name))
+
+    # ffmpeg binaries and all related files
+    for d in site.getsitepackages():
+        base = pathlib.Path(d)
+        p = base / 'ffmpeg' / 'binaries'
+        for f in p.rglob('*'):
+            if f.is_file():
+                files.append((f, pathlib.Path('lib')/os.path.relpath(f,base)))
     return files
 
 def get_zip_include_files():
     files = []
-    base = path / 'src'
-    for t in ['config','resources']:
-        p = base / 'glassesValidator' / t
+    for d in site.getsitepackages():
+        base = pathlib.Path(d)
+        p = base / 'glassesTools' / 'validation' / 'config'
 
         for f in p.rglob('*'):
             if f.is_file() and f.suffix not in ['.py','.pyc']:
@@ -54,6 +62,7 @@ build_options = {
         "zip_includes": get_zip_include_files(),
         "zip_include_packages": "*",
         "zip_exclude_packages": [
+            "ffmpeg",
             "OpenGL_accelerate",
             "glfw",
             "imgui_bundle",
