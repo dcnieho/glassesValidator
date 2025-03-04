@@ -12,7 +12,7 @@ if getattr(sys, "frozen", False):
     import site
     site.getuserbase()
 
-    # need to put packaged ffmpeg executable on path
+    # need to put packaged ffmpeg binaries (dlls) on path
     p = os.path.join(os.path.dirname(sys.executable),'lib')
     os.environ["PATH"] = p + os.pathsep + os.environ["PATH"]
     os.add_dll_directory(p)
