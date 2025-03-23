@@ -103,7 +103,7 @@ def remove_recording(iid: int):
 def draw_recording_open_folder_button(rec: Recording, label, source_dir=False):
     if source_dir:
         extra = "src_"
-        path = rec.source_directory
+        path = rec.get_source_directory()
         disable = False
     else:
         extra = ""

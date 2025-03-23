@@ -116,11 +116,11 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
 
     # step 1, find what recordings of this type of eye tracker are in the path
     recs = recording.find_recordings(paths, eye_tracker)
-    all_recs = []
-    dup_recs = []
+    all_recs: list[Recording] = []
+    dup_recs: list[Recording] = []
     for rec in recs:
         # skip duplicates
-        if rec.source_directory not in (r.source_directory for r in globals.recordings.values()):
+        if rec.source_directory not in (r.get_source_directory() for r in globals.recordings.values()):
             all_recs.append(Recording(**dataclasses.asdict(rec)))   # init structs.Recording with the glassesTools.recording.Recording instance
         else:
             dup_recs.append(rec)
@@ -133,7 +133,7 @@ async def _show_addable_recordings(paths: list[pathlib.Path], eye_tracker: EyeTr
     if not all_recs:
         if dup_recs:
             msg = f"{eye_tracker.value} recordings were found in the specified import paths, but could not be imported as they are already part of this glassesValidator project."
-            more= "Duplicates that were not imported:\n"+('\n'.join([str(r.source_directory) for r in dup_recs]))
+            more= "Duplicates that were not imported:\n"+('\n'.join([str(r.get_source_directory()) for r in dup_recs]))
         else:
             msg = f"No {eye_tracker.value} recordings were found among the specified import paths."
             more = None
