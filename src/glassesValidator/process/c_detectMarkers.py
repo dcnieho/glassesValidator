@@ -2,7 +2,7 @@ import pathlib
 
 from glassesTools import annotation, aruco, naming, plane, propagating_thread, recording
 from glassesTools.gui import video_player
-from glassesTools.validation import config
+from glassesTools.validation import config, Plane as ValidationPlane
 
 from .. import utils
 
@@ -42,7 +42,7 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
     # get info about markers on our validation plane
-    val_plane       = config.plane.ValidationPlane(config_dir, validationSetup)
+    val_plane       = ValidationPlane(config_dir, validationSetup)
 
     # get interval(s) coded to be analyzed, if any
     analyzeFrames   = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")

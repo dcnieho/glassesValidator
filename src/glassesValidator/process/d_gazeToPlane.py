@@ -2,7 +2,7 @@ import pathlib
 
 from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, plane, propagating_thread, recording
 from glassesTools.gui import video_player, worldgaze
-from glassesTools.validation import config
+from glassesTools.validation import config, Plane as ValidationPlane
 
 from .. import utils
 
@@ -64,7 +64,7 @@ def do_the_work(working_dir, config_dir, gui, show_plane, show_only_intervals):
 
     in_video = recording.Recording.load_from_json(working_dir).get_scene_video_path()
     validationSetup = config.get_validation_setup(config_dir)
-    val_plane       = config.plane.ValidationPlane(config_dir, validationSetup)
+    val_plane       = ValidationPlane(config_dir, validationSetup)
     worldgaze.show_visualization(
         in_video, working_dir / naming.frame_timestamps_fname, working_dir / naming.scene_camera_calibration_fname,
         {'plane': val_plane}, {'plane': poses}, head_gazes, {'plane': plane_gazes}, {annotation.Event.Validate: analyzeFrames},

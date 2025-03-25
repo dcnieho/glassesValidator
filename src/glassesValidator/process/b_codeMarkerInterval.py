@@ -12,7 +12,7 @@ if isMacOS:
 
 from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, plane, propagating_thread, recording, timestamps
 from glassesTools.gui import video_player
-from glassesTools.validation import config
+from glassesTools.validation import config, Plane as ValidationPlane
 
 from .. import utils
 
@@ -53,7 +53,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_plane):
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
-    val_plane = config.plane.ValidationPlane(config_dir, validationSetup)
+    val_plane = ValidationPlane(config_dir, validationSetup)
 
     # Read gaze data
     gazes = gaze_headref.read_dict_from_file(working_dir / naming.gaze_data_fname)[0]

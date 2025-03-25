@@ -7,7 +7,7 @@ import numpy as np
 
 from glassesTools import annotation, aruco, gaze_headref, gaze_worldref, naming, ocv, propagating_thread, recording, timestamps
 from glassesTools.gui import video_player
-from glassesTools.validation import config
+from glassesTools.validation import config, Plane as ValidationPlane
 
 from .. import utils
 
@@ -52,7 +52,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_rejected_ma
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
     # get info about markers on our poster
-    poster          = config.plane.ValidationPlane(config_dir, validationSetup)
+    poster          = ValidationPlane(config_dir, validationSetup)
     # get poster image width, height
     ref_img         = poster.get_ref_image(400)
     ref_height, ref_width, _ = ref_img.shape

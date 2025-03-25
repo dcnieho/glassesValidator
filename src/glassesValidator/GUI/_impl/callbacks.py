@@ -12,7 +12,7 @@ from glassesTools import async_thread, platform, recording
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
 eye_tracker_names = [e for e in eye_tracker_names if e!=EyeTracker.Generic.value]
 from glassesTools.gui import msg_box, recording_table, utils as gui_utils
-from glassesTools.validation import config, DataQualityType, export
+from glassesTools.validation import DataQualityType, default_poster, export
 
 from .structs import JobDescription, Recording
 from . import globals, db, gui, process_pool
@@ -46,7 +46,7 @@ def open_folder(path: pathlib.Path):
 
 
 async def _deploy_config(conf_dir: pathlib.Path):
-    config.deploy_validation_config(conf_dir)
+    default_poster.deploy_config(conf_dir)
 
 async def deploy_config(project_path: str|pathlib.Path, config_dir: str):
     if not config_dir:
@@ -65,7 +65,7 @@ async def deploy_config(project_path: str|pathlib.Path, config_dir: str):
         gui_utils.push_popup(globals, msg_box.msgbox, "Deploy configuration", f"The folder {conf_dir} already exist. Do you want to deploy a configuration to this folder,\npotentially overwriting any configuration that is already there?", msg_box.MsgBox.warn, buttons)
 
 async def deploy_poster_pdf(dir: str|pathlib.Path):
-    config.plane.deploy_default_pdf(dir)
+    default_poster.deploy_default_pdf(dir)
 
 async def remove_recording_working_dir(rec: Recording):
     if rec.working_directory and rec.working_directory.is_dir():

@@ -1,7 +1,7 @@
 import pathlib
 
 from glassesTools import fixation_classification
-from glassesTools.validation import config
+from glassesTools.validation import config, Plane as ValidationPlane
 
 from .. import utils
 
@@ -23,7 +23,7 @@ def process(working_dir: str|pathlib.Path, config_dir: str|pathlib.Path=None):
         print('  no marker intervals defined for this recording, skipping')
         return
 
-    validation_plane = config.plane.ValidationPlane(config_dir, validationSetup)
+    validation_plane = ValidationPlane(config_dir, validationSetup)
 
     plot_limits = [[validation_plane.bbox[0]-validation_plane.marker_size, validation_plane.bbox[2]+validation_plane.marker_size],
                    [validation_plane.bbox[1]-validation_plane.marker_size, validation_plane.bbox[3]+validation_plane.marker_size]]

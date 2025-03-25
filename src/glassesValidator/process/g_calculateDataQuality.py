@@ -2,7 +2,7 @@ import pathlib
 
 import numpy as np
 
-from glassesTools.validation import config, DataQualityType, compute_offsets
+from glassesTools.validation import config, DataQualityType, compute_offsets, Plane as ValidationPlane
 
 from .. import utils
 
@@ -20,7 +20,7 @@ def process(working_dir, config_dir=None,
 
     # get information about gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
-    validation_plane = config.plane.ValidationPlane(config_dir, validationSetup)
+    validation_plane = ValidationPlane(config_dir, validationSetup)
     targets = {t_id: np.append(validation_plane.targets[t_id].center, 0.) for t_id in validation_plane.targets}   # get centers of targets
 
     # get interval coded to be analyzed

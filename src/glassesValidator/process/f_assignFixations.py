@@ -1,7 +1,7 @@
 import pathlib
 import numpy as np
 
-from glassesTools.validation import config, assign_fixations
+from glassesTools.validation import config, assign_fixations, Plane as ValidationPlane
 
 from .. import utils
 
@@ -23,7 +23,7 @@ def process(working_dir, config_dir=None, do_global_shift=True, max_dist_fac=.5)
         print('  no marker intervals defined for this recording, skipping')
         return
 
-    validation_plane = config.plane.ValidationPlane(config_dir, validationSetup)
+    validation_plane = ValidationPlane(config_dir, validationSetup)
 
     targets = {t_id: np.append(validation_plane.targets[t_id].center, 0.) for t_id in validation_plane.targets}   # get centers of targets
     plot_limits = [[validation_plane.bbox[0]-validation_plane.marker_size, validation_plane.bbox[2]+validation_plane.marker_size],
