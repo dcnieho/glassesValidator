@@ -72,7 +72,7 @@ jobs:
       # base64 CERTIFICATE.p12 | pbcopy -> secrets.CODESIGN_P12_BASE64
       - name: "Import macOS codesign certificate"
         if: runner.os == 'macOS'
-        uses: "apple-actions/import-codesign-certs@v4"
+        uses: "apple-actions/import-codesign-certs@v5"
         with:
           p12-file-base64: "${{ secrets.CODESIGN_P12_BASE64 }}"
           p12-password: "${{ secrets.CODESIGN_P12_PASSWORD }}"
