@@ -13,21 +13,19 @@ A data quality tool for eye tracking glasses. Behavior Research Methods. doi: 10
 
 # How to acquire
 GlassesValidator is available from `https://github.com/dcnieho/glassesValidator`, and supports Python 3.11 on Windows, MacOS and Linux (newer versions of Python should work fine but are not tested).
+Complete installation instruction for using the glassesValidator GUI on [Windows](#complete-instructions-for-windows), [MacOS](#complete-instructions-for-macos) and [Linux](#complete-instructions-for-linux) users are available below.
+Note that the standaloen executable version of glassesValidator is discontinued. The last executable was for the [2.3.0 release](https://github.com/dcnieho/glassesValidator/releases/tag/v2.3.0).
 
-For Windows users who wish to use the glassesValidator GUI, the easiest way to acquire glassesValidator is to [download
-a standalone executable](https://github.com/dcnieho/glassesValidator/releases/latest). The standalone executable is not
-available for MacOS or Linux. Complete installation instruction for [MacOS](#complete-install-instructions-for-macos) and [Linux](#complete-install-instructions-for-linux) users are available below.
-
-For users on Windows, Mac or Linux who wish to use glassesValidator *in their Python code*, the easiest way to acquire
+For users on Windows, Mac (14 Sonoma or later) or Linux who wish to use glassesValidator *in their Python code*, the easiest way to acquire
 glassesValidator is to install it directly into your Python distribution using the command
 `python -m pip install glassesValidator`.
 If you run into problems on MacOS to install the `imgui_bundle` package, you can
-try to install it first with the command `SYSTEM_VERSION_COMPAT=0 pip install --only-binary=:all: imgui_bundle==1.5.2`. Note that this repository is pip-installable as well:
+try to install it first with the command `SYSTEM_VERSION_COMPAT=0 pip install --only-binary=:all: imgui_bundle==1.6.2`. Note that this repository itself is pip-installable as well:
 `python -m pip install git+https://github.com/dcnieho/glassesValidator.git#egg=glassesValidator`. NB: on some platforms you may have
 to replace `python` with `python3` in the above command lines.
 
 Once pip-installed in your Python distribution, there are three ways to run the GUI on any of the supported operating systems:
-1. Directly in the terminal of your operating system, type `glassesValidator` and run it.
+1. Directly in the terminal of your operating system, type `glassesValidator` and run it (NB: this does not appear to work in Anaconda environments, use one of the below methods for those).
 2. Open a Python console. From such a console, running the GUI requires only the following two lines of code:
     ```python
     import glassesValidator
@@ -40,57 +38,77 @@ Once pip-installed in your Python distribution, there are three ways to run the 
         glassesValidator.GUI.run()
     ```
 
-## Complete install instructions for MacOS
-Installing and running glassesValidator on a Mac will involve some use of the terminal. In this section we will show you step by step how to install, and then what to do every time you want to run glassesValidator.
-Note that it is critical on MacOS that glassesValidator is installed natively, and not under Rosetta or Parallels. That will lead to an error when importing the `polars` package, and other unfixable errors.
+## Complete instructions for Windows
+Installing and running glassesValidator on Windows will involve some use of the terminal. In this section we will show you step by step how to install, and then what to do every time you want to run glassesValidator.
 ### Installing glassesValidator
-1. To acquire and manage Python, install Anaconda by following [these instructions](https://docs.anaconda.com/anaconda/install/mac-os/). Additional notes:
-   a. Choose the graphical installer.
-   b. When clicking the installer link provided in these instructions, you may first be shown a user registration page. You can click "skip registration" there to directly go to the download files.
-   c. Ensure that you choose the correct installer for your system (Intel or Apple Silicon). If you are not sure what kind of system you have, consult [this page](https://support.apple.com/en-us/116943) to learn how to find out.
-2. Once anaconda is installed, open the Terminal application.
-3. You now first need to make an environment with the correct Python version in which you can then install glassesValidator. To do so, type `conda create -n glassesValidator-env python=3.11 pip` and run the command. `glassesValidator-env` is the name of the environment you create with this comment.
-4. Activate the environment you have just created: `conda activate glassesValidator-env`.
-5. Now you need to install glassesValidator. Do the following in the below order:
-   a. Type and run `SYSTEM_VERSION_COMPAT=0 pip install --only-binary=:all: imgui_bundle==1.5.2`
-   b. Type and run `pip install glassesValidator`.
+1. If you do not yet have Python on your machine, you need to first install it. In these instructions we use the Miniforge clone of conda, but Anaconda or a bare Python installation (3.11 or later) would also work. To acquire and manage Python, install Miniforge by following [these instructions](https://github.com/conda-forge/miniforge?tab=readme-ov-file#windows).
+1. Once Miniforge is installed, open the Miniforge Prompt from the Start menu.
+1. You now first need to make an environment with the correct Python version in which you can then install glassesValidator. To do so, type `conda create -n glassesValidator-env python=3.11 pip` and run the command. `glassesValidator-env` is the name of the environment you create with this comment.
+1. Activate the environment you have just created: `conda activate glassesValidator-env`.
+1. Now you need to install glassesValidator into this environment. To do so, type and run `pip install glassesValidator`.
+
+### Running glassesValidator
+If you have followed the above instructions to install glassesValidator, do the following each time you want to run glassesValidator:
+1. Open the Miniforge Prompt application.
+1. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment you created using the above instructions. If you use an environment with a different name, replace the name in the command.
+1. Type and run `glassesValidator` in the Powershell prompt.
 
 ### Updating glassesValidator
 If you already have glassesValidator installed but want to update it to the latest version, do the following:
-1. Open the Terminal application.
-2. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment you created using the above instructions. If you use an environment with a different name, replace the name in the command.
-3. Type and run `SYSTEM_VERSION_COMPAT=0 pip install --only-binary=:all: imgui_bundle==1.5.2`
-4. Type and run `pip install glassesValidator --upgrade`.
+1. Open the Miniforge Prompt application.
+1. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment you created using the above instructions. If you use an environment with a different name, replace the name in the command.
+1. Type and run `pip install glassesValidator --upgrade`.
+
+## Complete instructions for MacOS
+Installing and running glassesValidator on a Mac will involve some use of the terminal. In this section we will show you step by step how to install, and then what to do every time you want to run glassesValidator. MacOS 14 (Sonoma) or later are supported.
+Note that it is critical on MacOS that glassesValidator is installed natively, and not under Rosetta or Parallels. That will lead to an error when importing the `polars` package, and other unfixable errors. If you are not sure what kind of system you have, consult [this page](https://support.apple.com/en-us/116943) to learn how to find out.
+### Installing glassesValidator
+1. To acquire and manage Python, install Miniforge either by following [these instructions](https://github.com/conda-forge/miniforge?tab=readme-ov-file#unix-like-platforms-macos-linux--wsl), or by issuing `brew install miniforge` if you have homebrew installed.
+Additional notes:
+   1. Ensure that you choose the correct installer for your system (Intel or Apple Silicon). If you are not sure what kind of system you have, consult [this page](https://support.apple.com/en-us/116943) to learn how to find out.
+1. Once Miniforge is installed, open the Terminal application.
+1. You now first need to make an environment with the correct Python version in which you can then install glassesValidator. To do so, type `conda create -n glassesValidator-env python=3.11 pip` and run the command. `glassesValidator-env` is the name of the environment you create with this comment.
+1. Activate the environment you have just created: `conda activate glassesValidator-env`.
+1. Now you need to install glassesValidator. Do the following in the below order:
+   1. Type and run `SYSTEM_VERSION_COMPAT=0 pip install --only-binary=:all: imgui_bundle==1.6.2`
+   1. Type and run `pip install glassesValidator`.
 
 ### Running glassesValidator
 If you have followed the above instructions to install glassesValidator, do the following each time you want to run glassesValidator:
 1. Open the Terminal application.
-2. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment you created using the above instructions. If you use an environment with a different name, replace the name in the command.
-3. Start the Python interpreter: type and run `python`.
-4. Type and run `import glassesValidator`.
-5. Type and run `glassesValidator.GUI.run()`.
+1. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment you created using the above instructions. If you use an environment with a different name, replace the name in the command.
+1. Start the Python interpreter: type and run `python`.
+1. Type and run `import glassesValidator`.
+1. Type and run `glassesValidator.GUI.run()`.
 
-## Complete install instructions for Linux
+### Updating glassesValidator
+If you already have glassesValidator installed but want to update it to the latest version, do the following:
+1. Open the Terminal application.
+1. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment you created using the above instructions. If you use an environment with a different name, replace the name in the command.
+1. Type and run `SYSTEM_VERSION_COMPAT=0 pip install --only-binary=:all: imgui_bundle==1.6.2`
+1. Type and run `pip install glassesValidator --upgrade`.
+
+## Complete instructions for Linux
 Installing and running glassesValidator on Linux will involve some use of the terminal. In this section we will show you step by step how to install, and then what to do every time you want to run glassesValidator.
 ### Installing glassesValidator
-1. You may well already have Python installed on your machine. To check, type and run `python3 --version` in a terminal. If this command completes successfully and shows you have Python 3.10 or later, you can skip to step 3.
-2. To install Python, check what is the appropriate command for your Linux distribution. Examples would be `sudo apt-get update && sudo apt-get install python3.11` for Ubuntu and its derivatives, and `sudo dnf install python3.11` for Fedora. You can replace `python3.11` in this command with a different version (minimum 3.10).
-3. Make a new folder from where you want to run glassesValidator, e.g. `mkdir glassesValidator`. Enter this folder: `cd glassesValidator`.
-4. You now first need to make an environment in which you can then install glassesValidator. To do so, type `python3 -m venv .venv` and run the command.
-4. Activate the environment you have just created: `source .venv/bin/activate`.
-5. Now you need to install glassesValidator. To do so, type and run `pip install glassesValidator`.
-
-### Updating glassesValidator
-If you already have glassesValidator installed but want to update it to the latest version, do the following:
-1. Open the Terminal application.
-2. Navigate to the glassesValidator install location and activate the environment in which you have glassesValidator installed: type and run `source .venv/bin/activate` in the location where you installed glassesValidator.
-3. Type and run `pip install glassesValidator --upgrade`.
+1. You may well already have Python installed on your machine. To check, type and run `python3 --version` in a terminal. If this command completes successfully and shows you have Python 3.11 or later, you can skip to step 3.
+1. To install Python, check what is the appropriate command for your Linux distribution. Examples would be `sudo apt-get update && sudo apt-get install python3.11` for Ubuntu and its derivatives, and `sudo dnf install python3.11` for Fedora. You can replace `python3.11` in this command with a different version (minimum 3.11). You may also opt to install Miniforge by following [these instructions](https://github.com/conda-forge/miniforge?tab=readme-ov-file#unix-like-platforms-macos-linux--wsl).
+1. Make a new folder from where you want to run glassesValidator, e.g. `mkdir glassesValidator`. Enter this folder: `cd glassesValidator`.
+1. You now first need to make an environment in which you can then install glassesValidator. To do so, type `python3 -m venv .venv` and run the command.
+1. Activate the environment you have just created: `source .venv/bin/activate`.
+1. Now you need to install glassesValidator. To do so, type and run `pip install glassesValidator`.
 
 ### Running glassesValidator
 If you have followed the above instructions to install glassesValidator, do the following each time you want to run glassesValidator:
 1. Open the Terminal application.
-2. Navigate to the glassesValidator install location and activate the environment in which you have glassesValidator installed: type and run `source .venv/bin/activate` in the location where you installed glassesValidator.
-3. Type and run `glassesValidator`.
+1. Navigate to the glassesValidator install location and activate the environment in which you have glassesValidator installed: type and run `source .venv/bin/activate` in the location where you installed glassesValidator.
+1. Type and run `glassesValidator`.
+
+### Updating glassesValidator
+If you already have glassesValidator installed but want to update it to the latest version, do the following:
+1. Open the Terminal application.
+1. Navigate to the glassesValidator install location and activate the environment in which you have glassesValidator installed: type and run `source .venv/bin/activate` in the location where you installed glassesValidator.
+1. Type and run `pip install glassesValidator --upgrade`.
 
 
 # Usage
