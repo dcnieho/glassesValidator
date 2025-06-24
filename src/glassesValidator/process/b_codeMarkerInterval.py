@@ -157,7 +157,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_plane):
             if show_plane:
                 gui.update_image(refImg, pts, frame_idx, window_id=plane_win_id)
 
-        if not hasRequestedFocus:
+        if gui.is_running() and not hasRequestedFocus:
             AppKit.NSApplication.sharedApplication().activateIgnoringOtherApps_(1)
             hasRequestedFocus = True
 
