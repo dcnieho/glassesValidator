@@ -1,6 +1,6 @@
 import pathlib
 
-from glassesTools import annotation, aruco, naming, plane, propagating_thread, recording
+from glassesTools import annotation, aruco, naming, pose, propagating_thread, recording
 from glassesTools.gui import video_player
 from glassesTools.validation import config, Plane as ValidationPlane
 
@@ -20,6 +20,7 @@ def process(working_dir, config_dir=None, show_visualization=False, show_rejecte
     if show_visualization:
         gui = video_player.GUI(use_thread = False)
         gui.add_window(working_dir.name)
+        gui.set_interruptible(False)
         gui.set_show_controls(True)
         gui.set_show_play_percentage(True)
         gui.set_show_annotation_label(False)
@@ -52,16 +53,19 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     # get video file to process
     in_video = recInfo.get_scene_video_path()
 
-    # set up pose estimator and run it
-    estimator = aruco.PoseEstimator(in_video, working_dir / naming.frame_timestamps_fname, working_dir / naming.scene_camera_calibration_fname)
-    estimator.add_plane('validate',
-                        {'plane': val_plane, 'aruco_params': {'markerBorderBits': validationSetup['markerBorderBits']}, 'min_num_markers': validationSetup['minNumMarkers']},
-                        analyzeFrames)
+    # set up pose estimator
+    estimator = pose.Estimator(in_video, working_dir / naming.frame_timestamps_fname, working_dir / naming.scene_camera_calibration_fname)
+    # first, register all ArUco planes and individual markers with ArUco manager, which
+    # will then wrap their detection and register them with the pose estimator
+    aruco_manager = aruco.Manager()
+    aruco_manager.add_plane('validate', val_plane.get_plane_setup(), analyzeFrames)
+    aruco_manager.consolidate_setup()
+    aruco_manager.register_with_estimator(estimator)
     estimator.attach_gui(gui, {annotation.Event.Validate: [i for iv in analyzeFrames for i in iv]})
     if gui is not None:
         estimator.show_rejected_markers = show_rejected_markers
     poses, _, _ = estimator.process_video()
 
-    plane.write_list_to_file(poses['validate'], working_dir/'pose.tsv', skip_failed=True)
+    pose.write_list_to_file(poses['validate'], working_dir/'pose.tsv', skip_failed=True)
 
     utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Finished)

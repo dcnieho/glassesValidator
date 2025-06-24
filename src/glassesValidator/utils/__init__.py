@@ -1,11 +1,10 @@
 import pathlib
 import enum
-import json
 import csv
 
 from .makeVideo import process as make_video
 
-from glassesTools import utils
+from glassesTools import json, utils
 from glassesTools.recording import Recording
 from glassesTools.eyetracker import EyeTracker
 
@@ -25,7 +24,7 @@ class Task(utils.AutoName):
     Make_Video                      = enum.auto()
     Unknown                         = enum.auto()
 task_names = [x.value for x in Task]
-utils.register_type(utils.CustomTypeEntry(Task,'__enum.Task__', utils.enum_val_2_str, lambda x: getattr(Task, x.split('.')[1])))
+json.register_type(json.TypeEntry(Task,'__enum.Task__', utils.enum_val_2_str, lambda x: getattr(Task, x.split('.')[1])))
 
 def get_task_name_friendly(name: str | Task):
     if isinstance(name,Task):
@@ -85,15 +84,13 @@ class Status(utils.AutoName):
     Finished        = enum.auto()
     Errored         = enum.auto()
 status_names = [x.value for x in Status]
-utils.register_type(utils.CustomTypeEntry(Status,'__enum.Status__', utils.enum_val_2_str, lambda x: getattr(Status, x.split('.')[1])))
+json.register_type(json.TypeEntry(Status,'__enum.Status__', utils.enum_val_2_str, lambda x: getattr(Status, x.split('.')[1])))
 
 
 _status_file = 'glassesValidator.recording'
 def _create_recording_status_file(file: pathlib.Path):
     task_status_dict = {utils.enum_val_2_str(getattr(Task,x)): Status.Not_Started for x in Task.__members__ if x not in ['Not_Imported', 'Make_Video', 'Unknown']}
-
-    with open(file, 'w') as f:
-        json.dump(task_status_dict, f, cls=utils.CustomTypeEncoder)
+    json.dump(task_status_dict, file)
 
 
 def get_recording_status(path: str | pathlib.Path, create_if_missing = False, skip_if_missing=False):
@@ -106,8 +103,8 @@ def get_recording_status(path: str | pathlib.Path, create_if_missing = False, sk
         elif skip_if_missing:
             return None
 
-    with open(file, 'r') as f:
-        return json.load(f, object_hook=utils.json_reconstitute)
+    recording_states = json.load(file)
+    return {k: Status(recording_states[k]) for k in recording_states}  # turn state value from string back into enum instance
 
 def get_last_finished_step(status: dict[str,Status]):
     last = Task.Not_Imported
@@ -130,9 +127,7 @@ def update_recording_status(path: str | pathlib.Path, task: Task, status: Status
     while (next_task:=get_next_task(next_task)) is not None:
         rec_status[utils.enum_val_2_str(next_task)] = Status.Not_Started
 
-    file = path / _status_file
-    with open(file, 'w') as f:
-        json.dump(rec_status, f, cls=utils.CustomTypeEncoder, indent=2)
+    json.dump(rec_status, path / _status_file)
 
     return rec_status
 

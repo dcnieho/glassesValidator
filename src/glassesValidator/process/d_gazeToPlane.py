@@ -1,6 +1,6 @@
 import pathlib
 
-from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, plane, propagating_thread, recording
+from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, pose, propagating_thread, recording
 from glassesTools.gui import video_player, worldgaze
 from glassesTools.validation import config, Plane as ValidationPlane
 
@@ -38,7 +38,7 @@ def do_the_work(working_dir, config_dir, gui, show_plane, show_only_intervals):
     utils.update_recording_status(working_dir, utils.Task.Gaze_Tranformed_To_Plane, utils.Status.Running)
 
     # get camera calibration info
-    cameraParams      = ocv.CameraParams.read_from_file(working_dir / naming.scene_camera_calibration_fname)
+    cameraParams    = ocv.CameraParams.read_from_file(working_dir / naming.scene_camera_calibration_fname)
 
     # get interval coded to be analyzed, if any
     analyzeFrames   = utils.readMarkerIntervalsFile(working_dir / "markerInterval.tsv")
@@ -47,7 +47,7 @@ def do_the_work(working_dir, config_dir, gui, show_plane, show_only_intervals):
     head_gazes  = gaze_headref.read_dict_from_file(working_dir / naming.gaze_data_fname, episodes=analyzeFrames if not gui or show_only_intervals else None)[0]
 
     # Read camera pose w.r.t. plane
-    poses       = plane.read_dict_from_file(working_dir / 'pose.tsv', episodes=analyzeFrames if not gui or show_only_intervals else None)
+    poses       = pose.read_dict_from_file(working_dir / 'pose.tsv', episodes=analyzeFrames if not gui or show_only_intervals else None)
 
     # transform
     plane_gazes = gaze_worldref.from_head(poses, head_gazes, cameraParams)

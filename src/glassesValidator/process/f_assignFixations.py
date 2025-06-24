@@ -1,7 +1,7 @@
 import pathlib
 import numpy as np
 
-from glassesTools.validation import config, assign_fixations, Plane as ValidationPlane
+from glassesTools.validation import config, assign_intervals, Plane as ValidationPlane
 
 from .. import utils
 
@@ -30,13 +30,29 @@ def process(working_dir, config_dir=None, do_global_shift=True, max_dist_fac=.5)
                    [validation_plane.bbox[1]-validation_plane.marker_size, validation_plane.bbox[3]+validation_plane.marker_size]]
     for idx,_ in enumerate(analyzeFrames):
         fix_file = working_dir / f'fixations_interval_{idx+1:02d}.tsv'
-        assign_fixations.distance(targets,
-                                  fix_file,
-                                  working_dir,
-                                  filename_stem='fixationAssignment',
-                                  iteration=idx,
-                                  background_image=(validation_plane.get_ref_image(as_RGB=True),
-                                                    np.array([validation_plane.bbox[x] for x in (0,2,3,1)])),
-                                  plot_limits=plot_limits)
+        selected_intervals, other_intervals = \
+                    assign_intervals.distance(targets,
+                                              fix_file,
+                                              do_global_shift=do_global_shift,
+                                              max_dist_fac=max_dist_fac)
+
+        # plot output
+        assign_intervals.plot(selected_intervals,
+                              other_intervals,
+                              targets,
+                              working_dir/'gazePlane.tsv',
+                              analyzeFrames[idx],
+                              working_dir,
+                              filename_stem='fixationAssignment',
+                              iteration=idx,
+                              background_image=(validation_plane.get_ref_image(as_RGB=True),
+                                                np.array([validation_plane.bbox[x] for x in (0,2,3,1)])),
+                              plot_limits=plot_limits)
+
+        # store output to file
+        assign_intervals.to_tsv(selected_intervals,
+                                working_dir,
+                                filename_stem=f'fixationAssignment',
+                                iteration=idx)
 
     utils.update_recording_status(working_dir, utils.Task.Fixation_Assigned, utils.Status.Finished, skip_if_missing=True)

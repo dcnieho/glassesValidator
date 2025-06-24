@@ -10,7 +10,7 @@ isMacOS = sys.platform.startswith("darwin")
 if isMacOS:
     import AppKit
 
-from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, plane, propagating_thread, recording, timestamps
+from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, pose, propagating_thread, recording, timestamps
 from glassesTools.gui import video_player
 from glassesTools.validation import config, Plane as ValidationPlane
 
@@ -62,7 +62,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_plane):
     hasPlanePose = False
     if (working_dir / 'pose.tsv').is_file():
         try:
-            poses = plane.read_dict_from_file(working_dir / 'pose.tsv')
+            poses = pose.read_dict_from_file(working_dir / 'pose.tsv')
             hasPlanePose = True
         except:
             # ignore when file can't be read or is empty

@@ -1,4 +1,4 @@
-glassesTools[GUI]~=1.18.0   # pulls in various other dependencies such as imgui_bundle, matplotlib, numpy, opencv, pandas, polars
+glassesTools[GUI]~=1.23.1   # pulls in various other dependencies such as imgui_bundle, matplotlib, numpy, opencv, pandas, polars
 aiosqlite
 uvloop ; sys_platform != "win32"
 pyobjc-framework-Cocoa ; sys_platform == "darwin"
