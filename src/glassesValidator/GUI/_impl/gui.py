@@ -470,47 +470,15 @@ class MainGUI():
 
     def refresh_fonts(self):
         imgui.io.fonts.clear()
-        max_tex_size = gl.glGetIntegerv(gl.GL_MAX_TEXTURE_SIZE)
-        imgui.io.fonts.tex_desired_width = max_tex_size
-        win_w, win_h = glfw.get_window_size(self.window)
-        fb_w, fb_h = glfw.get_framebuffer_size(self.window)
-        font_scaling_factor = max(fb_w / win_w, fb_h / win_h)
-        imgui.io.font_global_scale = 1 / font_scaling_factor
-        base_font = hello_imgui.asset_file_full_path("fonts/Roboto/Roboto-Regular.ttf")
-        fa6_font = hello_imgui.asset_file_full_path("fonts/Font_Awesome_6_Free-Solid-900.otf")
-        fa6_config = imgui.ImFontConfig()
-        fa6_config.merge_mode=True
-        fa6_range = [ifa6.ICON_MIN_FA, ifa6.ICON_MAX_FA, 0]
-        msgbox_range = []
-        for x in [ifa6.ICON_FA_CIRCLE_QUESTION, ifa6.ICON_FA_CIRCLE_INFO, ifa6.ICON_FA_TRIANGLE_EXCLAMATION]:
-            msgbox_range.append(ord(x))
-            msgbox_range.append(ord(x))
-        msgbox_range.append(0)
-        size_18 = 18 * font_scaling_factor * self.size_mult
-        size_28 = 28 * font_scaling_factor * self.size_mult
-        size_69 = 69 * font_scaling_factor * self.size_mult
-        # Default font + icons
-        imgui.io.fonts.add_font_from_file_ttf(str(base_font), size_18)
-        imgui.io.fonts.add_font_from_file_ttf(str(fa6_font),  size_18, font_cfg=fa6_config,  glyph_ranges_as_int_list=fa6_range)
-        # Big font + more glyphs
-        self.big_font = \
-        imgui.io.fonts.add_font_from_file_ttf(str(base_font), size_28)
-        imgui.io.fonts.add_font_from_file_ttf(str(fa6_font),  size_28, font_cfg=fa6_config,  glyph_ranges_as_int_list=fa6_range)
-        # MsgBox type icons
-        self.icon_font = msg_box.icon_font = \
-        imgui.io.fonts.add_font_from_file_ttf(str(fa6_font),  size_69,                       glyph_ranges_as_int_list=msgbox_range)
-        try:
-            pixels = imgui.io.fonts.get_tex_data_as_rgba32()
-            tex_height,tex_width = pixels.shape[0:2]
-        except SystemError:
-            tex_height = 1
-            max_tex_size = 0
-        if tex_height > max_tex_size:
-            self.size_mult = 1.0
-            return self.refresh_fonts()
+        self._big_font_size_multiplier   = 1.75
+        self._icon_font_size_multiplier  = 4.2
+
+        normal_size = 16.
+        hello_imgui.load_font("fonts/Roboto/Roboto-Regular.ttf", normal_size)
+        # add icons
+        hello_imgui.load_font("fonts/Font_Awesome_6_Free-Solid-900.otf", normal_size, hello_imgui.FontLoadingParams(merge_to_last_font=True))
+
         # now refresh font texture
-        imgui.backends.opengl3_destroy_fonts_texture()
-        imgui.backends.opengl3_create_fonts_texture()
         if self.recording_list is not None:
             self.recording_list.font_changed()
 
@@ -868,7 +836,7 @@ class MainGUI():
         but_x = (avail.x - 2*but_width - 10*imgui.style.item_spacing.x) / 2
         but_y = (avail.y - but_height) / 2
 
-        imgui.push_font(self.big_font)
+        imgui.push_font(None, imgui.get_style().font_size_base*self._big_font_size_multiplier)
         text = "Drag and drop a glassesValidator folder or use the below buttons"
         size = imgui.calc_text_size(text)
         imgui.set_cursor_pos_x((avail.x - size.x) / 2)
@@ -897,7 +865,7 @@ class MainGUI():
     def draw_select_eye_tracker_popup(self, combo_value, eye_tracker):
         spacing = 2 * imgui.style.item_spacing.x
         color = (0.45, 0.09, 1.00, 1.00)
-        imgui.push_font(self.icon_font)
+        imgui.push_font(None, imgui.get_style().font_size_base*self._icon_font_size_multiplier)
         imgui.text_colored(color, ifa6.ICON_FA_CIRCLE_INFO)
         imgui.pop_font()
         imgui.same_line(spacing=spacing)
@@ -923,7 +891,7 @@ class MainGUI():
     def draw_preparing_recordings_for_import_popup(self, eye_tracker):
         spacing = 2 * imgui.style.item_spacing.x
         color = (0.45, 0.09, 1.00, 1.00)
-        imgui.push_font(self.icon_font)
+        imgui.push_font(None, imgui.get_style().font_size_base*self._icon_font_size_multiplier)
         imgui.text_colored(color, ifa6.ICON_FA_CIRCLE_INFO)
         imgui.pop_font()
         imgui.same_line(spacing=spacing)
@@ -1046,7 +1014,7 @@ class MainGUI():
             _general_imgui.icon_texture.render(_200, _200, rounding=globals.settings.style_corner_radius)
             imgui.same_line()
             imgui.begin_group()
-            imgui.push_font(self.big_font)
+            imgui.push_font(None, imgui.get_style().font_size_base*self._big_font_size_multiplier)
             imgui.text("glassesValidator")
             imgui.pop_font()
             imgui.text(f"Version {globals.version}")
@@ -1094,7 +1062,7 @@ class MainGUI():
             imgui.spacing()
             imgui.spacing()
             imgui.dummy((0, self.scaled(10)))
-            imgui.push_font(self.big_font)
+            imgui.push_font(None, imgui.get_style().font_size_base*self._big_font_size_multiplier)
             size = imgui.calc_text_size("Reference")
             imgui.set_cursor_pos_x((width - size.x + imgui.style.scrollbar_size) / 2)
             imgui.text("Reference")

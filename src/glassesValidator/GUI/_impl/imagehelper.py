@@ -143,7 +143,7 @@ class ImageHelper:
                 draw_list.add_image_rounded(self.texture_id, pos, pos2, (0,0), (1,1), col=0xffffffff, *args, flags=flags, **kwargs)
                 imgui.dummy((width, height))
             else:
-                imgui.image(self.texture_id, width, height, *args, **kwargs)
+                imgui.image(imgui.ImTextureRef(self.texture_id), width, height, *args, **kwargs)
             return True
         else:
             # Skip if outside view
