@@ -2,7 +2,7 @@
 [![Citation Badge](https://img.shields.io/endpoint?url=https%3A%2F%2Fapi.juleskreuer.eu%2Fcitation-badge.php%3Fshield%26doi%3D10.3758%2Fs13428-023-02105-5&color=blue)](https://scholar.google.com/citations?view_op=view_citation&citation_for_view=uRUYoVgAAAAJ:uWQEDVKXjbEC)
 [![PyPI Latest Release](https://img.shields.io/pypi/v/glassesValidator.svg)](https://pypi.org/project/glassesValidator/)
 [![image](https://img.shields.io/pypi/pyversions/glassesValidator.svg)](https://pypi.org/project/glassesValidator/)
-[![DOI](https://zenodo.org/badge/DOI/10.3758/s13428-023-02105-5.svg)](https://doi.org/10.3758/s13428-023-02105-5)
+[![DOI](https://img.shields.io/badge/DOI-10.3758%2Fs13428--023--02105--5-blue.svg)](https://doi.org/10.3758/s13428-023-02105-5)
 
 # GlassesValidator v3.2.0
 Tool for automatic determination of data quality (accuracy and precision) of wearable eye tracker recordings.
