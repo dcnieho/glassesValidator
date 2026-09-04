@@ -14,7 +14,7 @@ A data quality tool for eye tracking glasses. Behavior Research Methods. doi: 10
 # How to acquire
 GlassesValidator is available from `https://github.com/dcnieho/glassesValidator`, and supports Python 3.11 on Windows, MacOS and Linux (newer versions of Python should work fine but are not tested).
 Complete installation instruction for using the glassesValidator GUI on [Windows](#complete-instructions-for-windows), [MacOS](#complete-instructions-for-macos) and [Linux](#complete-instructions-for-linux) users are available below.
-Note that the standaloen executable version of glassesValidator is discontinued. The last executable was for the [2.3.0 release](https://github.com/dcnieho/glassesValidator/releases/tag/v2.3.0).
+Note that the standalone executable version of glassesValidator is discontinued. The last executable was for the [2.3.0 release](https://github.com/dcnieho/glassesValidator/releases/tag/v2.3.0).
 
 For users on Windows, Mac (14 Sonoma or later) or Linux who wish to use glassesValidator *in their Python code*, the easiest way to acquire
 glassesValidator is to install it directly into your Python distribution using the command
