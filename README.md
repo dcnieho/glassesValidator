@@ -117,6 +117,8 @@ for offline processing of the recording to estimate data quality measures. The g
 that can be used to perform all processing. Below we describe an example workflow using the GUI. Advanced users can however opt to call all the GUI's
 functionality directly from their own Python scripts without making use of the graphical user interface. The interested reader is referred to the [API section below](#api) for further details regarding how to use the glassesValidator functionality directly from their own scripts.
 
+Note that if you want more control over what glassesValidator does, such as the possibility to use different settings per recording, manual assignment of episodes in the recording to targets and support for the [dynamic version of the glassesValidator poster](https://github.com/dcnieho/glassesTools/tree/master/src/glassesTools/validation/dynamic) (a PsychoPy script to show an animated validation poster on a screen where one target is shown at a time), use [gazeMapper](https://github.com/dcnieho/gazeMapper) instead. It includes built-in glassesValidator support exposing the above options. When creating an new gazeMapper project to use with glassesValidator, choose the glassesValidator project template so that everything is set up correctly already.
+
 ## Workflow and example data
 Here we first present an example workflow using the GUI. More detailed information about [using the GUI](#the-gui), or [the programming API](#api), are provided
 below.
