@@ -1,6 +1,6 @@
 import pathlib
 
-from glassesTools import annotation, aruco, naming, pose, propagating_thread, recording
+from glassesTools import annotation, aruco, naming, pose, propagating_thread
 from glassesTools.gui import video_player
 from glassesTools.validation import config, Plane as ValidationPlane
 
@@ -38,7 +38,7 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Running)
 
     # get info about recording
-    recInfo = recording.Recording.load_from_json(working_dir)
+    recInfo = utils.load_recording_info(working_dir)
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
@@ -58,14 +58,29 @@ def do_the_work(working_dir, config_dir, gui, show_rejected_markers):
     # first, register all ArUco planes and individual markers with ArUco manager, which
     # will then wrap their detection and register them with the pose estimator
     aruco_manager = aruco.Manager()
-    aruco_manager.add_plane('validate', val_plane.get_plane_setup(), analyzeFrames)
+    validation_event = annotation.EventType.Validate.value
+    aruco_manager.add_assembly(
+        'validate',
+        val_plane.get_assembly_setup(),
+        (annotation.EventType.Validate, analyzeFrames),
+    )
+    if show_rejected_markers:
+        aruco_manager.set_visualization_styles(rejected_color=(255, 0, 0))
     aruco_manager.consolidate_setup()
     aruco_manager.register_with_estimator(estimator)
-    estimator.attach_gui(gui, {annotation.Event.Validate: [i for iv in analyzeFrames for i in iv]})
+    estimator.attach_gui(gui)
     if gui is not None:
-        estimator.show_rejected_markers = show_rejected_markers
+        gui.set_show_timeline(
+            True,
+            estimator.video_ts,
+            {validation_event: (
+                annotation.EventType.Validate,
+                [i for interval in analyzeFrames for i in interval],
+            )},
+            gui.main_window_id,
+        )
     poses, _, _ = estimator.process_video()
 
-    pose.write_list_to_file(poses['validate'], working_dir/'pose.tsv', skip_failed=True)
+    pose.write_plane_list_to_file(poses['validate'], working_dir/'pose.tsv', skip_failed=True)
 
     utils.update_recording_status(working_dir, utils.Task.Markers_Detected, utils.Status.Finished)

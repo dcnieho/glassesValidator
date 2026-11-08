@@ -1,6 +1,6 @@
 import pathlib
 
-from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, pose, propagating_thread, recording
+from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, pose, propagating_thread
 from glassesTools.gui import video_player, worldgaze
 from glassesTools.validation import config, Plane as ValidationPlane
 
@@ -47,7 +47,7 @@ def do_the_work(working_dir, config_dir, gui, show_plane, show_only_intervals):
     head_gazes  = gaze_headref.read_dict_from_file(working_dir / naming.gaze_data_fname, episodes=analyzeFrames if not gui or show_only_intervals else None)[0]
 
     # Read camera pose w.r.t. plane
-    poses       = pose.read_dict_from_file(working_dir / 'pose.tsv', episodes=analyzeFrames if not gui or show_only_intervals else None)
+    poses       = pose.read_plane_dict_from_file(working_dir / 'pose.tsv', episodes=analyzeFrames if not gui or show_only_intervals else None)
 
     # transform
     plane_gazes = gaze_worldref.from_head(poses, head_gazes, cameraParams)
@@ -62,11 +62,12 @@ def do_the_work(working_dir, config_dir, gui, show_plane, show_only_intervals):
     if gui is None:
         return
 
-    in_video = recording.Recording.load_from_json(working_dir).get_scene_video_path()
+    in_video = utils.load_recording_info(working_dir).get_scene_video_path()
     validationSetup = config.get_validation_setup(config_dir)
     val_plane       = ValidationPlane(config_dir, validationSetup)
     worldgaze.show_visualization(
         in_video, working_dir / naming.frame_timestamps_fname, working_dir / naming.scene_camera_calibration_fname,
-        {'plane': val_plane}, {'plane': poses}, head_gazes, {'plane': plane_gazes}, {annotation.Event.Validate: analyzeFrames},
+        {'plane': val_plane}, {'plane': poses}, head_gazes, {'plane': plane_gazes},
+        {annotation.EventType.Validate.value: (annotation.EventType.Validate, analyzeFrames)},
         gui, show_plane, show_only_intervals, 8
     )

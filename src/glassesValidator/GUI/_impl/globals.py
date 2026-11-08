@@ -4,25 +4,6 @@ import threading
 
 from glassesTools import platform
 
-from ... import __version__
-version           = __version__
-pypi_page         = "https://pypi.org/project/glassesValidator/"
-github_page       = "https://github.com/dcnieho/glassesValidator"
-developer_page    = "https://scholar.google.se/citations?user=uRUYoVgAAAAJ&hl=en"
-paper_page        = "https://doi.org/10.3758/s13428-023-02105-5"
-reference         = r"Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. & Hooge, I.T.C. (2023). GlassesValidator: Data quality tool for eye tracking glasses. Behavior Research Methods. doi: 10.3758/s13428-023-02105-5"
-reference_bibtex  = r"""@article{niehorster2023glassesValidator,
-    Author = {Niehorster, Diederick C. and Hessels, Roy S. and Benjamins, Jeroen S. and Nystr{\"o}m, Marcus and Hooge, Ignace T. C.},
-    Journal = {Behavior Research Methods},
-    Number = {},
-    Pages = {},
-    Title = {GlassesValidator: A data quality tool for eye tracking glasses},
-    Year = {2023},
-    doi = {10.3758/s13428-023-02105-5}
-}
-"""
-
-
 from .structs import CounterContext, JobDescription, Recording, Settings
 from .gui import MainGUI
 

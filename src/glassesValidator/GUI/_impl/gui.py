@@ -1,17 +1,17 @@
 import concurrent.futures
-import configparser
+import importlib.resources
 import platform
 import asyncio
 import pebble
 import pathlib
+import sys
+
+import imgui_bundle
+from imgui_bundle import imgui, imspinner, immapp, imgui_md, hello_imgui, glfw_utils, icons_fontawesome_6 as ifa6
+import glfw
 import OpenGL
 import OpenGL.GL as gl
-import imgui_bundle
-from imgui_bundle import imgui, imspinner, hello_imgui, icons_fontawesome_6 as ifa6
-import glfw
-import time
-import sys
-import io
+import ETDQualitizer
 
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
 eye_tracker_names = [e for e in eye_tracker_names if e!=EyeTracker.Generic.value]
@@ -19,16 +19,13 @@ from glassesTools.gui import file_picker, msg_box, recording_table, utils as gui
 from glassesTools.gui.utils import my_checkbox, my_combo, handle_popup_stack
 from glassesTools.utils import hex_to_rgba_0_1
 from glassesTools import async_thread, platform as pltfrm, recording as gt_recording
-from glassesTools.validation import DataQualityType, get_DataQualityType_explanation
+from glassesTools import data_types
 import glassesTools
 
 from .structs import DefaultStyleDark, DefaultStyleLight, Filter, FilterMode, ProcessState, Recording, TaskSimplified, filter_mode_names, get_simplified_task_state, simplified_task_names
 from . import globals, callbacks, db, process_pool, utils
-from .. import _general_imgui
+from ... import utils as gv_utils, __version__
 from ...utils import Task, Status, get_task_name_friendly, get_next_task, task_names, get_last_finished_step, get_recording_status, update_recording_status
-
-imgui.io = None
-imgui.style = None
 
 
 
@@ -188,7 +185,10 @@ def draw_recordings_context_menu(_: int) -> bool:
 
     if len(ids)==1:
         draw_recording_open_folder_button(globals.recordings[ids[0]], label=ifa6.ICON_FA_FOLDER_OPEN+" Open Working Folder")
-    work_dir_ids = [id for id in ids if globals.recordings[id].working_directory.is_dir()]
+    work_dir_ids = [
+        id for id in ids
+        if globals.recordings[id].working_directory is not None and globals.recordings[id].working_directory.is_dir()
+    ]
     if work_dir_ids:
         draw_recording_remove_folder_button(work_dir_ids, label=ifa6.ICON_FA_FOLDER_MINUS+" Remove Working Folder")
     if len(ids)==1:
@@ -204,7 +204,8 @@ def empty_space_context_menu():
 class MainGUI():
     def __init__(self):
         # Constants
-        self.sidebar_size = 230
+        self.sidebar_size = 320
+        self.big_font_size_multiplier = 1.75
         self.window_flags: int = (
             imgui.WindowFlags_.no_move |
             imgui.WindowFlags_.no_resize |
@@ -218,19 +219,13 @@ class MainGUI():
             imgui.WindowFlags_.no_saved_settings
         )
         self.watermark_text         = "About"
-        self.watermark_popup_text   = f"glassesValidator {globals.version}\nClick for more information"
+        self.watermark_popup_text   = f"glassesValidator {__version__}\nClick for more information"
 
 
         # Variables
         self.focused = True
-        self.size_mult = 0.0
-        self.last_size_mult = 1.0
         self.prev_cursor = -1
         self.recording_list: recording_table.RecordingTable = None
-        self.screen_pos = (0, 0)
-        self.screen_size = (0, 0)
-        self.new_screen_size = (0, 0)
-        self.monitor = 0
         self.repeat_chars = 0
         self.escape_handled = False
         self.prev_any_hovered = None
@@ -238,6 +233,10 @@ class MainGUI():
         self.project_to_load: pathlib.Path|str = None
         self.input_chars: list[int] = []
         self.maybe_cleanup_process_pool = False
+        self.window: glfw._GLFWwindow|None = None
+        self._icon_image: hello_imgui.ImageAndSize|None = None
+        self._char_callback = None
+        self._focus_callback = None
 
         # Show errors in threads
         def asyncexcepthook(future: asyncio.Future):
@@ -323,186 +322,110 @@ class MainGUI():
 
         self.load_interface()
 
-    def init_imgui_glfw(self, is_reload = False):
-        # Setup ImGui
-        _general_imgui.setup_imgui()
-        size, pos, is_default = self.get_imgui_config()
+    def _load_fonts(self):
+        hello_imgui.load_font_ttf_with_font_awesome_icons("fonts/Roboto/Roboto-Regular.ttf", 16.)
 
-        # Setup GLFW window
-        self.window, self.screen_pos, self.screen_size = _general_imgui.setup_glfw_window("glassesValidator", size, pos)
+    def _setup_imgui_config(self):
+        io = imgui.get_io()
+        io.config_drag_click_to_input_text = True
+        io.config_dpi_scale_fonts = True
+        io.config_dpi_scale_viewports = True
 
-        # Determine what monitor we're (mostly) on and apply scaling
-        self.monitor, self.size_mult = _general_imgui.get_monitor_scaling(self.screen_pos, self.screen_size)
-        if is_reload and is_default:
-            glfw.set_window_size(self.window, int(self.screen_size[0]*self.size_mult), int(self.screen_size[1]*self.size_mult))
-        elif self.size_mult!=self.last_size_mult:
-            glfw.set_window_size(self.window, int(self.screen_size[0]/self.last_size_mult*self.size_mult), int(self.screen_size[1]/self.last_size_mult*self.size_mult))
+    def _setup_glfw(self):
+        self.window = glfw_utils.glfw_window_hello_imgui()
 
-        # make sure that styles are correctly scaled this first time we set them up
-        self.last_size_mult = 1.0
+        previous_char_callback = glfw.set_char_callback(self.window, self.char_callback)
+        def chained_char_callback(window, char):
+            if previous_char_callback:
+                previous_char_callback(window, char)
+            self.char_callback(window, char)
+        self._char_callback = chained_char_callback
+        glfw.set_char_callback(self.window, self._char_callback)
 
-        # do further setup
-        self.setup_imgui_impl()
-        self.setup_imgui_style()
+        previous_focus_callback = glfw.set_window_focus_callback(self.window, self.focus_callback)
+        def chained_focus_callback(window, focused):
+            if previous_focus_callback:
+                previous_focus_callback(window, focused)
+            self.focus_callback(window, focused)
+        self._focus_callback = chained_focus_callback
+        glfw.set_window_focus_callback(self.window, self._focus_callback)
 
-    def get_imgui_config(self):
-        imgui.io.set_ini_filename(str(utils.get_data_path() / "imgui.ini"))
-
-        size = tuple()
-        pos = tuple()
-        is_default = False
-        try:
-            # Get window size
-            with open(imgui.io.get_ini_filename(), "r") as f:
-                ini = f.read()
-            imgui.load_ini_settings_from_memory(ini)
-            # subpart of ini file is valid input to config parser, parse that part of it
-            start = ini.find("[Window][glassesValidator]")
-            if start==-1:
-                raise RuntimeError('[Window][glassesValidator] section not found')
-            end = ini.find("\n\n", start)
-            if end==-1:
-                raise RuntimeError('end of [Window][glassesValidator] section not found')
-            config = configparser.RawConfigParser()
-            config.optionxform=str
-            config.read_string(ini[start:end])
-            try:
-                size = tuple(int(x) for x in config["Window][glassesValidator"]["ScreenSize"].split(","))
-            except Exception:
-                pass
-            try:
-                pos = tuple(int(x) for x in config["Window][glassesValidator"]["ScreenPos"].split(","))
-            except Exception:
-                pass
-            try:
-                self.last_size_mult = config.getfloat("Window][glassesValidator","Scale",fallback=1.)
-            except Exception:
-                pass
-        except Exception:
-            pass
-        if not len(size) == 2 or not all([isinstance(x, int) for x in size]):
-            size = (1280, 720)
-            is_default = True
-
-        return size, pos, is_default
-
-    def setup_imgui_impl(self):
-        # set our own callbacks before calling
-        # imgui.backends.glfw_init_for_open_gl(), then imgui's
-        # glfw backend will chaincall them
-        glfw.set_char_callback(self.window, self.char_callback)
-        glfw.set_window_focus_callback(self.window, self.focus_callback)
-        glfw.set_window_pos_callback(self.window, self.pos_callback)
         glfw.set_drop_callback(self.window, self.drop_callback)
+        icon_path = importlib.resources.files("glassesValidator.resources.icons") / "icon.png"
+        self._icon_image = hello_imgui.image_and_size_from_encoded_data(icon_path.read_bytes(), "glassesValidator-icon")
+        glfw.swap_interval(globals.settings.vsync_ratio)
 
-        _general_imgui.setup_imgui_impl(self.window, globals.settings.vsync_ratio)
+        if globals.project_path is not None:
+            self._create_recording_list()
 
     def setup_imgui_style(self):
-        self.refresh_fonts()
-
-        # Load style configuration
-        imgui.style = imgui.get_style()
-        imgui.style.item_spacing = (imgui.style.item_spacing.y, imgui.style.item_spacing.y)
-        imgui.style.frame_border_size = 1.6
-        imgui.style.scrollbar_size = 10
-        imgui.style.set_color_(imgui.Col_.modal_window_dim_bg, (0, 0, 0, 0.5))
-        imgui.style.set_color_(imgui.Col_.table_border_strong, (0, 0, 0, 0))
+        style = imgui.get_style()
+        style.item_spacing = (style.item_spacing.y, style.item_spacing.y)
+        style.frame_border_size = 1.6
+        style.scrollbar_size = 10
+        style.set_color_(imgui.Col_.modal_window_dim_bg, (0, 0, 0, 0.5))
+        style.set_color_(imgui.Col_.table_border_strong, (0, 0, 0, 0))
         self.refresh_styles()
 
     def refresh_styles(self):
-        imgui.style.set_color_(imgui.Col_.check_mark, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.tab_selected, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.slider_grab, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.tab_hovered, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.button_active, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.header_active, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.nav_cursor, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.plot_histogram, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.button_hovered, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.header_hovered, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.separator_active, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.separator_hovered, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.resize_grip_active, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.resize_grip_hovered, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.tab_dimmed_selected, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.scrollbar_grab_active, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.frame_bg_active, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.title_bg_active, globals.settings.style_accent)
-        imgui.style.set_color_(imgui.Col_.text_selected_bg, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.check_mark, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.tab_selected, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.slider_grab, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.tab_hovered, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.button_active, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.header_active, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.nav_cursor, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.plot_histogram, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.button_hovered, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.header_hovered, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.separator_active, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.separator_hovered, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.resize_grip_active, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.resize_grip_hovered, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.tab_dimmed_selected, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.scrollbar_grab_active, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.frame_bg_active, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.title_bg_active, globals.settings.style_accent)
+        imgui.get_style().set_color_(imgui.Col_.text_selected_bg, globals.settings.style_accent)
 
         style_bg_dim = [*globals.settings.style_accent[0:3], 0.25]
-        imgui.style.set_color_(imgui.Col_.tab, style_bg_dim)
-        imgui.style.set_color_(imgui.Col_.resize_grip, style_bg_dim)
-        imgui.style.set_color_(imgui.Col_.tab_dimmed, style_bg_dim)
-        imgui.style.set_color_(imgui.Col_.frame_bg_hovered, style_bg_dim)
+        imgui.get_style().set_color_(imgui.Col_.tab, style_bg_dim)
+        imgui.get_style().set_color_(imgui.Col_.resize_grip, style_bg_dim)
+        imgui.get_style().set_color_(imgui.Col_.tab_dimmed, style_bg_dim)
+        imgui.get_style().set_color_(imgui.Col_.frame_bg_hovered, style_bg_dim)
 
-        imgui.style.set_color_(imgui.Col_.table_header_bg, globals.settings.style_alt_bg)
-        imgui.style.set_color_(imgui.Col_.table_row_bg_alt, globals.settings.style_alt_bg)
+        imgui.get_style().set_color_(imgui.Col_.table_header_bg, globals.settings.style_alt_bg)
+        imgui.get_style().set_color_(imgui.Col_.table_row_bg_alt, globals.settings.style_alt_bg)
 
-        imgui.style.set_color_(imgui.Col_.button, globals.settings.style_bg)
-        imgui.style.set_color_(imgui.Col_.header, globals.settings.style_bg)
-        imgui.style.set_color_(imgui.Col_.frame_bg, globals.settings.style_bg)
-        imgui.style.set_color_(imgui.Col_.child_bg, globals.settings.style_bg)
-        imgui.style.set_color_(imgui.Col_.popup_bg, globals.settings.style_bg)
-        imgui.style.set_color_(imgui.Col_.title_bg, globals.settings.style_bg)
-        imgui.style.set_color_(imgui.Col_.window_bg, globals.settings.style_bg)
-        imgui.style.set_color_(imgui.Col_.slider_grab_active, globals.settings.style_bg)
-        imgui.style.set_color_(imgui.Col_.scrollbar_bg, globals.settings.style_bg)
+        imgui.get_style().set_color_(imgui.Col_.button, globals.settings.style_bg)
+        imgui.get_style().set_color_(imgui.Col_.header, globals.settings.style_bg)
+        imgui.get_style().set_color_(imgui.Col_.frame_bg, globals.settings.style_bg)
+        imgui.get_style().set_color_(imgui.Col_.child_bg, globals.settings.style_bg)
+        imgui.get_style().set_color_(imgui.Col_.popup_bg, globals.settings.style_bg)
+        imgui.get_style().set_color_(imgui.Col_.title_bg, globals.settings.style_bg)
+        imgui.get_style().set_color_(imgui.Col_.window_bg, globals.settings.style_bg)
+        imgui.get_style().set_color_(imgui.Col_.slider_grab_active, globals.settings.style_bg)
+        imgui.get_style().set_color_(imgui.Col_.scrollbar_bg, globals.settings.style_bg)
 
-        imgui.style.set_color_(imgui.Col_.border, globals.settings.style_border)
-        imgui.style.set_color_(imgui.Col_.separator, globals.settings.style_border)
+        imgui.get_style().set_color_(imgui.Col_.border, globals.settings.style_border)
+        imgui.get_style().set_color_(imgui.Col_.separator, globals.settings.style_border)
 
-        imgui.style.set_color_(imgui.Col_.text, globals.settings.style_text)
-        imgui.style.set_color_(imgui.Col_.text_disabled, globals.settings.style_text_dim)
+        imgui.get_style().set_color_(imgui.Col_.text, globals.settings.style_text)
+        imgui.get_style().set_color_(imgui.Col_.text_disabled, globals.settings.style_text_dim)
 
-        imgui.style.tab_rounding = \
-            imgui.style.grab_rounding = \
-            imgui.style.frame_rounding = \
-            imgui.style.child_rounding = \
-            imgui.style.popup_rounding = \
-            imgui.style.window_rounding = \
-            imgui.style.scrollbar_rounding = \
-        globals.settings.style_corner_radius * self.last_size_mult
+        imgui.get_style().tab_rounding = \
+            imgui.get_style().grab_rounding = \
+            imgui.get_style().frame_rounding = \
+            imgui.get_style().child_rounding = \
+            imgui.get_style().popup_rounding = \
+            imgui.get_style().window_rounding = \
+            imgui.get_style().scrollbar_rounding = globals.settings.style_corner_radius
 
-        imgui.style.scale_all_sizes(self.size_mult/self.last_size_mult)
-        self.last_size_mult = self.size_mult
-
-
-    def refresh_fonts(self):
-        imgui.io.fonts.clear()
-        self._big_font_size_multiplier   = 1.75
-        self._icon_font_size_multiplier  = 4.2
-
-        normal_size = 16.
-        hello_imgui.load_font("fonts/Roboto/Roboto-Regular.ttf", normal_size)
-        # add icons
-        hello_imgui.load_font("fonts/Font_Awesome_6_Free-Solid-900.otf", normal_size, hello_imgui.FontLoadingParams(merge_to_last_font=True))
-
-        # now refresh font texture
-        if self.recording_list is not None:
-            self.recording_list.font_changed()
-
-    def char_callback(self, window: glfw._GLFWwindow, char: int):
+    def char_callback(self, _window: glfw._GLFWwindow, char: int):
         self.input_chars.append(char)
 
-    def focus_callback(self, window: glfw._GLFWwindow, focused: int):
-        self.focused = focused
-
-    def pos_callback(self, window: glfw._GLFWwindow, x: int, y: int):
-        if not glfw.get_window_attrib(self.window, glfw.ICONIFIED):
-            self.screen_pos = (x, y)
-
-            # check if we moved to another monitor
-            mon, mon_id = _general_imgui.get_current_monitor(*self.screen_pos, *self.screen_size)
-            if mon_id != self.monitor:
-                self.monitor = mon_id
-                # update scaling
-                xscale, yscale = glfw.get_monitor_content_scale(mon)
-                if scale := max(xscale, yscale):
-                    self.size_mult = scale
-                    # resize window if needed
-                    if self.size_mult != self.last_size_mult:
-                        self.new_screen_size = int(self.screen_size[0]/self.last_size_mult*self.size_mult), int(self.screen_size[1]/self.last_size_mult*self.size_mult)
+    def focus_callback(self, _window: glfw._GLFWwindow, focused: int):
+        self.focused = bool(focused)
 
     def try_load_project(self, path: str | pathlib.Path, action = 'loading'):
         if isinstance(path,list):
@@ -547,7 +470,7 @@ class MainGUI():
                 }
                 gui_utils.push_popup(globals, msg_box.msgbox, "Create new project", "The selected folder is empty. Do you want to use it as a new project folder?", msg_box.MsgBox.warn, buttons)
 
-    def drop_callback(self, window: glfw._GLFWwindow, items: list[str]):
+    def drop_callback(self, _window: glfw._GLFWwindow, items: list[str]):
         paths = [pathlib.Path(item) for item in items]
         if globals.popup_stack and isinstance(picker := globals.popup_stack[-1], file_picker.FilePicker):
             picker.set_dir(paths)
@@ -562,7 +485,8 @@ class MainGUI():
                     self.try_load_project(path)
 
     def scaled(self, size: int | float):
-        return size * self.size_mult
+        dpi_scale = imgui.get_window_dpi_scale()
+        return size * dpi_scale
 
     def load_project(self, folder: pathlib.Path):
         if globals.project_path==folder:
@@ -573,73 +497,118 @@ class MainGUI():
     def unload_project(self):
         self.project_to_load = ""
 
-    def load_interface(self, is_reload = False):
-        if is_reload:
-            globals.project_path = None if self.project_to_load=="" else self.project_to_load
-            self.project_to_load = None
+    def _apply_pending_project(self):
+        if self.project_to_load is None:
+            return
+
+        target = self.project_to_load
+        self.project_to_load = None
+        self.save_imgui_ini()
+
+        if globals.jobs:
+            process_pool.cancel_all_jobs()
+        process_pool.cleanup()
+        globals.jobs = {}
+        globals.coding_job_queue = {}
+        self.maybe_cleanup_process_pool = False
+        db.shutdown()
+
+        globals.project_path = None if target == "" else pathlib.Path(target)
+        self.load_interface()
+        self.refresh_styles()
+        glfw.swap_interval(globals.settings.vsync_ratio)
+
+        ini_path = utils.get_data_path() / "imgui.ini"
+        imgui.get_io().set_ini_filename(str(ini_path))
+        runner_params = hello_imgui.get_runner_params()
+        runner_params.ini_filename = str(ini_path)
+        if ini_path.is_file():
+            imgui.load_ini_settings_from_disk(str(ini_path))
+
+        title = "glassesValidator"
+        if globals.project_path is not None:
+            title += f" ({globals.project_path.name})"
+        runner_params.app_window_params.window_title = title
+        if self.window is not None:
+            glfw.set_window_title(self.window, title)
+
+    def load_interface(self):
         db.setup()
         self.update_recordings()
-        self.init_imgui_glfw(is_reload=is_reload)
-        if globals.project_path is not None:
-            task_column = recording_table.ColumnSpec(2,ifa6.ICON_FA_SQUARE_POLL_VERTICAL+" Status",imgui.TableColumnFlags_.no_resize,draw_recording_status_widget,lambda iid: task_names.index(globals.recordings[iid].task.value),ifa6.ICON_FA_SQUARE_POLL_VERTICAL)
-            self.recording_list = recording_table.RecordingTable(globals.recordings, globals.recording_lock, globals.selected_recordings, [task_column], None, draw_recordings_context_menu, empty_space_context_menu, remove_recording)
+        if imgui.get_current_context() is not None:
+            self._create_recording_list()
+
+    def _create_recording_list(self):
+        if globals.project_path is None:
+            self.recording_list = None
+            return
+
+        task_column = recording_table.ColumnSpec(
+            2,
+            ifa6.ICON_FA_SQUARE_POLL_VERTICAL + " Status",
+            imgui.TableColumnFlags_.no_resize,
+            draw_recording_status_widget,
+            lambda iid: task_names.index(globals.recordings[iid].task.value),
+            ifa6.ICON_FA_SQUARE_POLL_VERTICAL,
+        )
+        self.recording_list = recording_table.RecordingTable(
+            globals.recordings,
+            globals.recording_lock,
+            globals.selected_recordings,
+            [task_column],
+            None,
+            draw_recordings_context_menu,
+            empty_space_context_menu,
+            remove_recording,
+        )
 
     def update_recordings(self, subset=None):
         if not subset:
             subset = globals.recordings
         for recid in subset:
-            if globals.recordings[recid].task not in [Task.Not_Imported, Task.Unknown]:
-                rec_info = gt_recording.Recording.load_from_json(globals.recordings[recid].working_directory)
-                if rec_info.duration!=globals.recordings[recid].duration:
-                    globals.recordings[recid].duration = rec_info.duration
-                    async_thread.run(db.update_recording(globals.recordings[recid], "duration"))
-                last_task = get_last_finished_step(get_recording_status(globals.recordings[recid].working_directory))
-                globals.recordings[recid].task = last_task
-                async_thread.run(db.update_recording(globals.recordings[recid], "task"))
+            rec = globals.recordings[recid]
+            if (
+                rec.task not in [Task.Not_Imported, Task.Unknown]
+                and rec.working_directory is not None
+                and rec.working_directory.is_dir()
+            ):
+                info_file = gv_utils.get_recording_info_file(rec.working_directory)
+                if info_file is not None:
+                    rec_info = gv_utils.load_recording_info(info_file)
+                    if rec_info.duration is not None and rec_info.duration != rec.duration:
+                        rec.duration = rec_info.duration
+                        async_thread.run(db.update_recording(rec, "duration"))
+                status = get_recording_status(rec.working_directory, skip_if_missing=True)
+                if status is not None:
+                    rec.task = get_last_finished_step(status)
+                    async_thread.run(db.update_recording(rec, "task"))
 
     def run(self):
         globals.jobs = {}
         globals.coding_job_queue = {}
-        self.have_set_window_size = False
-
-        while not glfw.window_should_close(self.window) and self.project_to_load is None:
-            self.pre_poll()
-            glfw.poll_events()
-
-            if self.focused or globals.settings.render_when_unfocused:
-                self.pre_new_frame()
-                imgui.backends.opengl3_new_frame()
-                imgui.backends.glfw_new_frame()
-                imgui.new_frame()
-
-                # draw gui
-                self.draw_gui()
-
-                imgui.render()
-                display_w, display_h = glfw.get_framebuffer_size(self.window)
-                gl.glViewport(0, 0, display_w, display_h)
-                gl.glClearColor(
-                    globals.settings.style_bg[0] * globals.settings.style_bg[3],
-                    globals.settings.style_bg[1] * globals.settings.style_bg[3],
-                    globals.settings.style_bg[2] * globals.settings.style_bg[3],
-                    globals.settings.style_bg[3])
-                imgui.backends.opengl3_render_draw_data(imgui.get_draw_data())
-
-                # Update and Render additional Platform Windows, if any
-                if imgui.io.config_flags & imgui.ConfigFlags_.viewports_enable > 0:
-                    backup_current_context = glfw.get_current_context()
-                    imgui.update_platform_windows()
-                    imgui.render_platform_windows_default()
-                    glfw.make_context_current(backup_current_context)
-
-                glfw.swap_buffers(self.window)
-            else:
-                time.sleep(1 / 3.)
-
-            # post render callback
-            self.post_render()
-
-        return self.stopping_render()
+        runner_params = hello_imgui.RunnerParams()
+        runner_params.ini_filename = str(utils.get_data_path() / "imgui.ini")
+        runner_params.ini_filename_use_app_window_title = False
+        runner_params.app_window_params.window_title = "glassesValidator"
+        if globals.project_path is not None:
+            runner_params.app_window_params.window_title += f" ({globals.project_path.name})"
+        runner_params.app_window_params.window_geometry.size = (1280, 720)
+        runner_params.app_window_params.restore_previous_geometry = True
+        runner_params.imgui_window_params.enable_viewports = True
+        runner_params.imgui_window_params.default_imgui_window_type = hello_imgui.DefaultImGuiWindowType.no_default_window
+        runner_params.callbacks.default_icon_font = hello_imgui.DefaultIconFont.font_awesome6
+        runner_params.callbacks.setup_imgui_config = self._setup_imgui_config
+        runner_params.callbacks.setup_imgui_style = self.setup_imgui_style
+        runner_params.callbacks.load_additional_fonts = self._load_fonts
+        runner_params.callbacks.post_init_add_platform_backend_callbacks = self._setup_glfw
+        runner_params.callbacks.pre_new_frame = self.pre_new_frame
+        runner_params.callbacks.show_gui = self.draw_gui
+        runner_params.callbacks.after_swap = self.post_render
+        runner_params.callbacks.before_exit = self.stopping_render
+        runner_params.fps_idling.enable_idling = False
+        addons_params = immapp.AddOnsParams()
+        addons_params.with_markdown = True
+        immapp.run(runner_params, addons_params)
 
     def pre_poll(self):
         # for repeating characters that were input while bottom bar didn't have input focus
@@ -648,19 +617,21 @@ class MainGUI():
         if self.repeat_chars:
             if self.repeat_chars==2:
                 for char in self.input_chars:
-                    imgui.io.add_input_character(char)
+                    imgui.get_io().add_input_character(char)
                 self.repeat_chars = 0
                 self.input_chars.clear()
             else:
                 self.repeat_chars+=1
-        else:
-            self.input_chars.clear()
 
     def pre_new_frame(self):
-        # if there's a queued window resize, execute
-        if self.new_screen_size[0]!=0 and self.new_screen_size!=self.screen_size:
-            glfw.set_window_size(self.window, *self.new_screen_size)
-            glfw.poll_events()
+        self.pre_poll()
+        self._apply_pending_project()
+
+        if self.window is not None:
+            runner_params = hello_imgui.get_runner_params()
+            should_idle = not self.focused and not globals.settings.render_when_unfocused
+            runner_params.fps_idling.enable_idling = should_idle
+            runner_params.fps_idling.fps_idle = 3.0
 
         # Reactive cursors
         cursor = imgui.get_mouse_cursor()
@@ -691,11 +662,14 @@ class MainGUI():
                 self.recording_list.require_sort = True
 
     def draw_gui(self):
-        if (size := imgui.io.display_size) != self.screen_size or not self.have_set_window_size:
-            imgui.set_next_window_size(size, imgui.Cond_.always)
-            self.screen_size = [int(size.x), int(size.y)]
-            self.have_set_window_size = True
+        main_viewport = imgui.get_main_viewport()
+        size = main_viewport.size
+        if size.x <= 0 or size.y <= 0:
+            return
 
+        imgui.set_next_window_viewport(main_viewport.id_)
+        imgui.set_next_window_pos(main_viewport.pos, imgui.Cond_.always)
+        imgui.set_next_window_size(size, imgui.Cond_.always)
         imgui.push_style_var(imgui.StyleVar_.window_border_size, 0)
         imgui.begin("glassesValidator", flags=self.window_flags)
         imgui.pop_style_var()
@@ -708,22 +682,26 @@ class MainGUI():
         text_y = size.y - text_size.y - _6
 
         if globals.project_path is not None:
-            sidebar_size = self.scaled(self.sidebar_size)
+            content_width = imgui.get_content_region_avail().x
+            if content_width > 0:
+                gap = self.scaled(4)
+                sidebar_size = self.scaled(240)
+                main_width = max(0.0, content_width - sidebar_size - gap)
 
-            imgui.begin_child("##main_frame", size=(-(sidebar_size+self.scaled(4)),0))
-            imgui.begin_child("##recording_list_frame", size=(0,-imgui.get_frame_height_with_spacing()), window_flags=imgui.WindowFlags_.horizontal_scrollbar)
-            self.recording_list.draw(globals.settings.style_accent, globals.settings.style_bg, globals.settings.style_color_recording_name)
-            imgui.end_child()
-            imgui.begin_child("##bottombar_frame")
-            self.recording_list.filter_box_text, self.recording_list.require_sort = \
-                self.draw_bottombar(self.recording_list.filter_box_text, self.recording_list.require_sort)
-            imgui.end_child()
-            imgui.end_child()
+                imgui.begin_child("##main_frame", size=(main_width,0))
+                imgui.begin_child("##recording_list_frame", size=(0,-imgui.get_frame_height_with_spacing()), window_flags=imgui.WindowFlags_.horizontal_scrollbar)
+                self.recording_list.draw(globals.settings.style_accent, globals.settings.style_bg, globals.settings.style_color_recording_name)
+                imgui.end_child()
+                imgui.begin_child("##bottombar_frame")
+                self.recording_list.filter_box_text, self.recording_list.require_sort = \
+                    self.draw_bottombar(self.recording_list.filter_box_text, self.recording_list.require_sort)
+                imgui.end_child()
+                imgui.end_child()
 
-            imgui.same_line(spacing=self.scaled(4))
-            imgui.begin_child("##sidebar_frame", size=(sidebar_size-1, -text_size.y))
-            self.draw_sidebar()
-            imgui.end_child()
+                imgui.same_line(spacing=gap)
+                imgui.begin_child("##sidebar_frame", size=(sidebar_size, -text_size.y))
+                self.draw_sidebar()
+                imgui.end_child()
         else:
             self.draw_unopened_interface()
 
@@ -739,9 +717,8 @@ class MainGUI():
 
 
     def post_render(self):
-        if self.size_mult != self.last_size_mult:
-            self.refresh_fonts()
-            self.refresh_styles()
+        if not self.repeat_chars:
+            self.input_chars.clear()
 
         # If the process pool is running, stop it if there is no more work.
         # This so we don't keep hogging resources and so that no lingering
@@ -752,57 +729,19 @@ class MainGUI():
             self.maybe_cleanup_process_pool = False
 
     def stopping_render(self):
-        # clean up
         self.save_imgui_ini()
-        _general_imgui.destroy_imgui_glfw()
-        globals.coding_job_queue = None # this one we can just clear as its not enqueued on the job queue, no cancellation will be issued
+        globals.coding_job_queue = None
         if globals.jobs:
             process_pool.cancel_all_jobs()
-        # NB: we do not do globals.jobs = None because cancellation notifications may well arrive after we have exited this main_loop()
-        # it seems not possible to wait in a simple loop like 'while globals.jobs' with a time.sleep as that blocks receiving the callback
+        process_pool.cleanup()
         db.shutdown()
-
-        if self.project_to_load is not None:
-            self.load_interface(is_reload=True)
-            return True     # signal to run a fresh main loop instance
-        else:
-            return False
 
 
     def save_imgui_ini(self, path: str | pathlib.Path = None):
         if path is None:
-            path = imgui.io.get_ini_filename()
-        imgui.save_ini_settings_to_disk(str(path))
-        ini = imgui.save_ini_settings_to_memory()
-
-        # add some of our own stuff we want to persist
-        try:
-            # subpart of ini file is valid input to config parser, parse that part it
-            start = ini.find("[Window][glassesValidator]")
-            if start==-1:
-                raise RuntimeError('[Window][glassesValidator] section not found')
-            end = ini.find("\n\n", start)
-            if end==-1:
-                raise RuntimeError('end of [Window][glassesValidator] section not found')
-            config = configparser.RawConfigParser()
-            config.optionxform=str
-            config.read_string(ini[start:end])
-            # set what we want to persist
-            config["Window][glassesValidator"]["ScreenSize"] = f"{self.screen_size[0]},{self.screen_size[1]}"
-            config["Window][glassesValidator"]["ScreenPos"] = f"{self.screen_pos[0]},{self.screen_pos[1]}"
-            config["Window][glassesValidator"]["Scale"] = f"{self.size_mult}"
-            # write to string
-            with io.StringIO() as ss:
-                config.write(ss)
-                ss.seek(0) # rewind
-                config = ss.read()
-            # replace section of ini with our expanded version
-            ini = ini[:start] + config + ini[end+2:]
-            # now write to file
-            with open(str(path), "w") as f:
-                f.write(ini)
-        except Exception:
-            pass    # already saved with imgui.save_ini_settings_to_disk above
+            path = imgui.get_io().get_ini_filename()
+        if path is not None:
+            imgui.save_ini_settings_to_disk(str(path))
 
     def get_folder_picker(self, reason='loading'):
         def select_callback(selected):
@@ -830,14 +769,17 @@ class MainGUI():
 
     def draw_unopened_interface(self):
         avail      = imgui.get_content_region_avail()
-        but_width  = self.scaled(200)
-        but_height = self.scaled(100)
+        button_gap = 10 * imgui.get_style().item_spacing.x
+        but_width  = min(self.scaled(200), (avail.x - button_gap) / 2)
+        but_height = min(self.scaled(100), avail.y * 0.3)
+        big_font_size = imgui.get_style().font_size_base * self.big_font_size_multiplier
+        button_font_size = imgui.get_style().font_size_base * self.big_font_size_multiplier/3*2
 
-        but_x = (avail.x - 2*but_width - 10*imgui.style.item_spacing.x) / 2
+        but_x = (avail.x - 2*but_width - button_gap) / 2
         but_y = (avail.y - but_height) / 2
 
-        imgui.push_font(None, imgui.get_style().font_size_base*self._big_font_size_multiplier)
         text = "Drag and drop a glassesValidator folder or use the below buttons"
+        imgui.push_font(None, big_font_size)
         size = imgui.calc_text_size(text)
         imgui.set_cursor_pos_x((avail.x - size.x) / 2)
         imgui.set_cursor_pos_y(( but_y  - size.y) / 2)
@@ -847,39 +789,39 @@ class MainGUI():
         imgui.set_cursor_pos_x(but_x)
         imgui.set_cursor_pos_y(but_y)
 
+        imgui.push_font(None, button_font_size)
         if imgui.button(ifa6.ICON_FA_FOLDER_PLUS+" New project", size=(but_width, but_height)):
             gui_utils.push_popup(globals, self.get_folder_picker(reason='creating'))
-        imgui.same_line(spacing=10*imgui.style.item_spacing.x)
+        imgui.same_line(spacing=button_gap)
         if imgui.button(ifa6.ICON_FA_FOLDER_OPEN+" Open project", size=(but_width, but_height)):
             gui_utils.push_popup(globals, self.get_folder_picker())
 
-        but_width  = self.scaled(150)
-        but_height = self.scaled(50)
+        but_width  = min(self.scaled(170), avail.x * 0.5)
+        but_height = min(self.scaled(65), avail.y * 0.18)
         but_x = (avail.x - but_width) / 2
         but_y = avail.y/4*3 - but_height / 2
         imgui.set_cursor_pos_x(but_x)
         imgui.set_cursor_pos_y(but_y)
         if imgui.button(ifa6.ICON_FA_FILE_PDF+" Get poster pdf", size=(but_width, but_height)):
             gui_utils.push_popup(globals, self.get_folder_picker(reason='deploy_pdf'))
+        imgui.pop_font()
 
     def draw_select_eye_tracker_popup(self, combo_value, eye_tracker):
-        spacing = 2 * imgui.style.item_spacing.x
+        spacing = 2 * imgui.get_style().item_spacing.x
         color = (0.45, 0.09, 1.00, 1.00)
-        imgui.push_font(None, imgui.get_style().font_size_base*self._icon_font_size_multiplier)
         imgui.text_colored(color, ifa6.ICON_FA_CIRCLE_INFO)
-        imgui.pop_font()
         imgui.same_line(spacing=spacing)
 
         imgui.begin_group()
-        imgui.dummy((0,2*imgui.style.item_spacing.y))
+        imgui.dummy((0,2*imgui.get_style().item_spacing.y))
         imgui.text_unformatted("For which eye tracker would you like to import recordings?")
-        imgui.dummy((0,3*imgui.style.item_spacing.y))
+        imgui.dummy((0,3*imgui.get_style().item_spacing.y))
         full_width = imgui.get_content_region_avail().x
         imgui.push_item_width(full_width*.4)
         imgui.set_cursor_pos_x(full_width*.3)
         changed, combo_value = my_combo("##select_eye_tracker", combo_value, eye_tracker_names)
         imgui.pop_item_width()
-        imgui.dummy((0,2*imgui.style.item_spacing.y))
+        imgui.dummy((0,2*imgui.get_style().item_spacing.y))
 
         imgui.end_group()
 
@@ -889,31 +831,29 @@ class MainGUI():
         return combo_value, eye_tracker
 
     def draw_preparing_recordings_for_import_popup(self, eye_tracker):
-        spacing = 2 * imgui.style.item_spacing.x
+        spacing = 2 * imgui.get_style().item_spacing.x
         color = (0.45, 0.09, 1.00, 1.00)
-        imgui.push_font(None, imgui.get_style().font_size_base*self._icon_font_size_multiplier)
         imgui.text_colored(color, ifa6.ICON_FA_CIRCLE_INFO)
-        imgui.pop_font()
         imgui.same_line(spacing=spacing)
 
         imgui.begin_group()
-        imgui.dummy((0,2*imgui.style.item_spacing.y))
+        imgui.dummy((0,2*imgui.get_style().item_spacing.y))
         text = f'Searching the path(s) you provided for {eye_tracker.value} recordings.'
         imgui.text_unformatted(text)
-        imgui.dummy((0,3*imgui.style.item_spacing.y))
+        imgui.dummy((0,3*imgui.get_style().item_spacing.y))
         text_size = imgui.calc_text_size(text)
-        spinner_radii = [x*self.size_mult for x in [22, 16, 10]]
+        spinner_radii = [22, 16, 10]
         imgui.set_cursor_pos_x(imgui.get_cursor_pos_x()+(text_size.x-2*spinner_radii[0])/2)
-        imspinner.spinner_ang_triple('waitSpinner', *spinner_radii, 3.5*self.size_mult, c1=globals.settings.style_text, c2=globals.settings.style_accent, c3=globals.settings.style_text)
-        imgui.dummy((0,2*imgui.style.item_spacing.y))
+        imspinner.spinner_ang_triple('waitSpinner', *spinner_radii, 3.5, c1=globals.settings.style_text, c2=globals.settings.style_accent, c3=globals.settings.style_text)
+        imgui.dummy((0,2*imgui.get_style().item_spacing.y))
         imgui.end_group()
 
     def draw_select_recordings_to_import(self, recording_list: recording_table.RecordingTable):
-        spacing = 2 * imgui.style.item_spacing.x
+        spacing = 2 * imgui.get_style().item_spacing.x
         imgui.same_line(spacing=spacing)
 
         imgui.text_unformatted("Select which recordings you would like to import.")
-        imgui.dummy((0,1*imgui.style.item_spacing.y))
+        imgui.dummy((0,1*imgui.get_style().item_spacing.y))
 
         imgui.begin_child("##main_frame_adder", size=(self.scaled(800),min(self.scaled(300),(len(recording_list.recordings)+2)*imgui.get_frame_height_with_spacing())))
         imgui.begin_child("##recording_list_frame_adder", size=(0,-imgui.get_frame_height_with_spacing()), window_flags=imgui.WindowFlags_.horizontal_scrollbar)
@@ -926,13 +866,12 @@ class MainGUI():
         imgui.end_child()
 
     def draw_dq_export_config_popup(self, pop_data):
-        spacing = 2 * imgui.style.item_spacing.x
         right_width = self.scaled(90)
         frame_height = imgui.get_frame_height()
         checkbox_offset = right_width - frame_height
 
         imgui.text_unformatted("Configure what you would like to export.")
-        imgui.dummy((0,1*imgui.style.item_spacing.y))
+        imgui.dummy((0,1*imgui.get_style().item_spacing.y))
 
         if len(pop_data['dq_types'])>1:
             name = 'Data quality types'
@@ -950,7 +889,7 @@ class MainGUI():
                         imgui.table_next_row()
                         imgui.table_next_column()
                         imgui.align_text_to_frame_padding()
-                        t,ht = get_DataQualityType_explanation(dq)
+                        t,ht = data_types.get_explanation(dq)
                         imgui.text(t)
                         gui_utils.draw_hover_text(ht, text="")
                         imgui.table_next_column()
@@ -1004,27 +943,38 @@ class MainGUI():
 
 
     def draw_about_popup(self):
+        base_content_width = 530
+
+        def constrain_popup_size(data):
+            data.desired_size.x = self.scaled(base_content_width) + 2 * imgui.get_style().window_padding.x
+
         def popup_content():
-            _60 = self.scaled(60)
+            content_width = self.scaled(base_content_width)
+            big_font_size = imgui.get_style().font_size_base * self.big_font_size_multiplier
+            _30 = self.scaled(30)
             _200 = self.scaled(200)
-            width = self.scaled(530)
+
             imgui.begin_group()
-            imgui.dummy((_60, _200))
+            imgui.dummy((_30, _200))
             imgui.same_line()
-            _general_imgui.icon_texture.render(_200, _200, rounding=globals.settings.style_corner_radius)
+            assert self._icon_image is not None
+            imgui.image(imgui.ImTextureRef(self._icon_image.texture_id), imgui.ImVec2(_200, _200))
+            imgui.same_line()
+            imgui.dummy((_30, _200))
             imgui.same_line()
             imgui.begin_group()
-            imgui.push_font(None, imgui.get_style().font_size_base*self._big_font_size_multiplier)
+            imgui.push_font(None, big_font_size)
             imgui.text("glassesValidator")
             imgui.pop_font()
-            imgui.text(f"Version {globals.version}")
+            imgui.text(f"Version {__version__}")
             imgui.text("Made by Diederick C. Niehorster")
             imgui.text("")
-            imgui.text(f"glassesTools {glassesTools.version.__version__}")
+            imgui_md.render(f"[glassesTools {glassesTools.version.__version__}](https://github.com/dcnieho/glassesTools)")
+            imgui_md.render(f"[ETDQualitizer {ETDQualitizer.version.__version__}](https://github.com/dcnieho/ETDQualitizer)")
             imgui.text(f"Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
             imgui.text(f"OpenGL {'.'.join(str(gl.glGetInteger(num)) for num in (gl.GL_MAJOR_VERSION, gl.GL_MINOR_VERSION))}, PyOpenGL {OpenGL.__version__}")
             imgui.text(f"GLFW {'.'.join(str(num) for num in glfw.get_version())}, pyGLFW {glfw.__version__}")
-            imgui.text(f"ImGui {imgui.get_version()}, imgui_bundle {imgui_bundle.__version__}")
+            imgui_md.render(f"ImGui {imgui.get_version()}, [imgui_bundle {imgui_bundle.__version__}](https://github.com/pthom/imgui_bundle)")
             if pltfrm.os is pltfrm.Os.Linux:
                 imgui.text(f"{platform.system()} {platform.release()}")
             elif pltfrm.os is pltfrm.Os.Windows:
@@ -1034,53 +984,72 @@ class MainGUI():
                 imgui.text(f"{platform.system()} {platform.release()}")
             imgui.end_group()
             imgui.same_line()
-            imgui.dummy((width-imgui.get_cursor_pos_x(), _200))
+            imgui.dummy((content_width-imgui.get_cursor_pos_x(), _200))
             imgui.end_group()
+
             imgui.spacing()
-            btn_tot_width = (width - 2 * imgui.style.item_spacing.x)
+            btn_tot_width = content_width - 3 * imgui.get_style().item_spacing.x
             if imgui.button("PyPI", size=(btn_tot_width/6, 0)):
-                callbacks.open_url(globals.pypi_page)
+                callbacks.open_url("https://pypi.org/project/glassesValidator/")
             imgui.same_line()
             if imgui.button("Paper", size=(btn_tot_width/6, 0)):
-                callbacks.open_url(globals.paper_page)
+                callbacks.open_url("https://doi.org/10.3758/s13428-023-02105-5")
             imgui.same_line()
             if imgui.button("GitHub repo", size=(btn_tot_width/3, 0)):
-                callbacks.open_url(globals.github_page)
+                callbacks.open_url("https://github.com/dcnieho/glassesValidator")
             imgui.same_line()
             if imgui.button("Researcher homepage", size=(btn_tot_width/3, 0)):
-                callbacks.open_url(globals.developer_page)
+                callbacks.open_url("https://scholar.google.se/citations?user=uRUYoVgAAAAJ&hl=en")
 
             imgui.spacing()
             imgui.spacing()
-            imgui.push_text_wrap_pos(width)
+            imgui.push_text_wrap_pos(content_width - imgui.get_style().frame_padding.x)
             imgui.text("This software is licensed under the MIT license and is provided to you for free. Furthermore, due to "
                        "its license, it is also free as in freedom: you are free to use, study, modify and share this software "
                        "in whatever way you wish as long as you keep the same license.")
+            imgui.pop_text_wrap_pos()
             imgui.spacing()
             imgui.spacing()
-            imgui.text("If you find bugs or have some feedback, please do let me know on GitHub (using issues or pull requests).")
+            imgui_md.render("If you find bugs or have some feedback, please do let me know on [GitHub](https://github.com/dcnieho/glassesValidator) (using issues or pull requests).")
             imgui.spacing()
             imgui.spacing()
             imgui.dummy((0, self.scaled(10)))
-            imgui.push_font(None, imgui.get_style().font_size_base*self._big_font_size_multiplier)
+            imgui.push_font(None, big_font_size)
             size = imgui.calc_text_size("Reference")
-            imgui.set_cursor_pos_x((width - size.x + imgui.style.scrollbar_size) / 2)
+            imgui.set_cursor_pos_x((content_width - size.x + imgui.get_style().scrollbar_size) / 2)
             imgui.text("Reference")
             imgui.pop_font()
             imgui.spacing()
             imgui.spacing()
+            reference         = r"Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. & Hooge, I.T.C. (2023). GlassesValidator: Data quality tool for eye tracking glasses. Behavior Research Methods. doi: [10.3758/s13428-023-02105-5](https://doi.org/10.3758/s13428-023-02105-5)"
+            reference_bibtex  = r"""@article{niehorster2023glassesValidator,
+    Author = {Niehorster, Diederick C. and Hessels, Roy S. and Benjamins, Jeroen S. and Nystr{\"o}m, Marcus and Hooge, Ignace T. C.},
+    Journal = {Behavior Research Methods},
+    Number = {},
+    Pages = {},
+    Title = {GlassesValidator: A data quality tool for eye tracking glasses},
+    Year = {2023},
+    doi = {10.3758/s13428-023-02105-5}
+}
+"""
 
-            imgui.text(globals.reference)
+            imgui_md.render(reference)
             if imgui.begin_popup_context_item(f"##refresh_context"):
                 # Right click = more options context menu
                 if imgui.selectable(ifa6.ICON_FA_BOOK_OPEN+" APA", False)[0]:
-                    imgui.set_clipboard_text(globals.reference)
+                    imgui.set_clipboard_text(reference)
                 if imgui.selectable(ifa6.ICON_FA_COMPUTER+" BibTeX", False)[0]:
-                    imgui.set_clipboard_text(globals.reference_bibtex)
+                    imgui.set_clipboard_text(reference_bibtex)
                 imgui.end_popup()
             gui_utils.draw_hover_text(text='', hover_text="Right-click to copy citation to clipboard")
+            imgui.spacing()
+            imgui.spacing()
 
-            imgui.pop_text_wrap_pos()
+        imgui.set_next_window_size_constraints(
+            (0.0, 0.0),
+            (self.scaled(base_content_width), imgui.FLT_MAX),
+            constrain_popup_size,
+        )
         return gui_utils.popup("About glassesValidator", popup_content, closable=True, outside=True)
 
     def draw_bottombar(self, filter_box_text: str, require_sort: bool, in_adder_popup: bool = False):
@@ -1141,10 +1110,10 @@ class MainGUI():
 
     def draw_sidebar(self):
         set = globals.settings
-        right_width = self.scaled(90)
+        width = imgui.get_content_region_avail().x
+        right_width = min(self.scaled(180), max(self.scaled(120), width * 0.42))
         frame_height = imgui.get_frame_height()
         checkbox_offset = right_width - frame_height
-        width = imgui.get_content_region_avail().x
 
         # Big action button
         height = self.scaled(100)
@@ -1471,7 +1440,7 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            t,ht = get_DataQualityType_explanation(DataQualityType.viewpos_vidpos_homography)
+            t,ht = data_types.get_explanation(data_types.DataType.viewpos_vidpos_homography)
             imgui.text(t+':')
             gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
@@ -1484,7 +1453,7 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            t,ht = get_DataQualityType_explanation(DataQualityType.pose_vidpos_homography)
+            t,ht = data_types.get_explanation(data_types.DataType.pose_vidpos_homography)
             imgui.text(t+':')
             gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
@@ -1497,7 +1466,7 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            t,ht = get_DataQualityType_explanation(DataQualityType.pose_vidpos_ray)
+            t,ht = data_types.get_explanation(data_types.DataType.pose_vidpos_ray)
             imgui.text(t+':')
             gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
@@ -1510,7 +1479,7 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            t,ht = get_DataQualityType_explanation(DataQualityType.pose_world_eye)
+            t,ht = data_types.get_explanation(data_types.DataType.pose_world_eye)
             imgui.text(t+':')
             gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
@@ -1523,7 +1492,7 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            t,ht = get_DataQualityType_explanation(DataQualityType.pose_left_eye)
+            t,ht = data_types.get_explanation(data_types.DataType.pose_left_eye)
             imgui.text(t+':')
             gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
@@ -1540,7 +1509,7 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            t,ht = get_DataQualityType_explanation(DataQualityType.pose_right_eye)
+            t,ht = data_types.get_explanation(data_types.DataType.pose_right_eye)
             imgui.text(t+':')
             gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
@@ -1557,7 +1526,7 @@ class MainGUI():
             imgui.table_next_row()
             imgui.table_next_column()
             imgui.align_text_to_frame_padding()
-            t,ht = get_DataQualityType_explanation(DataQualityType.pose_left_right_avg)
+            t,ht = data_types.get_explanation(data_types.DataType.pose_left_right_avg)
             imgui.text(t+':')
             gui_utils.draw_hover_text(ht, text="")
             imgui.table_next_column()
@@ -1679,7 +1648,7 @@ class MainGUI():
 
             imgui.table_next_row()
             imgui.table_next_column()
-            imgui.text(f"Current framerate: {round(imgui.io.framerate, 2)}")
+            imgui.text(f"Current framerate: {round(imgui.get_io().framerate, 2)}")
             imgui.spacing()
 
             imgui.end_table()
@@ -1695,9 +1664,9 @@ class MainGUI():
                 changed, value = imgui.drag_int("##style_corner_radius", set.style_corner_radius, v_speed=0.04, v_min=0, v_max=20, format="%d px")
                 set.style_corner_radius = min(max(value, 0), 20)
                 if changed:
-                    imgui.style.window_rounding = imgui.style.frame_rounding = imgui.style.tab_rounding = \
-                    imgui.style.child_rounding = imgui.style.grab_rounding = imgui.style.popup_rounding = \
-                    imgui.style.scrollbar_rounding = globals.settings.style_corner_radius * self.size_mult
+                    imgui.get_style().window_rounding = imgui.get_style().frame_rounding = imgui.get_style().tab_rounding = \
+                    imgui.get_style().child_rounding = imgui.get_style().grab_rounding = imgui.get_style().popup_rounding = \
+                    imgui.get_style().scrollbar_rounding = globals.settings.style_corner_radius
                     async_thread.run(db.update_settings("style_corner_radius"))
 
                 imgui.table_next_row()

@@ -10,7 +10,7 @@ isMacOS = sys.platform.startswith("darwin")
 if isMacOS:
     import AppKit
 
-from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, pose, propagating_thread, recording, timestamps
+from glassesTools import annotation, gaze_headref, gaze_worldref, naming, ocv, pose, propagating_thread, timestamps
 from glassesTools.gui import video_player
 from glassesTools.validation import config, Plane as ValidationPlane
 
@@ -49,7 +49,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_plane):
     utils.update_recording_status(working_dir, utils.Task.Coded, utils.Status.Running)
 
     # get info about recording
-    recInfo = recording.Recording.load_from_json(working_dir)
+    recInfo = utils.load_recording_info(working_dir)
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
@@ -89,7 +89,8 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_plane):
     else:
         # flatten
         analyzeFrames = [i for iv in analyzeFrames for i in iv]
-    episodes = {annotation.Event.Validate: analyzeFrames}
+    validation_event = annotation.EventType.Validate.value
+    episodes = {validation_event: (annotation.EventType.Validate, analyzeFrames)}
 
     # set up video playback
     # 1. window for scene video is already set up
@@ -110,7 +111,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_plane):
     gui.set_allow_seek(True)
     gui.set_allow_timeline_zoom(True)
     gui.set_show_controls(True, gui.main_window_id)
-    gui.set_allow_annotate({annotation.Event.Validate}, {annotation.Event.Validate: imgui.Key.v})
+    gui.set_allow_annotate({validation_event}, {validation_event: imgui.Key.v})
     gui.set_show_timeline(True, video_ts, episodes, gui.main_window_id)
     gui.set_show_annotation_label(False, gui.main_window_id)
     gui.set_show_action_tooltip(True, gui.main_window_id)
@@ -147,7 +148,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_plane):
 
             # if have gaze in world info, draw it too (also only first)
             if hasPlaneGaze and frame_idx in gazesPlane:
-                gazesPlane[frame_idx][0].draw_on_world_video(frame, cameraParams, subPixelFac, None if not frame_idx in poses else poses[frame_idx])
+                gazesPlane[frame_idx][0].draw_on_world_video(frame, cameraParams, sub_pixel_fac=subPixelFac, pose=poses.get(frame_idx))
                 if show_plane:
                     gazesPlane[frame_idx][0].draw_on_plane(refImg, val_plane, subPixelFac)
 
@@ -180,13 +181,17 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_plane):
                     player.seek(pts+p, relative=False)
                 case 'add_coding':
                     event,frame_idx = p
-                    if frame_idx not in episodes[event]:
-                        episodes[event].append(frame_idx)
-                        episodes[event].sort()
+                    event_frames = episodes[event][1]
+                    if frame_idx not in event_frames:
+                        event_frames.append(frame_idx)
+                        event_frames.sort()
                         gui.notify_annotations_changed()
                 case 'delete_coding':
                     event,frame_idxs = p
-                    episodes[event] = [i for i in episodes[event] if i not in frame_idxs]
+                    event_frames = episodes[event][1]
+                    for frame_idx in frame_idxs:
+                        if frame_idx in event_frames:
+                            event_frames.remove(frame_idx)
                     gui.notify_annotations_changed()
                 case 'exit':
                     should_exit = True
@@ -198,6 +203,6 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_plane):
     gui.stop()
 
     # store coded intervals to file
-    utils.writeMarkerIntervalsFile(working_dir / 'markerInterval.tsv', episodes[annotation.Event.Validate])
+    utils.writeMarkerIntervalsFile(working_dir / 'markerInterval.tsv', episodes[validation_event][1])
 
     utils.update_recording_status(working_dir, utils.Task.Coded, utils.Status.Finished)

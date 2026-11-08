@@ -5,7 +5,7 @@ import pathlib
 import cv2
 import numpy as np
 
-from glassesTools import annotation, aruco, gaze_headref, gaze_worldref, naming, ocv, propagating_thread, recording, timestamps
+from glassesTools import annotation, aruco, gaze_headref, gaze_worldref, naming, ocv, pose, propagating_thread, timestamps
 from glassesTools.gui import video_player
 from glassesTools.validation import config, Plane as ValidationPlane
 
@@ -47,7 +47,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_rejected_ma
     sub_pixel_fac = 8   # for anti-aliased drawing
 
     # get info about recording
-    recInfo = recording.Recording.load_from_json(working_dir)
+    recInfo = utils.load_recording_info(working_dir)
 
     # open file with information about Aruco marker and Gaze target locations
     validationSetup = config.get_validation_setup(config_dir)
@@ -64,7 +64,10 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_rejected_ma
     else:
         # flatten
         analyzeFrames = [i for iv in analyzeFrames for i in iv]
-    episodes = {annotation.Event.Validate: analyzeFrames}
+    validation_event = annotation.EventType.Validate.value
+    timeline_annotations = {
+        validation_event: (annotation.EventType.Validate, analyzeFrames)
+    }
 
     # Read gaze data
     gazes_head  = gaze_headref.read_dict_from_file(working_dir / naming.gaze_data_fname)[0]
@@ -75,11 +78,14 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_rejected_ma
     # build pose estimator
     in_video = recInfo.get_scene_video_path()   # get video file to process
     video_ts = timestamps.VideoTimestamps(working_dir / naming.frame_timestamps_fname)
-    pose_estimator = aruco.PoseEstimator(in_video, video_ts, cameraParams)
-    pose_estimator.add_plane('validate',
-                             {'plane': poster, 'aruco_params': {'markerBorderBits': validationSetup['markerBorderBits']}, 'min_num_markers': validationSetup['minNumMarkers']})
+    pose_estimator = pose.Estimator(in_video, video_ts, cameraParams)
+    aruco_manager = aruco.Manager()
+    aruco_manager.add_assembly('validate', poster.get_assembly_setup())
+    if show_rejected_markers:
+        aruco_manager.set_visualization_styles(rejected_color=(255, 0, 0))
+    aruco_manager.consolidate_setup()
+    aruco_manager.register_with_estimator(pose_estimator)
     pose_estimator.set_visualize_on_frame(True)
-    pose_estimator.show_rejected_markers = show_rejected_markers
 
     # prep output video files
     width, height, fps = pose_estimator.get_video_info()
@@ -97,7 +103,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_rejected_ma
     # if we have a gui, set it up
     if has_gui:
         gui.set_frame_size((width, height), gui.main_window_id)
-        gui.set_show_timeline(True, video_ts, episodes, gui.main_window_id)
+        gui.set_show_timeline(True, video_ts, timeline_annotations, gui.main_window_id)
         gui.set_show_annotation_label(False, gui.main_window_id)
         gui.set_timecode_position('r', gui.main_window_id)
         gui.set_show_action_tooltip(True, gui.main_window_id)
@@ -107,13 +113,14 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_rejected_ma
 
     should_exit = False
     while True:
-        status, pose, _, _, (frame, frame_idx, frame_ts) = pose_estimator.process_one_frame()
+        status, poses, _, _, (frame, frame_idx, frame_ts, _) = pose_estimator.process_one_frame()
         # TODO: if there is a discontinuity, fill in the missing frames so audio stays in sync
         # check if we're done
-        if status==aruco.Status.Finished:
+        if status==pose.Status.Finished:
             break
-        # NB: no need to handle aruco.Status.Skip, since we didn't provide the pose estimator with any analysis intervals (we want to process the whole video)
-        pose = pose['validate']
+        # NB: no need to handle pose.Status.Skip, since we didn't provide the pose estimator with any analysis intervals (we want to process the whole video)
+        plane_pose = poses.get('validate') if poses is not None else None
+        has_plane_pose = plane_pose is not None and plane_pose.pose_successful()
 
         if frame is None:
             # we don't have a valid frame, use a fully black frame
@@ -127,10 +134,11 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_rejected_ma
                 gaze.draw(frame, cameraParams, sub_pixel_fac)
 
                 # figure out where gaze vectors intersect with poster
-                gazePoster = gaze_worldref.from_head(pose, gaze, cameraParams)
-                # and draw gazes on video and poster
-                gazePoster.draw_on_world_video(frame, cameraParams, sub_pixel_fac)
-                gazePoster.draw_on_plane(refImg, poster, sub_pixel_fac)
+                if has_plane_pose:
+                    gazePoster = gaze_worldref.from_head(plane_pose, gaze, cameraParams)
+                    # and draw gazes on video and poster
+                    gazePoster.draw_on_world_video(frame, cameraParams, sub_pixel_fac=sub_pixel_fac)
+                    gazePoster.draw_on_plane(refImg, poster, sub_pixel_fac)
 
         # annotate frame
         analysisIntervalIdx = None
@@ -139,10 +147,11 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_rejected_ma
                 analysisIntervalIdx = f
         frameClr = (0,0,255) if analysisIntervalIdx is not None else (0,0,0)
 
-        text = '%6.3f [%6d] (%s markers)' % (frame_ts/1000.,frame_idx, pose.pose_N_markers)
-        textSize,baseline = cv2.getTextSize(text,cv2.FONT_HERSHEY_PLAIN,2,2)
+        marker_count = plane_pose.pose_N_points // 4 if plane_pose is not None else 0
+        text = '%6.3f [%6d] (%s markers)' % (frame_ts/1000.,frame_idx, marker_count)
+        textSize,baseline = cv2.getTextSize(text,cv2.FONT_HERSHEY_PLAIN,2,1)
         cv2.rectangle(frame,(0,height),(textSize[0]+2,height-textSize[1]-baseline-5), frameClr, -1)
-        cv2.putText(frame, (text), (2, height-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255),2)
+        cv2.putText(frame, (text), (2, height-5), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,255), 1)
 
         # store to file
         img = Image(plane_buffers=[frame.flatten().tobytes()], pix_fmt='bgr24', size=(width, height))

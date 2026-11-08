@@ -6,6 +6,7 @@ import json
 import dataclasses
 import pathlib
 import re
+import types
 from concurrent.futures import Future
 
 from glassesTools.eyetracker import EyeTracker
@@ -176,7 +177,21 @@ async def close():
         await connection.close()
 
 
-def sql_to_py(value: str | int | float, data_type: typing.Type):
+def sql_to_py(value: str | int | float | None, data_type: typing.Any):
+    origin = typing.get_origin(data_type)
+    if origin in (typing.Union, types.UnionType):
+        types_in_union = typing.get_args(data_type)
+        if type(None) in types_in_union:
+            if value is None or value == 'null' or (value == '' and pathlib.Path in types_in_union):
+                return None
+            types_in_union = tuple(t for t in types_in_union if t is not type(None))
+        if len(types_in_union) == 1:
+            return sql_to_py(value, types_in_union[0])
+        raise TypeError(f"Cannot convert database value to unsupported union type {data_type}")
+
+    if data_type is EyeTracker and value == "SeeTrue":
+        value = EyeTracker.SeeTrue_STONE.value
+
     match getattr(data_type, "__name__", None):
         case "list":
             value = json.loads(value)
@@ -230,15 +245,25 @@ async def load_recordings(id: int = None):
     recordings = await cursor.fetchall()
     for recording in recordings:
         recording = dict(recording)
+        migrated_working_directory = False
+        if not recording.get("working_directory") and recording.get("proc_directory_name"):
+            recording["working_directory"] = str(globals.project_path / recording["proc_directory_name"])
+            migrated_working_directory = True
+
         recording = {key: sql_to_py(value, types[key]) for key, value in recording.items() if key in types}
         globals.recordings[recording["id"]] = Recording(**recording)
         globals.selected_recordings[recording["id"]] = False
 
         # check if working dir exists. If not, ensure recording status is not imported
         rec = globals.recordings[recording["id"]]
-        if rec.working_directory and not rec.working_directory.is_dir():
+        update_keys = []
+        if migrated_working_directory:
+            update_keys.append("working_directory")
+        if rec.working_directory is None or not rec.working_directory.is_dir():
             rec.task = Task.Not_Imported
-            async_thread.run(update_recording(rec, "task"))
+            update_keys.append("task")
+        if update_keys:
+            await update_recording(rec, *update_keys)
 
 
 async def load():

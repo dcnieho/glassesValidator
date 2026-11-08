@@ -44,7 +44,7 @@ def process(working_dir, config_dir=None, do_global_shift=True, max_dist_fac=.5)
                               analyzeFrames[idx],
                               working_dir,
                               filename_stem='fixationAssignment',
-                              iteration=idx,
+                              validation_episode_index=idx,
                               background_image=(validation_plane.get_ref_image(as_RGB=True),
                                                 np.array([validation_plane.bbox[x] for x in (0,2,3,1)])),
                               plot_limits=plot_limits)
@@ -53,6 +53,6 @@ def process(working_dir, config_dir=None, do_global_shift=True, max_dist_fac=.5)
         assign_intervals.to_tsv(selected_intervals,
                                 working_dir,
                                 filename_stem=f'fixationAssignment',
-                                iteration=idx)
+        validation_episode_index=idx)
 
     utils.update_recording_status(working_dir, utils.Task.Fixation_Assigned, utils.Status.Finished, skip_if_missing=True)

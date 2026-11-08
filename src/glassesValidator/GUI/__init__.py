@@ -29,17 +29,10 @@ def run(project_dir: str | pathlib.Path = None):
     async_thread.setup()
     globals.gui = gui.MainGUI()
 
-    while True:
-        # returns true if a new call to run() is needed, or false if all done
-        should_restart = globals.gui.run()
-
-        process_pool.cleanup()
-
-        if not should_restart:
-            break
+    globals.gui.run()
+    process_pool.cleanup()
 
     # cleanup
     async_thread.cleanup()
     globals.cleanup()
-
 

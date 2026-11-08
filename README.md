@@ -19,8 +19,7 @@ Note that the standalone executable version of glassesValidator is discontinued.
 For users on Windows, Mac (14 Sonoma or later) or Linux who wish to use glassesValidator *in their Python code*, the easiest way to acquire
 glassesValidator is to install it directly into your Python distribution using the command
 `python -m pip install glassesValidator`.
-If you run into problems on MacOS to install the `imgui_bundle` package, you can
-try to install it first with the command `SYSTEM_VERSION_COMPAT=0 pip install --only-binary=:all: imgui_bundle==1.6.2`. Note that this repository itself is pip-installable as well:
+Note that this repository itself is pip-installable as well:
 `python -m pip install git+https://github.com/dcnieho/glassesValidator.git#egg=glassesValidator`. NB: on some platforms you may have
 to replace `python` with `python3` in the above command lines.
 
@@ -70,7 +69,6 @@ Additional notes:
 1. You now first need to make an environment with the correct Python version in which you can then install glassesValidator. To do so, type `conda create -n glassesValidator-env python=3.11 pip` and run the command. `glassesValidator-env` is the name of the environment you create with this comment.
 1. Activate the environment you have just created: `conda activate glassesValidator-env`.
 1. Now you need to install glassesValidator. Do the following in the below order:
-   1. Type and run `SYSTEM_VERSION_COMPAT=0 pip install --only-binary=:all: imgui_bundle==1.6.2`
    1. Type and run `pip install glassesValidator`.
 
 ### Running glassesValidator
@@ -85,7 +83,6 @@ If you have followed the above instructions to install glassesValidator, do the 
 If you already have glassesValidator installed but want to update it to the latest version, do the following:
 1. Open the Terminal application.
 1. Activate the environment in which you have glassesValidator installed: type and run `conda activate glassesValidator-env`, where `glassesValidator-env` is the name of the environment you created using the above instructions. If you use an environment with a different name, replace the name in the command.
-1. Type and run `SYSTEM_VERSION_COMPAT=0 pip install --only-binary=:all: imgui_bundle==1.6.2`
 1. Type and run `pip install glassesValidator --upgrade`.
 
 ## Complete instructions for Linux

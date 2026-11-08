@@ -2,13 +2,14 @@ import pathlib
 
 import numpy as np
 
-from glassesTools.validation import config, DataQualityType, compute_offsets, Plane as ValidationPlane
+from glassesTools import data_types
+from glassesTools.validation import config, compute_offsets, Plane as ValidationPlane
 
 from .. import utils
 
 
 def process(working_dir, config_dir=None,
-            dq_types: list[DataQualityType]=None, allow_dq_fallback=False, include_data_loss=False):
+            dq_types: list[data_types.DataType]=None, allow_dq_fallback=False, include_data_loss=False):
     working_dir  = pathlib.Path(working_dir)
     if config_dir is not None:
         config_dir = pathlib.Path(config_dir)
@@ -37,8 +38,8 @@ def process(working_dir, config_dir=None,
                             validation_plane.config['distance']*10.,
                             working_dir,
                             f'dataQuality.tsv',
-                            dq_types=dq_types,
-                            allow_dq_fallback=allow_dq_fallback,
+                            d_types=dq_types,
+                            allow_data_type_fallback=allow_dq_fallback,
                             include_data_loss=include_data_loss)
 
     utils.update_recording_status(working_dir, utils.Task.Data_Quality_Calculated, utils.Status.Finished, skip_if_missing=True)

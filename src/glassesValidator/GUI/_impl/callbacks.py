@@ -9,10 +9,11 @@ import threading
 from imgui_bundle import icons_fontawesome_6 as ifa6
 
 from glassesTools import async_thread, platform, recording
+from glassesTools.data_types import DataType
 from glassesTools.eyetracker import EyeTracker, eye_tracker_names
 eye_tracker_names = [e for e in eye_tracker_names if e!=EyeTracker.Generic.value]
 from glassesTools.gui import msg_box, recording_table, utils as gui_utils
-from glassesTools.validation import DataQualityType, default_poster, export
+from glassesTools.validation import default_poster, export
 
 from .structs import JobDescription, Recording
 from . import globals, db, gui, process_pool
@@ -211,19 +212,19 @@ async def process_recording(rec: Recording, task: Task=None, chain=True):
                     kwargs['allow_dq_fallback'] = True
                     kwargs['dq_types'] = []
                     if globals.settings.dq_use_viewpos_vidpos_homography:
-                        kwargs['dq_types'].append(DataQualityType.viewpos_vidpos_homography)
+                        kwargs['dq_types'].append(DataType.viewpos_vidpos_homography)
                     if globals.settings.dq_use_pose_vidpos_homography:
-                        kwargs['dq_types'].append(DataQualityType.pose_vidpos_homography)
+                        kwargs['dq_types'].append(DataType.pose_vidpos_homography)
                     if globals.settings.dq_use_pose_vidpos_ray:
-                        kwargs['dq_types'].append(DataQualityType.pose_vidpos_ray)
+                        kwargs['dq_types'].append(DataType.pose_vidpos_ray)
                     if globals.settings.dq_use_pose_world_eye:
-                        kwargs['dq_types'].append(DataQualityType.pose_world_eye)
+                        kwargs['dq_types'].append(DataType.pose_world_eye)
                     if globals.settings.dq_use_pose_left_eye:
-                        kwargs['dq_types'].append(DataQualityType.pose_left_eye)
+                        kwargs['dq_types'].append(DataType.pose_left_eye)
                     if globals.settings.dq_use_pose_right_eye:
-                        kwargs['dq_types'].append(DataQualityType.pose_right_eye)
+                        kwargs['dq_types'].append(DataType.pose_right_eye)
                     if globals.settings.dq_use_pose_left_right_avg:
-                        kwargs['dq_types'].append(DataQualityType.pose_left_right_avg)
+                        kwargs['dq_types'].append(DataType.pose_left_right_avg)
                     kwargs['include_data_loss'] = globals.settings.dq_report_data_loss
                 case Task.Make_Video:
                     fun = gv_utils.make_video
@@ -280,18 +281,18 @@ async def export_data_quality(ids: list[int]):
     typeIdx = df.index.names.index('type')
     pop_data['dq_types'] = sorted(list(df.index.levels[typeIdx]), key=lambda dq: dq.value)
     pop_data['dq_types_sel'] = [False for i in pop_data['dq_types']]
-    if globals.settings.dq_use_viewpos_vidpos_homography and DataQualityType.viewpos_vidpos_homography in pop_data['dq_types']:
-        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.viewpos_vidpos_homography)] = True
-    if globals.settings.dq_use_pose_vidpos_homography and DataQualityType.pose_vidpos_homography in pop_data['dq_types']:
-        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_vidpos_homography)] = True
-    if globals.settings.dq_use_pose_vidpos_ray and DataQualityType.pose_vidpos_ray in pop_data['dq_types']:
-        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_vidpos_ray)] = True
-    if globals.settings.dq_use_pose_left_eye and DataQualityType.pose_left_eye in pop_data['dq_types']:
-        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_left_eye)] = True
-    if globals.settings.dq_use_pose_right_eye and DataQualityType.pose_right_eye in pop_data['dq_types']:
-        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_right_eye)] = True
-    if globals.settings.dq_use_pose_left_right_avg and DataQualityType.pose_left_right_avg in pop_data['dq_types']:
-        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataQualityType.pose_left_right_avg)] = True
+    if globals.settings.dq_use_viewpos_vidpos_homography and DataType.viewpos_vidpos_homography in pop_data['dq_types']:
+        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataType.viewpos_vidpos_homography)] = True
+    if globals.settings.dq_use_pose_vidpos_homography and DataType.pose_vidpos_homography in pop_data['dq_types']:
+        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataType.pose_vidpos_homography)] = True
+    if globals.settings.dq_use_pose_vidpos_ray and DataType.pose_vidpos_ray in pop_data['dq_types']:
+        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataType.pose_vidpos_ray)] = True
+    if globals.settings.dq_use_pose_left_eye and DataType.pose_left_eye in pop_data['dq_types']:
+        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataType.pose_left_eye)] = True
+    if globals.settings.dq_use_pose_right_eye and DataType.pose_right_eye in pop_data['dq_types']:
+        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataType.pose_right_eye)] = True
+    if globals.settings.dq_use_pose_left_right_avg and DataType.pose_left_right_avg in pop_data['dq_types']:
+        pop_data['dq_types_sel'][pop_data['dq_types'].index(DataType.pose_left_right_avg)] = True
 
     if not any(pop_data['dq_types_sel']):
         pop_data['dq_types_sel'][pop_data['dq_types'].index(default_dq_type)] = True
