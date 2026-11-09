@@ -18,7 +18,7 @@ eye_tracker_names = [e for e in eye_tracker_names if e!=EyeTracker.Generic.value
 from glassesTools.gui import file_picker, msg_box, recording_table, utils as gui_utils
 from glassesTools.gui.utils import my_checkbox, my_combo, handle_popup_stack
 from glassesTools.utils import hex_to_rgba_0_1
-from glassesTools import async_thread, platform as pltfrm, recording as gt_recording
+from glassesTools import async_thread, platform as pltfrm
 from glassesTools import data_types
 import glassesTools
 
