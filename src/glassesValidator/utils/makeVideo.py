@@ -94,7 +94,7 @@ def do_the_work(working_dir, config_dir, gui: video_player.GUI, show_rejected_ma
     pix_fmt  = ffpyplayer.tools.get_best_pix_fmt('bgr24',ffpyplayer.tools.get_supported_pixfmts(codec))
     fpsFrac  = Fraction(fps).limit_denominator(10000).as_integer_ratio()
     # scene video
-    out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':  width  , 'height_in':  height  ,'frame_rate':fpsFrac}
+    out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':'yuv420p', 'width_in':  width, 'height_in':  height  ,'frame_rate':fpsFrac}
     vidOutScene  = MediaWriter(str(working_dir / 'detectOutput_scene.mp4') , [out_opts], overwrite=True)
     # poster video
     out_opts = {'pix_fmt_in':'bgr24', 'pix_fmt_out':pix_fmt, 'width_in':ref_width, 'height_in':ref_height,'frame_rate':fpsFrac}
