@@ -1044,6 +1044,33 @@ class MainGUI():
             gui_utils.draw_hover_text(text='', hover_text="Right-click to copy citation to clipboard")
             imgui.spacing()
             imgui.spacing()
+            imgui.spacing()
+
+            imgui_md.render(f"This tool makes use of [ETDQualitizer](https://github.com/dcnieho/ETDQualitizer) ([paper](https://doi.org/10.3758/s13428-026-03039-4)) to compute the eye-tracking data quality measures, please also cite:")
+            imgui.spacing()
+            reference         = r"Niehorster, D.C., Nyström, M., Hessels, R.S., Benjamins, J.S., Andersson, R. & Hooge, I.T.C. (2026). The fundamentals of eye tracking, Part 7: Determining data quality. Behavior Research Methods. doi: [10.3758/s13428-026-03039-4](https://doi.org/10.3758/s13428-026-03039-4)"
+            reference_bibtex  = r"""@article{niehorster2026Fundamentals7,
+    Author = {Niehorster, Diederick C. and
+              Nystr{\"o}m, Marcus and
+              Hessels, Roy S. and
+              Benjamins, Jeroen S. and
+              Andersson, Richard and
+              Hooge, Ignace T. C.},
+    Journal = {Behavior Research Methods},
+    Number = {},
+    Title = {The fundamentals of eye tracking, Part 7: Determining data quality},
+    Year = {2026},
+    doi = {10.3758/s13428-026-03039-4}
+}
+"""
+            imgui_md.render(reference)
+            if imgui.begin_popup_context_item(f"##reference_context_ETDQualitizer"):
+                if imgui.selectable("APA", False)[0]:
+                    imgui.set_clipboard_text(reference)
+                if imgui.selectable("BibTeX", False)[0]:
+                    imgui.set_clipboard_text(reference_bibtex)
+                imgui.end_popup()
+            gui_utils.draw_hover_text(text='', hover_text="Right-click to copy citation to clipboard")
 
         imgui.set_next_window_size_constraints(
             (0.0, 0.0),
