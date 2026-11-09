@@ -9,7 +9,10 @@ Tool for automatic determination of data quality (accuracy and precision) of wea
 
 If you use this tool or any of the code in this repository, please cite:<br>
 [Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. and Hooge, I.T.C. (2023). GlassesValidator:
-A data quality tool for eye tracking glasses. Behavior Research Methods. doi: 10.3758/s13428-023-02105-5](https://doi.org/10.3758/s13428-023-02105-5) ([BibTeX](#bibtex))
+A data quality tool for eye tracking glasses. Behavior Research Methods. doi: 10.3758/s13428-023-02105-5](https://doi.org/10.3758/s13428-023-02105-5) ([BibTeX](#bibtex))<br>
+This tool makes use of [ETDQualitizer](https://github.com/dcnieho/ETDQualitizer) for computing eye tracking data quality. Please additionally cite:<br>
+[Niehorster, D.C., Nyström, M., Hessels, R.S., Benjamins, J.S., Andersson, R. & Hooge, I.T.C. (2026). The fundamentals of eye tracking, Part 7: Determining data quality. Behavior Research Methods. doi: 10.3758/s13428-026-03039-4](https://doi.org/10.3758/s13428-026-03039-4) ([BibTeX](#bibtex))
+
 
 # How to acquire
 GlassesValidator is available from `https://github.com/dcnieho/glassesValidator`, and supports Python 3.11 on Windows, MacOS and Linux (newer versions of Python should work fine but are not tested).
@@ -542,8 +545,9 @@ The functions in `glassesValidator.preprocess` are thin wrappers around the func
 
 # Citation
 If you use this tool or any of the code in this repository, please cite:<br>
-[Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. and Hooge, I.T.C. (2023). GlassesValidator:
-A data quality tool for eye tracking glasses. Behavior Research Methods. doi: 10.3758/s13428-023-02105-5](https://doi.org/10.3758/s13428-023-02105-5)
+[Niehorster, D.C., Hessels, R.S., Benjamins, J.S., Nyström, M. and Hooge, I.T.C. (2023). GlassesValidator: A data quality tool for eye tracking glasses. Behavior Research Methods. doi: 10.3758/s13428-023-02105-5](https://doi.org/10.3758/s13428-023-02105-5)<br>
+This tool makes use of [ETDQualitizer](https://github.com/dcnieho/ETDQualitizer) for computing eye tracking data quality. Please additionally cite:<br>
+[Niehorster, D.C., Nyström, M., Hessels, R.S., Benjamins, J.S., Andersson, R. & Hooge, I.T.C. (2026). The fundamentals of eye tracking, Part 7: Determining data quality. Behavior Research Methods. doi: 10.3758/s13428-026-03039-4](https://doi.org/10.3758/s13428-026-03039-4)
 
 ## BibTeX
 ```latex
@@ -558,5 +562,18 @@ A data quality tool for eye tracking glasses. Behavior Research Methods. doi: 10
     Title = {{GlassesValidator}: A data quality tool for eye tracking glasses},
     Year = {2023},
     doi = {10.3758/s13428-023-02105-5}
+
+@article{niehorster2026Fundamentals7,
+    Author = {Niehorster, Diederick C. and
+              Nystr{\"o}m, Marcus and
+              Hessels, Roy S. and
+              Benjamins, Jeroen S. and
+              Andersson, Richard and
+              Hooge, Ignace T. C.},
+    Journal = {Behavior Research Methods},
+    Number = {},
+    Title = {The fundamentals of eye tracking, Part 7: Determining data quality},
+    Year = {2026},
+    doi = {10.3758/s13428-026-03039-4}
 }
 ```
