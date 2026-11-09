@@ -15,7 +15,7 @@ This tool makes use of [ETDQualitizer](https://github.com/dcnieho/ETDQualitizer)
 
 
 # How to acquire
-GlassesValidator is available from `https://github.com/dcnieho/glassesValidator`, and supports Python 3.11 on Windows, MacOS and Linux (newer versions of Python should work fine but are not tested).
+GlassesValidator is available from `https://github.com/dcnieho/glassesValidator`, and supports Python 3.11 and later on Windows, MacOS and Linux (newer versions of Python should work fine but are not tested).
 Complete installation instruction for using the glassesValidator GUI on [Windows](#complete-instructions-for-windows), [MacOS](#complete-instructions-for-macos) and [Linux](#complete-instructions-for-linux) users are available below.
 Note that the standalone executable version of glassesValidator is discontinued. The last executable was for the [2.3.0 release](https://github.com/dcnieho/glassesValidator/releases/tag/v2.3.0).
 
