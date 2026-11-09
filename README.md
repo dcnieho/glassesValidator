@@ -210,6 +210,7 @@ glassesValidator supports the following eye trackers:
 - Argus Science ETVision
 - Generic*
 - Meta Project Aria Generation 1
+- Meta Project Aria Generation 2
 - Pupil Core
 - Pupil Invisible
 - Pupil Neon
@@ -218,8 +219,9 @@ glassesValidator supports the following eye trackers:
 - Tobii Pro Glasses 2
 - Tobii Pro Glasses 3
 - Viewpointsystem VPS 19
+- Viewpointsystem VPS Lite
 
-* The generic eye tracker allows users to import recordings made with unsupported eye trackers into tools built upon glassesTools, if the user has already converted the recording to the [glassesTools format](https://github.com/dcnieho/glassesTools/blob/master/README.md#common-data-format) themselves. The name of the eye tracker can be set in the [recording info](https://github.com/dcnieho/glassesTools/blob/master/README.md#recording-info) file through the `eye_tracker_name` property, so that recordings from different devices imported as generic eye tracker recordings can be distinguished.
+\* The generic eye tracker allows users to import recordings made with unsupported eye trackers into tools built upon glassesTools, if the user has already converted the recording to the [glassesTools format](https://github.com/dcnieho/glassesTools/blob/master/README.md#common-data-format) themselves. The name of the eye tracker can be set in the [recording info](https://github.com/dcnieho/glassesTools/blob/master/README.md#recording-info) file through the `eye_tracker_name` property, so that recordings from different devices imported as generic eye tracker recordings can be distinguished.
 
 Pull requests or partial help implementing support for further wearable eye trackers are gladly received. To support a new eye tracker,
 implement it in [glassesTools](https://github.com/dcnieho/glassesTools/blob/master/README.md#eye-tracker-support).
@@ -230,10 +232,9 @@ glassesValidator. Recordings from some other eye trackers however require some s
 software before they can be imported into glassesValidator. These are:
 - *Pupil Labs eye trackers*: Recordings should either be preprocessed using Pupil Player (*Pupil Core* and *Pupil Invisible*),
   Neon Player (*Pupil Neon*) or exported from Pupil Cloud (*Pupil Invisible* and *Pupil Neon*).
-  - Using Pupil Player (*Pupil Core* and *Pupil Invisible*) or Neon player (*Pupil Neon*): Each recording should 1) be opened
-    in Pupil/Neon Player, and 2) an export of the recording (`e` hotkey) should be run from Pupil/Neon Player. Make sure to disable the
-    `World Video Exporter` in the `Plugin Manager` before exporting, as the exported video is not used by glassesTools and takes a long time to create. If you want pupil diameters, make sure to enable `Export Pupil Positions` in the `Raw Data Exporter`, if available. Note that importing a Pupil/Neon Player export of a Pupil Invisible/Neon recording may require an internet connection. This is used to retrieve the scene camera calibration from Pupil Lab's servers in case the recording does not have
-    a `calibration.bin` file.
+  - Using Pupil Player (*Pupil Core* and *Pupil Invisible*): Each recording should 1) be opened in Pupil Player, and 2) an export of the recording (`e` hotkey) should be run from Pupil Player. Make sure to disable the
+    `World Video Exporter` in the `Plugin Manager` before exporting, as the exported video is not used by glassesTools and takes a long time to create. If you want pupil diameters, make sure to enable `Export Pupil Positions` in the `Raw Data Exporter`, if available. Note that importing a Pupil Player export of a Pupil Invisible recording may require an internet connection. This is used to retrieve the scene camera calibration from Pupil Lab's servers in case the recording does not have a `calibration.bin` file.
+  - Using Neon player (*Pupil Neon*): Each recording should 1) be opened in Neon Player, and 2) an export should be made. Enable the `Audio`, `Blinks`, `3D Eye States`, `Gaze Data` and `Scene Renderer` plugins. Then, in the `Export All` section, make sure that meta data and camera calibrations export are both enabled and click on the button to `Export All Enabled Plugins`. Then, separately the scene video needs to be exported. In `Scene Renderer`, click the `Export Raw Scene Video` button, and select the folder created previously by the `Export All Enabled Plugins` action.
   - Using Pupil Cloud (*Pupil Invisible* and *Pupil Neon*): Export the recordings using the `Timeseries data + Scene video` action.
   - For the *Pupil Core*, for best results you may wish to do a scene camera calibration yourself, see https://docs.pupil-labs.com/core/software/pupil-capture/#camera-intrinsics-estimation.
     If you do not do so, a generic calibration will be used by Pupil Capture during data recording, by Pupil Player during data
@@ -248,6 +249,17 @@ software before they can be imported into glassesValidator. These are:
     path to them using the `mps_folder` variable (optional).
   - Run the script (ensure you have the right packages installed, see the comment atop the script). An export of the recording will
     be made in a format that can be imported by gazeMapper and by default stored in the folder `somefolder/export_recording`. If you
+    wish to use another export folder, set the variable `output_folder` (optional).
+- *Meta Project Aria Generation 2*:
+  - Download the recording, a VRS file, to the computer via Aria Studio or the Client SDK.
+  - Optionally run MPS to get eye gaze. Note that for the Gen 2, eye gaze is already determined on-device, MPS provides an alternative.
+  - Open the [`meta_aria_gen2_exporter.py`](https://github.com/dcnieho/glassesTools/tree/master/tools/meta_aria_gen2_exporter.py) script
+    provided in glassesTools and set the variable `vrs_file` to the full path to the recording's `.vrs` file. If you want to use eye gaze from MPS instead of what is in the file, set `USE_MPS_GAZE` to True. By default, it is assumed that the recording's
+    `.vrs` file and the MPS results are in the same folder and have the default names used by the Aria tooling, e.g.
+    `some_folder/<recording>.vrs` and `somefolder/mps_<recording>_vrs`. If the MPS results are located elsewhere, you can provide the
+    path to them using the `mps_folder` variable (optional).
+  - Run the script (ensure you have the right packages installed, see the comment atop the script). An export of the recording will
+    be made in a format that can be read by glassesTools and by default stored in the folder `somefolder/export_<recording>`. If you
     wish to use another export folder, set the variable `output_folder` (optional).
 - *SMI ETG*: For SMI ETG recordings, access to BeGaze is required and the following steps should be performed:
   - Export gaze data: `Export` -> `Legacy: Export Raw Data to File`.
